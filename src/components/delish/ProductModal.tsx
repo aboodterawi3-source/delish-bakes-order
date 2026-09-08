@@ -59,7 +59,7 @@ export function ProductModal({ product, onClose }: { product: Product | null; on
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-cocoa/60 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-cocoa/70 p-0 sm:items-center sm:p-4">
       <button
         type="button"
         tabIndex={-1}
