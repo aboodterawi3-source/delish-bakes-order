@@ -1,5 +1,5 @@
 import { ShoppingBag, Menu, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import logo from "@/assets/delish-logo.jpg.asset.json";
 import { useLang } from "@/lib/i18n";
 import { useCart } from "@/lib/cart";
@@ -8,6 +8,16 @@ export function Header({ onCart }: { onCart: () => void }) {
   const { t, lang, setLang } = useLang();
   const { count } = useCart();
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
+
 
   const links = [
     { href: "#menu", label: t("navMenu") },

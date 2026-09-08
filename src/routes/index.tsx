@@ -1,6 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Instagram, MapPin, Phone, Sparkles, Star, Truck, Wheat } from "lucide-react";
+import { Instagram, MapPin, Phone, ShieldCheck, Sparkles, Star, Truck, Wheat } from "lucide-react";
 import { LangProvider, useLang } from "@/lib/i18n";
 import { CartProvider, useCart } from "@/lib/cart";
 import { categories, products, WHATSAPP, type Product } from "@/lib/menu";
@@ -11,26 +11,103 @@ import { ProductModal } from "@/components/delish/ProductModal";
 import { CakeBuilder } from "@/components/delish/CakeBuilder";
 import { CartDrawer } from "@/components/delish/CartDrawer";
 
+const TITLE = "ديليش كيك آند بيك | كيك وحلويات فاخرة وتوصيل في عمّان، الأردن";
+const DESCRIPTION =
+  "اطلب كيك أعياد الميلاد والمناسبات، تشيز كيك، كب كيك، كنافة وبقلاوة من ديليش كيك آند بيك في عمّان. صمّم كيكتك الخاصة وأرسل طلبك عبر واتساب مع توصيل داخل عمّان.";
+const KEYWORDS =
+  "كيك عمان, حلويات عمان, كيك اعياد ميلاد الاردن, تورتة عمان, كيك مناسبات عمان, تشيز كيك عمان, كب كيك الاردن, كنافة نابلسية عمان, بقلاوة عمان, محل حلويات عمان, توصيل كيك عمان, ديليش كيك آند بيك, Delish Cake and Bake Amman";
+
+const localBusinessSchema = {
+  "@context": "https://schema.org",
+  "@type": ["Bakery", "LocalBusiness"],
+  name: "Delish Cake & Bake",
+  alternateName: "ديليش كيك آند بيك",
+  description: DESCRIPTION,
+  image: "/og-delish.jpg",
+  telephone: "+962779179995",
+  priceRange: "10-90 JOD",
+  currenciesAccepted: "JOD",
+  paymentAccepted: "Cash",
+  servesCuisine: "Desserts",
+  address: {
+    "@type": "PostalAddress",
+    addressLocality: "عمّان",
+    addressRegion: "Amman Governorate",
+    addressCountry: "JO",
+  },
+  areaServed: { "@type": "City", name: "عمّان" },
+  sameAs: ["https://instagram.com/delish.jordan", "https://wa.me/962779179995"],
+  openingHoursSpecification: [
+    {
+      "@type": "OpeningHoursSpecification",
+      dayOfWeek: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+      opens: "10:00",
+      closes: "23:00",
+    },
+  ],
+  aggregateRating: { "@type": "AggregateRating", ratingValue: "5", reviewCount: "3", bestRating: "5" },
+};
+
+const productsSchema = {
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  name: "قائمة حلويات ديليش كيك آند بيك",
+  itemListElement: products.slice(0, 10).map((p, i) => ({
+    "@type": "ListItem",
+    position: i + 1,
+    item: {
+      "@type": "Product",
+      name: p.ar,
+      alternateName: p.en,
+      description: p.descAr,
+      brand: { "@type": "Brand", name: "Delish Cake & Bake" },
+      offers: {
+        "@type": "Offer",
+        price: p.price.toFixed(2),
+        priceCurrency: "JOD",
+        availability: "https://schema.org/InStock",
+        areaServed: "عمّان، الأردن",
+        url: "/#menu",
+      },
+    },
+  })),
+};
+
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Delish Cake & Bake | كيك وحلويات فاخرة في عمّان" },
-      {
-        name: "description",
-        content:
-          "Order luxury cakes, cheesecakes, cupcakes and Arabic sweets from Delish Cake & Bake in Amman, Jordan. Build a custom cake and send your order on WhatsApp.",
-      },
-      { property: "og:title", content: "Delish Cake & Bake | Luxury Bakery in Amman" },
-      {
-        property: "og:description",
-        content: "Freshly baked celebration cakes and desserts, delivered across Amman. Order in Arabic or English.",
-      },
+      { title: TITLE },
+      { name: "description", content: DESCRIPTION },
+      { name: "keywords", content: KEYWORDS },
+      { name: "robots", content: "index, follow" },
+      { name: "geo.region", content: "JO-AM" },
+      { name: "geo.placename", content: "Amman" },
+      { property: "og:site_name", content: "Delish Cake & Bake" },
+      { property: "og:title", content: TITLE },
+      { property: "og:description", content: DESCRIPTION },
       { property: "og:type", content: "website" },
+      { property: "og:locale", content: "ar_JO" },
+      { property: "og:locale:alternate", content: "en_US" },
+      { property: "og:url", content: "/" },
+      { property: "og:image", content: "/og-delish.jpg" },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
+      { property: "og:image:alt", content: "كيكة شوكولاتة فاخرة وحلويات من ديليش كيك آند بيك في عمّان" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: TITLE },
+      { name: "twitter:description", content: DESCRIPTION },
+      { name: "twitter:image", content: "/og-delish.jpg" },
+      { name: "twitter:image:alt", content: "كيكة شوكولاتة فاخرة وحلويات من ديليش كيك آند بيك في عمّان" },
+    ],
+    links: [{ rel: "canonical", href: "/" }],
+    scripts: [
+      { type: "application/ld+json", children: JSON.stringify(localBusinessSchema) },
+      { type: "application/ld+json", children: JSON.stringify(productsSchema) },
     ],
   }),
   component: Page,
 });
+
 
 function Page() {
   return (
