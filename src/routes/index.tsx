@@ -382,7 +382,9 @@ function CatChip({ active, onClick, children }: { active: boolean; onClick: () =
   return (
     <button
       onClick={onClick}
-      className={`shrink-0 rounded-full border px-4 py-2.5 text-sm whitespace-nowrap transition-colors ${
+      aria-pressed={active}
+      className={`min-h-12 shrink-0 rounded-full border px-4 text-sm whitespace-nowrap transition-colors ${
+
         active
           ? "border-gold bg-gold font-semibold text-cocoa"
           : "border-border bg-card text-foreground hover:border-gold/60"
