@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { Minus, Plus, X } from "lucide-react";
 import type { Option, Product } from "@/lib/menu";
 import { images } from "@/lib/images";
 import { useLang } from "@/lib/i18n";
 import { useCart } from "@/lib/cart";
+import { useDismissable } from "@/lib/a11y";
+
 
 export function ProductModal({ product, onClose }: { product: Product | null; onClose: () => void }) {
   const { t, lang } = useLang();
