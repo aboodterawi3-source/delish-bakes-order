@@ -58,8 +58,20 @@ export function ProductModal({ product, onClose }: { product: Product | null; on
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-cocoa/50 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-      <div className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-card shadow-[var(--shadow-soft)] sm:rounded-3xl">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-cocoa/60 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+      <button
+        type="button"
+        tabIndex={-1}
+        aria-label={lang === "ar" ? "إغلاق النافذة" : "Close dialog"}
+        onClick={onClose}
+        className="absolute inset-0 cursor-default"
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="relative max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-card shadow-[var(--shadow-soft)] sm:rounded-3xl"
+      >
         <div className="relative">
           <img
             src={images[product.image]}
@@ -71,12 +83,13 @@ export function ProductModal({ product, onClose }: { product: Product | null; on
           />
           <button
             onClick={onClose}
-            aria-label="Close"
-            className="absolute top-3 end-3 grid h-9 w-9 place-items-center rounded-full bg-background/90 text-foreground"
+            aria-label={lang === "ar" ? "إغلاق" : "Close"}
+            className="absolute top-3 end-3 grid h-12 w-12 place-items-center rounded-full bg-background/95 text-foreground"
           >
-            <X className="h-4 w-4" />
+            <X className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
+
 
         <div className="space-y-5 p-5">
           <div>
