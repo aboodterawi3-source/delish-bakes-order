@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { Instagram, MapPin, Phone, ShieldCheck, Sparkles, Star, Truck, Wheat } from "lucide-react";
 import { LangProvider, useLang } from "@/lib/i18n";
 import { CartProvider, useCart } from "@/lib/cart";
@@ -149,6 +149,10 @@ function Delish() {
   const [cartOpen, setCartOpen] = useState(false);
 
   const list = useMemo(() => (cat === "all" ? products : products.filter((p) => p.category === cat)), [cat]);
+  const openProduct = useCallback((p: Product) => setActive(p), []);
+  const openCart = useCallback(() => setCartOpen(true), []);
+  const closeCart = useCallback(() => setCartOpen(false), []);
+  const closeProduct = useCallback(() => setActive(null), []);
 
   return (
     <div id="top" dir={dir} className="min-h-dvh bg-background pb-24 md:pb-0">
@@ -158,7 +162,7 @@ function Delish() {
       >
         {lang === "ar" ? "تخطَّ إلى القائمة" : "Skip to menu"}
       </a>
-      <Header onCart={() => setCartOpen(true)} />
+      <Header onCart={openCart} />
       <main>
 
 
@@ -334,7 +338,7 @@ function Delish() {
       {/* Sticky mobile cart bar */}
       {count > 0 && !cartOpen && (
         <button
-          onClick={() => setCartOpen(true)}
+          onClick={openCart}
           className="fixed bottom-4 inset-x-4 z-30 flex items-center justify-between rounded-full bg-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-soft)] md:hidden"
         >
           <span>
@@ -346,8 +350,8 @@ function Delish() {
         </button>
       )}
 
-      <ProductModal product={active} onClose={() => setActive(null)} />
-      <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
+      <ProductModal product={active} onClose={closeProduct} />
+      <CartDrawer open={cartOpen} onClose={closeCart} />
     </div>
   );
 }
@@ -361,6 +365,51 @@ function SectionTitle({ kicker, title, sub }: { kicker: string; title: string; s
     </div>
   );
 }
+
+type ProductCardProps = {
+  product: Product;
+  lang: "ar" | "en";
+  t: (k: string) => string;
+  onSelect: (p: Product) => void;
+};
+
+const ProductCard = memo(function ProductCard({ product: p, lang, t, onSelect }: ProductCardProps) {
+  const badge = lang === "ar" ? p.badgeAr : p.badgeEn;
+  return (
+    <article className="surface-card group flex flex-col overflow-hidden rounded-3xl transition-transform duration-300 will-change-transform hover:-translate-y-1">
+      <div className="relative">
+        <Pic
+          set={imageSets[p.image]!}
+          alt={lang === "ar" ? p.ar : p.en}
+          sizes="(min-width: 1024px) 380px, (min-width: 640px) 45vw, 92vw"
+          className="aspect-4/3 w-full object-cover transition-transform duration-500 group-hover:scale-105"
+        />
+        {badge && (
+          <span className="absolute top-3 start-3 rounded-full bg-gold px-2.5 py-1 text-[10px] font-bold text-cocoa">
+            {badge}
+          </span>
+        )}
+      </div>
+      <div className="flex flex-1 flex-col p-4">
+        <h3 className="font-display text-base font-semibold">{lang === "ar" ? p.ar : p.en}</h3>
+        <p className="mt-1 flex-1 text-xs leading-relaxed text-muted-foreground">
+          {lang === "ar" ? p.descAr : p.descEn}
+        </p>
+        <div className="mt-4 flex items-center justify-between gap-2">
+          <span className="font-display text-lg font-semibold">
+            {p.price.toFixed(2)} <span className="text-xs">{t("jod")}</span>
+          </span>
+          <button
+            onClick={() => onSelect(p)}
+            className="min-h-12 rounded-full bg-primary px-5 text-xs font-semibold text-primary-foreground transition-transform hover:scale-105"
+          >
+            {p.sizes || p.flavors ? t("customize") : t("addToCart")}
+          </button>
+        </div>
+      </div>
+    </article>
+  );
+});
 
 function CatChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
