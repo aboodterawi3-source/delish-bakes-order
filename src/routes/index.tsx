@@ -100,7 +100,18 @@ export const Route = createFileRoute("/")({
       { name: "twitter:image", content: "/og-delish.jpg" },
       { name: "twitter:image:alt", content: "كيكة شوكولاتة فاخرة وحلويات من ديليش كيك آند بيك في عمّان" },
     ],
-    links: [{ rel: "canonical", href: "/" }],
+    links: [
+      { rel: "canonical", href: "/" },
+      // Preload the LCP hero (AVIF first; browsers without AVIF ignore this hint)
+      {
+        rel: "preload",
+        as: "image",
+        type: "image/avif",
+        imageSrcSet: heroImage.avif,
+        imageSizes: "100vw",
+        fetchPriority: "high",
+      },
+    ],
     scripts: [
       { type: "application/ld+json", children: JSON.stringify(localBusinessSchema) },
       { type: "application/ld+json", children: JSON.stringify(productsSchema) },
@@ -411,7 +422,7 @@ const ProductCard = memo(function ProductCard({ product: p, lang, t, onSelect }:
   );
 });
 
-function CatChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+const CatChip = memo(function CatChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
       onClick={onClick}
