@@ -154,6 +154,6 @@ export const images: Record<string, string> = Object.fromEntries(
   Object.entries(imageSets).map(([k, v]) => [k, v.src]),
 );
 
-export const heroImage = imageSets.hero!;
-export const builderImage = imageSets.builder!;
+export const heroImage = imageSets["hero"]!;
+export const builderImage = imageSets["builder"]!;
 
