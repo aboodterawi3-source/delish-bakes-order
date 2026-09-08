@@ -228,14 +228,14 @@ function AdminPage() {
           )}
 
           {view === "board" ? (
-            <div className="no-scrollbar -mx-4 mt-6 flex gap-4 overflow-x-auto px-4 pb-2">
+            <div className="no-scrollbar -mx-4 mt-6 flex gap-4 overflow-x-auto px-4 pb-2 xl:mx-0 xl:grid xl:grid-cols-5 xl:overflow-visible xl:px-0">
               {statusOrder.map((s) => {
                 const col = filtered.filter((o) => o.status === s);
                 return (
                   <section
                     key={s}
                     aria-label={`${statusMeta[s].ar} — ${col.length} طلب`}
-                    className="w-72 shrink-0 rounded-3xl border border-border bg-card p-3"
+                    className="w-72 shrink-0 rounded-3xl border border-border bg-card p-3 xl:w-auto"
                   >
                     <h3 className="flex items-center gap-2 px-1 pb-3 text-sm font-bold">
                       <span className={`h-2.5 w-2.5 rounded-full ${statusMeta[s].dot}`} aria-hidden="true" />
