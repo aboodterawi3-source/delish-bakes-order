@@ -316,41 +316,50 @@ function Delish() {
           <p className="mt-4 text-sm leading-relaxed text-primary-foreground/80">{t("aboutBody")}</p>
         </div>
       </section>
+      </main>
 
       {/* Footer */}
       <footer id="contact" className="border-t border-border bg-card py-12">
         <div className="mx-auto grid max-w-6xl gap-8 px-5 sm:grid-cols-3">
           <div>
-            <h3 className="font-display text-lg font-semibold">Delish Cake &amp; Bake</h3>
+            <h2 className="font-display text-lg font-semibold">Delish Cake &amp; Bake</h2>
             <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{t("brandTag")}</p>
           </div>
           <div className="space-y-2 text-sm">
-            <p className="text-xs font-bold tracking-wide text-muted-foreground uppercase">{t("contactUs")}</p>
+            <h3 className="text-xs font-bold tracking-wide text-muted-foreground uppercase">{t("contactUs")}</h3>
             <a
               href={`https://wa.me/${WHATSAPP}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 text-foreground hover:text-gold-deep"
+              className="flex min-h-11 items-center gap-2 text-foreground hover:text-gold-deep"
             >
-              <Phone className="h-4 w-4" /> <span dir="ltr">+962 77 917 9995</span>
+              <Phone className="h-4 w-4" aria-hidden="true" /> <span dir="ltr">+962 77 917 9995</span>
             </a>
             <a
               href="https://instagram.com/delish.jordan"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 text-foreground hover:text-gold-deep"
+              className="flex min-h-11 items-center gap-2 text-foreground hover:text-gold-deep"
             >
-              <Instagram className="h-4 w-4" /> delish.jordan
+              <Instagram className="h-4 w-4" aria-hidden="true" /> delish.jordan
             </a>
             <p className="flex items-center gap-2 text-muted-foreground">
-              <MapPin className="h-4 w-4" /> {lang === "ar" ? "عمّان، الأردن" : "Amman, Jordan"}
+              <MapPin className="h-4 w-4" aria-hidden="true" /> {lang === "ar" ? "عمّان، الأردن" : "Amman, Jordan"}
             </p>
           </div>
           <div className="space-y-2 text-sm">
-            <p className="text-xs font-bold tracking-wide text-muted-foreground uppercase">{t("hours")}</p>
+            <h3 className="text-xs font-bold tracking-wide text-muted-foreground uppercase">{t("hours")}</h3>
             <p className="text-muted-foreground">{t("hoursVal")}</p>
+            <Link
+              to="/admin"
+              className="inline-flex min-h-11 items-center gap-2 text-foreground underline hover:text-gold-deep"
+            >
+              <ShieldCheck className="h-4 w-4" aria-hidden="true" />
+              {lang === "ar" ? "لوحة الطلبات (للفريق)" : "Order dashboard (staff)"}
+            </Link>
           </div>
         </div>
+
         <p className="mt-8 text-center text-[11px] text-muted-foreground">
           © {new Date().getFullYear()} Delish Cake &amp; Bake — {t("rights")}
         </p>
