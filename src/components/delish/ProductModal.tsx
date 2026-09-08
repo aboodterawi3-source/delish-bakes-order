@@ -14,6 +14,11 @@ export function ProductModal({ product, onClose }: { product: Product | null; on
   const [flavorId, setFlavorId] = useState<string | null>(null);
   const [qty, setQty] = useState(1);
   const [notes, setNotes] = useState("");
+  const titleId = useId();
+  const notesId = useId();
+
+  useDismissable(Boolean(product), onClose);
+
 
   useEffect(() => {
     if (product) {

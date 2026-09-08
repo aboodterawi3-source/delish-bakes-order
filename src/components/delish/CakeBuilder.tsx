@@ -83,20 +83,24 @@ export function CakeBuilder({ onDone }: { onDone: () => void }) {
 
       <div className="surface-card rounded-3xl p-5">
         <div className="flex items-center justify-between">
-          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase" aria-live="polite">
             {t("step")} {step + 1} {t("of")} 4
           </p>
-          <div className="flex gap-1.5">
-            {steps.map((_, i) => (
-              <span
-                key={i}
-                className={`h-1.5 w-6 rounded-full transition-colors ${i <= step ? "bg-gold" : "bg-border"}`}
-              />
+          <ol className="flex gap-1.5" aria-label={t("builderTitle")}>
+            {steps.map((s, i) => (
+              <li
+                key={s.title}
+                aria-current={i === step ? "step" : undefined}
+                className={`h-1.5 w-6 rounded-full transition-colors ${i <= step ? "bg-gold-deep" : "bg-border"}`}
+              >
+                <span className="sr-only">{s.title}</span>
+              </li>
             ))}
-          </div>
+          </ol>
         </div>
 
         <h3 className="mt-4 font-display text-xl font-semibold">{current.title}</h3>
+
 
         <div className="mt-3 flex flex-wrap gap-2">
           {current.options.map((o) => (
