@@ -216,3 +216,21 @@ h1, h2, h3, .font-display {
     display: none;
   }
 }
+
+@layer base {
+  /* Meaningful, high-contrast keyboard focus everywhere (WCAG 2.4.7 / 2.4.11) */
+  :focus-visible {
+    outline: 3px solid var(--gold-deep, oklch(0.62 0.12 78));
+    outline-offset: 2px;
+    border-radius: 0.75rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
