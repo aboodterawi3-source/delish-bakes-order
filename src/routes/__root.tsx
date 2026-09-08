@@ -77,23 +77,23 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { title: "ديليش كيك آند بيك | Delish Cake & Bake" },
+      { name: "description", content: "كيك وحلويات فاخرة تُخبز طازجة يومياً في عمّان، الأردن." },
       { name: "author", content: "Delish Cake & Bake" },
-      { name: "theme-color", content: "#2b1b12" },
+      { property: "og:site_name", content: "Delish Cake & Bake" },
+      { property: "og:type", content: "website" },
+      { property: "og:locale", content: "ar_JO" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
       {
         rel: "stylesheet",
         href: appCss,
       },
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Playfair+Display:wght@500;600;700&display=swap",
-      },
       { rel: "icon", href: "/favicon.png", type: "image/png" },
     ],
   }),
+
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
