@@ -1,6 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Instagram, MapPin, Phone, Sparkles, Star, Truck, Wheat } from "lucide-react";
+import { Instagram, MapPin, Phone, ShieldCheck, Sparkles, Star, Truck, Wheat } from "lucide-react";
 import { LangProvider, useLang } from "@/lib/i18n";
 import { CartProvider, useCart } from "@/lib/cart";
 import { categories, products, WHATSAPP, type Product } from "@/lib/menu";
@@ -11,26 +11,103 @@ import { ProductModal } from "@/components/delish/ProductModal";
 import { CakeBuilder } from "@/components/delish/CakeBuilder";
 import { CartDrawer } from "@/components/delish/CartDrawer";
 
+const TITLE = "ديليش كيك آند بيك | كيك وحلويات فاخرة وتوصيل في عمّان، الأردن";
+const DESCRIPTION =
+  "اطلب كيك أعياد الميلاد والمناسبات، تشيز كيك، كب كيك، كنافة وبقلاوة من ديليش كيك آند بيك في عمّان. صمّم كيكتك الخاصة وأرسل طلبك عبر واتساب مع توصيل داخل عمّان.";
+const KEYWORDS =
+  "كيك عمان, حلويات عمان, كيك اعياد ميلاد الاردن, تورتة عمان, كيك مناسبات عمان, تشيز كيك عمان, كب كيك الاردن, كنافة نابلسية عمان, بقلاوة عمان, محل حلويات عمان, توصيل كيك عمان, ديليش كيك آند بيك, Delish Cake and Bake Amman";
+
+const localBusinessSchema = {
+  "@context": "https://schema.org",
+  "@type": ["Bakery", "LocalBusiness"],
+  name: "Delish Cake & Bake",
+  alternateName: "ديليش كيك آند بيك",
+  description: DESCRIPTION,
+  image: "/og-delish.jpg",
+  telephone: "+962779179995",
+  priceRange: "10-90 JOD",
+  currenciesAccepted: "JOD",
+  paymentAccepted: "Cash",
+  servesCuisine: "Desserts",
+  address: {
+    "@type": "PostalAddress",
+    addressLocality: "عمّان",
+    addressRegion: "Amman Governorate",
+    addressCountry: "JO",
+  },
+  areaServed: { "@type": "City", name: "عمّان" },
+  sameAs: ["https://instagram.com/delish.jordan", "https://wa.me/962779179995"],
+  openingHoursSpecification: [
+    {
+      "@type": "OpeningHoursSpecification",
+      dayOfWeek: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+      opens: "10:00",
+      closes: "23:00",
+    },
+  ],
+  aggregateRating: { "@type": "AggregateRating", ratingValue: "5", reviewCount: "3", bestRating: "5" },
+};
+
+const productsSchema = {
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  name: "قائمة حلويات ديليش كيك آند بيك",
+  itemListElement: products.slice(0, 10).map((p, i) => ({
+    "@type": "ListItem",
+    position: i + 1,
+    item: {
+      "@type": "Product",
+      name: p.ar,
+      alternateName: p.en,
+      description: p.descAr,
+      brand: { "@type": "Brand", name: "Delish Cake & Bake" },
+      offers: {
+        "@type": "Offer",
+        price: p.price.toFixed(2),
+        priceCurrency: "JOD",
+        availability: "https://schema.org/InStock",
+        areaServed: "عمّان، الأردن",
+        url: "/#menu",
+      },
+    },
+  })),
+};
+
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Delish Cake & Bake | كيك وحلويات فاخرة في عمّان" },
-      {
-        name: "description",
-        content:
-          "Order luxury cakes, cheesecakes, cupcakes and Arabic sweets from Delish Cake & Bake in Amman, Jordan. Build a custom cake and send your order on WhatsApp.",
-      },
-      { property: "og:title", content: "Delish Cake & Bake | Luxury Bakery in Amman" },
-      {
-        property: "og:description",
-        content: "Freshly baked celebration cakes and desserts, delivered across Amman. Order in Arabic or English.",
-      },
+      { title: TITLE },
+      { name: "description", content: DESCRIPTION },
+      { name: "keywords", content: KEYWORDS },
+      { name: "robots", content: "index, follow" },
+      { name: "geo.region", content: "JO-AM" },
+      { name: "geo.placename", content: "Amman" },
+      { property: "og:site_name", content: "Delish Cake & Bake" },
+      { property: "og:title", content: TITLE },
+      { property: "og:description", content: DESCRIPTION },
       { property: "og:type", content: "website" },
+      { property: "og:locale", content: "ar_JO" },
+      { property: "og:locale:alternate", content: "en_US" },
+      { property: "og:url", content: "/" },
+      { property: "og:image", content: "/og-delish.jpg" },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
+      { property: "og:image:alt", content: "كيكة شوكولاتة فاخرة وحلويات من ديليش كيك آند بيك في عمّان" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: TITLE },
+      { name: "twitter:description", content: DESCRIPTION },
+      { name: "twitter:image", content: "/og-delish.jpg" },
+      { name: "twitter:image:alt", content: "كيكة شوكولاتة فاخرة وحلويات من ديليش كيك آند بيك في عمّان" },
+    ],
+    links: [{ rel: "canonical", href: "/" }],
+    scripts: [
+      { type: "application/ld+json", children: JSON.stringify(localBusinessSchema) },
+      { type: "application/ld+json", children: JSON.stringify(productsSchema) },
     ],
   }),
   component: Page,
 });
+
 
 function Page() {
   return (
@@ -73,8 +150,17 @@ function Delish() {
   const list = useMemo(() => (cat === "all" ? products : products.filter((p) => p.category === cat)), [cat]);
 
   return (
-    <div id="top" dir={dir} className="min-h-screen bg-background pb-24 md:pb-0">
+    <div id="top" dir={dir} className="min-h-dvh bg-background pb-24 md:pb-0">
+      <a
+        href="#menu"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-3 focus:start-3 focus:z-50 focus:rounded-full focus:bg-primary focus:px-4 focus:py-3 focus:text-sm focus:font-semibold focus:text-primary-foreground"
+      >
+        {lang === "ar" ? "تخطَّ إلى القائمة" : "Skip to menu"}
+      </a>
       <Header onCart={() => setCartOpen(true)} />
+      <main>
+
+
 
       {/* Hero */}
       <section className="relative overflow-hidden">
@@ -121,7 +207,7 @@ function Delish() {
           ].map(({ icon: Icon, label }) => (
             <div key={label} className="flex flex-col items-center gap-1 px-2">
               <Icon className="h-4.5 w-4.5 text-gold-deep" />
-              <span className="text-[11px] font-semibold text-muted-foreground sm:text-xs">{label}</span>
+              <span className="text-[11px] font-semibold text-foreground sm:text-xs">{label}</span>
             </div>
           ))}
         </div>
@@ -174,7 +260,7 @@ function Delish() {
                   </span>
                   <button
                     onClick={() => setActive(p)}
-                    className="rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition-transform hover:scale-105"
+                    className="min-h-12 rounded-full bg-primary px-5 text-xs font-semibold text-primary-foreground transition-transform hover:scale-105"
                   >
                     {p.sizes || p.flavors ? t("customize") : t("addToCart")}
                   </button>
@@ -230,41 +316,50 @@ function Delish() {
           <p className="mt-4 text-sm leading-relaxed text-primary-foreground/80">{t("aboutBody")}</p>
         </div>
       </section>
+      </main>
 
       {/* Footer */}
       <footer id="contact" className="border-t border-border bg-card py-12">
         <div className="mx-auto grid max-w-6xl gap-8 px-5 sm:grid-cols-3">
           <div>
-            <h3 className="font-display text-lg font-semibold">Delish Cake &amp; Bake</h3>
+            <h2 className="font-display text-lg font-semibold">Delish Cake &amp; Bake</h2>
             <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{t("brandTag")}</p>
           </div>
           <div className="space-y-2 text-sm">
-            <p className="text-xs font-bold tracking-wide text-muted-foreground uppercase">{t("contactUs")}</p>
+            <h3 className="text-xs font-bold tracking-wide text-muted-foreground uppercase">{t("contactUs")}</h3>
             <a
               href={`https://wa.me/${WHATSAPP}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 text-foreground hover:text-gold-deep"
+              className="flex min-h-11 items-center gap-2 text-foreground hover:text-gold-deep"
             >
-              <Phone className="h-4 w-4" /> <span dir="ltr">+962 77 917 9995</span>
+              <Phone className="h-4 w-4" aria-hidden="true" /> <span dir="ltr">+962 77 917 9995</span>
             </a>
             <a
               href="https://instagram.com/delish.jordan"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 text-foreground hover:text-gold-deep"
+              className="flex min-h-11 items-center gap-2 text-foreground hover:text-gold-deep"
             >
-              <Instagram className="h-4 w-4" /> delish.jordan
+              <Instagram className="h-4 w-4" aria-hidden="true" /> delish.jordan
             </a>
             <p className="flex items-center gap-2 text-muted-foreground">
-              <MapPin className="h-4 w-4" /> {lang === "ar" ? "عمّان، الأردن" : "Amman, Jordan"}
+              <MapPin className="h-4 w-4" aria-hidden="true" /> {lang === "ar" ? "عمّان، الأردن" : "Amman, Jordan"}
             </p>
           </div>
           <div className="space-y-2 text-sm">
-            <p className="text-xs font-bold tracking-wide text-muted-foreground uppercase">{t("hours")}</p>
+            <h3 className="text-xs font-bold tracking-wide text-muted-foreground uppercase">{t("hours")}</h3>
             <p className="text-muted-foreground">{t("hoursVal")}</p>
+            <Link
+              to="/admin"
+              className="inline-flex min-h-11 items-center gap-2 text-foreground underline hover:text-gold-deep"
+            >
+              <ShieldCheck className="h-4 w-4" aria-hidden="true" />
+              {lang === "ar" ? "لوحة الطلبات (للفريق)" : "Order dashboard (staff)"}
+            </Link>
           </div>
         </div>
+
         <p className="mt-8 text-center text-[11px] text-muted-foreground">
           © {new Date().getFullYear()} Delish Cake &amp; Bake — {t("rights")}
         </p>
@@ -305,10 +400,12 @@ function CatChip({ active, onClick, children }: { active: boolean; onClick: () =
   return (
     <button
       onClick={onClick}
-      className={`shrink-0 rounded-full border px-4 py-2.5 text-sm whitespace-nowrap transition-colors ${
+      aria-pressed={active}
+      className={`min-h-12 shrink-0 rounded-full border px-4 text-sm whitespace-nowrap transition-colors ${
+
         active
           ? "border-gold bg-gold font-semibold text-cocoa"
-          : "border-border bg-card text-muted-foreground hover:border-gold/60"
+          : "border-border bg-card text-foreground hover:border-gold/60"
       }`}
     >
       {children}

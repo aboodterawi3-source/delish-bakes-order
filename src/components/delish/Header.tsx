@@ -1,5 +1,5 @@
 import { ShoppingBag, Menu, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import logo from "@/assets/delish-logo.jpg.asset.json";
 import { useLang } from "@/lib/i18n";
 import { useCart } from "@/lib/cart";
@@ -8,6 +8,16 @@ export function Header({ onCart }: { onCart: () => void }) {
   const { t, lang, setLang } = useLang();
   const { count } = useCart();
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
+
 
   const links = [
     { href: "#menu", label: t("navMenu") },
@@ -50,18 +60,18 @@ export function Header({ onCart }: { onCart: () => void }) {
 
           <button
             onClick={() => setLang(lang === "ar" ? "en" : "ar")}
-            className="rounded-full border border-gold/50 px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-secondary"
-            aria-label="Switch language"
+            className="min-h-12 rounded-full border border-gold/60 px-3 text-xs font-semibold text-foreground transition-colors hover:bg-secondary"
+            aria-label={lang === "ar" ? "التبديل إلى الإنجليزية" : "Switch to Arabic"}
           >
             {lang === "ar" ? "EN" : "عربي"}
           </button>
 
           <button
             onClick={onCart}
-            className="relative grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground transition-transform hover:scale-105"
-            aria-label={t("cart")}
+            className="relative grid h-12 w-12 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground transition-transform hover:scale-105"
+            aria-label={`${t("cart")} — ${count} ${t("itemsCount")}`}
           >
-            <ShoppingBag className="h-4.5 w-4.5" />
+            <ShoppingBag className="h-5 w-5" aria-hidden="true" />
             {count > 0 && (
               <span className="absolute -top-1 -end-1 grid h-5 min-w-5 place-items-center rounded-full bg-gold px-1 text-[11px] font-bold text-cocoa">
                 {count}
@@ -71,22 +81,25 @@ export function Header({ onCart }: { onCart: () => void }) {
 
           <button
             onClick={() => setOpen((v) => !v)}
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-border md:hidden"
-            aria-label="Menu"
+            aria-expanded={open}
+            aria-controls="mobile-nav"
+            className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-border md:hidden"
+            aria-label={open ? (lang === "ar" ? "إغلاق القائمة" : "Close menu") : lang === "ar" ? "فتح القائمة" : "Open menu"}
           >
-            {open ? <X className="h-4.5 w-4.5" /> : <Menu className="h-4.5 w-4.5" />}
+            {open ? <X className="h-5 w-5" aria-hidden="true" /> : <Menu className="h-5 w-5" aria-hidden="true" />}
           </button>
         </div>
       </div>
 
       {open && (
-        <nav className="border-t border-border bg-background px-4 py-2 md:hidden">
+        <nav id="mobile-nav" aria-label={t("navMenu")} className="border-t border-border bg-background px-4 py-2 md:hidden">
+
           {links.map((l) => (
             <a
               key={l.href}
               href={l.href}
               onClick={() => setOpen(false)}
-              className="block border-b border-border/60 py-3 text-sm font-medium text-foreground last:border-0"
+              className="flex min-h-12 items-center border-b border-border/60 text-sm font-medium text-foreground last:border-0"
             >
               {l.label}
             </a>
