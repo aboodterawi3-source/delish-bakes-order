@@ -142,3 +142,77 @@
     color: var(--color-foreground);
   }
 }
+
+/* ── Delish brand theme (gold · cocoa · cream) ─────────────────────────── */
+:root {
+  --radius: 1rem;
+  --background: oklch(0.985 0.012 85);
+  --foreground: oklch(0.245 0.035 55);
+  --card: oklch(1 0.004 85);
+  --card-foreground: oklch(0.245 0.035 55);
+  --popover: oklch(0.995 0.006 85);
+  --popover-foreground: oklch(0.245 0.035 55);
+  --primary: oklch(0.29 0.045 55);
+  --primary-foreground: oklch(0.98 0.015 85);
+  --secondary: oklch(0.955 0.025 85);
+  --secondary-foreground: oklch(0.32 0.045 60);
+  --muted: oklch(0.955 0.02 85);
+  --muted-foreground: oklch(0.52 0.035 60);
+  --accent: oklch(0.78 0.13 85);
+  --accent-foreground: oklch(0.24 0.04 55);
+  --destructive: oklch(0.55 0.19 27);
+  --destructive-foreground: oklch(0.98 0.01 85);
+  --border: oklch(0.9 0.025 85);
+  --input: oklch(0.9 0.025 85);
+  --ring: oklch(0.78 0.13 85);
+  --gold: oklch(0.78 0.13 85);
+  --gold-deep: oklch(0.62 0.12 75);
+  --gold-light: oklch(0.9 0.08 90);
+  --cocoa: oklch(0.29 0.045 55);
+  --gradient-gold: linear-gradient(120deg, var(--gold-deep), var(--gold), var(--gold-light), var(--gold-deep));
+  --shadow-soft: 0 18px 45px -22px oklch(0.29 0.045 55 / 0.35);
+  --shadow-gold: 0 14px 40px -16px oklch(0.62 0.12 75 / 0.45);
+}
+
+@theme inline {
+  --color-gold: var(--gold);
+  --color-gold-deep: var(--gold-deep);
+  --color-gold-light: var(--gold-light);
+  --color-cocoa: var(--cocoa);
+  --font-display: "Playfair Display", "Amiri", Georgia, serif;
+  --font-sans: "Cairo", "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+h1, h2, h3, .font-display {
+  font-family: var(--font-display);
+}
+
+:root:dir(rtl) h1,
+:root:dir(rtl) h2,
+:root:dir(rtl) h3,
+:root:dir(rtl) .font-display {
+  font-family: "Cairo", var(--font-display);
+}
+
+@utility text-gold-gradient {
+  background-image: var(--gradient-gold);
+  background-clip: text;
+  color: transparent;
+}
+
+@utility surface-card {
+  background-color: var(--color-card);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-soft);
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
