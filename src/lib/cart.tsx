@@ -6,11 +6,12 @@ export type CartLine = {
   en: string;
   unit: number;
   qty: number;
-  image?: string;
+  image?: string | undefined;
   detailsAr: string[];
   detailsEn: string[];
-  notes?: string;
+  notes?: string | undefined;
 };
+
 
 type Ctx = {
   lines: CartLine[];
