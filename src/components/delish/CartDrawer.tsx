@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useId, useRef, useState } from "react";
 import { Minus, Plus, Trash2, X } from "lucide-react";
 import { DELIVERY_FEE, WHATSAPP } from "@/lib/menu";
 import { useCart } from "@/lib/cart";
 import { useLang } from "@/lib/i18n";
+import { useDismissable } from "@/lib/a11y";
+import { appendOrder, newOrderId, type Order } from "@/lib/orders";
 
 type Form = {
   name: string;
@@ -32,6 +34,10 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   const [stage, setStage] = useState<"cart" | "checkout">("cart");
   const [form, setForm] = useState<Form>(empty);
   const [errors, setErrors] = useState<Partial<Record<keyof Form, boolean>>>({});
+  const titleId = useId();
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  useDismissable(open, onClose);
 
   const deliveryFee = form.method === "delivery" && count > 0 ? DELIVERY_FEE : 0;
   const total = subtotal + deliveryFee;
@@ -89,8 +95,33 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
     return L.join("\n");
   };
 
+  const inscription = lines
+    .flatMap((l) => l.detailsAr.filter((d) => d.startsWith("الكتابة")))
+    .map((d) => d.replace(/^الكتابة:\s*/, ""))
+    .join(" / ");
+
   const send = () => {
     if (!validate()) return;
+    const order: Order = {
+      id: newOrderId(),
+      createdAt: new Date().toISOString(),
+      customer: form.name.trim(),
+      phone: form.phone.trim(),
+      method: form.method,
+      area: form.area.trim() || undefined,
+      address: form.address.trim() || undefined,
+      date: form.date,
+      time: form.time,
+      lines,
+      subtotal,
+      deliveryFee,
+      total,
+      notes: form.notes.trim() || undefined,
+      inscription: inscription || undefined,
+      designImage: lines.find((l) => l.image)?.image,
+      status: "new",
+    };
+    appendOrder(order);
     const url = `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(buildMessage())}`;
     window.open(url, "_blank", "noopener,noreferrer");
   };
@@ -98,17 +129,34 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-cocoa/50 backdrop-blur-sm">
-      <div className="flex h-full w-full max-w-md flex-col bg-background shadow-[var(--shadow-soft)]">
+    <div className="fixed inset-0 z-50 flex justify-end bg-cocoa/60 backdrop-blur-sm">
+      <button
+        type="button"
+        aria-label={lang === "ar" ? "إغلاق السلة" : "Close cart"}
+        onClick={onClose}
+        className="absolute inset-0 cursor-default"
+        tabIndex={-1}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="relative flex h-full w-full max-w-md flex-col bg-background shadow-[var(--shadow-soft)]"
+      >
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
-          <h3 className="font-display text-lg font-semibold">
+          <h2 id={titleId} className="font-display text-lg font-semibold">
             {stage === "cart" ? t("cart") : t("checkout")}{" "}
             <span className="text-sm font-normal text-muted-foreground">
               ({count} {t("itemsCount")})
             </span>
-          </h3>
-          <button onClick={onClose} aria-label="Close" className="grid h-9 w-9 place-items-center rounded-full border border-border">
-            <X className="h-4 w-4" />
+          </h2>
+          <button
+            ref={closeRef}
+            onClick={onClose}
+            aria-label={lang === "ar" ? "إغلاق" : "Close"}
+            className="grid h-12 w-12 place-items-center rounded-full border border-border text-foreground"
+          >
+            <X className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
 
@@ -131,24 +179,38 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-2">
                     <p className="truncate text-sm font-semibold">{lang === "ar" ? l.ar : l.en}</p>
-                    <button onClick={() => remove(l.key)} aria-label="Remove" className="shrink-0 text-muted-foreground">
-                      <Trash2 className="h-4 w-4" />
+                    <button
+                      onClick={() => remove(l.key)}
+                      aria-label={`${lang === "ar" ? "إزالة" : "Remove"} ${lang === "ar" ? l.ar : l.en}`}
+                      className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-muted-foreground hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" aria-hidden="true" />
                     </button>
                   </div>
-                  <ul className="mt-1 space-y-0.5 text-[11px] text-muted-foreground">
+                  <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground">
                     {(lang === "ar" ? l.detailsAr : l.detailsEn).map((d) => (
                       <li key={d}>{d}</li>
                     ))}
                     {l.notes && <li>{l.notes}</li>}
                   </ul>
                   <div className="mt-2 flex items-center justify-between">
-                    <div className="flex items-center gap-2 rounded-full border border-border px-2 py-1">
-                      <button onClick={() => setQty(l.key, l.qty - 1)} aria-label="minus">
-                        <Minus className="h-3.5 w-3.5" />
+                    <div className="flex items-center gap-1 rounded-full border border-border px-1">
+                      <button
+                        onClick={() => setQty(l.key, l.qty - 1)}
+                        aria-label={`${lang === "ar" ? "تقليل الكمية" : "Decrease quantity"} — ${lang === "ar" ? l.ar : l.en}`}
+                        className="grid h-11 w-11 place-items-center rounded-full"
+                      >
+                        <Minus className="h-4 w-4" aria-hidden="true" />
                       </button>
-                      <span className="min-w-5 text-center text-xs font-semibold">{l.qty}</span>
-                      <button onClick={() => setQty(l.key, l.qty + 1)} aria-label="plus">
-                        <Plus className="h-3.5 w-3.5" />
+                      <span className="min-w-6 text-center text-sm font-semibold" aria-live="polite">
+                        {l.qty}
+                      </span>
+                      <button
+                        onClick={() => setQty(l.key, l.qty + 1)}
+                        aria-label={`${lang === "ar" ? "زيادة الكمية" : "Increase quantity"} — ${lang === "ar" ? l.ar : l.en}`}
+                        className="grid h-11 w-11 place-items-center rounded-full"
+                      >
+                        <Plus className="h-4 w-4" aria-hidden="true" />
                       </button>
                     </div>
                     <span className="text-sm font-semibold">
@@ -162,69 +224,87 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
           {stage === "checkout" && (
             <div className="space-y-4">
               <Field label={t("name")} error={errors["name"]} errText={t("required")}>
-                <input className={inputCls} value={form.name} onChange={(e) => set("name", e.target.value)} />
+                {(p) => <input className={inputCls} autoComplete="name" value={form.name} onChange={(e) => set("name", e.target.value)} {...p} />}
               </Field>
               <Field label={t("phone")} error={errors["phone"]} errText={t("required")}>
-                <input
-                  className={inputCls}
-                  inputMode="tel"
-                  dir="ltr"
-                  placeholder="07 9999 9999"
-                  value={form.phone}
-                  onChange={(e) => set("phone", e.target.value)}
-                />
+                {(p) => (
+                  <input
+                    className={inputCls}
+                    inputMode="tel"
+                    autoComplete="tel"
+                    dir="ltr"
+                    placeholder="07 9999 9999"
+                    value={form.phone}
+                    onChange={(e) => set("phone", e.target.value)}
+                    {...p}
+                  />
+                )}
               </Field>
 
-              <div>
-                <p className="mb-2 text-xs font-bold tracking-wide text-muted-foreground uppercase">{t("method")}</p>
+              <fieldset>
+                <legend className="mb-2 text-xs font-bold tracking-wide text-muted-foreground uppercase">
+                  {t("method")}
+                </legend>
                 <div className="grid grid-cols-2 gap-2">
                   {(["delivery", "pickup"] as const).map((m) => (
                     <button
                       key={m}
+                      type="button"
+                      aria-pressed={form.method === m}
                       onClick={() => set("method", m)}
-                      className={`rounded-2xl border px-3 py-2.5 text-sm ${
-                        form.method === m ? "border-gold bg-secondary font-semibold" : "border-border text-muted-foreground"
+                      className={`min-h-12 rounded-2xl border px-3 py-2.5 text-sm ${
+                        form.method === m ? "border-gold bg-secondary font-semibold" : "border-border text-foreground"
                       }`}
                     >
                       {m === "delivery" ? t("deliveryOpt") : t("pickup")}
                     </button>
                   ))}
                 </div>
-              </div>
+              </fieldset>
 
               {form.method === "delivery" && (
                 <>
                   <Field label={t("area")} error={errors["area"]} errText={t("required")}>
-                    <input className={inputCls} value={form.area} onChange={(e) => set("area", e.target.value)} />
+                    {(p) => <input className={inputCls} value={form.area} onChange={(e) => set("area", e.target.value)} {...p} />}
                   </Field>
                   <Field label={t("address")} error={errors["address"]} errText={t("required")}>
-                    <textarea
-                      rows={2}
-                      className={inputCls}
-                      value={form.address}
-                      onChange={(e) => set("address", e.target.value)}
-                    />
+                    {(p) => (
+                      <textarea
+                        rows={2}
+                        className={inputCls}
+                        value={form.address}
+                        onChange={(e) => set("address", e.target.value)}
+                        {...p}
+                      />
+                    )}
                   </Field>
                 </>
               )}
 
               <div className="grid grid-cols-2 gap-3">
                 <Field label={t("date")} error={errors["date"]} errText={t("required")}>
-                  <input type="date" className={inputCls} value={form.date} onChange={(e) => set("date", e.target.value)} />
+                  {(p) => (
+                    <input type="date" className={inputCls} value={form.date} onChange={(e) => set("date", e.target.value)} {...p} />
+                  )}
                 </Field>
                 <Field label={t("time")} error={errors["time"]} errText={t("required")}>
-                  <input type="time" className={inputCls} value={form.time} onChange={(e) => set("time", e.target.value)} />
+                  {(p) => (
+                    <input type="time" className={inputCls} value={form.time} onChange={(e) => set("time", e.target.value)} {...p} />
+                  )}
                 </Field>
               </div>
 
               <Field label={t("orderNotes")}>
-                <textarea
-                  rows={2}
-                  className={inputCls}
-                  placeholder={t("notesPh")}
-                  value={form.notes}
-                  onChange={(e) => set("notes", e.target.value)}
-                />
+                {(p) => (
+                  <textarea
+                    rows={2}
+                    className={inputCls}
+                    placeholder={t("notesPh")}
+                    value={form.notes}
+                    onChange={(e) => set("notes", e.target.value)}
+                    {...p}
+                  />
+                )}
               </Field>
             </div>
           )}
@@ -239,11 +319,11 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
               <>
                 <button
                   onClick={() => setStage("checkout")}
-                  className="w-full rounded-full bg-primary py-3.5 text-sm font-semibold text-primary-foreground"
+                  className="min-h-12 w-full rounded-full bg-primary py-3.5 text-sm font-semibold text-primary-foreground"
                 >
                   {t("checkout")}
                 </button>
-                <button onClick={clear} className="w-full text-center text-xs text-muted-foreground underline">
+                <button onClick={clear} className="min-h-11 w-full text-center text-xs text-foreground underline">
                   {t("clear")}
                 </button>
               </>
@@ -251,11 +331,14 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
               <>
                 <button
                   onClick={send}
-                  className="w-full rounded-full bg-[#25D366] py-3.5 text-sm font-bold text-cocoa transition-transform hover:scale-[1.01]"
+                  className="min-h-12 w-full rounded-full bg-[#128C3C] py-3.5 text-sm font-bold text-white transition-transform hover:scale-[1.01]"
                 >
                   {t("sendWhats")}
                 </button>
-                <button onClick={() => setStage("cart")} className="w-full text-center text-xs text-muted-foreground underline">
+                <button
+                  onClick={() => setStage("cart")}
+                  className="min-h-11 w-full text-center text-xs text-foreground underline"
+                >
                   {t("back")}
                 </button>
               </>
@@ -268,7 +351,9 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
 }
 
 const inputCls =
-  "w-full rounded-2xl border border-input bg-background px-4 py-3 text-sm outline-none focus:border-gold";
+  "w-full min-h-12 rounded-2xl border border-input bg-background px-4 py-3 text-sm outline-none focus:border-gold";
+
+type FieldProps = { id: string; "aria-invalid"?: true; "aria-describedby"?: string };
 
 function Field({
   label,
@@ -279,13 +364,22 @@ function Field({
   label: string;
   error?: boolean | undefined;
   errText?: string;
-  children: React.ReactNode;
+  children: (props: FieldProps) => React.ReactNode;
 }) {
+  const id = useId();
+  const errId = `${id}-error`;
+  const props: FieldProps = { id, ...(error ? { "aria-invalid": true as const, "aria-describedby": errId } : {}) };
   return (
     <div>
-      <p className="mb-2 text-xs font-bold tracking-wide text-muted-foreground uppercase">{label}</p>
-      {children}
-      {error && <p className="mt-1 text-[11px] text-destructive">{errText}</p>}
+      <label htmlFor={id} className="mb-2 block text-xs font-bold tracking-wide text-muted-foreground uppercase">
+        {label}
+      </label>
+      {children(props)}
+      {error && (
+        <p id={errId} className="mt-1 text-xs font-semibold text-destructive">
+          {errText}
+        </p>
+      )}
     </div>
   );
 }
