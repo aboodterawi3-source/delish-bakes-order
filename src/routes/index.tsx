@@ -4,7 +4,8 @@ import { Instagram, MapPin, Phone, ShieldCheck, Sparkles, Star, Truck, Wheat } f
 import { LangProvider, useLang } from "@/lib/i18n";
 import { CartProvider, useCart } from "@/lib/cart";
 import { categories, products, WHATSAPP, type Product } from "@/lib/menu";
-import { heroImage, images } from "@/lib/images";
+import { heroImage, imageSets } from "@/lib/images";
+import { Pic } from "@/components/delish/Pic";
 import logo from "@/assets/delish-logo.jpg.asset.json";
 import { Header } from "@/components/delish/Header";
 import { ProductModal } from "@/components/delish/ProductModal";
@@ -164,11 +165,11 @@ function Delish() {
 
       {/* Hero */}
       <section className="relative overflow-hidden">
-        <img
-          src={heroImage}
+        <Pic
+          set={heroImage}
           alt={t("heroTitle")}
-          width={1400}
-          height={1000}
+          priority
+          sizes="100vw"
           className="absolute inset-0 h-full w-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-cocoa/95 via-cocoa/70 to-cocoa/40" />
@@ -235,12 +236,10 @@ function Delish() {
               className="surface-card group flex flex-col overflow-hidden rounded-3xl transition-transform hover:-translate-y-1"
             >
               <div className="relative">
-                <img
-                  src={images[p.image]}
+                <Pic
+                  set={imageSets[p.image]!}
                   alt={lang === "ar" ? p.ar : p.en}
-                  loading="lazy"
-                  width={800}
-                  height={800}
+                  sizes="(min-width: 1024px) 380px, (min-width: 640px) 45vw, 92vw"
                   className="aspect-4/3 w-full object-cover transition-transform duration-500 group-hover:scale-105"
                 />
                 {(lang === "ar" ? p.badgeAr : p.badgeEn) && (
