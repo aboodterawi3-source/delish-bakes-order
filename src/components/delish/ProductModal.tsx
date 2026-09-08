@@ -93,7 +93,9 @@ export function ProductModal({ product, onClose }: { product: Product | null; on
 
         <div className="space-y-5 p-5">
           <div>
-            <h3 className="font-display text-xl font-semibold">{lang === "ar" ? product.ar : product.en}</h3>
+            <h2 id={titleId} className="font-display text-xl font-semibold">
+              {lang === "ar" ? product.ar : product.en}
+            </h2>
             <p className="mt-1 text-sm text-muted-foreground">{lang === "ar" ? product.descAr : product.descEn}</p>
           </div>
 
@@ -119,24 +121,38 @@ export function ProductModal({ product, onClose }: { product: Product | null; on
             </Group>
           )}
 
-          <Group title={t("notes")}>
+          <div>
+            <label htmlFor={notesId} className="mb-2 block text-xs font-bold tracking-wide text-muted-foreground uppercase">
+              {t("notes")}
+            </label>
             <textarea
+              id={notesId}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder={t("notesPh")}
               rows={2}
               className="w-full rounded-2xl border border-input bg-background p-3 text-sm outline-none focus:border-gold"
             />
-          </Group>
+          </div>
 
           <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 rounded-full border border-border px-2 py-1.5">
-              <button onClick={() => setQty((q) => Math.max(1, q - 1))} aria-label="minus" className="p-1">
-                <Minus className="h-4 w-4" />
+            <div className="flex items-center gap-1 rounded-full border border-border px-1">
+              <button
+                onClick={() => setQty((q) => Math.max(1, q - 1))}
+                aria-label={lang === "ar" ? "تقليل الكمية" : "Decrease quantity"}
+                className="grid h-12 w-12 place-items-center rounded-full"
+              >
+                <Minus className="h-4 w-4" aria-hidden="true" />
               </button>
-              <span className="min-w-6 text-center text-sm font-semibold">{qty}</span>
-              <button onClick={() => setQty((q) => q + 1)} aria-label="plus" className="p-1">
-                <Plus className="h-4 w-4" />
+              <span className="min-w-6 text-center text-sm font-semibold" aria-live="polite">
+                {qty}
+              </span>
+              <button
+                onClick={() => setQty((q) => q + 1)}
+                aria-label={lang === "ar" ? "زيادة الكمية" : "Increase quantity"}
+                className="grid h-12 w-12 place-items-center rounded-full"
+              >
+                <Plus className="h-4 w-4" aria-hidden="true" />
               </button>
             </div>
             <div className="text-end">
@@ -148,10 +164,12 @@ export function ProductModal({ product, onClose }: { product: Product | null; on
 
           <button
             onClick={submit}
-            className="w-full rounded-full bg-primary py-3.5 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.01]"
+            className="min-h-12 w-full rounded-full bg-primary py-3.5 text-sm font-semibold text-primary-foreground transition-transform hover:scale-[1.01]"
           >
             {t("addToCart")}
           </button>
+        </div>
+
         </div>
       </div>
     </div>
