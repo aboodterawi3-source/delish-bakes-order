@@ -437,4 +437,5 @@ const CatChip = memo(function CatChip({ active, onClick, children }: { active: b
       {children}
     </button>
   );
-}
+});
+
