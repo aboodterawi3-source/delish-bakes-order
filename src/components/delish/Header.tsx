@@ -99,7 +99,7 @@ export function Header({ onCart }: { onCart: () => void }) {
               key={l.href}
               href={l.href}
               onClick={() => setOpen(false)}
-              className="block border-b border-border/60 py-3 text-sm font-medium text-foreground last:border-0"
+              className="flex min-h-12 items-center border-b border-border/60 text-sm font-medium text-foreground last:border-0"
             >
               {l.label}
             </a>

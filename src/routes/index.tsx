@@ -198,7 +198,7 @@ function Delish() {
           ].map(({ icon: Icon, label }) => (
             <div key={label} className="flex flex-col items-center gap-1 px-2">
               <Icon className="h-4.5 w-4.5 text-gold-deep" />
-              <span className="text-[11px] font-semibold text-muted-foreground sm:text-xs">{label}</span>
+              <span className="text-[11px] font-semibold text-foreground sm:text-xs">{label}</span>
             </div>
           ))}
         </div>
@@ -251,7 +251,7 @@ function Delish() {
                   </span>
                   <button
                     onClick={() => setActive(p)}
-                    className="rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition-transform hover:scale-105"
+                    className="min-h-12 rounded-full bg-primary px-5 text-xs font-semibold text-primary-foreground transition-transform hover:scale-105"
                   >
                     {p.sizes || p.flavors ? t("customize") : t("addToCart")}
                   </button>
@@ -385,7 +385,7 @@ function CatChip({ active, onClick, children }: { active: boolean; onClick: () =
       className={`shrink-0 rounded-full border px-4 py-2.5 text-sm whitespace-nowrap transition-colors ${
         active
           ? "border-gold bg-gold font-semibold text-cocoa"
-          : "border-border bg-card text-muted-foreground hover:border-gold/60"
+          : "border-border bg-card text-foreground hover:border-gold/60"
       }`}
     >
       {children}

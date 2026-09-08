@@ -196,10 +196,10 @@ export function Chip({
   return (
     <button
       onClick={onClick}
-      className={`rounded-full border px-3.5 py-2 text-sm transition-colors ${
+      className={`min-h-12 rounded-full border px-4 text-sm transition-colors ${
         active
           ? "border-gold bg-secondary font-semibold text-foreground"
-          : "border-border text-muted-foreground hover:border-gold/60"
+          : "border-border text-foreground hover:border-gold/60"
       }`}
     >
       {children}
