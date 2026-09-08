@@ -389,7 +389,7 @@ function OrderDialog({
   const waUrl = `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(statusMessage(order, order.status))}`;
 
   return (
-    <div dir="rtl" className="fixed inset-0 z-50 flex items-end justify-center bg-cocoa/60 backdrop-blur-sm sm:items-center sm:p-4">
+    <div dir="rtl" className="fixed inset-0 z-50 flex items-end justify-center bg-cocoa/70 sm:items-center sm:p-4">
       <button
         type="button"
         tabIndex={-1}

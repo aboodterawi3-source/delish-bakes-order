@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { builderFillings, builderFlavors, builderFrostings, builderSizes, type Option } from "@/lib/menu";
 import { builderImage } from "@/lib/images";
+import { Pic } from "@/components/delish/Pic";
 import { useLang } from "@/lib/i18n";
 import { useCart } from "@/lib/cart";
 import { Chip } from "./ProductModal";
@@ -41,7 +42,7 @@ export function CakeBuilder({ onDone }: { onDone: () => void }) {
       en: "Custom designed cake",
       unit: total,
       qty: 1,
-      image: builderImage,
+      image: builderImage.src,
       detailsAr: [
         `الحجم: ${size.ar}`,
         `النكهة: ${flavor.ar}`,
@@ -65,12 +66,10 @@ export function CakeBuilder({ onDone }: { onDone: () => void }) {
   return (
     <div className="grid gap-6 md:grid-cols-2 md:items-center">
       <div className="relative overflow-hidden rounded-3xl border border-gold/30 shadow-[var(--shadow-gold)]">
-        <img
-          src={builderImage}
+        <Pic
+          set={builderImage}
           alt={t("builderTitle")}
-          loading="lazy"
-          width={1000}
-          height={1000}
+          sizes="(min-width: 768px) 460px, 92vw"
           className="aspect-square w-full object-cover"
         />
         <div className="absolute bottom-0 start-0 end-0 bg-gradient-to-t from-cocoa/85 to-transparent p-4">

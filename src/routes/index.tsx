@@ -1,10 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 import { Instagram, MapPin, Phone, ShieldCheck, Sparkles, Star, Truck, Wheat } from "lucide-react";
 import { LangProvider, useLang } from "@/lib/i18n";
 import { CartProvider, useCart } from "@/lib/cart";
 import { categories, products, WHATSAPP, type Product } from "@/lib/menu";
-import { heroImage, images } from "@/lib/images";
+import { heroImage, imageSets } from "@/lib/images";
+import { Pic } from "@/components/delish/Pic";
 import logo from "@/assets/delish-logo.jpg.asset.json";
 import { Header } from "@/components/delish/Header";
 import { ProductModal } from "@/components/delish/ProductModal";
@@ -99,7 +100,18 @@ export const Route = createFileRoute("/")({
       { name: "twitter:image", content: "/og-delish.jpg" },
       { name: "twitter:image:alt", content: "كيكة شوكولاتة فاخرة وحلويات من ديليش كيك آند بيك في عمّان" },
     ],
-    links: [{ rel: "canonical", href: "/" }],
+    links: [
+      { rel: "canonical", href: "/" },
+      // Preload the LCP hero (AVIF first; browsers without AVIF ignore this hint)
+      {
+        rel: "preload",
+        as: "image",
+        type: "image/avif",
+        imageSrcSet: heroImage.avif,
+        imageSizes: "100vw",
+        fetchPriority: "high",
+      },
+    ],
     scripts: [
       { type: "application/ld+json", children: JSON.stringify(localBusinessSchema) },
       { type: "application/ld+json", children: JSON.stringify(productsSchema) },
@@ -148,6 +160,11 @@ function Delish() {
   const [cartOpen, setCartOpen] = useState(false);
 
   const list = useMemo(() => (cat === "all" ? products : products.filter((p) => p.category === cat)), [cat]);
+  const openProduct = useCallback((p: Product) => setActive(p), []);
+  const selectCat = useCallback((id: string) => setCat(id), []);
+  const openCart = useCallback(() => setCartOpen(true), []);
+  const closeCart = useCallback(() => setCartOpen(false), []);
+  const closeProduct = useCallback(() => setActive(null), []);
 
   return (
     <div id="top" dir={dir} className="min-h-dvh bg-background pb-24 md:pb-0">
@@ -157,18 +174,18 @@ function Delish() {
       >
         {lang === "ar" ? "تخطَّ إلى القائمة" : "Skip to menu"}
       </a>
-      <Header onCart={() => setCartOpen(true)} />
+      <Header onCart={openCart} />
       <main>
 
 
 
       {/* Hero */}
       <section className="relative overflow-hidden">
-        <img
-          src={heroImage}
+        <Pic
+          set={heroImage}
           alt={t("heroTitle")}
-          width={1400}
-          height={1000}
+          priority
+          sizes="100vw"
           className="absolute inset-0 h-full w-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-cocoa/95 via-cocoa/70 to-cocoa/40" />
@@ -218,57 +235,24 @@ function Delish() {
         <SectionTitle kicker={t("navMenu")} title={t("categories")} />
 
         <div className="no-scrollbar -mx-4 mt-6 flex gap-2 overflow-x-auto px-4 pb-1">
-          <CatChip active={cat === "all"} onClick={() => setCat("all")}>
-            {t("all")}
-          </CatChip>
+          <CatChip id="all" active={cat === "all"} onSelect={selectCat} label={t("all")} />
           {categories.map((c) => (
-            <CatChip key={c.id} active={cat === c.id} onClick={() => setCat(c.id)}>
-              {lang === "ar" ? c.ar : c.en}
-            </CatChip>
+            <CatChip
+              key={c.id}
+              id={c.id}
+              active={cat === c.id}
+              onSelect={selectCat}
+              label={lang === "ar" ? c.ar : c.en}
+            />
           ))}
         </div>
 
         <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {list.map((p) => (
-            <article
-              key={p.id}
-              className="surface-card group flex flex-col overflow-hidden rounded-3xl transition-transform hover:-translate-y-1"
-            >
-              <div className="relative">
-                <img
-                  src={images[p.image]}
-                  alt={lang === "ar" ? p.ar : p.en}
-                  loading="lazy"
-                  width={800}
-                  height={800}
-                  className="aspect-4/3 w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                />
-                {(lang === "ar" ? p.badgeAr : p.badgeEn) && (
-                  <span className="absolute top-3 start-3 rounded-full bg-gold px-2.5 py-1 text-[10px] font-bold text-cocoa">
-                    {lang === "ar" ? p.badgeAr : p.badgeEn}
-                  </span>
-                )}
-              </div>
-              <div className="flex flex-1 flex-col p-4">
-                <h3 className="font-display text-base font-semibold">{lang === "ar" ? p.ar : p.en}</h3>
-                <p className="mt-1 flex-1 text-xs leading-relaxed text-muted-foreground">
-                  {lang === "ar" ? p.descAr : p.descEn}
-                </p>
-                <div className="mt-4 flex items-center justify-between gap-2">
-                  <span className="font-display text-lg font-semibold">
-                    {p.price.toFixed(2)} <span className="text-xs">{t("jod")}</span>
-                  </span>
-                  <button
-                    onClick={() => setActive(p)}
-                    className="min-h-12 rounded-full bg-primary px-5 text-xs font-semibold text-primary-foreground transition-transform hover:scale-105"
-                  >
-                    {p.sizes || p.flavors ? t("customize") : t("addToCart")}
-                  </button>
-                </div>
-              </div>
-            </article>
+            <ProductCard key={p.id} product={p} lang={lang} t={t} onSelect={openProduct} />
           ))}
         </div>
+
       </section>
 
       {/* Builder */}
@@ -368,7 +352,7 @@ function Delish() {
       {/* Sticky mobile cart bar */}
       {count > 0 && !cartOpen && (
         <button
-          onClick={() => setCartOpen(true)}
+          onClick={openCart}
           className="fixed bottom-4 inset-x-4 z-30 flex items-center justify-between rounded-full bg-primary px-5 py-3.5 text-sm font-semibold text-primary-foreground shadow-[var(--shadow-soft)] md:hidden"
         >
           <span>
@@ -380,8 +364,8 @@ function Delish() {
         </button>
       )}
 
-      <ProductModal product={active} onClose={() => setActive(null)} />
-      <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
+      <ProductModal product={active} onClose={closeProduct} />
+      <CartDrawer open={cartOpen} onClose={closeCart} />
     </div>
   );
 }
@@ -396,10 +380,65 @@ function SectionTitle({ kicker, title, sub }: { kicker: string; title: string; s
   );
 }
 
-function CatChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+type ProductCardProps = {
+  product: Product;
+  lang: "ar" | "en";
+  t: (k: string) => string;
+  onSelect: (p: Product) => void;
+};
+
+const ProductCard = memo(function ProductCard({ product: p, lang, t, onSelect }: ProductCardProps) {
+  const badge = lang === "ar" ? p.badgeAr : p.badgeEn;
+  return (
+    <article className="surface-card group flex flex-col overflow-hidden rounded-3xl transition-transform duration-300 will-change-transform hover:-translate-y-1">
+      <div className="relative">
+        <Pic
+          set={imageSets[p.image]!}
+          alt={lang === "ar" ? p.ar : p.en}
+          sizes="(min-width: 1024px) 380px, (min-width: 640px) 45vw, 92vw"
+          className="aspect-4/3 w-full object-cover transition-transform duration-500 group-hover:scale-105"
+        />
+        {badge && (
+          <span className="absolute top-3 start-3 rounded-full bg-gold px-2.5 py-1 text-[10px] font-bold text-cocoa">
+            {badge}
+          </span>
+        )}
+      </div>
+      <div className="flex flex-1 flex-col p-4">
+        <h3 className="font-display text-base font-semibold">{lang === "ar" ? p.ar : p.en}</h3>
+        <p className="mt-1 flex-1 text-xs leading-relaxed text-muted-foreground">
+          {lang === "ar" ? p.descAr : p.descEn}
+        </p>
+        <div className="mt-4 flex items-center justify-between gap-2">
+          <span className="font-display text-lg font-semibold">
+            {p.price.toFixed(2)} <span className="text-xs">{t("jod")}</span>
+          </span>
+          <button
+            onClick={() => onSelect(p)}
+            className="min-h-12 rounded-full bg-primary px-5 text-xs font-semibold text-primary-foreground transition-transform hover:scale-105"
+          >
+            {p.sizes || p.flavors ? t("customize") : t("addToCart")}
+          </button>
+        </div>
+      </div>
+    </article>
+  );
+});
+
+const CatChip = memo(function CatChip({
+  id,
+  active,
+  onSelect,
+  label,
+}: {
+  id: string;
+  active: boolean;
+  onSelect: (id: string) => void;
+  label: string;
+}) {
   return (
     <button
-      onClick={onClick}
+      onClick={() => onSelect(id)}
       aria-pressed={active}
       className={`min-h-12 shrink-0 rounded-full border px-4 text-sm whitespace-nowrap transition-colors ${
 
@@ -408,7 +447,8 @@ function CatChip({ active, onClick, children }: { active: boolean; onClick: () =
           : "border-border bg-card text-foreground hover:border-gold/60"
       }`}
     >
-      {children}
+      {label}
     </button>
   );
-}
+});
+

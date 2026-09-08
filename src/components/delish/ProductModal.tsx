@@ -1,7 +1,8 @@
 import { useEffect, useId, useMemo, useState } from "react";
 import { Minus, Plus, X } from "lucide-react";
 import type { Option, Product } from "@/lib/menu";
-import { images } from "@/lib/images";
+import { imageSets } from "@/lib/images";
+import { Pic } from "@/components/delish/Pic";
 import { useLang } from "@/lib/i18n";
 import { useCart } from "@/lib/cart";
 import { useDismissable } from "@/lib/a11y";
@@ -47,7 +48,7 @@ export function ProductModal({ product, onClose }: { product: Product | null; on
       en: product.en,
       unit,
       qty,
-      image: images[product.image],
+      image: imageSets[product.image]!.src,
       detailsAr: [size ? `${t_ar("size")}: ${size.ar}` : "", flavor ? `${t_ar("flavor")}: ${flavor.ar}` : ""].filter(
         Boolean,
       ),
@@ -58,7 +59,7 @@ export function ProductModal({ product, onClose }: { product: Product | null; on
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-cocoa/60 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-cocoa/70 p-0 sm:items-center sm:p-4">
       <button
         type="button"
         tabIndex={-1}
@@ -73,12 +74,10 @@ export function ProductModal({ product, onClose }: { product: Product | null; on
         className="relative max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-card shadow-[var(--shadow-soft)] sm:rounded-3xl"
       >
         <div className="relative">
-          <img
-            src={images[product.image]}
+          <Pic
+            set={imageSets[product.image]!}
             alt={lang === "ar" ? product.ar : product.en}
-            loading="lazy"
-            width={800}
-            height={800}
+            sizes="(min-width: 640px) 512px, 100vw"
             className="h-48 w-full object-cover sm:h-56"
           />
           <button

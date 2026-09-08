@@ -27,15 +27,16 @@ export function Header({ onCart }: { onCart: () => void }) {
   ];
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur-lg">
+    <header className="sticky top-0 z-40 border-b border-border/70 bg-background/95 backdrop-blur-sm">
       <div className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3">
         <a href="#top" className="flex min-w-0 items-center gap-3">
           <img
             src={logo.url}
+            fetchPriority="high"
             alt="Delish Cake & Bake"
             width={44}
             height={44}
-            className="h-11 w-11 shrink-0 rounded-full border border-gold/40 object-cover shadow-[var(--shadow-gold)]"
+            className="h-11 w-11 shrink-0 rounded-full border border-gold/40 object-cover"
           />
           <span className="min-w-0">
             <span className="block truncate font-display text-lg leading-tight font-semibold text-foreground">
