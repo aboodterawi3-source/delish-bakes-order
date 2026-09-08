@@ -231,43 +231,10 @@ function Delish() {
 
         <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {list.map((p) => (
-            <article
-              key={p.id}
-              className="surface-card group flex flex-col overflow-hidden rounded-3xl transition-transform hover:-translate-y-1"
-            >
-              <div className="relative">
-                <Pic
-                  set={imageSets[p.image]!}
-                  alt={lang === "ar" ? p.ar : p.en}
-                  sizes="(min-width: 1024px) 380px, (min-width: 640px) 45vw, 92vw"
-                  className="aspect-4/3 w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                />
-                {(lang === "ar" ? p.badgeAr : p.badgeEn) && (
-                  <span className="absolute top-3 start-3 rounded-full bg-gold px-2.5 py-1 text-[10px] font-bold text-cocoa">
-                    {lang === "ar" ? p.badgeAr : p.badgeEn}
-                  </span>
-                )}
-              </div>
-              <div className="flex flex-1 flex-col p-4">
-                <h3 className="font-display text-base font-semibold">{lang === "ar" ? p.ar : p.en}</h3>
-                <p className="mt-1 flex-1 text-xs leading-relaxed text-muted-foreground">
-                  {lang === "ar" ? p.descAr : p.descEn}
-                </p>
-                <div className="mt-4 flex items-center justify-between gap-2">
-                  <span className="font-display text-lg font-semibold">
-                    {p.price.toFixed(2)} <span className="text-xs">{t("jod")}</span>
-                  </span>
-                  <button
-                    onClick={() => setActive(p)}
-                    className="min-h-12 rounded-full bg-primary px-5 text-xs font-semibold text-primary-foreground transition-transform hover:scale-105"
-                  >
-                    {p.sizes || p.flavors ? t("customize") : t("addToCart")}
-                  </button>
-                </div>
-              </div>
-            </article>
+            <ProductCard key={p.id} product={p} lang={lang} t={t} onSelect={openProduct} />
           ))}
         </div>
+
       </section>
 
       {/* Builder */}
