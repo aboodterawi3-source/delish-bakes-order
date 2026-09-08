@@ -150,8 +150,17 @@ function Delish() {
   const list = useMemo(() => (cat === "all" ? products : products.filter((p) => p.category === cat)), [cat]);
 
   return (
-    <div id="top" dir={dir} className="min-h-screen bg-background pb-24 md:pb-0">
+    <div id="top" dir={dir} className="min-h-dvh bg-background pb-24 md:pb-0">
+      <a
+        href="#menu"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-3 focus:start-3 focus:z-50 focus:rounded-full focus:bg-primary focus:px-4 focus:py-3 focus:text-sm focus:font-semibold focus:text-primary-foreground"
+      >
+        {lang === "ar" ? "تخطَّ إلى القائمة" : "Skip to menu"}
+      </a>
       <Header onCart={() => setCartOpen(true)} />
+      <main>
+
+
 
       {/* Hero */}
       <section className="relative overflow-hidden">
