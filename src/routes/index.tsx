@@ -161,6 +161,7 @@ function Delish() {
 
   const list = useMemo(() => (cat === "all" ? products : products.filter((p) => p.category === cat)), [cat]);
   const openProduct = useCallback((p: Product) => setActive(p), []);
+  const selectCat = useCallback((id: string) => setCat(id), []);
   const openCart = useCallback(() => setCartOpen(true), []);
   const closeCart = useCallback(() => setCartOpen(false), []);
   const closeProduct = useCallback(() => setActive(null), []);
@@ -234,13 +235,15 @@ function Delish() {
         <SectionTitle kicker={t("navMenu")} title={t("categories")} />
 
         <div className="no-scrollbar -mx-4 mt-6 flex gap-2 overflow-x-auto px-4 pb-1">
-          <CatChip active={cat === "all"} onClick={() => setCat("all")}>
-            {t("all")}
-          </CatChip>
+          <CatChip id="all" active={cat === "all"} onSelect={selectCat} label={t("all")} />
           {categories.map((c) => (
-            <CatChip key={c.id} active={cat === c.id} onClick={() => setCat(c.id)}>
-              {lang === "ar" ? c.ar : c.en}
-            </CatChip>
+            <CatChip
+              key={c.id}
+              id={c.id}
+              active={cat === c.id}
+              onSelect={selectCat}
+              label={lang === "ar" ? c.ar : c.en}
+            />
           ))}
         </div>
 
@@ -422,10 +425,20 @@ const ProductCard = memo(function ProductCard({ product: p, lang, t, onSelect }:
   );
 });
 
-const CatChip = memo(function CatChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+const CatChip = memo(function CatChip({
+  id,
+  active,
+  onSelect,
+  label,
+}: {
+  id: string;
+  active: boolean;
+  onSelect: (id: string) => void;
+  label: string;
+}) {
   return (
     <button
-      onClick={onClick}
+      onClick={() => onSelect(id)}
       aria-pressed={active}
       className={`min-h-12 shrink-0 rounded-full border px-4 text-sm whitespace-nowrap transition-colors ${
 
@@ -434,7 +447,7 @@ const CatChip = memo(function CatChip({ active, onClick, children }: { active: b
           : "border-border bg-card text-foreground hover:border-gold/60"
       }`}
     >
-      {children}
+      {label}
     </button>
   );
 });
