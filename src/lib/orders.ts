@@ -19,17 +19,17 @@ export type Order = {
   customer: string;
   phone: string;
   method: "delivery" | "pickup";
-  area?: string;
-  address?: string;
+  area?: string | undefined;
+  address?: string | undefined;
   date: string;
   time: string;
   lines: CartLine[];
   subtotal: number;
   deliveryFee: number;
   total: number;
-  notes?: string;
-  inscription?: string;
-  designImage?: string;
+  notes?: string | undefined;
+  inscription?: string | undefined;
+  designImage?: string | undefined;
   status: OrderStatus;
 };
 
