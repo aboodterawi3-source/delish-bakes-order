@@ -169,10 +169,9 @@ export function ProductModal({ product, onClose }: { product: Product | null; on
             {t("addToCart")}
           </button>
         </div>
-
-        </div>
       </div>
     </div>
+
   );
 }
 
