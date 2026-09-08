@@ -31,7 +31,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   const { lines, setQty, remove, clear, subtotal, count } = useCart();
   const [stage, setStage] = useState<"cart" | "checkout">("cart");
   const [form, setForm] = useState<Form>(empty);
-  const [errors, setErrors] = useState<Record<string, boolean>>({});
+  const [errors, setErrors] = useState<Partial<Record<keyof Form, boolean>>>({});
 
   const deliveryFee = form.method === "delivery" && count > 0 ? DELIVERY_FEE : 0;
   const total = subtotal + deliveryFee;
@@ -39,15 +39,15 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   const set = (k: keyof Form, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   const validate = () => {
-    const e: Record<string, boolean> = {};
-    if (!form.name.trim()) e.name = true;
-    if (!/^[0-9+\s-]{7,}$/.test(form.phone.trim())) e.phone = true;
+    const e: Partial<Record<keyof Form, boolean>> = {};
+    if (!form.name.trim()) e["name"] = true;
+    if (!/^[0-9+\s-]{7,}$/.test(form.phone.trim())) e["phone"] = true;
     if (form.method === "delivery") {
-      if (!form.area.trim()) e.area = true;
-      if (!form.address.trim()) e.address = true;
+      if (!form.area.trim()) e["area"] = true;
+      if (!form.address.trim()) e["address"] = true;
     }
-    if (!form.date) e.date = true;
-    if (!form.time) e.time = true;
+    if (!form.date) e["date"] = true;
+    if (!form.time) e["time"] = true;
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -161,10 +161,10 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
 
           {stage === "checkout" && (
             <div className="space-y-4">
-              <Field label={t("name")} error={errors.name} errText={t("required")}>
+              <Field label={t("name")} error={errors["name"]} errText={t("required")}>
                 <input className={inputCls} value={form.name} onChange={(e) => set("name", e.target.value)} />
               </Field>
-              <Field label={t("phone")} error={errors.phone} errText={t("required")}>
+              <Field label={t("phone")} error={errors["phone"]} errText={t("required")}>
                 <input
                   className={inputCls}
                   inputMode="tel"
@@ -194,10 +194,10 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
 
               {form.method === "delivery" && (
                 <>
-                  <Field label={t("area")} error={errors.area} errText={t("required")}>
+                  <Field label={t("area")} error={errors["area"]} errText={t("required")}>
                     <input className={inputCls} value={form.area} onChange={(e) => set("area", e.target.value)} />
                   </Field>
-                  <Field label={t("address")} error={errors.address} errText={t("required")}>
+                  <Field label={t("address")} error={errors["address"]} errText={t("required")}>
                     <textarea
                       rows={2}
                       className={inputCls}
@@ -209,10 +209,10 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
               )}
 
               <div className="grid grid-cols-2 gap-3">
-                <Field label={t("date")} error={errors.date} errText={t("required")}>
+                <Field label={t("date")} error={errors["date"]} errText={t("required")}>
                   <input type="date" className={inputCls} value={form.date} onChange={(e) => set("date", e.target.value)} />
                 </Field>
-                <Field label={t("time")} error={errors.time} errText={t("required")}>
+                <Field label={t("time")} error={errors["time"]} errText={t("required")}>
                   <input type="time" className={inputCls} value={form.time} onChange={(e) => set("time", e.target.value)} />
                 </Field>
               </div>
