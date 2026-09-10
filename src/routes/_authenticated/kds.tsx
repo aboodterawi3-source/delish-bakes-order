@@ -26,61 +26,69 @@ type Tier = "multi" | "buffet" | "special" | "mini" | "box" | "standard";
 
 const tierMeta: Record<
   Tier,
-  { ar: string; en: string; rank: number; accent: string; glow: string; chipBg: string; chipText: string }
+  {
+    ar: string;
+    en: string;
+    rank: number;
+    bg: string;
+    fg: string;
+    fgMuted: string;
+    glow: string;
+  }
 > = {
   multi: {
     ar: "متعدد الطوابق",
     en: "Multi-tier",
     rank: 0,
-    accent: "oklch(0.55 0.18 25)",
-    glow: "0 0 22px -4px oklch(0.55 0.18 25 / 0.55)",
-    chipBg: "oklch(0.55 0.18 25)",
-    chipText: "text-white",
+    bg: "oklch(0.52 0.17 25)",
+    fg: "#ffffff",
+    fgMuted: "rgba(255,255,255,0.82)",
+    glow: "0 0 28px -6px oklch(0.52 0.17 25 / 0.65)",
   },
   buffet: {
     ar: "بوفيه",
     en: "Buffet",
     rank: 1,
-    accent: "oklch(0.68 0.18 52)",
-    glow: "0 0 20px -4px oklch(0.68 0.18 52 / 0.5)",
-    chipBg: "oklch(0.68 0.18 52)",
-    chipText: "text-white",
+    bg: "oklch(0.66 0.17 52)",
+    fg: "#ffffff",
+    fgMuted: "rgba(255,255,255,0.85)",
+    glow: "0 0 26px -6px oklch(0.66 0.17 52 / 0.6)",
   },
   special: {
     ar: "تصميم خاص",
     en: "Special custom",
     rank: 2,
-    accent: "oklch(0.82 0.16 88)",
-    glow: "0 0 20px -4px oklch(0.82 0.16 88 / 0.5)",
-    chipBg: "oklch(0.82 0.16 88)",
-    chipText: "text-[oklch(0.18_0.04_88)]",
+    bg: "oklch(0.82 0.16 88)",
+    fg: "#2a220f",
+    fgMuted: "rgba(42,34,15,0.82)",
+    glow: "0 0 26px -6px oklch(0.82 0.16 88 / 0.55)",
   },
   mini: {
     ar: "كيك ميني",
     en: "Mini cakes",
     rank: 3,
-    accent: "oklch(0.74 0.11 230)",
-    glow: "0 0 18px -4px oklch(0.74 0.11 230 / 0.5)",
-    chipBg: "oklch(0.74 0.11 230)",
-    chipText: "text-white",
+    bg: "oklch(0.7 0.11 230)",
+    fg: "#ffffff",
+    fgMuted: "rgba(255,255,255,0.85)",
+    glow: "0 0 24px -6px oklch(0.7 0.11 230 / 0.55)",
   },
   box: {
     ar: "علب حلويات",
     en: "Boxes",
     rank: 4,
-    accent: "oklch(0.78 0.11 150)",
-    glow: "0 0 18px -4px oklch(0.78 0.11 150 / 0.45)",
-    chipBg: "oklch(0.78 0.11 150)",
-    chipText: "text-[oklch(0.18_0.04_150)]",
+    bg: "oklch(0.75 0.11 150)",
+    fg: "#122a1a",
+    fgMuted: "rgba(18,42,26,0.82)",
+    glow: "0 0 24px -6px oklch(0.75 0.11 150 / 0.5)",
   },
   standard: {
     ar: "طلب عادي",
     en: "Standard",
     rank: 5,
-    accent: "oklch(0.65 0.05 250)",
-    glow: "0 0 16px -4px oklch(0.65 0.05 250 / 0.35)",
-    chipBg: "oklch(0.65 0.05 250)",
-    chipText: "text-white",
+    bg: "oklch(0.62 0.06 250)",
+    fg: "#ffffff",
+    fgMuted: "rgba(255,255,255,0.85)",
+    glow: "0 0 22px -6px oklch(0.62 0.06 250 / 0.45)",
   },
 };
 
