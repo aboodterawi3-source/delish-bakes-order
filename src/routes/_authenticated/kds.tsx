@@ -1,9 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Bell, CheckCircle2, ChefHat, Clock3, LogOut, RefreshCw, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useOrdersRealtime } from "@/hooks/use-orders-realtime";
 import { getKitchenAccess, getKitchenOrders, markOrderReady, type KdsOrder } from "@/lib/kds.functions";
 
 export const Route = createFileRoute("/_authenticated/kds")({
@@ -54,6 +55,8 @@ const isoDate = (offsetDays: number) => {
   return date.toISOString().slice(0, 10);
 };
 
+const ORDERS_KEY = ["kds-orders"] as const;
+
 type Filter = "today" | "tomorrow" | "all";
 
 const filterMeta: Record<Filter, { ar: string; en: string }> = {
@@ -76,12 +79,19 @@ function KdsPage() {
   const audioRef = useRef<AudioContext | null>(null);
   const knownIds = useRef<Set<string> | null>(null);
 
-  const access = useQuery({ queryKey: ["kds-access"], queryFn: () => fetchAccess({}) });
+  const access = useQuery({
+    queryKey: ["kds-access"],
+    queryFn: () => fetchAccess({}),
+    staleTime: 5 * 60_000,
+  });
+  const allowed = access.data?.allowed === true;
   const orders = useQuery({
-    queryKey: ["kds-orders"],
+    queryKey: ORDERS_KEY,
     queryFn: () => fetchOrders({}),
-    refetchInterval: 8000,
-    enabled: access.data?.allowed === true,
+    // Realtime drives updates; the interval is only a safety net.
+    refetchInterval: 30_000,
+    staleTime: 10_000,
+    enabled: allowed,
   });
 
 
@@ -124,20 +134,7 @@ function KdsPage() {
     if (fresh && shiftOn) chime();
   }, [orders.data, shiftOn, chime]);
 
-  useEffect(() => {
-    if (access.data?.allowed !== true) return;
-    const refresh = () => {
-      void queryClient.invalidateQueries({ queryKey: ["kds-orders"] });
-    };
-    const channel = supabase
-      .channel("kds-orders-live")
-      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, refresh)
-      .on("postgres_changes", { event: "*", schema: "public", table: "order_items" }, refresh)
-      .subscribe();
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [access.data?.allowed, queryClient]);
+  useOrdersRealtime(ORDERS_KEY, allowed, "kds-orders-live");
 
 
   useEffect(() => {
@@ -163,15 +160,24 @@ function KdsPage() {
       });
   }, [orders.data, filter]);
 
-  const onReady = async (id: string) => {
-    setPending(id);
-    try {
-      await markReady({ data: { orderId: id } });
-      await queryClient.invalidateQueries({ queryKey: ["kds-orders"] });
-    } finally {
-      setPending(null);
-    }
-  };
+  /** Flips the card to Ready instantly, then confirms with the server. */
+  const onReady = useCallback(
+    async (id: string) => {
+      const previous = queryClient.getQueryData<KdsOrder[]>(ORDERS_KEY);
+      queryClient.setQueryData<KdsOrder[]>(ORDERS_KEY, (rows) =>
+        (rows ?? []).map((order) => (order.id === id ? { ...order, status: "ready" } : order)),
+      );
+      setPending(id);
+      try {
+        await markReady({ data: { orderId: id } });
+      } catch {
+        if (previous) queryClient.setQueryData(ORDERS_KEY, previous);
+      } finally {
+        setPending(null);
+      }
+    },
+    [markReady, queryClient],
+  );
 
   const signOut = async () => {
     await queryClient.cancelQueries();
@@ -184,7 +190,7 @@ function KdsPage() {
     return <p dir="rtl" className="grid min-h-dvh place-items-center bg-background text-sm text-muted-foreground">جارٍ التحقق…</p>;
   }
 
-  if (access.data?.allowed !== true) {
+  if (!allowed) {
     return (
       <main dir="rtl" className="grid min-h-dvh place-items-center bg-background px-4 text-center">
         <div className="max-w-sm rounded-3xl border border-border bg-card p-6">
