@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
 import { useServerFn } from "@tanstack/react-start";
 import {
   BadgeDollarSign,
@@ -15,6 +16,8 @@ import {
   X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { useOrdersRealtime } from "@/hooks/use-orders-realtime";
 import {
   getSalesAccess,
   getSalesOrders,
@@ -26,6 +29,7 @@ import {
   type SalesStatus,
   type ShiftReport,
 } from "@/lib/sales.functions";
+
 
 export const Route = createFileRoute("/_authenticated/sales")({
   head: () => ({
