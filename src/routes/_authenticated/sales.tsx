@@ -112,6 +112,7 @@ function SalesPage() {
   const reportFn = useServerFn(getShiftReport);
 
   const [term, setTerm] = useState("");
+  const search = useDebouncedValue(term, 180);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [cancelFor, setCancelFor] = useState<SalesOrder | null>(null);
   const [cancelReason, setCancelReason] = useState("");
@@ -119,34 +120,42 @@ function SalesPage() {
   const [shiftDate, setShiftDate] = useState(todayIso);
   const [report, setReport] = useState<ShiftReport | null>(null);
 
-  const access = useQuery({ queryKey: ["sales-access"], queryFn: () => accessFn({}) });
+  const access = useQuery({
+    queryKey: ["sales-access"],
+    queryFn: () => accessFn({}),
+    staleTime: 5 * 60_000,
+  });
+  const allowed = access.data?.allowed === true;
   const orders = useQuery({
-    queryKey: ["sales-orders"],
+    queryKey: ORDERS_KEY,
     queryFn: () => ordersFn({}),
-    enabled: access.data?.allowed === true,
-    refetchInterval: 8000,
+    enabled: allowed,
+    // Realtime carries the updates; polling is only a safety net.
+    refetchInterval: 30_000,
+    staleTime: 10_000,
   });
 
+  /** Status / payment / fulfilment edits land in the UI immediately, then reconcile. */
   const patch = useMutation({
     mutationFn: (input: OrderPatch) => updateFn({ data: input }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["sales-orders"] }),
+    onMutate: (input) => {
+      const previous = queryClient.getQueryData<SalesOrder[]>(ORDERS_KEY);
+      queryClient.setQueryData<SalesOrder[]>(ORDERS_KEY, (rows) =>
+        (rows ?? []).map((order) => (order.id === input.orderId ? applyPatch(order, input) : order)),
+      );
+      return { previous };
+    },
+    onError: (_error, _input, ctx) => {
+      if (ctx?.previous) queryClient.setQueryData(ORDERS_KEY, ctx.previous);
+    },
+    onSuccess: (row) => {
+      queryClient.setQueryData<SalesOrder[]>(ORDERS_KEY, (rows) =>
+        (rows ?? []).map((order) => (order.id === row.id ? row : order)),
+      );
+    },
   });
 
-  useEffect(() => {
-    if (access.data?.allowed !== true) return;
-    const refresh = () => {
-      void queryClient.invalidateQueries({ queryKey: ["sales-orders"] });
-    };
-    const channel = supabase
-      .channel("sales-orders-live")
-      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, refresh)
-      .on("postgres_changes", { event: "*", schema: "public", table: "order_items" }, refresh)
-      .subscribe();
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [access.data?.allowed, queryClient]);
-
+  useOrdersRealtime(ORDERS_KEY, allowed, "sales-orders-live");
 
   useEffect(() => {
     if (!cancelFor && !shiftOpen && !selectedId) return;
@@ -161,7 +170,7 @@ function SalesPage() {
   }, [cancelFor, shiftOpen, selectedId]);
 
   const list = useMemo(() => {
-    const needle = term.trim().toLowerCase();
+    const needle = search.trim().toLowerCase();
     const rows = orders.data ?? [];
     if (!needle) return rows;
     return rows.filter((order) =>
@@ -170,7 +179,8 @@ function SalesPage() {
         .toLowerCase()
         .includes(needle),
     );
-  }, [orders.data, term]);
+  }, [orders.data, search]);
+
 
   const selected = useMemo(
     () => (orders.data ?? []).find((order) => order.id === selectedId) ?? null,
