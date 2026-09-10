@@ -13,6 +13,8 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as SocialLoginRouteImport } from './routes/social-login'
+import { Route as SocialPortalRouteImport } from './routes/social-portal'
 import { Route as AuthenticatedKdsRouteImport } from './routes/_authenticated/kds'
 import { Route as AuthenticatedSalesRouteImport } from './routes/_authenticated/sales'
 
@@ -35,6 +37,16 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SocialLoginRoute = SocialLoginRouteImport.update({
+  id: '/social-login',
+  path: '/social-login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SocialPortalRoute = SocialPortalRouteImport.update({
+  id: '/social-portal',
+  path: '/social-portal',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedKdsRoute = AuthenticatedKdsRouteImport.update({
   id: '/kds',
   path: '/kds',
@@ -50,6 +62,8 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
+  '/social-login': typeof SocialLoginRoute
+  '/social-portal': typeof SocialPortalRoute
   '/kds': typeof AuthenticatedKdsRoute
   '/sales': typeof AuthenticatedSalesRoute
 }
@@ -57,6 +71,8 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
+  '/social-login': typeof SocialLoginRoute
+  '/social-portal': typeof SocialPortalRoute
   '/kds': typeof AuthenticatedKdsRoute
   '/sales': typeof AuthenticatedSalesRoute
 }
@@ -66,20 +82,38 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
+  '/social-login': typeof SocialLoginRoute
+  '/social-portal': typeof SocialPortalRoute
   '/_authenticated/kds': typeof AuthenticatedKdsRoute
   '/_authenticated/sales': typeof AuthenticatedSalesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/auth' | '/kds' | '/sales'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/auth'
+    | '/social-login'
+    | '/social-portal'
+    | '/kds'
+    | '/sales'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/auth' | '/kds' | '/sales'
+  to:
+    | '/'
+    | '/admin'
+    | '/auth'
+    | '/social-login'
+    | '/social-portal'
+    | '/kds'
+    | '/sales'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/admin'
     | '/auth'
+    | '/social-login'
+    | '/social-portal'
     | '/_authenticated/kds'
     | '/_authenticated/sales'
   fileRoutesById: FileRoutesById
@@ -89,6 +123,8 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AdminRoute: typeof AdminRoute
   AuthRoute: typeof AuthRoute
+  SocialLoginRoute: typeof SocialLoginRoute
+  SocialPortalRoute: typeof SocialPortalRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -119,6 +155,20 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/social-login': {
+      id: '/social-login'
+      path: '/social-login'
+      fullPath: '/social-login'
+      preLoaderRoute: typeof SocialLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/social-portal': {
+      id: '/social-portal'
+      path: '/social-portal'
+      fullPath: '/social-portal'
+      preLoaderRoute: typeof SocialPortalRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/kds': {
@@ -156,6 +206,8 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AdminRoute: AdminRoute,
   AuthRoute: AuthRoute,
+  SocialLoginRoute: SocialLoginRoute,
+  SocialPortalRoute: SocialPortalRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
