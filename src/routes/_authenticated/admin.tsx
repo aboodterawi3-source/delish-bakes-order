@@ -408,7 +408,7 @@ function CustomerDirectory({ customers }: { customers: { phone: string; name: st
     const q = debounced.trim().toLowerCase();
     if (!q) return customers;
     return customers.filter((row) => row.phone.includes(q) || row.name.toLowerCase().includes(q));
-  }, [customers, query]);
+  }, [customers, debounced]);
 
   return (
     <section aria-labelledby="customers-heading" className="space-y-3">
