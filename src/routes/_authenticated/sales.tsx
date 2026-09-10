@@ -205,10 +205,13 @@ function SalesPage() {
     [orders.data, selectedId],
   );
 
+  const openOrder = useCallback((id: string) => setSelectedId(id), []);
+
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
     void navigate({ to: "/auth", replace: true });
   }, [navigate]);
+
 
   const runReport = useCallback(async () => {
     setReport(await reportFn({ data: { date: shiftDate } }));
