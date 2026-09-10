@@ -80,9 +80,10 @@ function KdsPage() {
   const orders = useQuery({
     queryKey: ["kds-orders"],
     queryFn: () => fetchOrders({}),
-    refetchInterval: 20000,
+    refetchInterval: 8000,
     enabled: access.data?.allowed === true,
   });
+
 
   const chime = useCallback(() => {
     const context = audioRef.current;
@@ -125,16 +126,19 @@ function KdsPage() {
 
   useEffect(() => {
     if (access.data?.allowed !== true) return;
+    const refresh = () => {
+      void queryClient.invalidateQueries({ queryKey: ["kds-orders"] });
+    };
     const channel = supabase
-      .channel("kds-orders")
-      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => {
-        void queryClient.invalidateQueries({ queryKey: ["kds-orders"] });
-      })
+      .channel("kds-orders-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, refresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "order_items" }, refresh)
       .subscribe();
     return () => {
       void supabase.removeChannel(channel);
     };
   }, [access.data?.allowed, queryClient]);
+
 
   useEffect(() => {
     if (!zoom) return;
