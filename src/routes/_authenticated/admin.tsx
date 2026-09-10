@@ -10,11 +10,9 @@ import {
   KeyRound,
   Loader2,
   LogOut,
-  Package,
   Plus,
   RefreshCw,
   Search,
-  Trash2,
   TrendingUp,
   Users,
   Wallet,
@@ -22,18 +20,13 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import {
   createStaff,
-  deleteProduct,
   getAdminAccess,
   getAdminAnalytics,
-  listAdminProducts,
   listStaff,
   removeStaff,
   resetStaffPassword,
-  saveProduct,
   setStaffRole,
-  type AdminProduct,
   type OrderLog,
-  type ProductInput,
   type StaffRole,
 } from "@/lib/admin.functions";
 
