@@ -28,6 +28,7 @@ function AdminSetupPage() {
   const [needsSetup, setNeedsSetup] = useState<boolean | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [token, setToken] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,7 +41,7 @@ function AdminSetupPage() {
     setBusy(true);
     setError(null);
     try {
-      await create({ data: { email, password } });
+      await create({ data: { email, password, token } });
       await supabase.auth.signInWithPassword({ email, password });
       void navigate({ to: "/admin", replace: true });
     } catch (caught) {
