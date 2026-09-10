@@ -176,10 +176,18 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
       >
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <h2 id={titleId} className="font-display text-lg font-semibold">
-            {stage === "cart" ? t("cart") : t("checkout")}{" "}
-            <span className="text-sm font-normal text-muted-foreground">
-              ({count} {t("itemsCount")})
-            </span>
+            {stage === "done"
+              ? lang === "ar"
+                ? "تم إرسال الطلب"
+                : "Order sent"
+              : stage === "cart"
+                ? t("cart")
+                : t("checkout")}{" "}
+            {stage !== "done" && (
+              <span className="text-sm font-normal text-muted-foreground">
+                ({count} {t("itemsCount")})
+              </span>
+            )}
           </h2>
           <button
             ref={closeRef}
