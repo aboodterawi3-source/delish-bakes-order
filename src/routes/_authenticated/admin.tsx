@@ -735,9 +735,9 @@ function StaffPanel() {
           </select>
         </label>
         <div className="flex items-end">
-          <button
+        <button
             type="submit"
-            disabled={createMutation.isPending}
+            disabled={createMutation.isPending || password.length < 8 || !email.trim()}
             className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-primary px-5 text-sm font-bold text-primary-foreground disabled:opacity-60"
           >
             {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Plus className="h-4 w-4" aria-hidden />}
