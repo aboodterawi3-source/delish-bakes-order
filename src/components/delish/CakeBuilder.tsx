@@ -46,6 +46,14 @@ export function CakeBuilder({ onDone }: { onDone: () => void }) {
       qty: 1,
       image: builderImage.src,
       designImage,
+      spec: {
+        kind: "builder",
+        sizeId: size.id,
+        flavorId: flavor.id,
+        fillingId: filling.id,
+        frostingId: frosting.id,
+        message: message.trim() || undefined,
+      },
       detailsAr: [
         `الحجم: ${size.ar}`,
         `النكهة: ${flavor.ar}`,

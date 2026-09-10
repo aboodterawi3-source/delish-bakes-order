@@ -5,7 +5,8 @@ import { useCart } from "@/lib/cart";
 import { useLang } from "@/lib/i18n";
 import { useDismissable } from "@/lib/a11y";
 import { appendOrder, newOrderId, type Order } from "@/lib/orders";
-import { saveStorefrontOrder } from "@/lib/storefront-orders";
+import { useServerFn } from "@tanstack/react-start";
+import { submitStorefrontOrder } from "@/lib/storefront-order.functions";
 
 
 type Form = {
@@ -38,6 +39,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   const [errors, setErrors] = useState<Partial<Record<keyof Form, boolean>>>({});
   const [sending, setSending] = useState(false);
   const [saveError, setSaveError] = useState(false);
+  const submitOrder = useServerFn(submitStorefrontOrder);
 
   const titleId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -132,20 +134,22 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
     setSending(true);
     setSaveError(false);
     try {
-      await saveStorefrontOrder({
-        customer_name: form.name.trim(),
-        customer_phone: form.phone.trim(),
-        method: form.method,
-        area: form.area.trim() || null,
-        address: form.address.trim() || null,
-        requested_date: form.date,
-        requested_time: form.time,
-        notes: form.notes.trim() || null,
-        inscription: inscription || null,
-        design_image_url: lines.find((l) => l.designImage)?.designImage ?? null,
-        subtotal,
-        delivery_fee: deliveryFee,
-        lines,
+      await submitOrder({
+        data: {
+          customer_name: form.name.trim(),
+          customer_phone: form.phone.trim(),
+          method: form.method,
+          area: form.area.trim() || null,
+          address: form.address.trim() || null,
+          requested_date: form.date,
+          requested_time: form.time,
+          notes: form.notes.trim() || null,
+          design_image: lines.find((l) => l.designImage)?.designImage ?? null,
+          // Prices are never sent: the server re-prices each line from the catalogue.
+          lines: lines.flatMap((l) =>
+            l.spec ? [{ spec: l.spec, quantity: l.qty, notes: l.notes ?? null }] : [],
+          ),
+        },
       });
     } catch {
       setSaveError(true);
