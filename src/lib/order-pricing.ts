@@ -48,7 +48,13 @@ const pick = (list: Option[] | undefined, id: string | undefined | null) =>
 export function priceLine(spec: LineSpec, quantity: number, notes: string | null): PricedLine {
   if (spec.kind === "catalog") {
     const product = products.find((candidate) => candidate.id === spec.productId);
-    if (!product) throw new Error("منتج غير معروف · Unknown product");
+    if (!product) {
+      // Usually a stale cart from an older version of the menu: ask for a refresh
+      // rather than showing a bare technical failure.
+      throw new Error(
+        "أحد المنتجات في السلة غير متوفر، يرجى تحديث الصفحة · An item in your cart is no longer available, please refresh the page",
+      );
+    }
     const size = pick(product.sizes, spec.sizeId);
     const flavor = pick(product.flavors, spec.flavorId);
     if (spec.sizeId && !size) throw new Error("خيار غير صحيح · Invalid option");
