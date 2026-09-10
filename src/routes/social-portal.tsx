@@ -109,12 +109,38 @@ function SocialPortalPage() {
   });
 
   const copy = useCallback(async () => {
+    // Primary: async Clipboard API. Fallback: hidden textarea + execCommand
+    // for browsers/contexts where clipboard.writeText is blocked.
+    const legacyCopy = () => {
+      const area = document.createElement("textarea");
+      area.value = summary;
+      area.setAttribute("readonly", "");
+      area.style.position = "fixed";
+      area.style.insetInlineStart = "-9999px";
+      document.body.appendChild(area);
+      area.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(area);
+      if (!ok) throw new Error("copy failed");
+    };
     try {
-      await navigator.clipboard.writeText(summary);
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(summary);
+      } else {
+        legacyCopy();
+      }
       setCopied(true);
+      setError(null);
       window.setTimeout(() => setCopied(false), 2500);
     } catch {
-      setError("تعذّر النسخ · Copy failed");
+      try {
+        legacyCopy();
+        setCopied(true);
+        setError(null);
+        window.setTimeout(() => setCopied(false), 2500);
+      } catch {
+        setError("تعذّر النسخ · Copy failed — حدّد النص من المعاينة وانسخه يدوياً");
+      }
     }
   }, [summary]);
 
