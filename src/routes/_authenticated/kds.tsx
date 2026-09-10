@@ -1,11 +1,34 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Bell, CheckCircle2, ChefHat, Clock3, LogOut, RefreshCw, X } from "lucide-react";
+import {
+  Bell,
+  CheckCircle2,
+  ChefHat,
+  Clock3,
+  LayoutGrid,
+  Loader2,
+  LogOut,
+  NotebookPen,
+  Plus,
+  RefreshCw,
+  Trash2,
+  X,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrdersRealtime } from "@/hooks/use-orders-realtime";
-import { getKitchenAccess, getKitchenOrders, markOrderReady, type KdsOrder } from "@/lib/kds.functions";
+import {
+  deleteMenuItem,
+  getKitchenAccess,
+  getKitchenOrders,
+  listMenuItems,
+  markOrderReady,
+  saveMenuItem,
+  type KdsOrder,
+  type MenuItem,
+  type MenuItemInput,
+} from "@/lib/kds.functions";
 
 export const Route = createFileRoute("/_authenticated/kds")({
   head: () => ({
