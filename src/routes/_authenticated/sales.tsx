@@ -120,7 +120,7 @@ function SalesPage() {
     queryKey: ["sales-orders"],
     queryFn: () => ordersFn({}),
     enabled: access.data?.allowed === true,
-    refetchInterval: 20000,
+    refetchInterval: 8000,
   });
 
   const patch = useMutation({
@@ -129,16 +129,20 @@ function SalesPage() {
   });
 
   useEffect(() => {
+    if (access.data?.allowed !== true) return;
+    const refresh = () => {
+      void queryClient.invalidateQueries({ queryKey: ["sales-orders"] });
+    };
     const channel = supabase
-      .channel("sales-orders")
-      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => {
-        void queryClient.invalidateQueries({ queryKey: ["sales-orders"] });
-      })
+      .channel("sales-orders-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, refresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "order_items" }, refresh)
       .subscribe();
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [queryClient]);
+  }, [access.data?.allowed, queryClient]);
+
 
   useEffect(() => {
     if (!cancelFor && !shiftOpen && !selectedId) return;
