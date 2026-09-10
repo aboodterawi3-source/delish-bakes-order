@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AdminSetupRouteImport } from './routes/admin-setup'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as SocialLoginRouteImport } from './routes/social-login'
 import { Route as SocialPortalRouteImport } from './routes/social-portal'
@@ -30,6 +31,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminSetupRoute = AdminSetupRouteImport.update({
+  id: '/admin-setup',
+  path: '/admin-setup',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -61,6 +67,7 @@ const AuthenticatedSalesRoute = AuthenticatedSalesRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/admin-setup': typeof AdminSetupRoute
   '/auth': typeof AuthRoute
   '/social-login': typeof SocialLoginRoute
   '/social-portal': typeof SocialPortalRoute
@@ -70,6 +77,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/admin-setup': typeof AdminSetupRoute
   '/auth': typeof AuthRoute
   '/social-login': typeof SocialLoginRoute
   '/social-portal': typeof SocialPortalRoute
@@ -81,6 +89,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/admin': typeof AdminRoute
+  '/admin-setup': typeof AdminSetupRoute
   '/auth': typeof AuthRoute
   '/social-login': typeof SocialLoginRoute
   '/social-portal': typeof SocialPortalRoute
@@ -92,6 +101,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/admin-setup'
     | '/auth'
     | '/social-login'
     | '/social-portal'
@@ -101,6 +111,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/admin'
+    | '/admin-setup'
     | '/auth'
     | '/social-login'
     | '/social-portal'
@@ -111,6 +122,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/admin'
+    | '/admin-setup'
     | '/auth'
     | '/social-login'
     | '/social-portal'
@@ -122,6 +134,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AdminRoute: typeof AdminRoute
+  AdminSetupRoute: typeof AdminSetupRoute
   AuthRoute: typeof AuthRoute
   SocialLoginRoute: typeof SocialLoginRoute
   SocialPortalRoute: typeof SocialPortalRoute
@@ -148,6 +161,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin-setup': {
+      id: '/admin-setup'
+      path: '/admin-setup'
+      fullPath: '/admin-setup'
+      preLoaderRoute: typeof AdminSetupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -205,6 +225,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AdminRoute: AdminRoute,
+  AdminSetupRoute: AdminSetupRoute,
   AuthRoute: AuthRoute,
   SocialLoginRoute: SocialLoginRoute,
   SocialPortalRoute: SocialPortalRoute,
