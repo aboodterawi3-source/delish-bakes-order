@@ -1,11 +1,34 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Bell, CheckCircle2, ChefHat, Clock3, LogOut, RefreshCw, X } from "lucide-react";
+import {
+  Bell,
+  CheckCircle2,
+  ChefHat,
+  Clock3,
+  LayoutGrid,
+  Loader2,
+  LogOut,
+  NotebookPen,
+  Plus,
+  RefreshCw,
+  Trash2,
+  X,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrdersRealtime } from "@/hooks/use-orders-realtime";
-import { getKitchenAccess, getKitchenOrders, markOrderReady, type KdsOrder } from "@/lib/kds.functions";
+import {
+  deleteMenuItem,
+  getKitchenAccess,
+  getKitchenOrders,
+  listMenuItems,
+  markOrderReady,
+  saveMenuItem,
+  type KdsOrder,
+  type MenuItem,
+  type MenuItemInput,
+} from "@/lib/kds.functions";
 
 export const Route = createFileRoute("/_authenticated/kds")({
   head: () => ({
@@ -132,6 +155,7 @@ function KdsPage() {
   const markReady = useServerFn(markOrderReady);
 
   const [filter, setFilter] = useState<Filter>("today");
+  const [view, setView] = useState<"board" | "menu">("board");
   const [shiftOn, setShiftOn] = useState(false);
   const [zoom, setZoom] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
@@ -308,33 +332,59 @@ function KdsPage() {
             <LogOut className="h-5 w-5" />
           </button>
         </div>
+        <nav aria-label="أقسام شاشة المطبخ" className="flex w-full gap-2 overflow-x-auto pt-1 no-scrollbar">
+          {(
+            [
+              ["board", "شاشة الطلبات", LayoutGrid],
+              ["menu", "المنتجات والأسعار", NotebookPen],
+            ] as ["board" | "menu", string, typeof LayoutGrid][]
+          ).map(([key, label, Icon]) => (
+            <button
+              key={key}
+              type="button"
+              aria-current={view === key ? "page" : undefined}
+              onClick={() => setView(key)}
+              className={`inline-flex min-h-12 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-bold transition-colors ${
+                view === key ? "bg-[oklch(0.65_0.12_230)] text-white" : "border border-white/25 text-white/80"
+              }`}
+            >
+              <Icon className="h-4 w-4" aria-hidden /> {label}
+            </button>
+          ))}
+        </nav>
       </header>
 
-      <div className="flex gap-2 overflow-x-auto px-4 py-3 no-scrollbar">
-        {(Object.keys(filterMeta) as Filter[]).map((key) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => setFilter(key)}
-            aria-pressed={filter === key}
-            className={`min-h-12 shrink-0 rounded-full px-4 text-sm font-bold transition-colors ${
-              filter === key ? "bg-[oklch(0.65_0.12_230)] text-white" : "border border-white/25 text-white/80"
-            }`}
-          >
-            {filterMeta[key].ar}
-          </button>
-        ))}
-      </div>
+      {view === "menu" ? (
+        <MenuPanel />
+      ) : (
+        <>
+          <div className="flex gap-2 overflow-x-auto px-4 py-3 no-scrollbar">
+            {(Object.keys(filterMeta) as Filter[]).map((key) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setFilter(key)}
+                aria-pressed={filter === key}
+                className={`min-h-12 shrink-0 rounded-full px-4 text-sm font-bold transition-colors ${
+                  filter === key ? "bg-[oklch(0.65_0.12_230)] text-white" : "border border-white/25 text-white/80"
+                }`}
+              >
+                {filterMeta[key].ar}
+              </button>
+            ))}
+          </div>
 
-      <main className="grid gap-4 px-3 pb-8 sm:grid-cols-2 xl:grid-cols-3">
-        {orders.isLoading && <p className="p-6 text-sm text-white/60">جارٍ تحميل الطلبات…</p>}
-        {!orders.isLoading && visible.length === 0 && (
-          <p className="p-10 text-center text-sm text-white/55 sm:col-span-2 xl:col-span-3">لا توجد طلبات لهذا اليوم</p>
-        )}
-        {visible.map((order) => (
-          <KdsCard key={order.id} order={order} busy={pending === order.id} onReady={onReady} onZoom={setZoom} />
-        ))}
-      </main>
+          <main className="grid gap-4 px-3 pb-8 sm:grid-cols-2 xl:grid-cols-3">
+            {orders.isLoading && <p className="p-6 text-sm text-white/60">جارٍ تحميل الطلبات…</p>}
+            {!orders.isLoading && visible.length === 0 && (
+              <p className="p-10 text-center text-sm text-white/55 sm:col-span-2 xl:col-span-3">لا توجد طلبات لهذا اليوم</p>
+            )}
+            {visible.map((order) => (
+              <KdsCard key={order.id} order={order} busy={pending === order.id} onReady={onReady} onZoom={setZoom} />
+            ))}
+          </main>
+        </>
+      )}
 
       {zoom && (
         <div
@@ -481,3 +531,222 @@ const KdsCard = memo(function KdsCard({
     </article>
   );
 });
+
+/* --------------------- products & menu management (kitchen) --------------------- */
+
+const emptyMenuItem: MenuItemInput = {
+  slug: "",
+  name_ar: "",
+  name_en: "",
+  description_ar: "",
+  description_en: "",
+  category: "",
+  price: 0,
+  is_available: true,
+  is_featured: false,
+  sort_order: 0,
+};
+
+const jod = (value: number) => `${value.toFixed(2)} د.أ`;
+
+/** Kitchen-facing menu manager: add, edit, price and retire items fast. */
+function MenuPanel() {
+  const queryClient = useQueryClient();
+  const list = useServerFn(listMenuItems);
+  const save = useServerFn(saveMenuItem);
+  const remove = useServerFn(deleteMenuItem);
+  const [draft, setDraft] = useState<MenuItemInput | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const items = useQuery({ queryKey: ["kds-menu"], queryFn: () => list({}), staleTime: 60_000 });
+  const invalidate = () => void queryClient.invalidateQueries({ queryKey: ["kds-menu"] });
+
+  const saveMutation = useMutation({
+    mutationFn: (input: MenuItemInput) => save({ data: input }),
+    onSuccess: () => {
+      setDraft(null);
+      setError(null);
+      invalidate();
+    },
+    onError: (caught: Error) => setError(caught.message),
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: (id: string) => remove({ data: { id } }),
+    onSuccess: invalidate,
+    onError: (caught: Error) => setError(caught.message),
+  });
+
+  const field = (key: keyof MenuItemInput, value: unknown) =>
+    setDraft((prev) => (prev ? { ...prev, [key]: value } : prev));
+
+  const grouped = useMemo(() => {
+    const map = new Map<string, MenuItem[]>();
+    for (const item of items.data ?? []) {
+      const bucket = map.get(item.category) ?? [];
+      bucket.push(item);
+      map.set(item.category, bucket);
+    }
+    return [...map.entries()];
+  }, [items.data]);
+
+  return (
+    <main className="mx-auto max-w-6xl space-y-5 px-4 pb-10 pt-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="me-auto">
+          <h2 className="font-display text-lg font-bold">إدارة المنتجات والأسعار</h2>
+          <p className="text-xs text-white/60">Products &amp; menu management · {(items.data ?? []).length} منتج</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setDraft({ ...emptyMenuItem })}
+          className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[oklch(0.65_0.12_230)] px-5 text-sm font-bold text-white"
+        >
+          <Plus className="h-4 w-4" aria-hidden /> منتج جديد
+        </button>
+      </div>
+
+      {error && (
+        <p role="alert" className="rounded-xl bg-[oklch(0.52_0.17_25)]/25 p-3 text-xs font-bold text-white">
+          {error}
+        </p>
+      )}
+
+      {draft && (
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            saveMutation.mutate(draft);
+          }}
+          className="grid gap-3 rounded-2xl border border-white/12 bg-[oklch(0.22_0.04_255)] p-4 sm:grid-cols-2"
+        >
+          <MenuField label="الاسم بالعربية" value={draft.name_ar} onChange={(v) => field("name_ar", v)} required />
+          <MenuField label="الاسم بالإنجليزية" value={draft.name_en} onChange={(v) => field("name_en", v)} required />
+          <MenuField label="التصنيف · Category" value={draft.category} onChange={(v) => field("category", v)} required />
+          <MenuField
+            label="السعر (د.أ)"
+            type="number"
+            value={String(draft.price)}
+            onChange={(v) => field("price", Number(v))}
+            required
+          />
+          <MenuField label="الوصف بالعربية" value={draft.description_ar ?? ""} onChange={(v) => field("description_ar", v)} />
+          <MenuField label="الوصف بالإنجليزية" value={draft.description_en ?? ""} onChange={(v) => field("description_en", v)} />
+          <MenuField
+            label="ترتيب العرض"
+            type="number"
+            value={String(draft.sort_order)}
+            onChange={(v) => field("sort_order", Number(v))}
+          />
+          <div className="flex flex-wrap items-center gap-4 pt-2 text-sm font-bold">
+            <label className="inline-flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={draft.is_available}
+                onChange={(event) => field("is_available", event.target.checked)}
+                className="h-5 w-5"
+              />
+              متاح
+            </label>
+            <label className="inline-flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={draft.is_featured}
+                onChange={(event) => field("is_featured", event.target.checked)}
+                className="h-5 w-5"
+              />
+              مميز
+            </label>
+          </div>
+          <div className="flex gap-2 sm:col-span-2">
+            <button
+              type="submit"
+              disabled={saveMutation.isPending}
+              className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[oklch(0.65_0.12_230)] px-5 text-sm font-bold text-white disabled:opacity-60"
+            >
+              {saveMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />} حفظ
+            </button>
+            <button
+              type="button"
+              onClick={() => setDraft(null)}
+              className="inline-flex min-h-12 items-center rounded-full border border-white/25 px-5 text-sm font-bold"
+            >
+              إلغاء
+            </button>
+          </div>
+        </form>
+      )}
+
+      {items.isLoading && <p className="text-sm text-white/60">جارٍ تحميل المنتجات…</p>}
+      {!items.isLoading && grouped.length === 0 && (
+        <p className="rounded-2xl border border-white/12 p-8 text-center text-sm text-white/60">
+          لا توجد منتجات بعد · أضف أول منتج
+        </p>
+      )}
+
+      {grouped.map(([category, rows]) => (
+        <section key={category} aria-label={category} className="space-y-3">
+          <h3 className="font-display text-base font-bold text-white/90">{category}</h3>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {rows.map((item) => (
+              <article key={item.id} className="rounded-2xl border border-white/12 bg-[oklch(0.22_0.04_255)] p-4">
+                <h4 className="font-display text-base font-bold">{item.name_ar}</h4>
+                <p className="text-xs text-white/60">{item.name_en}</p>
+                <p className="mt-2 text-lg font-bold">{jod(item.price)}</p>
+                <p className="mt-1 text-xs text-white/60">
+                  {item.is_available ? "متاح" : "غير متاح"}
+                  {item.is_featured ? " · مميز" : ""}
+                </p>
+                <div className="mt-3 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setDraft({ ...item })}
+                    className="inline-flex min-h-12 flex-1 items-center justify-center rounded-full border border-white/25 text-sm font-bold"
+                  >
+                    تعديل
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removeMutation.mutate(item.id)}
+                    aria-label={`حذف ${item.name_ar}`}
+                    className="grid h-12 w-12 place-items-center rounded-full border border-[oklch(0.52_0.17_25)]/60 text-[oklch(0.75_0.14_25)]"
+                  >
+                    <Trash2 className="h-4 w-4" aria-hidden />
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      ))}
+    </main>
+  );
+}
+
+function MenuField({
+  label,
+  value,
+  onChange,
+  type = "text",
+  required,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  type?: string;
+  required?: boolean;
+}) {
+  return (
+    <label className="block text-xs font-bold text-white/75">
+      {label}
+      <input
+        type={type}
+        value={value}
+        required={required}
+        step={type === "number" ? "0.01" : undefined}
+        onChange={(event) => onChange(event.target.value)}
+        className="mt-1 min-h-12 w-full rounded-xl border border-white/20 bg-[oklch(0.16_0.05_252)] px-3 text-sm font-normal text-white outline-none focus-visible:ring-2 focus-visible:ring-[oklch(0.65_0.12_230)]"
+      />
+    </label>
+  );
+}
