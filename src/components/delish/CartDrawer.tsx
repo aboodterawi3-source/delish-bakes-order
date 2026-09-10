@@ -118,7 +118,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
       total,
       notes: form.notes.trim() || undefined,
       inscription: inscription || undefined,
-      designImage: lines.find((l) => l.image)?.image,
+      designImage: lines.find((l) => l.designImage)?.designImage,
       status: "new",
     };
     appendOrder(order);

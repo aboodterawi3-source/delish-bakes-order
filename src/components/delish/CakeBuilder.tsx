@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { Check, ChevronLeft, ChevronRight } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { Check, ChevronLeft, ChevronRight, ImagePlus, X } from "lucide-react";
 import { builderFillings, builderFlavors, builderFrostings, builderSizes, type Option } from "@/lib/menu";
 import { builderImage } from "@/lib/images";
 import { Pic } from "@/components/delish/Pic";
@@ -17,6 +17,8 @@ export function CakeBuilder({ onDone }: { onDone: () => void }) {
   const [frosting, setFrosting] = useState<Option>(builderFrostings[0]!);
   const [message, setMessage] = useState("");
   const [added, setAdded] = useState(false);
+  const [designImage, setDesignImage] = useState<string | undefined>();
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const total = useMemo(
     () => size.price + flavor.price + filling.price + frosting.price,
@@ -43,6 +45,7 @@ export function CakeBuilder({ onDone }: { onDone: () => void }) {
       unit: total,
       qty: 1,
       image: builderImage.src,
+      designImage,
       detailsAr: [
         `الحجم: ${size.ar}`,
         `النكهة: ${flavor.ar}`,
@@ -112,7 +115,7 @@ export function CakeBuilder({ onDone }: { onDone: () => void }) {
         </div>
 
         {step === 3 && (
-          <div className="mt-5">
+          <div className="mt-5 space-y-4">
             <p className="mb-2 text-xs font-bold tracking-wide text-muted-foreground uppercase">{t("message")}</p>
             <input
               value={message}
@@ -120,6 +123,39 @@ export function CakeBuilder({ onDone }: { onDone: () => void }) {
               placeholder={t("messagePh")}
               className="w-full rounded-2xl border border-input bg-background px-4 py-3 text-sm outline-none focus:border-gold"
             />
+            <div>
+              <p className="mb-2 text-xs font-bold tracking-wide text-muted-foreground uppercase">
+                {lang === "ar" ? "صورة التصميم المرجعي" : "Design reference image"}
+              </p>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = () => {
+                    if (typeof reader.result === "string") setDesignImage(reader.result);
+                  };
+                  reader.readAsDataURL(file);
+                }}
+              />
+              {designImage ? (
+                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-border bg-background p-2">
+                  <img src={designImage} alt={lang === "ar" ? "معاينة تصميم الكيكة" : "Cake design preview"} className="h-20 w-full min-w-0 rounded-xl object-cover" />
+                  <button type="button" onClick={() => setDesignImage(undefined)} aria-label={lang === "ar" ? "إزالة الصورة" : "Remove image"} className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-border">
+                    <X className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                </div>
+              ) : (
+                <button type="button" onClick={() => fileRef.current?.click()} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-input bg-background px-4 text-sm font-semibold">
+                  <ImagePlus className="h-4 w-4" aria-hidden="true" />
+                  {lang === "ar" ? "أرفق صورة" : "Upload image"}
+                </button>
+              )}
+            </div>
           </div>
         )}
 

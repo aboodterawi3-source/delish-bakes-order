@@ -143,35 +143,38 @@
   }
 }
 
-/* ── Delish theme (sky blue · white · azure accent) ────────────────────── */
+/* Delish reference palette: powder blue, crisp white, ink, azure, metallic gold. */
 :root {
-  --radius: 1rem;
-  --background: oklch(0.985 0.008 232);
-  --foreground: oklch(0.26 0.045 248);
+  --radius: 0.75rem;
+  --background: oklch(0.957 0.024 228);
+  --foreground: oklch(0.24 0.045 263);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.26 0.045 248);
+  --card-foreground: oklch(0.24 0.045 263);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.26 0.045 248);
-  --primary: oklch(0.31 0.055 250);
+  --popover-foreground: oklch(0.24 0.045 263);
+  --primary: oklch(0.67 0.17 239);
   --primary-foreground: oklch(0.99 0.004 232);
-  --secondary: oklch(0.945 0.032 232);
-  --secondary-foreground: oklch(0.3 0.05 250);
-  --muted: oklch(0.962 0.022 232);
-  --muted-foreground: oklch(0.47 0.045 248);
-  --accent: oklch(0.63 0.155 243);
+  --secondary: oklch(0.955 0.025 228);
+  --secondary-foreground: oklch(0.24 0.045 263);
+  --muted: oklch(0.97 0.014 228);
+  --muted-foreground: oklch(0.54 0.052 255);
+  --accent: oklch(0.67 0.17 239);
   --accent-foreground: oklch(0.99 0.004 232);
   --destructive: oklch(0.55 0.19 27);
   --destructive-foreground: oklch(0.99 0 0);
-  --border: oklch(0.9 0.028 232);
-  --input: oklch(0.86 0.035 232);
-  --ring: oklch(0.63 0.155 243);
-  --gold: oklch(0.63 0.155 243);
-  --gold-deep: oklch(0.52 0.145 248);
-  --gold-light: oklch(0.9 0.06 232);
-  --cocoa: oklch(0.28 0.05 250);
-  --gradient-gold: linear-gradient(120deg, oklch(0.52 0.145 248), oklch(0.63 0.155 243), oklch(0.78 0.11 236), oklch(0.52 0.145 248));
-  --shadow-soft: 0 8px 20px -12px oklch(0.31 0.055 250 / 0.22);
-  --shadow-gold: 0 8px 18px -10px oklch(0.52 0.145 248 / 0.32);
+  --border: oklch(0.91 0.024 228);
+  --input: oklch(0.88 0.035 228);
+  --ring: oklch(0.67 0.17 239);
+  --gold: oklch(0.72 0.14 83);
+  --gold-deep: oklch(0.62 0.13 76);
+  --gold-light: oklch(0.9 0.08 88);
+  --cocoa: oklch(0.24 0.045 263);
+  --hero-blue: oklch(0.91 0.052 226);
+  --hero-blue-deep: oklch(0.86 0.072 225);
+  --gradient-gold: linear-gradient(120deg, oklch(0.62 0.13 76), oklch(0.78 0.13 88), oklch(0.9 0.08 88), oklch(0.62 0.13 76));
+  --gradient-hero: linear-gradient(145deg, var(--hero-blue) 0%, oklch(0.93 0.045 225) 54%, var(--hero-blue-deep) 100%);
+  --shadow-soft: 0 18px 38px -24px oklch(0.3 0.05 250 / 0.28);
+  --shadow-gold: 0 8px 18px -10px oklch(0.62 0.13 76 / 0.32);
 }
 
 
@@ -203,6 +206,16 @@ h1, h2, h3, .font-display {
   background-image: var(--gradient-gold);
   background-clip: text;
   color: transparent;
+}
+
+@utility delish-wordmark {
+  color: var(--gold);
+  -webkit-text-stroke: 1px oklch(0 0 0);
+  paint-order: stroke fill;
+}
+
+@utility reference-hero {
+  background: var(--gradient-hero);
 }
 
 @utility surface-card {

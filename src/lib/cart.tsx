@@ -7,6 +7,7 @@ export type CartLine = {
   unit: number;
   qty: number;
   image?: string | undefined;
+  designImage?: string | undefined;
   detailsAr: string[];
   detailsEn: string[];
   notes?: string | undefined;
