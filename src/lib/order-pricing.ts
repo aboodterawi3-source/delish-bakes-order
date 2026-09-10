@@ -1,0 +1,100 @@
+import {
+  builderFillings,
+  builderFlavors,
+  builderFrostings,
+  builderSizes,
+  products,
+  DELIVERY_FEE,
+  type Option,
+} from "@/lib/menu";
+
+/**
+ * A cart line is described by a *spec* (which catalogue item / builder choices were
+ * picked), never by a price. Prices are always resolved from the trusted catalogue
+ * below — on the server — so a tampered request cannot change what an order costs.
+ */
+export type CatalogSpec = {
+  kind: "catalog";
+  productId: string;
+  sizeId?: string | undefined;
+  flavorId?: string | undefined;
+};
+
+export type BuilderSpec = {
+  kind: "builder";
+  sizeId: string;
+  flavorId: string;
+  fillingId: string;
+  frostingId: string;
+  message?: string | undefined;
+};
+
+export type LineSpec = CatalogSpec | BuilderSpec;
+
+export type PricedLine = {
+  name_ar: string;
+  name_en: string;
+  unit_price: number;
+  quantity: number;
+  options_ar: string[];
+  options_en: string[];
+  notes: string | null;
+  message: string | null;
+};
+
+const pick = (list: Option[] | undefined, id: string | undefined | null) =>
+  list?.find((option) => option.id === id) ?? null;
+
+export function priceLine(spec: LineSpec, quantity: number, notes: string | null): PricedLine {
+  if (spec.kind === "catalog") {
+    const product = products.find((candidate) => candidate.id === spec.productId);
+    if (!product) throw new Error("منتج غير معروف · Unknown product");
+    const size = pick(product.sizes, spec.sizeId);
+    const flavor = pick(product.flavors, spec.flavorId);
+    if (spec.sizeId && !size) throw new Error("خيار غير صحيح · Invalid option");
+    if (spec.flavorId && !flavor) throw new Error("خيار غير صحيح · Invalid option");
+    return {
+      name_ar: product.ar,
+      name_en: product.en,
+      unit_price: product.price + (size?.price ?? 0) + (flavor?.price ?? 0),
+      quantity,
+      options_ar: [size ? `الحجم: ${size.ar}` : "", flavor ? `النكهة: ${flavor.ar}` : ""].filter(Boolean),
+      options_en: [size ? `Size: ${size.en}` : "", flavor ? `Flavor: ${flavor.en}` : ""].filter(Boolean),
+      notes,
+      message: null,
+    };
+  }
+
+  const size = pick(builderSizes, spec.sizeId);
+  const flavor = pick(builderFlavors, spec.flavorId);
+  const filling = pick(builderFillings, spec.fillingId);
+  const frosting = pick(builderFrostings, spec.frostingId);
+  if (!size || !flavor || !filling || !frosting) throw new Error("خيار غير صحيح · Invalid option");
+  const message = spec.message?.trim() || null;
+  return {
+    name_ar: "كيكة مصمّمة خاصة",
+    name_en: "Custom designed cake",
+    unit_price: size.price + flavor.price + filling.price + frosting.price,
+    quantity,
+    options_ar: [
+      `الحجم: ${size.ar}`,
+      `النكهة: ${flavor.ar}`,
+      `الحشوة: ${filling.ar}`,
+      `التغليف: ${frosting.ar}`,
+      ...(message ? [`الكتابة: ${message}`] : []),
+    ],
+    options_en: [
+      `Size: ${size.en}`,
+      `Flavor: ${flavor.en}`,
+      `Filling: ${filling.en}`,
+      `Frosting: ${frosting.en}`,
+      ...(message ? [`Message: ${message}`] : []),
+    ],
+    notes,
+    message,
+  };
+}
+
+export function deliveryFeeFor(method: "delivery" | "pickup", lineCount: number) {
+  return method === "delivery" && lineCount > 0 ? DELIVERY_FEE : 0;
+}
