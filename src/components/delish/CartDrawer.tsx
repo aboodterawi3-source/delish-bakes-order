@@ -200,7 +200,51 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
         </div>
 
         <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
-          {lines.length === 0 && <p className="py-16 text-center text-sm text-muted-foreground">{t("emptyCart")}</p>}
+          {stage === "done" && (
+            <div className="flex flex-col items-center gap-4 py-12 text-center">
+              <CheckCircle2 className="h-14 w-14 text-whatsapp" aria-hidden="true" />
+              <h3 className="font-display text-xl font-semibold">
+                {lang === "ar" ? "تم تسجيل طلبك بنجاح" : "Your order was received"}
+              </h3>
+              {orderNumber != null && (
+                <p className="text-sm font-semibold">
+                  {lang === "ar" ? "رقم الطلب" : "Order number"}: <span dir="ltr">{orderNumber}</span>
+                </p>
+              )}
+              <p className="max-w-xs text-sm text-muted-foreground">
+                {lang === "ar"
+                  ? "فتحنا واتساب في نافذة جديدة لإرسال تفاصيل الطلب. إذا لم تُفتح، استخدم الزر أدناه."
+                  : "WhatsApp opened in a new tab with your order details. If it did not open, use the button below."}
+              </p>
+              {waUrl && (
+                <a
+                  href={waUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="grid min-h-12 w-full max-w-xs place-items-center rounded-full bg-whatsapp px-6 text-sm font-bold text-whatsapp-foreground"
+                >
+                  {lang === "ar" ? "فتح واتساب مرة أخرى" : "Open WhatsApp again"}
+                </a>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setStage("cart");
+                  setForm(empty);
+                  setWaUrl("");
+                  setOrderNumber(null);
+                  onClose();
+                }}
+                className="min-h-11 text-xs text-foreground underline"
+              >
+                {lang === "ar" ? "متابعة التسوّق" : "Back to the shop"}
+              </button>
+            </div>
+          )}
+
+          {stage !== "done" && lines.length === 0 && (
+            <p className="py-16 text-center text-sm text-muted-foreground">{t("emptyCart")}</p>
+          )}
 
           {stage === "cart" &&
             lines.map((l) => (
