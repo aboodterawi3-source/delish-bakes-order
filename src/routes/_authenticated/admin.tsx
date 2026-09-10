@@ -627,11 +627,15 @@ function StaffPanel() {
 
   const createMutation = useMutation({
     mutationFn: () => create({ data: { email, password, role: newRole } }),
-    onSuccess: () => {
+    onSuccess: (result) => {
       setEmail("");
       setPassword("");
       setError(null);
-      setNotice("تم إنشاء الحساب · Account created");
+      setNotice(
+        result?.reused
+          ? "هذا البريد مسجّل مسبقاً: تم تحديث كلمة المرور والدور · Existing account updated"
+          : "تم إنشاء الحساب · Account created",
+      );
       invalidate();
     },
     onError: handleError,
