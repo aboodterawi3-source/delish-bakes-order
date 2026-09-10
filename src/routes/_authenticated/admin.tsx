@@ -175,7 +175,6 @@ function AdminPage() {
           {(
             [
               ["analytics", "التحليلات والسجلات"],
-              ["products", "المنتجات والأسعار"],
               ["staff", "حسابات الموظفين"],
             ] as [Tab, string][]
           ).map(([key, label]) => (
@@ -318,7 +317,6 @@ function AdminPage() {
           </>
         )}
 
-        {tab === "products" && <ProductsPanel />}
         {tab === "staff" && <StaffPanel />}
       </div>
     </main>
@@ -431,137 +429,6 @@ function CustomerDirectory({ customers }: { customers: { phone: string; name: st
             ))}
           </tbody>
         </table>
-      </div>
-    </section>
-  );
-}
-
-/* --------------------------------- products -------------------------------- */
-
-function ProductsPanel() {
-  const queryClient = useQueryClient();
-  const products = useQuery({
-    queryKey: ["admin", "products"],
-    queryFn: useServerFn(listAdminProducts),
-    staleTime: 60_000,
-  });
-  const save = useServerFn(saveProduct);
-  const remove = useServerFn(deleteProduct);
-  const [draft, setDraft] = useState<ProductInput | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const invalidate = () => void queryClient.invalidateQueries({ queryKey: ["admin", "products"] });
-
-  const saveMutation = useMutation({
-    mutationFn: (input: ProductInput) => save({ data: input }),
-    onSuccess: () => {
-      setDraft(null);
-      setError(null);
-      invalidate();
-    },
-    onError: (caught: Error) => setError(caught.message),
-  });
-
-  const removeMutation = useMutation({
-    mutationFn: (id: string) => remove({ data: { id } }),
-    onSuccess: invalidate,
-    onError: (caught: Error) => setError(caught.message),
-  });
-
-  const field = (key: keyof ProductInput, value: unknown) => setDraft((prev) => (prev ? { ...prev, [key]: value } : prev));
-
-  return (
-    <section aria-labelledby="products-heading" className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <h2 id="products-heading" className="me-auto font-display text-lg font-bold text-foreground">
-          إدارة المنتجات والأسعار
-        </h2>
-        <button
-          type="button"
-          onClick={() => setDraft({ ...emptyProduct })}
-          className="inline-flex min-h-12 items-center gap-2 rounded-full bg-primary px-5 text-sm font-bold text-primary-foreground"
-        >
-          <Plus className="h-4 w-4" aria-hidden /> منتج جديد
-        </button>
-      </div>
-
-      {error && <p role="alert" className="rounded-xl bg-destructive/10 p-3 text-xs font-bold text-destructive">{error}</p>}
-
-      {draft && (
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            saveMutation.mutate(draft);
-          }}
-          className="grid gap-3 rounded-2xl border border-border bg-card p-4 sm:grid-cols-2"
-        >
-          <Text label="الاسم بالعربية" value={draft.name_ar} onChange={(v) => field("name_ar", v)} required />
-          <Text label="الاسم بالإنجليزية" value={draft.name_en} onChange={(v) => field("name_en", v)} required />
-          <Text label="التصنيف · Category" value={draft.category} onChange={(v) => field("category", v)} required />
-          <Text label="السعر (د.أ)" type="number" value={String(draft.price)} onChange={(v) => field("price", Number(v))} required />
-          <Text label="الوصف بالعربية" value={draft.description_ar ?? ""} onChange={(v) => field("description_ar", v)} />
-          <Text label="الوصف بالإنجليزية" value={draft.description_en ?? ""} onChange={(v) => field("description_en", v)} />
-          <Text label="ترتيب العرض" type="number" value={String(draft.sort_order)} onChange={(v) => field("sort_order", Number(v))} />
-          <div className="flex flex-wrap items-center gap-4 pt-2 text-sm font-bold text-foreground">
-            <label className="inline-flex items-center gap-2">
-              <input type="checkbox" checked={draft.is_available} onChange={(e) => field("is_available", e.target.checked)} className="h-5 w-5" />
-              متاح
-            </label>
-            <label className="inline-flex items-center gap-2">
-              <input type="checkbox" checked={draft.is_featured} onChange={(e) => field("is_featured", e.target.checked)} className="h-5 w-5" />
-              مميز
-            </label>
-          </div>
-          <div className="flex gap-2 sm:col-span-2">
-            <button
-              type="submit"
-              disabled={saveMutation.isPending}
-              className="inline-flex min-h-12 items-center gap-2 rounded-full bg-primary px-5 text-sm font-bold text-primary-foreground disabled:opacity-60"
-            >
-              {saveMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />} حفظ
-            </button>
-            <button
-              type="button"
-              onClick={() => setDraft(null)}
-              className="inline-flex min-h-12 items-center rounded-full border border-border px-5 text-sm font-bold text-foreground"
-            >
-              إلغاء
-            </button>
-          </div>
-        </form>
-      )}
-
-      {products.isLoading && <p className="text-sm text-muted-foreground">جاري تحميل المنتجات…</p>}
-
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {(products.data ?? []).map((product: AdminProduct) => (
-          <article key={product.id} className="rounded-2xl border border-border bg-card p-4">
-            <p className="flex items-center gap-2 text-xs font-bold text-muted-foreground">
-              <Package className="h-4 w-4 text-primary" aria-hidden /> {product.category}
-            </p>
-            <h3 className="mt-1 font-display text-base font-bold text-foreground">{product.name_ar}</h3>
-            <p className="text-xs text-muted-foreground">{product.name_en}</p>
-            <p className="mt-2 font-bold text-foreground">{jod(product.price)}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{product.is_available ? "متاح" : "غير متاح"}{product.is_featured ? " · مميز" : ""}</p>
-            <div className="mt-3 flex gap-2">
-              <button
-                type="button"
-                onClick={() => setDraft({ ...product })}
-                className="inline-flex min-h-12 flex-1 items-center justify-center rounded-full border border-border text-sm font-bold text-foreground"
-              >
-                تعديل
-              </button>
-              <button
-                type="button"
-                onClick={() => removeMutation.mutate(product.id)}
-                aria-label={`حذف ${product.name_ar}`}
-                className="inline-flex min-h-12 w-12 items-center justify-center rounded-full border border-destructive/40 text-destructive"
-              >
-                <Trash2 className="h-4 w-4" aria-hidden />
-              </button>
-            </div>
-          </article>
-        ))}
       </div>
     </section>
   );
