@@ -101,34 +101,26 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
     return L.join("\n");
   };
 
-  const inscription = lines
-    .flatMap((l) => l.detailsAr.filter((d) => d.startsWith("الكتابة")))
-    .map((d) => d.replace(/^الكتابة:\s*/, ""))
-    .join(" / ");
+  /**
+   * Opens WhatsApp in a brand-new tab through a synthetic anchor click.
+   * This never touches the storefront tab's history, so "back" always
+   * returns to this success screen instead of a WhatsApp bridge page.
+   */
+  const openWhatsApp = (url: string) => {
+    const a = document.createElement("a");
+    a.href = url;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
 
   const send = async () => {
     if (!validate()) return;
     const url = `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(buildMessage())}`;
-    const order: Order = {
-      id: newOrderId(),
-      createdAt: new Date().toISOString(),
-      customer: form.name.trim(),
-      phone: form.phone.trim(),
-      method: form.method,
-      area: form.area.trim() || undefined,
-      address: form.address.trim() || undefined,
-      date: form.date,
-      time: form.time,
-      lines,
-      subtotal,
-      deliveryFee,
-      total,
-      notes: form.notes.trim() || undefined,
-      inscription: inscription || undefined,
-      designImage: lines.find((l) => l.designImage)?.designImage,
-      status: "new",
-    };
-    appendOrder(order);
+    setWaUrl(url);
 
     setSending(true);
     setSaveError(false);
