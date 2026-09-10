@@ -155,6 +155,7 @@ function KdsPage() {
   const markReady = useServerFn(markOrderReady);
 
   const [filter, setFilter] = useState<Filter>("today");
+  const [view, setView] = useState<"board" | "menu">("board");
   const [shiftOn, setShiftOn] = useState(false);
   const [zoom, setZoom] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
