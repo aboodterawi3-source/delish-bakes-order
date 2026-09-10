@@ -5,6 +5,8 @@ import { useCart } from "@/lib/cart";
 import { useLang } from "@/lib/i18n";
 import { useDismissable } from "@/lib/a11y";
 import { appendOrder, newOrderId, type Order } from "@/lib/orders";
+import { saveStorefrontOrder } from "@/lib/storefront-orders";
+
 
 type Form = {
   name: string;
@@ -34,6 +36,9 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   const [stage, setStage] = useState<"cart" | "checkout">("cart");
   const [form, setForm] = useState<Form>(empty);
   const [errors, setErrors] = useState<Partial<Record<keyof Form, boolean>>>({});
+  const [sending, setSending] = useState(false);
+  const [saveError, setSaveError] = useState(false);
+
   const titleId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
 
@@ -100,8 +105,9 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
     .map((d) => d.replace(/^الكتابة:\s*/, ""))
     .join(" / ");
 
-  const send = () => {
+  const send = async () => {
     if (!validate()) return;
+    const url = `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(buildMessage())}`;
     const order: Order = {
       id: newOrderId(),
       createdAt: new Date().toISOString(),
@@ -122,9 +128,35 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
       status: "new",
     };
     appendOrder(order);
-    const url = `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(buildMessage())}`;
-    window.open(url, "_blank", "noopener,noreferrer");
+
+    setSending(true);
+    setSaveError(false);
+    try {
+      await saveStorefrontOrder({
+        customer_name: form.name.trim(),
+        customer_phone: form.phone.trim(),
+        method: form.method,
+        area: form.area.trim() || null,
+        address: form.address.trim() || null,
+        requested_date: form.date,
+        requested_time: form.time,
+        notes: form.notes.trim() || null,
+        inscription: inscription || null,
+        design_image_url: lines.find((l) => l.designImage)?.designImage ?? null,
+        subtotal,
+        delivery_fee: deliveryFee,
+        lines,
+      });
+    } catch {
+      setSaveError(true);
+    } finally {
+      setSending(false);
+    }
+
+    const opened = window.open(url, "_blank", "noopener,noreferrer");
+    if (!opened) window.location.href = url;
   };
+
 
   if (!open) return null;
 
@@ -330,11 +362,20 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
             ) : (
               <>
                 <button
-                  onClick={send}
-                  className="min-h-12 w-full rounded-full bg-whatsapp py-3.5 text-sm font-bold text-whatsapp-foreground transition-transform hover:scale-[1.01]"
+                  onClick={() => void send()}
+                  disabled={sending}
+                  className="min-h-12 w-full rounded-full bg-whatsapp py-3.5 text-sm font-bold text-whatsapp-foreground transition-transform hover:scale-[1.01] disabled:opacity-70"
                 >
-                  {t("sendWhats")}
+                  {sending ? (lang === "ar" ? "جارٍ تسجيل الطلب…" : "Saving order…") : t("sendWhats")}
                 </button>
+                {saveError && (
+                  <p className="text-center text-xs font-semibold text-destructive">
+                    {lang === "ar"
+                      ? "تعذّر تسجيل الطلب في النظام، لكن رسالة واتساب جاهزة للإرسال."
+                      : "Could not save the order to the system, but your WhatsApp message is ready."}
+                  </p>
+                )}
+
                 <button
                   onClick={() => setStage("cart")}
                   className="min-h-11 w-full text-center text-xs text-foreground underline"
