@@ -77,6 +77,7 @@ export type Database = {
           area: string | null
           cancel_reason: string | null
           created_at: string
+          created_by: string | null
           customer_name: string
           customer_phone: string
           delivery_fee: number
@@ -84,8 +85,10 @@ export type Database = {
           design_image_url: string | null
           driver_name: string | null
           driver_phone: string | null
+          event_date: string | null
           id: string
           inscription: string | null
+          is_urgent: boolean
           method: Database["public"]["Enums"]["order_method"]
           notes: string | null
           order_number: string
@@ -103,6 +106,7 @@ export type Database = {
           area?: string | null
           cancel_reason?: string | null
           created_at?: string
+          created_by?: string | null
           customer_name: string
           customer_phone: string
           delivery_fee?: number
@@ -110,8 +114,10 @@ export type Database = {
           design_image_url?: string | null
           driver_name?: string | null
           driver_phone?: string | null
+          event_date?: string | null
           id?: string
           inscription?: string | null
+          is_urgent?: boolean
           method?: Database["public"]["Enums"]["order_method"]
           notes?: string | null
           order_number?: string
@@ -129,6 +135,7 @@ export type Database = {
           area?: string | null
           cancel_reason?: string | null
           created_at?: string
+          created_by?: string | null
           customer_name?: string
           customer_phone?: string
           delivery_fee?: number
@@ -136,8 +143,10 @@ export type Database = {
           design_image_url?: string | null
           driver_name?: string | null
           driver_phone?: string | null
+          event_date?: string | null
           id?: string
           inscription?: string | null
+          is_urgent?: boolean
           method?: Database["public"]["Enums"]["order_method"]
           notes?: string | null
           order_number?: string
