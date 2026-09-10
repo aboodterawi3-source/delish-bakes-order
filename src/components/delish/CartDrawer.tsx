@@ -142,14 +142,16 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
           ),
         },
       });
+      setOrderNumber(null);
     } catch {
       setSaveError(true);
     } finally {
       setSending(false);
     }
 
-    const opened = window.open(url, "_blank", "noopener,noreferrer");
-    if (!opened) window.location.href = url;
+    setStage("done");
+    clear();
+    openWhatsApp(url);
   };
 
 
