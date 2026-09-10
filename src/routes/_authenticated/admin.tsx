@@ -745,6 +745,7 @@ function StaffPanel() {
             onReset={(pwd) => resetMutation.mutate({ userId: member.id, password: pwd })}
             onRole={(value) => roleMutation.mutate({ userId: member.id, role: value })}
             onRemove={() => removeMutation.mutate(member.id)}
+            isSelf={me.data === member.id}
           />
         ))}
       </div>
