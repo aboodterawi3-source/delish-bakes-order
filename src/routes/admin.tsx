@@ -120,7 +120,7 @@ function AdminPage() {
         تخطَّ إلى قائمة الطلبات
       </a>
 
-      <header className="border-b border-border bg-cocoa text-primary-foreground">
+      <header className="border-b border-border bg-primary text-primary-foreground">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-4">
           <div className="min-w-0">
             <h1 className="font-display text-xl font-bold sm:text-2xl">لوحة الطلبات</h1>
@@ -389,7 +389,7 @@ function OrderDialog({
   const waUrl = `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(statusMessage(order, order.status))}`;
 
   return (
-    <div dir="rtl" className="fixed inset-0 z-50 flex items-end justify-center bg-cocoa/70 sm:items-center sm:p-4">
+    <div dir="rtl" className="fixed inset-0 z-50 flex items-end justify-center bg-primary/75 sm:items-center sm:p-4">
       <button
         type="button"
         tabIndex={-1}

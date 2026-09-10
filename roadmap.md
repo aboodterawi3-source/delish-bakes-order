@@ -1,4 +1,4 @@
-- [ ] Keep the existing site layout and interactions unchanged
-- [ ] Apply the interior-inspired powder blue, white, off-white, and warm gold palette site-wide
-- [ ] Make the Delish name gold wherever it appears as branding
+- [x] Keep the existing site layout and interactions unchanged
+- [x] Apply the interior-inspired powder blue, white, off-white, and warm gold palette site-wide
+- [x] Make the Delish name gold wherever it appears as branding
 - [ ] Verify storefront and admin views in Arabic and English

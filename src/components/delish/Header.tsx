@@ -39,7 +39,7 @@ export function Header({ onCart }: { onCart: () => void }) {
             className="h-11 w-11 shrink-0 rounded-full border border-gold/40 object-cover"
           />
           <span className="min-w-0">
-            <span className="block truncate font-display text-lg leading-tight font-semibold text-foreground">
+            <span className="block truncate font-display text-lg leading-tight font-bold text-gold-deep">
               Delish
             </span>
             <span className="block truncate text-[11px] tracking-wide text-muted-foreground">{t("brandTag")}</span>
