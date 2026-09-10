@@ -141,8 +141,14 @@ function SalesPage() {
   const access = useQuery({
     queryKey: ["sales-access"],
     queryFn: () => accessFn({}),
-    staleTime: 5 * 60_000,
+    // Roles can change (or the signed-in account can switch), so never serve a
+    // stale access answer from a previous session.
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: "always",
+    retry: 1,
   });
+
   const allowed = access.data?.allowed === true;
   const orders = useQuery({
     queryKey: ORDERS_KEY,
