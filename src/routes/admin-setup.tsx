@@ -108,6 +108,20 @@ function AdminSetupPage() {
                 className="mt-1 min-h-12 w-full rounded-xl border border-input bg-background px-3 text-sm"
               />
             </label>
+            <label className="block text-sm font-bold text-foreground">
+              رمز التهيئة · Setup token
+              <input
+                type="password"
+                required
+                autoComplete="off"
+                value={token}
+                onChange={(event) => setToken(event.target.value)}
+                className="mt-1 min-h-12 w-full rounded-xl border border-input bg-background px-3 text-sm"
+              />
+              <span className="mt-1 block text-xs font-normal text-muted-foreground">
+                الرمز محفوظ في إعدادات المتجر · Kept in your project secrets
+              </span>
+            </label>
             {error && (
               <p role="alert" className="rounded-xl bg-destructive/10 p-3 text-xs font-bold text-destructive">
                 {error}
