@@ -175,17 +175,39 @@ export const createStaff = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    let userId: string | null = null;
+    let reused = false;
+
     const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
       email: data.email,
       password: data.password,
       email_confirm: true,
     });
-    if (error || !created.user) throw new Error(error?.message ?? "Could not create the account");
+
+    if (created?.user) {
+      userId = created.user.id;
+    } else {
+      // The email may already belong to an existing account: update it instead of failing.
+      const { data: existing } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 200 });
+      const match = (existing?.users ?? []).find(
+        (user) => (user.email ?? "").toLowerCase() === data.email,
+      );
+      if (!match) throw new Error(error?.message ?? "تعذّر إنشاء الحساب · Could not create the account");
+      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(match.id, {
+        password: data.password,
+        email_confirm: true,
+      });
+      if (updateError) throw new Error(updateError.message);
+      userId = match.id;
+      reused = true;
+    }
+
     const { error: roleError } = await supabaseAdmin
       .from("user_roles")
-      .insert({ user_id: created.user.id, role: data.role });
+      .upsert({ user_id: userId, role: data.role }, { onConflict: "user_id,role" });
     if (roleError) throw new Error(roleError.message);
-    return { ok: true };
+    return { ok: true, reused };
   });
 
 export const resetStaffPassword = createServerFn({ method: "POST" })
