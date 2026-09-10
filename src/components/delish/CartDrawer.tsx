@@ -362,11 +362,20 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
             ) : (
               <>
                 <button
-                  onClick={send}
-                  className="min-h-12 w-full rounded-full bg-whatsapp py-3.5 text-sm font-bold text-whatsapp-foreground transition-transform hover:scale-[1.01]"
+                  onClick={() => void send()}
+                  disabled={sending}
+                  className="min-h-12 w-full rounded-full bg-whatsapp py-3.5 text-sm font-bold text-whatsapp-foreground transition-transform hover:scale-[1.01] disabled:opacity-70"
                 >
-                  {t("sendWhats")}
+                  {sending ? (lang === "ar" ? "جارٍ تسجيل الطلب…" : "Saving order…") : t("sendWhats")}
                 </button>
+                {saveError && (
+                  <p className="text-center text-xs font-semibold text-destructive">
+                    {lang === "ar"
+                      ? "تعذّر تسجيل الطلب في النظام، لكن رسالة واتساب جاهزة للإرسال."
+                      : "Could not save the order to the system, but your WhatsApp message is ready."}
+                  </p>
+                )}
+
                 <button
                   onClick={() => setStage("cart")}
                   className="min-h-11 w-full text-center text-xs text-foreground underline"
