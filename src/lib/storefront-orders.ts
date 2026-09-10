@@ -49,7 +49,7 @@ export async function saveStorefrontOrder(input: StorefrontOrderInput) {
 
 
   const items = input.lines.map((line) => ({
-    order_id: order.id,
+    order_id: orderId,
     name_ar: line.ar,
     name_en: line.en,
     unit_price: line.unit,
@@ -64,5 +64,5 @@ export async function saveStorefrontOrder(input: StorefrontOrderInput) {
     if (itemError) throw new Error(itemError.message);
   }
 
-  return { id: order.id, order_number: order.order_number as string };
+  return { id: orderId };
 }
