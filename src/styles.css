@@ -143,36 +143,37 @@
   }
 }
 
-/* ── Delish interior theme (powder blue · white · warm gold) ───────────── */
+/* ── Delish theme (sky blue · white · azure accent) ────────────────────── */
 :root {
   --radius: 1rem;
-  --background: oklch(0.985 0.006 195);
-  --foreground: oklch(0.29 0.03 210);
+  --background: oklch(0.985 0.008 232);
+  --foreground: oklch(0.26 0.045 248);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.29 0.03 210);
+  --card-foreground: oklch(0.26 0.045 248);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.29 0.03 210);
-  --primary: oklch(0.36 0.045 210);
-  --primary-foreground: oklch(0.99 0.002 195);
-  --secondary: oklch(0.935 0.03 200);
-  --secondary-foreground: oklch(0.3 0.04 210);
-  --muted: oklch(0.955 0.018 200);
-  --muted-foreground: oklch(0.48 0.035 210);
-  --accent: oklch(0.61 0.105 78);
-  --accent-foreground: oklch(0.24 0.025 210);
+  --popover-foreground: oklch(0.26 0.045 248);
+  --primary: oklch(0.31 0.055 250);
+  --primary-foreground: oklch(0.99 0.004 232);
+  --secondary: oklch(0.945 0.032 232);
+  --secondary-foreground: oklch(0.3 0.05 250);
+  --muted: oklch(0.962 0.022 232);
+  --muted-foreground: oklch(0.47 0.045 248);
+  --accent: oklch(0.63 0.155 243);
+  --accent-foreground: oklch(0.99 0.004 232);
   --destructive: oklch(0.55 0.19 27);
   --destructive-foreground: oklch(0.99 0 0);
-  --border: oklch(0.88 0.025 200);
-  --input: oklch(0.84 0.03 200);
-  --ring: oklch(0.61 0.105 78);
-  --gold: oklch(0.67 0.11 78);
-  --gold-deep: oklch(0.54 0.105 75);
-  --gold-light: oklch(0.88 0.075 85);
-  --cocoa: oklch(0.3 0.04 210);
-  --gradient-gold: linear-gradient(120deg, var(--gold-deep), var(--gold), var(--gold-light), var(--gold-deep));
-  --shadow-soft: 0 8px 20px -12px oklch(0.36 0.045 210 / 0.22);
-  --shadow-gold: 0 8px 18px -10px oklch(0.54 0.105 75 / 0.32);
+  --border: oklch(0.9 0.028 232);
+  --input: oklch(0.86 0.035 232);
+  --ring: oklch(0.63 0.155 243);
+  --gold: oklch(0.63 0.155 243);
+  --gold-deep: oklch(0.52 0.145 248);
+  --gold-light: oklch(0.9 0.06 232);
+  --cocoa: oklch(0.28 0.05 250);
+  --gradient-gold: linear-gradient(120deg, oklch(0.52 0.145 248), oklch(0.63 0.155 243), oklch(0.78 0.11 236), oklch(0.52 0.145 248));
+  --shadow-soft: 0 8px 20px -12px oklch(0.31 0.055 250 / 0.22);
+  --shadow-gold: 0 8px 18px -10px oklch(0.52 0.145 248 / 0.32);
 }
+
 
 @theme inline {
   --color-gold: var(--gold);
