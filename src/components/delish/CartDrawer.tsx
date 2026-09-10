@@ -39,6 +39,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   const [errors, setErrors] = useState<Partial<Record<keyof Form, boolean>>>({});
   const [sending, setSending] = useState(false);
   const [saveError, setSaveError] = useState(false);
+  const submitOrder = useServerFn(submitStorefrontOrder);
 
   const titleId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
