@@ -50,9 +50,11 @@ function QuickShop({ onCart }: { onCart: () => void }) {
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {products.map((product) => {
         const qty = quantities[product.id] ?? 1;
+        const imageSet = imageSets[product.image];
+        if (!imageSet) return null;
         return (
           <article key={product.id} className="overflow-hidden rounded-2xl border border-border bg-background">
-            <Pic set={imageSets[product.image]!} alt={lang === "ar" ? product.ar : product.en} sizes="(min-width: 1024px) 300px, 50vw" className="aspect-4/3 w-full object-cover" />
+            <Pic set={imageSet} alt={lang === "ar" ? product.ar : product.en} sizes="(min-width: 1024px) 300px, 50vw" className="aspect-4/3 w-full object-cover" />
             <div className="p-4">
               <h3 className="font-display font-bold">{lang === "ar" ? product.ar : product.en}</h3>
               <p className="mt-1 text-xs text-muted-foreground">{lang === "ar" ? product.descAr : product.descEn}</p>
