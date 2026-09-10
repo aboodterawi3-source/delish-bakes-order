@@ -2,7 +2,7 @@ import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, Check, ClipboardCopy, Loader2, LogOut, Send, Sparkles } from "lucide-react";
+import { AlertTriangle, Check, ClipboardCopy, Loader2, LogOut, MessageCircle, Send, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   createSocialOrder,
@@ -46,6 +46,11 @@ const emptyForm = {
 };
 
 const jd = (value: number) => `${value.toFixed(2)} د.أ`;
+
+/** Official Delish store WhatsApp number (international format, no "+"). */
+const WHATSAPP_NUMBER = "962779179995";
+/** Universal share link — uses wa.me directly, no API endpoints or iframes. */
+const whatsappUrl = (text: string) => `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`;
 
 function SocialPortalPage() {
   const navigate = useNavigate();
