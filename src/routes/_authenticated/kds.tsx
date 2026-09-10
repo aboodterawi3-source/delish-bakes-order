@@ -372,54 +372,72 @@ const KdsCard = memo(function KdsCard({
   onZoom: (url: string) => void;
 }) {
   const meta = tierMeta[orderTier(order)];
+  const isLight = meta.fg !== "#ffffff";
   return (
     <article
-      className="relative overflow-hidden rounded-2xl border border-white/10 bg-[oklch(0.22_0.04_255)] text-white shadow-lg"
-      style={{ boxShadow: `0 10px 28px -10px oklch(0 0 0 / 0.35), ${meta.glow}` }}
+      className="relative overflow-hidden rounded-2xl shadow-lg"
+      style={{
+        backgroundColor: meta.bg,
+        color: meta.fg,
+        boxShadow: `0 10px 28px -10px oklch(0 0 0 / 0.35), ${meta.glow}`,
+      }}
     >
-      {/* Prominent priority accent bar across the top of the card */}
-      <div className="h-2 w-full" style={{ backgroundColor: meta.accent }} aria-hidden="true" />
-
       <div className="p-4">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <h2 className="truncate font-bold text-white">
+            <h2 className="truncate font-bold" style={{ color: meta.fg }}>
               {order.order_number} · {order.customer_name}
             </h2>
-            <p className="mt-1 flex items-center gap-1 text-xs text-white/70">
+            <p className="mt-1 flex items-center gap-1 text-xs" style={{ color: meta.fgMuted }}>
               <Clock3 className="h-3.5 w-3.5" />
               {order.requested_date} · {order.requested_time.slice(0, 5)} · {order.method === "delivery" ? "توصيل" : "استلام"}
             </p>
           </div>
           <span
-            className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold ${meta.chipText}`}
-            style={{ backgroundColor: meta.chipBg }}
+            className="shrink-0 rounded-full px-3 py-1 text-xs font-bold"
+            style={{ backgroundColor: meta.fg, color: meta.bg }}
           >
             {meta.ar}
           </span>
         </div>
 
-        <ul className="mt-4 space-y-3 border-y border-white/10 py-3">
+        <ul
+          className="mt-4 space-y-3 border-y py-3"
+          style={{ borderColor: isLight ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.15)" }}
+        >
           {order.items.map((item) => (
             <li key={item.id}>
-              <p className="text-sm font-bold text-white">
+              <p className="text-sm font-bold" style={{ color: meta.fg }}>
                 {item.quantity}× {item.name_ar}
               </p>
-              <p className="text-xs text-white/70">{item.name_en}</p>
+              <p className="text-xs" style={{ color: meta.fgMuted }}>
+                {item.name_en}
+              </p>
               {item.options_ar.map((option) => (
-                <p key={option} className="mt-0.5 text-xs text-white/80">
+                <p key={option} className="mt-0.5 text-xs" style={{ color: meta.fgMuted }}>
                   • {option}
                 </p>
               ))}
               {item.notes && (
-                <p className="mt-1 text-xs font-bold text-[oklch(0.85_0.12_88)]">ملاحظة: {item.notes}</p>
+                <p
+                  className="mt-1 text-xs font-bold"
+                  style={{ color: isLight ? "#3a2a0a" : "#fff7cc" }}
+                >
+                  ملاحظة: {item.notes}
+                </p>
               )}
             </li>
           ))}
         </ul>
 
         {order.inscription && (
-          <p className="mt-3 rounded-lg bg-[oklch(0.3_0.06_80)] p-2 text-xs font-bold text-[oklch(0.95_0.02_85)]">
+          <p
+            className="mt-3 rounded-lg p-2 text-xs font-bold"
+            style={{
+              backgroundColor: isLight ? "rgba(0,0,0,0.12)" : "rgba(0,0,0,0.22)",
+              color: meta.fg,
+            }}
+          >
             الكتابة: {order.inscription}
           </p>
         )}
@@ -428,7 +446,8 @@ const KdsCard = memo(function KdsCard({
           <button
             type="button"
             onClick={() => onZoom(order.design_image_url as string)}
-            className="mt-3 block w-full overflow-hidden rounded-xl border border-white/15"
+            className="mt-3 block w-full overflow-hidden rounded-xl"
+            style={{ border: `1px solid ${isLight ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.2)"}` }}
           >
             <img
               src={order.design_image_url}
@@ -436,7 +455,15 @@ const KdsCard = memo(function KdsCard({
               loading="lazy"
               className="h-36 w-full object-cover"
             />
-            <span className="block bg-[oklch(0.28_0.04_250)] py-2 text-xs font-bold text-white/90">تكبير الصورة · Zoom</span>
+            <span
+              className="block py-2 text-xs font-bold"
+              style={{
+                backgroundColor: isLight ? "rgba(0,0,0,0.18)" : "rgba(0,0,0,0.25)",
+                color: meta.fg,
+              }}
+            >
+              تكبير الصورة · Zoom
+            </span>
           </button>
         )}
 
@@ -444,7 +471,8 @@ const KdsCard = memo(function KdsCard({
           type="button"
           onClick={() => void onReady(order.id)}
           disabled={busy || order.status === "ready"}
-          className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[oklch(0.65_0.12_230)] px-3 text-sm font-bold text-white disabled:opacity-60"
+          className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl px-3 text-sm font-bold disabled:opacity-60"
+          style={{ backgroundColor: meta.fg, color: meta.bg }}
         >
           <CheckCircle2 className="h-4 w-4" />
           {order.status === "ready" ? "جاهز ✓ Ready" : "تم التجهيز · Mark as Ready"}
