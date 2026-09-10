@@ -332,33 +332,59 @@ function KdsPage() {
             <LogOut className="h-5 w-5" />
           </button>
         </div>
+        <nav aria-label="أقسام شاشة المطبخ" className="flex w-full gap-2 overflow-x-auto pt-1 no-scrollbar">
+          {(
+            [
+              ["board", "شاشة الطلبات", LayoutGrid],
+              ["menu", "المنتجات والأسعار", NotebookPen],
+            ] as ["board" | "menu", string, typeof LayoutGrid][]
+          ).map(([key, label, Icon]) => (
+            <button
+              key={key}
+              type="button"
+              aria-current={view === key ? "page" : undefined}
+              onClick={() => setView(key)}
+              className={`inline-flex min-h-12 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-bold transition-colors ${
+                view === key ? "bg-[oklch(0.65_0.12_230)] text-white" : "border border-white/25 text-white/80"
+              }`}
+            >
+              <Icon className="h-4 w-4" aria-hidden /> {label}
+            </button>
+          ))}
+        </nav>
       </header>
 
-      <div className="flex gap-2 overflow-x-auto px-4 py-3 no-scrollbar">
-        {(Object.keys(filterMeta) as Filter[]).map((key) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => setFilter(key)}
-            aria-pressed={filter === key}
-            className={`min-h-12 shrink-0 rounded-full px-4 text-sm font-bold transition-colors ${
-              filter === key ? "bg-[oklch(0.65_0.12_230)] text-white" : "border border-white/25 text-white/80"
-            }`}
-          >
-            {filterMeta[key].ar}
-          </button>
-        ))}
-      </div>
+      {view === "menu" ? (
+        <MenuPanel />
+      ) : (
+        <>
+          <div className="flex gap-2 overflow-x-auto px-4 py-3 no-scrollbar">
+            {(Object.keys(filterMeta) as Filter[]).map((key) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setFilter(key)}
+                aria-pressed={filter === key}
+                className={`min-h-12 shrink-0 rounded-full px-4 text-sm font-bold transition-colors ${
+                  filter === key ? "bg-[oklch(0.65_0.12_230)] text-white" : "border border-white/25 text-white/80"
+                }`}
+              >
+                {filterMeta[key].ar}
+              </button>
+            ))}
+          </div>
 
-      <main className="grid gap-4 px-3 pb-8 sm:grid-cols-2 xl:grid-cols-3">
-        {orders.isLoading && <p className="p-6 text-sm text-white/60">جارٍ تحميل الطلبات…</p>}
-        {!orders.isLoading && visible.length === 0 && (
-          <p className="p-10 text-center text-sm text-white/55 sm:col-span-2 xl:col-span-3">لا توجد طلبات لهذا اليوم</p>
-        )}
-        {visible.map((order) => (
-          <KdsCard key={order.id} order={order} busy={pending === order.id} onReady={onReady} onZoom={setZoom} />
-        ))}
-      </main>
+          <main className="grid gap-4 px-3 pb-8 sm:grid-cols-2 xl:grid-cols-3">
+            {orders.isLoading && <p className="p-6 text-sm text-white/60">جارٍ تحميل الطلبات…</p>}
+            {!orders.isLoading && visible.length === 0 && (
+              <p className="p-10 text-center text-sm text-white/55 sm:col-span-2 xl:col-span-3">لا توجد طلبات لهذا اليوم</p>
+            )}
+            {visible.map((order) => (
+              <KdsCard key={order.id} order={order} busy={pending === order.id} onReady={onReady} onZoom={setZoom} />
+            ))}
+          </main>
+        </>
+      )}
 
       {zoom && (
         <div
