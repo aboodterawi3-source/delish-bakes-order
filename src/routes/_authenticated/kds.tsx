@@ -24,13 +24,64 @@ export const Route = createFileRoute("/_authenticated/kds")({
 
 type Tier = "multi" | "buffet" | "special" | "mini" | "box" | "standard";
 
-const tierMeta: Record<Tier, { ar: string; en: string; card: string; chip: string; rank: number }> = {
-  multi: { ar: "متعدد الطوابق", en: "Multi-tier", card: "border-r-8 border-r-[oklch(0.42_0.16_25)] bg-[oklch(0.42_0.16_25)]/8", chip: "bg-[oklch(0.42_0.16_25)] text-white", rank: 0 },
-  buffet: { ar: "بوفيه", en: "Buffet", card: "border-r-8 border-r-[oklch(0.68_0.16_52)] bg-[oklch(0.68_0.16_52)]/10", chip: "bg-[oklch(0.68_0.16_52)] text-white", rank: 1 },
-  special: { ar: "تصميم خاص", en: "Special custom", card: "border-r-8 border-r-[oklch(0.82_0.15_88)] bg-[oklch(0.82_0.15_88)]/14", chip: "bg-[oklch(0.82_0.15_88)] text-[oklch(0.25_0.03_88)]", rank: 2 },
-  mini: { ar: "كيك ميني", en: "Mini cakes", card: "border-r-8 border-r-[oklch(0.74_0.11_230)] bg-[oklch(0.74_0.11_230)]/12", chip: "bg-[oklch(0.74_0.11_230)] text-white", rank: 3 },
-  box: { ar: "علب حلويات", en: "Boxes", card: "border-r-8 border-r-[oklch(0.78_0.11_150)] bg-[oklch(0.78_0.11_150)]/12", chip: "bg-[oklch(0.78_0.11_150)] text-[oklch(0.25_0.03_150)]", rank: 4 },
-  standard: { ar: "طلب عادي", en: "Standard", card: "border-r-8 border-r-border bg-card", chip: "bg-secondary text-secondary-foreground", rank: 5 },
+const tierMeta: Record<
+  Tier,
+  { ar: string; en: string; rank: number; accent: string; glow: string; chipBg: string; chipText: string }
+> = {
+  multi: {
+    ar: "متعدد الطوابق",
+    en: "Multi-tier",
+    rank: 0,
+    accent: "oklch(0.55 0.18 25)",
+    glow: "0 0 22px -4px oklch(0.55 0.18 25 / 0.55)",
+    chipBg: "oklch(0.55 0.18 25)",
+    chipText: "text-white",
+  },
+  buffet: {
+    ar: "بوفيه",
+    en: "Buffet",
+    rank: 1,
+    accent: "oklch(0.68 0.18 52)",
+    glow: "0 0 20px -4px oklch(0.68 0.18 52 / 0.5)",
+    chipBg: "oklch(0.68 0.18 52)",
+    chipText: "text-white",
+  },
+  special: {
+    ar: "تصميم خاص",
+    en: "Special custom",
+    rank: 2,
+    accent: "oklch(0.82 0.16 88)",
+    glow: "0 0 20px -4px oklch(0.82 0.16 88 / 0.5)",
+    chipBg: "oklch(0.82 0.16 88)",
+    chipText: "text-[oklch(0.18_0.04_88)]",
+  },
+  mini: {
+    ar: "كيك ميني",
+    en: "Mini cakes",
+    rank: 3,
+    accent: "oklch(0.74 0.11 230)",
+    glow: "0 0 18px -4px oklch(0.74 0.11 230 / 0.5)",
+    chipBg: "oklch(0.74 0.11 230)",
+    chipText: "text-white",
+  },
+  box: {
+    ar: "علب حلويات",
+    en: "Boxes",
+    rank: 4,
+    accent: "oklch(0.78 0.11 150)",
+    glow: "0 0 18px -4px oklch(0.78 0.11 150 / 0.45)",
+    chipBg: "oklch(0.78 0.11 150)",
+    chipText: "text-[oklch(0.18_0.04_150)]",
+  },
+  standard: {
+    ar: "طلب عادي",
+    en: "Standard",
+    rank: 5,
+    accent: "oklch(0.65 0.05 250)",
+    glow: "0 0 16px -4px oklch(0.65 0.05 250 / 0.35)",
+    chipBg: "oklch(0.65 0.05 250)",
+    chipText: "text-white",
+  },
 };
 
 const has = (haystack: string, needles: string[]) => needles.some((needle) => haystack.includes(needle));
@@ -185,16 +236,24 @@ function KdsPage() {
   }, [navigate, queryClient]);
 
   if (access.isLoading) {
-    return <p dir="rtl" className="grid min-h-dvh place-items-center bg-background text-sm text-muted-foreground">جارٍ التحقق…</p>;
+    return (
+      <p dir="rtl" className="grid min-h-dvh place-items-center bg-[oklch(0.13_0.06_250)] text-sm text-white/70">
+        جارٍ التحقق…
+      </p>
+    );
   }
 
   if (!allowed) {
     return (
-      <main dir="rtl" className="grid min-h-dvh place-items-center bg-background px-4 text-center">
-        <div className="max-w-sm rounded-3xl border border-border bg-card p-6">
-          <h1 className="font-display text-xl font-bold text-foreground">لا تملك صلاحية المطبخ</h1>
-          <p className="mt-2 text-sm text-muted-foreground">Your account has no kitchen access. Ask an admin to grant the kitchen role.</p>
-          <button type="button" onClick={() => void signOut()} className="mt-5 min-h-12 w-full rounded-full bg-primary px-5 text-sm font-bold text-primary-foreground">
+      <main dir="rtl" className="grid min-h-dvh place-items-center bg-[oklch(0.13_0.06_250)] px-4 text-center">
+        <div className="max-w-sm rounded-3xl border border-white/10 bg-[oklch(0.22_0.04_255)] p-6 text-white shadow-xl">
+          <h1 className="font-display text-xl font-bold">لا تملك صلاحية المطبخ</h1>
+          <p className="mt-2 text-sm text-white/70">Your account has no kitchen access. Ask an admin to grant the kitchen role.</p>
+          <button
+            type="button"
+            onClick={() => void signOut()}
+            className="mt-5 min-h-12 w-full rounded-full bg-[oklch(0.65_0.12_230)] px-5 text-sm font-bold text-white"
+          >
             تسجيل الخروج · Sign out
           </button>
         </div>
@@ -203,13 +262,15 @@ function KdsPage() {
   }
 
   return (
-    <div dir="rtl" className="min-h-dvh bg-foreground text-primary-foreground">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-primary-foreground/15 px-4 py-4">
+    <div dir="rtl" className="min-h-dvh bg-[oklch(0.13_0.06_250)] text-white">
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-4">
         <div className="flex min-w-0 items-center gap-3">
-          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-primary"><ChefHat className="h-6 w-6" /></span>
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-[oklch(0.65_0.12_230)]">
+            <ChefHat className="h-6 w-6" />
+          </span>
           <div className="min-w-0">
             <h1 className="truncate font-display text-xl font-bold sm:text-2xl">شاشة المطبخ</h1>
-            <p className="text-xs text-primary-foreground/65">{visible.length} طلب للتجهيز · Kitchen Display</p>
+            <p className="text-xs text-white/65">{visible.length} طلب للتجهيز · Kitchen Display</p>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -217,21 +278,31 @@ function KdsPage() {
             type="button"
             onClick={startShift}
             disabled={shiftOn}
-            className="inline-flex min-h-12 items-center gap-2 rounded-full bg-primary px-4 text-sm font-bold disabled:opacity-70"
+            className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[oklch(0.65_0.12_230)] px-4 text-sm font-bold disabled:opacity-70"
           >
             <Bell className="h-4 w-4" />
             {shiftOn ? "الوردية جارية 🔔" : "بدء وردية المطبخ 🔔"}
           </button>
-          <button type="button" onClick={() => void orders.refetch()} aria-label="تحديث" className="grid h-12 w-12 place-items-center rounded-full border border-primary-foreground/25">
+          <button
+            type="button"
+            onClick={() => void orders.refetch()}
+            aria-label="تحديث"
+            className="grid h-12 w-12 place-items-center rounded-full border border-white/25"
+          >
             <RefreshCw className={`h-5 w-5 ${orders.isFetching ? "animate-spin" : ""}`} />
           </button>
-          <button type="button" onClick={() => void signOut()} aria-label="تسجيل الخروج" className="grid h-12 w-12 place-items-center rounded-full border border-primary-foreground/25">
+          <button
+            type="button"
+            onClick={() => void signOut()}
+            aria-label="تسجيل الخروج"
+            className="grid h-12 w-12 place-items-center rounded-full border border-white/25"
+          >
             <LogOut className="h-5 w-5" />
           </button>
         </div>
       </header>
 
-      <div className="flex gap-2 overflow-x-auto px-4 py-3">
+      <div className="flex gap-2 overflow-x-auto px-4 py-3 no-scrollbar">
         {(Object.keys(filterMeta) as Filter[]).map((key) => (
           <button
             key={key}
@@ -239,7 +310,7 @@ function KdsPage() {
             onClick={() => setFilter(key)}
             aria-pressed={filter === key}
             className={`min-h-12 shrink-0 rounded-full px-4 text-sm font-bold transition-colors ${
-              filter === key ? "bg-primary text-primary-foreground" : "border border-primary-foreground/25 text-primary-foreground/80"
+              filter === key ? "bg-[oklch(0.65_0.12_230)] text-white" : "border border-white/25 text-white/80"
             }`}
           >
             {filterMeta[key].ar}
@@ -247,10 +318,10 @@ function KdsPage() {
         ))}
       </div>
 
-      <main className="grid gap-3 px-3 pb-8 sm:grid-cols-2 xl:grid-cols-3">
-        {orders.isLoading && <p className="p-6 text-sm text-primary-foreground/60">جارٍ تحميل الطلبات…</p>}
+      <main className="grid gap-4 px-3 pb-8 sm:grid-cols-2 xl:grid-cols-3">
+        {orders.isLoading && <p className="p-6 text-sm text-white/60">جارٍ تحميل الطلبات…</p>}
         {!orders.isLoading && visible.length === 0 && (
-          <p className="p-10 text-center text-sm text-primary-foreground/55 sm:col-span-2 xl:col-span-3">لا توجد طلبات لهذا اليوم</p>
+          <p className="p-10 text-center text-sm text-white/55 sm:col-span-2 xl:col-span-3">لا توجد طلبات لهذا اليوم</p>
         )}
         {visible.map((order) => (
           <KdsCard key={order.id} order={order} busy={pending === order.id} onReady={onReady} onZoom={setZoom} />
@@ -258,9 +329,20 @@ function KdsPage() {
       </main>
 
       {zoom && (
-        <div role="dialog" aria-modal="true" aria-label="صورة التصميم" className="fixed inset-0 z-50 grid place-items-center bg-foreground/85 p-4" onClick={() => setZoom(null)}>
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="صورة التصميم"
+          className="fixed inset-0 z-50 grid place-items-center bg-[oklch(0.13_0.06_250)]/90 p-4"
+          onClick={() => setZoom(null)}
+        >
           <img src={zoom} alt="صورة تصميم الكيك بالحجم الكامل" className="max-h-[85dvh] w-auto max-w-full rounded-2xl" />
-          <button type="button" onClick={() => setZoom(null)} aria-label="إغلاق" className="absolute right-4 top-4 grid h-12 w-12 place-items-center rounded-full bg-card text-card-foreground">
+          <button
+            type="button"
+            onClick={() => setZoom(null)}
+            aria-label="إغلاق"
+            className="absolute right-4 top-4 grid h-12 w-12 place-items-center rounded-full bg-[oklch(0.22_0.04_255)] text-white shadow-lg"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -283,55 +365,83 @@ const KdsCard = memo(function KdsCard({
 }) {
   const meta = tierMeta[orderTier(order)];
   return (
-    <article className={`rounded-2xl border border-border p-4 text-card-foreground shadow-[var(--shadow-soft)] ${meta.card}`}>
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <h2 className="truncate font-bold">{order.order_number} · {order.customer_name}</h2>
-          <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-            <Clock3 className="h-3.5 w-3.5" />
-            {order.requested_date} · {order.requested_time.slice(0, 5)} · {order.method === "delivery" ? "توصيل" : "استلام"}
-          </p>
+    <article
+      className="relative overflow-hidden rounded-2xl border border-white/10 bg-[oklch(0.22_0.04_255)] text-white shadow-lg"
+      style={{ boxShadow: `0 10px 28px -10px oklch(0 0 0 / 0.35), ${meta.glow}` }}
+    >
+      {/* Prominent priority accent bar across the top of the card */}
+      <div className="h-2 w-full" style={{ backgroundColor: meta.accent }} aria-hidden="true" />
+
+      <div className="p-4">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <h2 className="truncate font-bold text-white">
+              {order.order_number} · {order.customer_name}
+            </h2>
+            <p className="mt-1 flex items-center gap-1 text-xs text-white/70">
+              <Clock3 className="h-3.5 w-3.5" />
+              {order.requested_date} · {order.requested_time.slice(0, 5)} · {order.method === "delivery" ? "توصيل" : "استلام"}
+            </p>
+          </div>
+          <span
+            className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold ${meta.chipText}`}
+            style={{ backgroundColor: meta.chipBg }}
+          >
+            {meta.ar}
+          </span>
         </div>
-        <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold ${meta.chip}`}>{meta.ar}</span>
-      </div>
 
-      <ul className="mt-3 space-y-3 border-y border-border/70 py-3">
-        {order.items.map((item) => (
-          <li key={item.id}>
-            <p className="text-sm font-bold">{item.quantity}× {item.name_ar}</p>
-            <p className="text-xs text-muted-foreground">{item.name_en}</p>
-            {item.options_ar.map((option) => (
-              <p key={option} className="mt-0.5 text-xs text-muted-foreground">• {option}</p>
-            ))}
-            {item.notes && <p className="mt-1 text-xs font-bold">ملاحظة: {item.notes}</p>}
-          </li>
-        ))}
-      </ul>
+        <ul className="mt-4 space-y-3 border-y border-white/10 py-3">
+          {order.items.map((item) => (
+            <li key={item.id}>
+              <p className="text-sm font-bold text-white">
+                {item.quantity}× {item.name_ar}
+              </p>
+              <p className="text-xs text-white/70">{item.name_en}</p>
+              {item.options_ar.map((option) => (
+                <p key={option} className="mt-0.5 text-xs text-white/80">
+                  • {option}
+                </p>
+              ))}
+              {item.notes && (
+                <p className="mt-1 text-xs font-bold text-[oklch(0.85_0.12_88)]">ملاحظة: {item.notes}</p>
+              )}
+            </li>
+          ))}
+        </ul>
 
-      {order.inscription && (
-        <p className="mt-3 rounded-lg bg-secondary p-2 text-xs font-bold text-secondary-foreground">الكتابة: {order.inscription}</p>
-      )}
+        {order.inscription && (
+          <p className="mt-3 rounded-lg bg-[oklch(0.3_0.06_80)] p-2 text-xs font-bold text-[oklch(0.95_0.02_85)]">
+            الكتابة: {order.inscription}
+          </p>
+        )}
 
-      {order.design_image_url && (
+        {order.design_image_url && (
+          <button
+            type="button"
+            onClick={() => onZoom(order.design_image_url as string)}
+            className="mt-3 block w-full overflow-hidden rounded-xl border border-white/15"
+          >
+            <img
+              src={order.design_image_url}
+              alt={`صورة تصميم الطلب ${order.order_number}`}
+              loading="lazy"
+              className="h-36 w-full object-cover"
+            />
+            <span className="block bg-[oklch(0.28_0.04_250)] py-2 text-xs font-bold text-white/90">تكبير الصورة · Zoom</span>
+          </button>
+        )}
+
         <button
           type="button"
-          onClick={() => onZoom(order.design_image_url as string)}
-          className="mt-3 block w-full overflow-hidden rounded-xl border border-border"
+          onClick={() => void onReady(order.id)}
+          disabled={busy || order.status === "ready"}
+          className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[oklch(0.65_0.12_230)] px-3 text-sm font-bold text-white disabled:opacity-60"
         >
-          <img src={order.design_image_url} alt={`صورة تصميم الطلب ${order.order_number}`} loading="lazy" className="h-36 w-full object-cover" />
-          <span className="block bg-secondary py-2 text-xs font-bold text-secondary-foreground">تكبير الصورة · Zoom</span>
+          <CheckCircle2 className="h-4 w-4" />
+          {order.status === "ready" ? "جاهز ✓ Ready" : "تم التجهيز · Mark as Ready"}
         </button>
-      )}
-
-      <button
-        type="button"
-        onClick={() => void onReady(order.id)}
-        disabled={busy || order.status === "ready"}
-        className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 text-sm font-bold text-primary-foreground disabled:opacity-60"
-      >
-        <CheckCircle2 className="h-4 w-4" />
-        {order.status === "ready" ? "جاهز ✓ Ready" : "تم التجهيز · Mark as Ready"}
-      </button>
+      </div>
     </article>
   );
 });
