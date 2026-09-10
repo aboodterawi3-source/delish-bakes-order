@@ -758,11 +758,13 @@ function StaffRow({
   onReset,
   onRole,
   onRemove,
+  isSelf = false,
 }: {
   member: { id: string; email: string; roles: StaffRole[]; last_sign_in_at: string | null };
   onReset: (password: string) => void;
   onRole: (role: StaffRole) => void;
   onRemove: () => void;
+  isSelf?: boolean;
 }) {
   const [password, setPassword] = useState("");
 
