@@ -75,18 +75,24 @@ export type Database = {
         Row: {
           address: string | null
           area: string | null
+          cancel_reason: string | null
           created_at: string
           customer_name: string
           customer_phone: string
           delivery_fee: number
+          deposit_paid: number
           design_image_url: string | null
+          driver_name: string | null
+          driver_phone: string | null
           id: string
           inscription: string | null
           method: Database["public"]["Enums"]["order_method"]
           notes: string | null
           order_number: string
+          payment_method: Database["public"]["Enums"]["payment_method"] | null
           requested_date: string
           requested_time: string
+          staff_notes: string | null
           status: Database["public"]["Enums"]["order_status"]
           subtotal: number
           total: number
@@ -95,18 +101,24 @@ export type Database = {
         Insert: {
           address?: string | null
           area?: string | null
+          cancel_reason?: string | null
           created_at?: string
           customer_name: string
           customer_phone: string
           delivery_fee?: number
+          deposit_paid?: number
           design_image_url?: string | null
+          driver_name?: string | null
+          driver_phone?: string | null
           id?: string
           inscription?: string | null
           method?: Database["public"]["Enums"]["order_method"]
           notes?: string | null
           order_number?: string
+          payment_method?: Database["public"]["Enums"]["payment_method"] | null
           requested_date: string
           requested_time: string
+          staff_notes?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           subtotal?: number
           total?: number
@@ -115,18 +127,24 @@ export type Database = {
         Update: {
           address?: string | null
           area?: string | null
+          cancel_reason?: string | null
           created_at?: string
           customer_name?: string
           customer_phone?: string
           delivery_fee?: number
+          deposit_paid?: number
           design_image_url?: string | null
+          driver_name?: string | null
+          driver_phone?: string | null
           id?: string
           inscription?: string | null
           method?: Database["public"]["Enums"]["order_method"]
           notes?: string | null
           order_number?: string
+          payment_method?: Database["public"]["Enums"]["payment_method"] | null
           requested_date?: string
           requested_time?: string
+          staff_notes?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           subtotal?: number
           total?: number
@@ -230,6 +248,9 @@ export type Database = {
         | "ready"
         | "delivered"
         | "cancelled"
+        | "out_for_delivery"
+        | "completed"
+      payment_method: "cash" | "cliq" | "visa"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -366,7 +387,10 @@ export const Constants = {
         "ready",
         "delivered",
         "cancelled",
+        "out_for_delivery",
+        "completed",
       ],
+      payment_method: ["cash", "cliq", "visa"],
     },
   },
 } as const

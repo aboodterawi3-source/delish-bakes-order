@@ -15,8 +15,18 @@ export const Route = createFileRoute("/auth")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
+  ssr: false,
   component: AuthPage,
 });
+
+/** Sends each signed-in staff member to the screen their role uses. */
+async function landingPath(userId: string): Promise<"/kds" | "/sales" | "/admin"> {
+  const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId);
+  const roles = (data ?? []).map((row) => row.role as string);
+  if (roles.includes("kitchen")) return "/kds";
+  if (roles.includes("sales")) return "/sales";
+  return "/admin";
+}
 
 function AuthPage() {
   const navigate = useNavigate();
@@ -26,8 +36,9 @@ function AuthPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    void supabase.auth.getUser().then(({ data }) => {
-      if (data.user) void navigate({ to: "/kds", replace: true });
+    void supabase.auth.getUser().then(async ({ data }) => {
+      if (!data.user) return;
+      void navigate({ to: await landingPath(data.user.id), replace: true });
     });
   }, [navigate]);
 
@@ -35,14 +46,15 @@ function AuthPage() {
     event.preventDefault();
     setBusy(true);
     setError(null);
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
     setBusy(false);
-    if (signInError) {
+    if (signInError || !data.user) {
       setError("بيانات الدخول غير صحيحة · Invalid email or password");
       return;
     }
-    void navigate({ to: "/kds", replace: true });
+    void navigate({ to: await landingPath(data.user.id), replace: true });
   };
+
 
   return (
     <main dir="rtl" className="grid min-h-dvh place-items-center bg-background px-4 py-10">
