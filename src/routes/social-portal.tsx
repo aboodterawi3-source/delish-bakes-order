@@ -2,7 +2,7 @@ import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, Check, ClipboardCopy, Loader2, LogOut, Send, Sparkles } from "lucide-react";
+import { AlertTriangle, Check, ClipboardCopy, Loader2, LogOut, MessageCircle, Send, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   createSocialOrder,
@@ -46,6 +46,11 @@ const emptyForm = {
 };
 
 const jd = (value: number) => `${value.toFixed(2)} د.أ`;
+
+/** Official Delish store WhatsApp number (international format, no "+"). */
+const WHATSAPP_NUMBER = "962779179995";
+/** Universal share link — uses wa.me directly, no API endpoints or iframes. */
+const whatsappUrl = (text: string) => `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`;
 
 function SocialPortalPage() {
   const navigate = useNavigate();
@@ -104,12 +109,38 @@ function SocialPortalPage() {
   });
 
   const copy = useCallback(async () => {
+    // Primary: async Clipboard API. Fallback: hidden textarea + execCommand
+    // for browsers/contexts where clipboard.writeText is blocked.
+    const legacyCopy = () => {
+      const area = document.createElement("textarea");
+      area.value = summary;
+      area.setAttribute("readonly", "");
+      area.style.position = "fixed";
+      area.style.insetInlineStart = "-9999px";
+      document.body.appendChild(area);
+      area.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(area);
+      if (!ok) throw new Error("copy failed");
+    };
     try {
-      await navigator.clipboard.writeText(summary);
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(summary);
+      } else {
+        legacyCopy();
+      }
       setCopied(true);
+      setError(null);
       window.setTimeout(() => setCopied(false), 2500);
     } catch {
-      setError("تعذّر النسخ · Copy failed");
+      try {
+        legacyCopy();
+        setCopied(true);
+        setError(null);
+        window.setTimeout(() => setCopied(false), 2500);
+      } catch {
+        setError("تعذّر النسخ · Copy failed — حدّد النص من المعاينة وانسخه يدوياً");
+      }
     }
   }, [summary]);
 
@@ -355,6 +386,16 @@ function SocialPortalPage() {
               {copied ? <Check className="h-4 w-4" aria-hidden="true" /> : <ClipboardCopy className="h-4 w-4" aria-hidden="true" />}
               {copied ? "تم النسخ" : "نسخ رسالة واتساب"}
             </button>
+            <a
+              href={whatsappUrl(summary)}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="فتح واتساب المحل مع نص الطلب"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#25D366] px-5 text-sm font-bold text-[#0B1F12] transition-opacity hover:opacity-90"
+            >
+              <MessageCircle className="h-4 w-4" aria-hidden="true" />
+              فتح واتساب · +962 77 917 9995
+            </a>
           </div>
         </form>
 
