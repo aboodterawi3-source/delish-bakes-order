@@ -1,10 +1,9 @@
 import { useId, useRef, useState } from "react";
-import { Minus, Plus, Trash2, X } from "lucide-react";
+import { CheckCircle2, Minus, Plus, Trash2, X } from "lucide-react";
 import { DELIVERY_FEE, WHATSAPP } from "@/lib/menu";
 import { useCart } from "@/lib/cart";
 import { useLang } from "@/lib/i18n";
 import { useDismissable } from "@/lib/a11y";
-import { appendOrder, newOrderId, type Order } from "@/lib/orders";
 import { useServerFn } from "@tanstack/react-start";
 import { submitStorefrontOrder } from "@/lib/storefront-order.functions";
 
