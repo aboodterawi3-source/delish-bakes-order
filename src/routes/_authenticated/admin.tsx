@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { memo, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
