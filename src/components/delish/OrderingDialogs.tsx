@@ -43,7 +43,7 @@ function QuickShop({ onCart }: { onCart: () => void }) {
 
   const addProduct = (product: Product) => {
     const qty = quantities[product.id] ?? 1;
-    add({ ar: product.ar, en: product.en, unit: product.price, qty, image: imageSets[product.image]?.src, detailsAr: [], detailsEn: [] });
+    add({ ar: product.ar, en: product.en, unit: product.price, qty, image: imageSets[product.image]?.src, detailsAr: [], detailsEn: [], spec: { kind: "catalog", productId: product.id } });
   };
 
   return (

@@ -48,6 +48,12 @@ export function ProductModal({ product, onClose }: { product: Product | null; on
       en: product.en,
       unit,
       qty,
+      spec: {
+        kind: "catalog",
+        productId: product.id,
+        sizeId: size?.id,
+        flavorId: flavor?.id,
+      },
       image: imageSets[product.image]!.src,
       detailsAr: [size ? `${t_ar("size")}: ${size.ar}` : "", flavor ? `${t_ar("flavor")}: ${flavor.ar}` : ""].filter(
         Boolean,

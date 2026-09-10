@@ -1,4 +1,5 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import type { LineSpec } from "@/lib/order-pricing";
 
 export type CartLine = {
   key: string;
@@ -11,6 +12,8 @@ export type CartLine = {
   detailsAr: string[];
   detailsEn: string[];
   notes?: string | undefined;
+  /** Trusted description of the choice; the server re-prices from this. */
+  spec: LineSpec;
 };
 
 
