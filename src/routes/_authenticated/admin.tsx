@@ -635,6 +635,13 @@ function StaffPanel() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
+  // The server refuses to delete the signed-in admin, so hide that action instead of erroring.
+  const me = useQuery({
+    queryKey: ["admin", "me"],
+    queryFn: async () => (await supabase.auth.getUser()).data.user?.id ?? null,
+    staleTime: 5 * 60_000,
+  });
+
   const invalidate = () => void queryClient.invalidateQueries({ queryKey: ["admin", "staff"] });
   const handleError = (caught: Error) => {
     setNotice(null);
