@@ -310,7 +310,6 @@ function SalesPage() {
       {selected ? (
         <OrderPanel
           order={selected}
-          busy={patch.isPending}
           onClose={() => setSelectedId(null)}
           onPatch={(input) => patch.mutate({ ...input, orderId: selected.id })}
           onCancel={() => {
@@ -475,13 +474,11 @@ const OrderCard = memo(function OrderCard({
 function OrderPanel({
 
   order,
-  busy,
   onClose,
   onPatch,
   onCancel,
 }: {
   order: SalesOrder;
-  busy: boolean;
   onClose: () => void;
   onPatch: (input: Omit<OrderPatch, "orderId">) => void;
   onCancel: () => void;
@@ -523,7 +520,6 @@ function OrderPanel({
               <button
                 key={status}
                 type="button"
-                disabled={busy}
                 onClick={() => onPatch({ status })}
                 aria-pressed={order.status === status}
                 className={`min-h-12 rounded-full px-4 text-xs font-bold ${order.status === status ? statusMeta[status].chip : "border border-border text-foreground"}`}
@@ -534,7 +530,7 @@ function OrderPanel({
           </div>
           <div className="mt-2 flex flex-wrap gap-2">
             {next ? (
-              <button type="button" disabled={busy} onClick={() => onPatch({ status: next })} className="min-h-12 flex-1 rounded-full bg-primary px-4 text-sm font-bold text-primary-foreground">
+              <button type="button" onClick={() => onPatch({ status: next })} className="min-h-12 flex-1 rounded-full bg-primary px-4 text-sm font-bold text-primary-foreground">
                 نقل إلى: {statusMeta[next].ar}
               </button>
             ) : null}
@@ -552,7 +548,6 @@ function OrderPanel({
           <div className="mt-2 flex gap-2">
             <button
               type="button"
-              disabled={busy}
               onClick={() => onPatch({ method: "pickup", delivery_fee: 0 })}
               aria-pressed={order.method === "pickup"}
               className={`min-h-12 flex-1 rounded-full px-4 text-sm font-bold ${order.method === "pickup" ? "bg-primary text-primary-foreground" : "border border-border text-foreground"}`}
@@ -561,7 +556,6 @@ function OrderPanel({
             </button>
             <button
               type="button"
-              disabled={busy}
               onClick={() => onPatch({ method: "delivery" })}
               aria-pressed={order.method === "delivery"}
               className={`min-h-12 flex-1 rounded-full px-4 text-sm font-bold ${order.method === "delivery" ? "bg-primary text-primary-foreground" : "border border-border text-foreground"}`}
@@ -636,7 +630,6 @@ function OrderPanel({
               <button
                 key={method}
                 type="button"
-                disabled={busy}
                 onClick={() => onPatch({ payment_method: method })}
                 aria-pressed={order.payment_method === method}
                 className={`min-h-12 flex-1 rounded-full px-3 text-sm font-bold ${order.payment_method === method ? "bg-primary text-primary-foreground" : "border border-border text-foreground"}`}
