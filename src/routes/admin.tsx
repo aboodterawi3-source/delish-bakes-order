@@ -576,7 +576,7 @@ function OrderDialog({
             href={waUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[#128C3C] px-5 text-sm font-bold text-white"
+            className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-whatsapp px-5 text-sm font-bold text-whatsapp-foreground"
           >
             <ExternalLink className="h-4 w-4" aria-hidden="true" />
             إرسال تحديث «{statusMeta[order.status].ar}» عبر واتساب

@@ -331,7 +331,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
               <>
                 <button
                   onClick={send}
-                  className="min-h-12 w-full rounded-full bg-[#128C3C] py-3.5 text-sm font-bold text-white transition-transform hover:scale-[1.01]"
+                  className="min-h-12 w-full rounded-full bg-whatsapp py-3.5 text-sm font-bold text-whatsapp-foreground transition-transform hover:scale-[1.01]"
                 >
                   {t("sendWhats")}
                 </button>

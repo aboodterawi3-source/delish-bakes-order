@@ -176,6 +176,8 @@
   --gold-deep: oklch(0.62 0.13 76);
   --gold-light: oklch(0.9 0.08 88);
   --cocoa: oklch(0.24 0.045 263);
+  --whatsapp: oklch(0.56 0.16 148);
+  --whatsapp-foreground: oklch(1 0 0);
   --hero-blue: oklch(0.91 0.052 226);
   --hero-blue-deep: oklch(0.86 0.072 225);
   --gradient-gold: linear-gradient(120deg, oklch(0.62 0.13 76), oklch(0.78 0.13 88), oklch(0.9 0.08 88), oklch(0.62 0.13 76));
@@ -190,6 +192,8 @@
   --color-gold-deep: var(--gold-deep);
   --color-gold-light: var(--gold-light);
   --color-cocoa: var(--cocoa);
+  --color-whatsapp: var(--whatsapp);
+  --color-whatsapp-foreground: var(--whatsapp-foreground);
   --font-display: "Playfair Display", "Amiri", Georgia, serif;
   --font-sans: "Cairo", "Inter", ui-sans-serif, system-ui, sans-serif;
 }
