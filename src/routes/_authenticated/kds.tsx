@@ -254,6 +254,69 @@ function KdsPage() {
         {!orders.isLoading && visible.length === 0 && (
           <p className="p-10 text-center text-sm text-primary-foreground/55 sm:col-span-2 xl:col-span-3">لا توجد طلبات لهذا اليوم</p>
         )}
+        {visible.map((order) => (
+          <KdsCard
+            key={order.id}
+            order={order}
+            busy={pending === order.id}
+            onReady={onReady}
+            onZoom={setZoom}
+          />
+        ))}
+      </main>
+    );
+  }
+
+  return (
+    <div dir="rtl" className="min-h-dvh bg-foreground text-primary-foreground">
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-primary-foreground/15 px-4 py-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-primary"><ChefHat className="h-6 w-6" /></span>
+          <div className="min-w-0">
+            <h1 className="truncate font-display text-xl font-bold sm:text-2xl">شاشة المطبخ</h1>
+            <p className="text-xs text-primary-foreground/65">{visible.length} طلب للتجهيز · Kitchen Display</p>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={startShift}
+            disabled={shiftOn}
+            className="inline-flex min-h-12 items-center gap-2 rounded-full bg-primary px-4 text-sm font-bold disabled:opacity-70"
+          >
+            <Bell className="h-4 w-4" />
+            {shiftOn ? "الوردية جارية 🔔" : "بدء وردية المطبخ 🔔"}
+          </button>
+          <button type="button" onClick={() => orders.refetch()} aria-label="تحديث" className="grid h-12 w-12 place-items-center rounded-full border border-primary-foreground/25">
+            <RefreshCw className="h-5 w-5" />
+          </button>
+          <button type="button" onClick={signOut} aria-label="تسجيل الخروج" className="grid h-12 w-12 place-items-center rounded-full border border-primary-foreground/25">
+            <LogOut className="h-5 w-5" />
+          </button>
+        </div>
+      </header>
+
+      <div className="flex gap-2 overflow-x-auto px-4 py-3">
+        {(Object.keys(filterMeta) as Filter[]).map((key) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setFilter(key)}
+            aria-pressed={filter === key}
+            className={`min-h-12 shrink-0 rounded-full px-4 text-sm font-bold transition-colors ${
+              filter === key ? "bg-primary text-primary-foreground" : "border border-primary-foreground/25 text-primary-foreground/80"
+            }`}
+          >
+            {filterMeta[key].ar}
+          </button>
+        ))}
+      </div>
+
+      <main className="grid gap-3 px-3 pb-8 sm:grid-cols-2 xl:grid-cols-3">
+        {orders.isLoading && <p className="p-6 text-sm text-primary-foreground/60">جارٍ تحميل الطلبات…</p>}
+        {!orders.isLoading && visible.length === 0 && (
+          <p className="p-10 text-center text-sm text-primary-foreground/55 sm:col-span-2 xl:col-span-3">لا توجد طلبات لهذا اليوم</p>
+        )}
         {visible.map((order) => {
           const tier = orderTier(order);
           const meta = tierMeta[tier];
@@ -319,3 +382,70 @@ function KdsPage() {
     </div>
   );
 }
+
+/** Memoized so a single status flip never repaints the whole board. */
+const KdsCard = memo(function KdsCard({
+  order,
+  busy,
+  onReady,
+  onZoom,
+}: {
+  order: KdsOrder;
+  busy: boolean;
+  onReady: (id: string) => void;
+  onZoom: (url: string) => void;
+}) {
+  const meta = tierMeta[orderTier(order)];
+  return (
+    <article className={`rounded-2xl border border-border p-4 text-card-foreground shadow-[var(--shadow-soft)] ${meta.card}`}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <h2 className="truncate font-bold">{order.order_number} · {order.customer_name}</h2>
+          <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+            <Clock3 className="h-3.5 w-3.5" />
+            {order.requested_date} · {order.requested_time.slice(0, 5)} · {order.method === "delivery" ? "توصيل" : "استلام"}
+          </p>
+        </div>
+        <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold ${meta.chip}`}>{meta.ar}</span>
+      </div>
+
+      <ul className="mt-3 space-y-3 border-y border-border/70 py-3">
+        {order.items.map((item) => (
+          <li key={item.id}>
+            <p className="text-sm font-bold">{item.quantity}× {item.name_ar}</p>
+            <p className="text-xs text-muted-foreground">{item.name_en}</p>
+            {item.options_ar.map((option) => (
+              <p key={option} className="mt-0.5 text-xs text-muted-foreground">• {option}</p>
+            ))}
+            {item.notes && <p className="mt-1 text-xs font-bold">ملاحظة: {item.notes}</p>}
+          </li>
+        ))}
+      </ul>
+
+      {order.inscription && (
+        <p className="mt-3 rounded-lg bg-secondary p-2 text-xs font-bold text-secondary-foreground">الكتابة: {order.inscription}</p>
+      )}
+
+      {order.design_image_url && (
+        <button
+          type="button"
+          onClick={() => onZoom(order.design_image_url as string)}
+          className="mt-3 block w-full overflow-hidden rounded-xl border border-border"
+        >
+          <img src={order.design_image_url} alt={`صورة تصميم الطلب ${order.order_number}`} loading="lazy" className="h-36 w-full object-cover" />
+          <span className="block bg-secondary py-2 text-xs font-bold text-secondary-foreground">تكبير الصورة · Zoom</span>
+        </button>
+      )}
+
+      <button
+        type="button"
+        onClick={() => onReady(order.id)}
+        disabled={busy || order.status === "ready"}
+        className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 text-sm font-bold text-primary-foreground disabled:opacity-60"
+      >
+        <CheckCircle2 className="h-4 w-4" />
+        {order.status === "ready" ? "جاهز ✓ Ready" : "تم التجهيز · Mark as Ready"}
+      </button>
+    </article>
+  );
+});
