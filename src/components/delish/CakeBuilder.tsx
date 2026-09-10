@@ -72,7 +72,7 @@ export function CakeBuilder({ onDone }: { onDone: () => void }) {
           sizes="(min-width: 768px) 460px, 92vw"
           className="aspect-square w-full object-cover"
         />
-        <div className="absolute bottom-0 start-0 end-0 bg-gradient-to-t from-cocoa/85 to-transparent p-4">
+        <div className="absolute bottom-0 start-0 end-0 bg-gradient-to-t from-primary/90 to-transparent p-4">
           <p className="font-display text-lg text-primary-foreground">{label(size)}</p>
           <p className="text-xs text-primary-foreground/80">
             {label(flavor)} · {label(filling)} · {label(frosting)}

@@ -143,35 +143,35 @@
   }
 }
 
-/* ── Delish brand theme (gold · cocoa · cream) ─────────────────────────── */
+/* ── Delish interior theme (powder blue · white · warm gold) ───────────── */
 :root {
   --radius: 1rem;
-  --background: oklch(0.985 0.012 85);
-  --foreground: oklch(0.245 0.035 55);
-  --card: oklch(1 0.004 85);
-  --card-foreground: oklch(0.245 0.035 55);
-  --popover: oklch(0.995 0.006 85);
-  --popover-foreground: oklch(0.245 0.035 55);
-  --primary: oklch(0.29 0.045 55);
-  --primary-foreground: oklch(0.98 0.015 85);
-  --secondary: oklch(0.955 0.025 85);
-  --secondary-foreground: oklch(0.32 0.045 60);
-  --muted: oklch(0.955 0.02 85);
-  --muted-foreground: oklch(0.52 0.035 60);
-  --accent: oklch(0.78 0.13 85);
-  --accent-foreground: oklch(0.24 0.04 55);
+  --background: oklch(0.985 0.006 195);
+  --foreground: oklch(0.29 0.03 210);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.29 0.03 210);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.29 0.03 210);
+  --primary: oklch(0.36 0.045 210);
+  --primary-foreground: oklch(0.99 0.002 195);
+  --secondary: oklch(0.935 0.03 200);
+  --secondary-foreground: oklch(0.3 0.04 210);
+  --muted: oklch(0.955 0.018 200);
+  --muted-foreground: oklch(0.48 0.035 210);
+  --accent: oklch(0.61 0.105 78);
+  --accent-foreground: oklch(0.24 0.025 210);
   --destructive: oklch(0.55 0.19 27);
-  --destructive-foreground: oklch(0.98 0.01 85);
-  --border: oklch(0.9 0.025 85);
-  --input: oklch(0.9 0.025 85);
-  --ring: oklch(0.78 0.13 85);
-  --gold: oklch(0.78 0.13 85);
-  --gold-deep: oklch(0.62 0.12 75);
-  --gold-light: oklch(0.9 0.08 90);
-  --cocoa: oklch(0.29 0.045 55);
+  --destructive-foreground: oklch(0.99 0 0);
+  --border: oklch(0.88 0.025 200);
+  --input: oklch(0.84 0.03 200);
+  --ring: oklch(0.61 0.105 78);
+  --gold: oklch(0.67 0.11 78);
+  --gold-deep: oklch(0.54 0.105 75);
+  --gold-light: oklch(0.88 0.075 85);
+  --cocoa: oklch(0.3 0.04 210);
   --gradient-gold: linear-gradient(120deg, var(--gold-deep), var(--gold), var(--gold-light), var(--gold-deep));
-  --shadow-soft: 0 8px 20px -12px oklch(0.29 0.045 55 / 0.32);
-  --shadow-gold: 0 8px 18px -10px oklch(0.62 0.12 75 / 0.4);
+  --shadow-soft: 0 8px 20px -12px oklch(0.36 0.045 210 / 0.22);
+  --shadow-gold: 0 8px 18px -10px oklch(0.54 0.105 75 / 0.32);
 }
 
 @theme inline {

@@ -5,10 +5,10 @@ export type OrderStatus = "new" | "confirmed" | "baking" | "ready" | "delivered"
 
 export const statusMeta: Record<OrderStatus, { ar: string; en: string; dot: string }> = {
   new: { ar: "طلب جديد", en: "New", dot: "bg-gold" },
-  confirmed: { ar: "مؤكّد", en: "Confirmed", dot: "bg-sky-600" },
-  baking: { ar: "قيد التحضير", en: "Baking", dot: "bg-amber-700" },
-  ready: { ar: "جاهز", en: "Ready", dot: "bg-emerald-700" },
-  delivered: { ar: "تم التسليم", en: "Delivered", dot: "bg-cocoa" },
+  confirmed: { ar: "مؤكّد", en: "Confirmed", dot: "bg-primary" },
+  baking: { ar: "قيد التحضير", en: "Baking", dot: "bg-gold-deep" },
+  ready: { ar: "جاهز", en: "Ready", dot: "bg-accent" },
+  delivered: { ar: "تم التسليم", en: "Delivered", dot: "bg-muted-foreground" },
 };
 
 export const statusOrder: OrderStatus[] = ["new", "confirmed", "baking", "ready", "delivered"];

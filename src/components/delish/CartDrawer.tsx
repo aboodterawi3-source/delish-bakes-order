@@ -129,7 +129,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-cocoa/70">
+    <div className="fixed inset-0 z-50 flex justify-end bg-primary/75">
       <button
         type="button"
         aria-label={lang === "ar" ? "إغلاق السلة" : "Close cart"}

@@ -188,7 +188,7 @@ function Delish() {
           sizes="100vw"
           className="absolute inset-0 h-full w-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-cocoa/95 via-cocoa/70 to-cocoa/40" />
+        <div className="absolute inset-0 bg-gradient-to-t from-primary/95 via-primary/70 to-primary/35" />
         <div className="relative mx-auto max-w-6xl px-5 py-20 text-center sm:py-28">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-gold/50 px-3 py-1 text-[11px] font-semibold tracking-wide text-gold-light">
             <Sparkles className="h-3.5 w-3.5" /> {t("brandTag")}
@@ -286,7 +286,7 @@ function Delish() {
       </section>
 
       {/* About */}
-      <section id="about" className="bg-cocoa py-14 text-primary-foreground">
+      <section id="about" className="bg-primary py-14 text-primary-foreground">
         <div className="mx-auto max-w-3xl px-5 text-center">
           <img
             src={logo.url}
@@ -306,7 +306,7 @@ function Delish() {
       <footer id="contact" className="border-t border-border bg-card py-12">
         <div className="mx-auto grid max-w-6xl gap-8 px-5 sm:grid-cols-3">
           <div>
-            <h2 className="font-display text-lg font-semibold">Delish Cake &amp; Bake</h2>
+            <h2 className="font-display text-lg font-bold text-gold-deep">Delish Cake &amp; Bake</h2>
             <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{t("brandTag")}</p>
           </div>
           <div className="space-y-2 text-sm">
