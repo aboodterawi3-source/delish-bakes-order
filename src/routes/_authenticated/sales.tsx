@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
 import { useServerFn } from "@tanstack/react-start";
 import {
   BadgeDollarSign,
@@ -15,6 +16,8 @@ import {
   X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { useOrdersRealtime } from "@/hooks/use-orders-realtime";
 import {
   getSalesAccess,
   getSalesOrders,
@@ -26,6 +29,7 @@ import {
   type SalesStatus,
   type ShiftReport,
 } from "@/lib/sales.functions";
+
 
 export const Route = createFileRoute("/_authenticated/sales")({
   head: () => ({
@@ -99,7 +103,25 @@ ${order.inscription ? `<div>الكتابة: ${order.inscription}</div>` : ""}
   win.document.close();
 }
 
+const ORDERS_KEY = ["sales-orders"] as const;
+
+/** Mirrors the server update locally so the card repaints in the same frame. */
+function applyPatch(order: SalesOrder, input: OrderPatch): SalesOrder {
+  const next: SalesOrder = { ...order };
+  if (input.status !== undefined) next.status = input.status;
+  if (input.cancel_reason !== undefined) next.cancel_reason = input.cancel_reason;
+  if (input.method !== undefined) next.method = input.method;
+  if (input.delivery_fee !== undefined) next.delivery_fee = input.delivery_fee;
+  if (input.driver_name !== undefined) next.driver_name = input.driver_name;
+  if (input.driver_phone !== undefined) next.driver_phone = input.driver_phone;
+  if (input.deposit_paid !== undefined) next.deposit_paid = input.deposit_paid;
+  if (input.payment_method !== undefined) next.payment_method = input.payment_method;
+  next.total = next.subtotal + (next.method === "delivery" ? next.delivery_fee : 0);
+  return next;
+}
+
 function SalesPage() {
+
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const accessFn = useServerFn(getSalesAccess);
@@ -108,6 +130,7 @@ function SalesPage() {
   const reportFn = useServerFn(getShiftReport);
 
   const [term, setTerm] = useState("");
+  const search = useDebouncedValue(term, 180);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [cancelFor, setCancelFor] = useState<SalesOrder | null>(null);
   const [cancelReason, setCancelReason] = useState("");
@@ -115,34 +138,42 @@ function SalesPage() {
   const [shiftDate, setShiftDate] = useState(todayIso);
   const [report, setReport] = useState<ShiftReport | null>(null);
 
-  const access = useQuery({ queryKey: ["sales-access"], queryFn: () => accessFn({}) });
+  const access = useQuery({
+    queryKey: ["sales-access"],
+    queryFn: () => accessFn({}),
+    staleTime: 5 * 60_000,
+  });
+  const allowed = access.data?.allowed === true;
   const orders = useQuery({
-    queryKey: ["sales-orders"],
+    queryKey: ORDERS_KEY,
     queryFn: () => ordersFn({}),
-    enabled: access.data?.allowed === true,
-    refetchInterval: 8000,
+    enabled: allowed,
+    // Realtime carries the updates; polling is only a safety net.
+    refetchInterval: 30_000,
+    staleTime: 10_000,
   });
 
+  /** Status / payment / fulfilment edits land in the UI immediately, then reconcile. */
   const patch = useMutation({
     mutationFn: (input: OrderPatch) => updateFn({ data: input }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["sales-orders"] }),
+    onMutate: (input) => {
+      const previous = queryClient.getQueryData<SalesOrder[]>(ORDERS_KEY);
+      queryClient.setQueryData<SalesOrder[]>(ORDERS_KEY, (rows) =>
+        (rows ?? []).map((order) => (order.id === input.orderId ? applyPatch(order, input) : order)),
+      );
+      return { previous };
+    },
+    onError: (_error, _input, ctx) => {
+      if (ctx?.previous) queryClient.setQueryData(ORDERS_KEY, ctx.previous);
+    },
+    onSuccess: (row) => {
+      queryClient.setQueryData<SalesOrder[]>(ORDERS_KEY, (rows) =>
+        (rows ?? []).map((order) => (order.id === row.id ? row : order)),
+      );
+    },
   });
 
-  useEffect(() => {
-    if (access.data?.allowed !== true) return;
-    const refresh = () => {
-      void queryClient.invalidateQueries({ queryKey: ["sales-orders"] });
-    };
-    const channel = supabase
-      .channel("sales-orders-live")
-      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, refresh)
-      .on("postgres_changes", { event: "*", schema: "public", table: "order_items" }, refresh)
-      .subscribe();
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [access.data?.allowed, queryClient]);
-
+  useOrdersRealtime(ORDERS_KEY, allowed, "sales-orders-live");
 
   useEffect(() => {
     if (!cancelFor && !shiftOpen && !selectedId) return;
@@ -157,7 +188,7 @@ function SalesPage() {
   }, [cancelFor, shiftOpen, selectedId]);
 
   const list = useMemo(() => {
-    const needle = term.trim().toLowerCase();
+    const needle = search.trim().toLowerCase();
     const rows = orders.data ?? [];
     if (!needle) return rows;
     return rows.filter((order) =>
@@ -166,17 +197,21 @@ function SalesPage() {
         .toLowerCase()
         .includes(needle),
     );
-  }, [orders.data, term]);
+  }, [orders.data, search]);
+
 
   const selected = useMemo(
     () => (orders.data ?? []).find((order) => order.id === selectedId) ?? null,
     [orders.data, selectedId],
   );
 
+  const openOrder = useCallback((id: string) => setSelectedId(id), []);
+
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
     void navigate({ to: "/auth", replace: true });
   }, [navigate]);
+
 
   const runReport = useCallback(async () => {
     setReport(await reportFn({ data: { date: shiftDate } }));
@@ -264,63 +299,17 @@ function SalesPage() {
           <p className="py-10 text-center text-sm text-muted-foreground">لا توجد طلبات مطابقة</p>
         ) : (
           <ul className="grid gap-3">
-            {list.map((order) => {
-              const remaining = Math.max(order.total - order.deposit_paid, 0);
-              return (
-                <li key={order.id} className="rounded-2xl border border-border bg-card p-4">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusMeta[order.status].chip}`}>
-                      {statusMeta[order.status].ar}
-                    </span>
-                    <span className="font-display text-base font-bold text-foreground">{order.order_number}</span>
-                    <span className="text-sm text-foreground">{order.customer_name}</span>
-                    <span dir="ltr" className="text-sm text-muted-foreground">{order.customer_phone}</span>
-                    <span className="ms-auto inline-flex items-center gap-1 text-xs text-muted-foreground">
-                      <CalendarClock className="h-4 w-4" aria-hidden="true" />
-                      {order.requested_date} · {order.requested_time.slice(0, 5)}
-                    </span>
-                  </div>
-
-                  <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-                    <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-3 py-1 font-bold text-secondary-foreground">
-                      {order.method === "delivery" ? <Bike className="h-3.5 w-3.5" aria-hidden="true" /> : <Store className="h-3.5 w-3.5" aria-hidden="true" />}
-                      {order.method === "delivery" ? "توصيل" : "استلام من المحل"}
-                    </span>
-                    <span className="text-muted-foreground">الإجمالي {jd(order.total)}</span>
-                    <span className="text-muted-foreground">مدفوع {jd(order.deposit_paid)}</span>
-                    <span className={remaining > 0 ? "font-bold text-destructive" : "font-bold text-foreground"}>
-                      المتبقي {jd(remaining)}
-                    </span>
-                    {order.payment_method ? <span className="text-muted-foreground">{payMeta[order.payment_method].ar}</span> : null}
-                  </div>
-
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedId(order.id)}
-                      className="min-h-12 rounded-full bg-primary px-5 text-sm font-bold text-primary-foreground"
-                    >
-                      إدارة الطلب
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => printReceipt(order)}
-                      className="inline-flex min-h-12 items-center gap-2 rounded-full border border-primary px-5 text-sm font-bold text-primary"
-                    >
-                      <Printer className="h-4 w-4" aria-hidden="true" /> طباعة حرارية
-                    </button>
-                  </div>
-                </li>
-              );
-            })}
+            {list.map((order) => (
+              <OrderCard key={order.id} order={order} onOpen={openOrder} />
+            ))}
           </ul>
+
         )}
       </div>
 
       {selected ? (
         <OrderPanel
           order={selected}
-          busy={patch.isPending}
           onClose={() => setSelectedId(null)}
           onPatch={(input) => patch.mutate({ ...input, orderId: selected.id })}
           onCancel={() => {
@@ -425,15 +414,70 @@ function SalesPage() {
   );
 }
 
+/** Only repaints when its own order object changes. */
+const OrderCard = memo(function OrderCard({
+  order,
+  onOpen,
+}: {
+  order: SalesOrder;
+  onOpen: (id: string) => void;
+}) {
+  const remaining = Math.max(order.total - order.deposit_paid, 0);
+  return (
+    <li className="rounded-2xl border border-border bg-card p-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusMeta[order.status].chip}`}>
+          {statusMeta[order.status].ar}
+        </span>
+        <span className="font-display text-base font-bold text-foreground">{order.order_number}</span>
+        <span className="text-sm text-foreground">{order.customer_name}</span>
+        <span dir="ltr" className="text-sm text-muted-foreground">{order.customer_phone}</span>
+        <span className="ms-auto inline-flex items-center gap-1 text-xs text-muted-foreground">
+          <CalendarClock className="h-4 w-4" aria-hidden="true" />
+          {order.requested_date} · {order.requested_time.slice(0, 5)}
+        </span>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+        <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-3 py-1 font-bold text-secondary-foreground">
+          {order.method === "delivery" ? <Bike className="h-3.5 w-3.5" aria-hidden="true" /> : <Store className="h-3.5 w-3.5" aria-hidden="true" />}
+          {order.method === "delivery" ? "توصيل" : "استلام من المحل"}
+        </span>
+        <span className="text-muted-foreground">الإجمالي {jd(order.total)}</span>
+        <span className="text-muted-foreground">مدفوع {jd(order.deposit_paid)}</span>
+        <span className={remaining > 0 ? "font-bold text-destructive" : "font-bold text-foreground"}>
+          المتبقي {jd(remaining)}
+        </span>
+        {order.payment_method ? <span className="text-muted-foreground">{payMeta[order.payment_method].ar}</span> : null}
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => onOpen(order.id)}
+          className="min-h-12 rounded-full bg-primary px-5 text-sm font-bold text-primary-foreground"
+        >
+          إدارة الطلب
+        </button>
+        <button
+          type="button"
+          onClick={() => printReceipt(order)}
+          className="inline-flex min-h-12 items-center gap-2 rounded-full border border-primary px-5 text-sm font-bold text-primary"
+        >
+          <Printer className="h-4 w-4" aria-hidden="true" /> طباعة حرارية
+        </button>
+      </div>
+    </li>
+  );
+});
+
 function OrderPanel({
   order,
-  busy,
   onClose,
   onPatch,
   onCancel,
 }: {
   order: SalesOrder;
-  busy: boolean;
   onClose: () => void;
   onPatch: (input: Omit<OrderPatch, "orderId">) => void;
   onCancel: () => void;
@@ -443,12 +487,15 @@ function OrderPanel({
   const [driverName, setDriverName] = useState(order.driver_name ?? "");
   const [driverPhone, setDriverPhone] = useState(order.driver_phone ?? "");
 
+  // Reset the local fields only when a different order opens, never while typing.
   useEffect(() => {
     setFee(String(order.delivery_fee));
     setDeposit(String(order.deposit_paid));
     setDriverName(order.driver_name ?? "");
     setDriverPhone(order.driver_phone ?? "");
-  }, [order]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [order.id]);
+
 
   const liveTotal = order.subtotal + (order.method === "delivery" ? Number(fee) || 0 : 0);
   const remaining = Math.max(liveTotal - (Number(deposit) || 0), 0);
@@ -475,7 +522,6 @@ function OrderPanel({
               <button
                 key={status}
                 type="button"
-                disabled={busy}
                 onClick={() => onPatch({ status })}
                 aria-pressed={order.status === status}
                 className={`min-h-12 rounded-full px-4 text-xs font-bold ${order.status === status ? statusMeta[status].chip : "border border-border text-foreground"}`}
@@ -486,7 +532,7 @@ function OrderPanel({
           </div>
           <div className="mt-2 flex flex-wrap gap-2">
             {next ? (
-              <button type="button" disabled={busy} onClick={() => onPatch({ status: next })} className="min-h-12 flex-1 rounded-full bg-primary px-4 text-sm font-bold text-primary-foreground">
+              <button type="button" onClick={() => onPatch({ status: next })} className="min-h-12 flex-1 rounded-full bg-primary px-4 text-sm font-bold text-primary-foreground">
                 نقل إلى: {statusMeta[next].ar}
               </button>
             ) : null}
@@ -504,7 +550,6 @@ function OrderPanel({
           <div className="mt-2 flex gap-2">
             <button
               type="button"
-              disabled={busy}
               onClick={() => onPatch({ method: "pickup", delivery_fee: 0 })}
               aria-pressed={order.method === "pickup"}
               className={`min-h-12 flex-1 rounded-full px-4 text-sm font-bold ${order.method === "pickup" ? "bg-primary text-primary-foreground" : "border border-border text-foreground"}`}
@@ -513,7 +558,6 @@ function OrderPanel({
             </button>
             <button
               type="button"
-              disabled={busy}
               onClick={() => onPatch({ method: "delivery" })}
               aria-pressed={order.method === "delivery"}
               className={`min-h-12 flex-1 rounded-full px-4 text-sm font-bold ${order.method === "delivery" ? "bg-primary text-primary-foreground" : "border border-border text-foreground"}`}
@@ -588,7 +632,6 @@ function OrderPanel({
               <button
                 key={method}
                 type="button"
-                disabled={busy}
                 onClick={() => onPatch({ payment_method: method })}
                 aria-pressed={order.payment_method === method}
                 className={`min-h-12 flex-1 rounded-full px-3 text-sm font-bold ${order.payment_method === method ? "bg-primary text-primary-foreground" : "border border-border text-foreground"}`}

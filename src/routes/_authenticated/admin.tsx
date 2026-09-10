@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -113,12 +114,17 @@ function AdminPage() {
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<Tab>("analytics");
 
-  const access = useQuery({ queryKey: ["admin", "access"], queryFn: useServerFn(getAdminAccess) });
+  const access = useQuery({
+    queryKey: ["admin", "access"],
+    queryFn: useServerFn(getAdminAccess),
+    staleTime: 5 * 60_000,
+  });
   const analyticsFn = useServerFn(getAdminAnalytics);
   const analytics = useQuery({
     queryKey: ["admin", "analytics"],
     queryFn: analyticsFn,
     enabled: access.data?.allowed === true,
+    staleTime: 30_000,
   });
 
   const signOut = async () => {
@@ -396,11 +402,13 @@ function OrderLogs({ title, rows, showReason }: { title: string; rows: OrderLog[
 
 function CustomerDirectory({ customers }: { customers: { phone: string; name: string; orders: number; spend: number; last_order: string }[] }) {
   const [query, setQuery] = useState("");
+  // Typing stays smooth: filtering runs after the keystrokes settle.
+  const debounced = useDebouncedValue(query, 180);
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = debounced.trim().toLowerCase();
     if (!q) return customers;
     return customers.filter((row) => row.phone.includes(q) || row.name.toLowerCase().includes(q));
-  }, [customers, query]);
+  }, [customers, debounced]);
 
   return (
     <section aria-labelledby="customers-heading" className="space-y-3">
@@ -452,7 +460,11 @@ function CustomerDirectory({ customers }: { customers: { phone: string; name: st
 
 function ProductsPanel() {
   const queryClient = useQueryClient();
-  const products = useQuery({ queryKey: ["admin", "products"], queryFn: useServerFn(listAdminProducts) });
+  const products = useQuery({
+    queryKey: ["admin", "products"],
+    queryFn: useServerFn(listAdminProducts),
+    staleTime: 60_000,
+  });
   const save = useServerFn(saveProduct);
   const remove = useServerFn(deleteProduct);
   const [draft, setDraft] = useState<ProductInput | null>(null);
@@ -607,7 +619,11 @@ function Text({
 
 function StaffPanel() {
   const queryClient = useQueryClient();
-  const staff = useQuery({ queryKey: ["admin", "staff"], queryFn: useServerFn(listStaff) });
+  const staff = useQuery({
+    queryKey: ["admin", "staff"],
+    queryFn: useServerFn(listStaff),
+    staleTime: 60_000,
+  });
   const create = useServerFn(createStaff);
   const reset = useServerFn(resetStaffPassword);
   const role = useServerFn(setStaffRole);

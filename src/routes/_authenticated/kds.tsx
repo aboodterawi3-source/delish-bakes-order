@@ -1,9 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Bell, CheckCircle2, ChefHat, Clock3, LogOut, RefreshCw, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useOrdersRealtime } from "@/hooks/use-orders-realtime";
 import { getKitchenAccess, getKitchenOrders, markOrderReady, type KdsOrder } from "@/lib/kds.functions";
 
 export const Route = createFileRoute("/_authenticated/kds")({
@@ -54,6 +55,8 @@ const isoDate = (offsetDays: number) => {
   return date.toISOString().slice(0, 10);
 };
 
+const ORDERS_KEY = ["kds-orders"] as const;
+
 type Filter = "today" | "tomorrow" | "all";
 
 const filterMeta: Record<Filter, { ar: string; en: string }> = {
@@ -76,14 +79,20 @@ function KdsPage() {
   const audioRef = useRef<AudioContext | null>(null);
   const knownIds = useRef<Set<string> | null>(null);
 
-  const access = useQuery({ queryKey: ["kds-access"], queryFn: () => fetchAccess({}) });
-  const orders = useQuery({
-    queryKey: ["kds-orders"],
-    queryFn: () => fetchOrders({}),
-    refetchInterval: 8000,
-    enabled: access.data?.allowed === true,
+  const access = useQuery({
+    queryKey: ["kds-access"],
+    queryFn: () => fetchAccess({}),
+    staleTime: 5 * 60_000,
   });
-
+  const allowed = access.data?.allowed === true;
+  const orders = useQuery({
+    queryKey: ORDERS_KEY,
+    queryFn: () => fetchOrders({}),
+    // Realtime drives updates; the interval is only a safety net.
+    refetchInterval: 30_000,
+    staleTime: 10_000,
+    enabled: allowed,
+  });
 
   const chime = useCallback(() => {
     const context = audioRef.current;
@@ -100,7 +109,7 @@ function KdsPage() {
     oscillator.stop(context.currentTime + 0.5);
   }, []);
 
-  const startShift = () => {
+  const startShift = useCallback(() => {
     const AudioContextClass =
       window.AudioContext ?? (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!AudioContextClass) return;
@@ -108,7 +117,7 @@ function KdsPage() {
     void audioRef.current.resume();
     setShiftOn(true);
     chime();
-  };
+  }, [chime]);
 
   // New arrivals ring the bell once the shift has started.
   useEffect(() => {
@@ -124,21 +133,7 @@ function KdsPage() {
     if (fresh && shiftOn) chime();
   }, [orders.data, shiftOn, chime]);
 
-  useEffect(() => {
-    if (access.data?.allowed !== true) return;
-    const refresh = () => {
-      void queryClient.invalidateQueries({ queryKey: ["kds-orders"] });
-    };
-    const channel = supabase
-      .channel("kds-orders-live")
-      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, refresh)
-      .on("postgres_changes", { event: "*", schema: "public", table: "order_items" }, refresh)
-      .subscribe();
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [access.data?.allowed, queryClient]);
-
+  useOrdersRealtime(ORDERS_KEY, allowed, "kds-orders-live");
 
   useEffect(() => {
     if (!zoom) return;
@@ -163,34 +158,43 @@ function KdsPage() {
       });
   }, [orders.data, filter]);
 
-  const onReady = async (id: string) => {
-    setPending(id);
-    try {
-      await markReady({ data: { orderId: id } });
-      await queryClient.invalidateQueries({ queryKey: ["kds-orders"] });
-    } finally {
-      setPending(null);
-    }
-  };
+  /** Flips the card to Ready instantly, then confirms with the server. */
+  const onReady = useCallback(
+    async (id: string) => {
+      const previous = queryClient.getQueryData<KdsOrder[]>(ORDERS_KEY);
+      queryClient.setQueryData<KdsOrder[]>(ORDERS_KEY, (rows) =>
+        (rows ?? []).map((order) => (order.id === id ? { ...order, status: "ready" } : order)),
+      );
+      setPending(id);
+      try {
+        await markReady({ data: { orderId: id } });
+      } catch {
+        if (previous) queryClient.setQueryData(ORDERS_KEY, previous);
+      } finally {
+        setPending(null);
+      }
+    },
+    [markReady, queryClient],
+  );
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     await queryClient.cancelQueries();
     queryClient.clear();
     await supabase.auth.signOut();
     void navigate({ to: "/auth", replace: true });
-  };
+  }, [navigate, queryClient]);
 
   if (access.isLoading) {
     return <p dir="rtl" className="grid min-h-dvh place-items-center bg-background text-sm text-muted-foreground">جارٍ التحقق…</p>;
   }
 
-  if (access.data?.allowed !== true) {
+  if (!allowed) {
     return (
       <main dir="rtl" className="grid min-h-dvh place-items-center bg-background px-4 text-center">
         <div className="max-w-sm rounded-3xl border border-border bg-card p-6">
           <h1 className="font-display text-xl font-bold text-foreground">لا تملك صلاحية المطبخ</h1>
           <p className="mt-2 text-sm text-muted-foreground">Your account has no kitchen access. Ask an admin to grant the kitchen role.</p>
-          <button type="button" onClick={signOut} className="mt-5 min-h-12 w-full rounded-full bg-primary px-5 text-sm font-bold text-primary-foreground">
+          <button type="button" onClick={() => void signOut()} className="mt-5 min-h-12 w-full rounded-full bg-primary px-5 text-sm font-bold text-primary-foreground">
             تسجيل الخروج · Sign out
           </button>
         </div>
@@ -218,10 +222,10 @@ function KdsPage() {
             <Bell className="h-4 w-4" />
             {shiftOn ? "الوردية جارية 🔔" : "بدء وردية المطبخ 🔔"}
           </button>
-          <button type="button" onClick={() => orders.refetch()} aria-label="تحديث" className="grid h-12 w-12 place-items-center rounded-full border border-primary-foreground/25">
-            <RefreshCw className="h-5 w-5" />
+          <button type="button" onClick={() => void orders.refetch()} aria-label="تحديث" className="grid h-12 w-12 place-items-center rounded-full border border-primary-foreground/25">
+            <RefreshCw className={`h-5 w-5 ${orders.isFetching ? "animate-spin" : ""}`} />
           </button>
-          <button type="button" onClick={signOut} aria-label="تسجيل الخروج" className="grid h-12 w-12 place-items-center rounded-full border border-primary-foreground/25">
+          <button type="button" onClick={() => void signOut()} aria-label="تسجيل الخروج" className="grid h-12 w-12 place-items-center rounded-full border border-primary-foreground/25">
             <LogOut className="h-5 w-5" />
           </button>
         </div>
@@ -248,58 +252,9 @@ function KdsPage() {
         {!orders.isLoading && visible.length === 0 && (
           <p className="p-10 text-center text-sm text-primary-foreground/55 sm:col-span-2 xl:col-span-3">لا توجد طلبات لهذا اليوم</p>
         )}
-        {visible.map((order) => {
-          const tier = orderTier(order);
-          const meta = tierMeta[tier];
-          return (
-            <article key={order.id} className={`rounded-2xl border border-border p-4 text-card-foreground shadow-[var(--shadow-soft)] ${meta.card}`}>
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <h2 className="truncate font-bold">{order.order_number} · {order.customer_name}</h2>
-                  <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                    <Clock3 className="h-3.5 w-3.5" />
-                    {order.requested_date} · {order.requested_time.slice(0, 5)} · {order.method === "delivery" ? "توصيل" : "استلام"}
-                  </p>
-                </div>
-                <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold ${meta.chip}`}>{meta.ar}</span>
-              </div>
-
-              <ul className="mt-3 space-y-3 border-y border-border/70 py-3">
-                {order.items.map((item) => (
-                  <li key={item.id}>
-                    <p className="text-sm font-bold">{item.quantity}× {item.name_ar}</p>
-                    <p className="text-xs text-muted-foreground">{item.name_en}</p>
-                    {item.options_ar.map((option) => (
-                      <p key={option} className="mt-0.5 text-xs text-muted-foreground">• {option}</p>
-                    ))}
-                    {item.notes && <p className="mt-1 text-xs font-bold">ملاحظة: {item.notes}</p>}
-                  </li>
-                ))}
-              </ul>
-
-              {order.inscription && (
-                <p className="mt-3 rounded-lg bg-secondary p-2 text-xs font-bold text-secondary-foreground">الكتابة: {order.inscription}</p>
-              )}
-
-              {order.design_image_url && (
-                <button type="button" onClick={() => setZoom(order.design_image_url)} className="mt-3 block w-full overflow-hidden rounded-xl border border-border">
-                  <img src={order.design_image_url} alt={`صورة تصميم الطلب ${order.order_number}`} loading="lazy" className="h-36 w-full object-cover" />
-                  <span className="block bg-secondary py-2 text-xs font-bold text-secondary-foreground">تكبير الصورة · Zoom</span>
-                </button>
-              )}
-
-              <button
-                type="button"
-                onClick={() => void onReady(order.id)}
-                disabled={pending === order.id || order.status === "ready"}
-                className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 text-sm font-bold text-primary-foreground disabled:opacity-60"
-              >
-                <CheckCircle2 className="h-4 w-4" />
-                {order.status === "ready" ? "جاهز ✓ Ready" : "تم التجهيز · Mark as Ready"}
-              </button>
-            </article>
-          );
-        })}
+        {visible.map((order) => (
+          <KdsCard key={order.id} order={order} busy={pending === order.id} onReady={onReady} onZoom={setZoom} />
+        ))}
       </main>
 
       {zoom && (
@@ -313,3 +268,70 @@ function KdsPage() {
     </div>
   );
 }
+
+/** Memoized so one status flip never repaints the whole board. */
+const KdsCard = memo(function KdsCard({
+  order,
+  busy,
+  onReady,
+  onZoom,
+}: {
+  order: KdsOrder;
+  busy: boolean;
+  onReady: (id: string) => void;
+  onZoom: (url: string) => void;
+}) {
+  const meta = tierMeta[orderTier(order)];
+  return (
+    <article className={`rounded-2xl border border-border p-4 text-card-foreground shadow-[var(--shadow-soft)] ${meta.card}`}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <h2 className="truncate font-bold">{order.order_number} · {order.customer_name}</h2>
+          <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+            <Clock3 className="h-3.5 w-3.5" />
+            {order.requested_date} · {order.requested_time.slice(0, 5)} · {order.method === "delivery" ? "توصيل" : "استلام"}
+          </p>
+        </div>
+        <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold ${meta.chip}`}>{meta.ar}</span>
+      </div>
+
+      <ul className="mt-3 space-y-3 border-y border-border/70 py-3">
+        {order.items.map((item) => (
+          <li key={item.id}>
+            <p className="text-sm font-bold">{item.quantity}× {item.name_ar}</p>
+            <p className="text-xs text-muted-foreground">{item.name_en}</p>
+            {item.options_ar.map((option) => (
+              <p key={option} className="mt-0.5 text-xs text-muted-foreground">• {option}</p>
+            ))}
+            {item.notes && <p className="mt-1 text-xs font-bold">ملاحظة: {item.notes}</p>}
+          </li>
+        ))}
+      </ul>
+
+      {order.inscription && (
+        <p className="mt-3 rounded-lg bg-secondary p-2 text-xs font-bold text-secondary-foreground">الكتابة: {order.inscription}</p>
+      )}
+
+      {order.design_image_url && (
+        <button
+          type="button"
+          onClick={() => onZoom(order.design_image_url as string)}
+          className="mt-3 block w-full overflow-hidden rounded-xl border border-border"
+        >
+          <img src={order.design_image_url} alt={`صورة تصميم الطلب ${order.order_number}`} loading="lazy" className="h-36 w-full object-cover" />
+          <span className="block bg-secondary py-2 text-xs font-bold text-secondary-foreground">تكبير الصورة · Zoom</span>
+        </button>
+      )}
+
+      <button
+        type="button"
+        onClick={() => void onReady(order.id)}
+        disabled={busy || order.status === "ready"}
+        className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 text-sm font-bold text-primary-foreground disabled:opacity-60"
+      >
+        <CheckCircle2 className="h-4 w-4" />
+        {order.status === "ready" ? "جاهز ✓ Ready" : "تم التجهيز · Mark as Ready"}
+      </button>
+    </article>
+  );
+});
