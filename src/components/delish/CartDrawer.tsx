@@ -127,7 +127,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
     setSending(true);
     setSaveError(false);
     try {
-      await submitOrder({
+      const saved = await submitOrder({
         data: {
           customer_name: form.name.trim(),
           customer_phone: form.phone.trim(),
