@@ -124,7 +124,7 @@ function AdminPage() {
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-4">
           <div className="min-w-0">
             <h1 className="font-display text-xl font-bold sm:text-2xl">لوحة الطلبات</h1>
-            <p className="mt-1 text-xs text-primary-foreground/80">Delish Cake &amp; Bake — فريق العمل</p>
+            <p className="mt-1 text-xs font-semibold text-gold-light">Delish Cake &amp; Bake — فريق العمل</p>
           </div>
           <div className="flex items-center gap-2">
             <button
