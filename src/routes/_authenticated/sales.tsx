@@ -296,56 +296,11 @@ function SalesPage() {
           <p className="py-10 text-center text-sm text-muted-foreground">لا توجد طلبات مطابقة</p>
         ) : (
           <ul className="grid gap-3">
-            {list.map((order) => {
-              const remaining = Math.max(order.total - order.deposit_paid, 0);
-              return (
-                <li key={order.id} className="rounded-2xl border border-border bg-card p-4">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusMeta[order.status].chip}`}>
-                      {statusMeta[order.status].ar}
-                    </span>
-                    <span className="font-display text-base font-bold text-foreground">{order.order_number}</span>
-                    <span className="text-sm text-foreground">{order.customer_name}</span>
-                    <span dir="ltr" className="text-sm text-muted-foreground">{order.customer_phone}</span>
-                    <span className="ms-auto inline-flex items-center gap-1 text-xs text-muted-foreground">
-                      <CalendarClock className="h-4 w-4" aria-hidden="true" />
-                      {order.requested_date} · {order.requested_time.slice(0, 5)}
-                    </span>
-                  </div>
-
-                  <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-                    <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-3 py-1 font-bold text-secondary-foreground">
-                      {order.method === "delivery" ? <Bike className="h-3.5 w-3.5" aria-hidden="true" /> : <Store className="h-3.5 w-3.5" aria-hidden="true" />}
-                      {order.method === "delivery" ? "توصيل" : "استلام من المحل"}
-                    </span>
-                    <span className="text-muted-foreground">الإجمالي {jd(order.total)}</span>
-                    <span className="text-muted-foreground">مدفوع {jd(order.deposit_paid)}</span>
-                    <span className={remaining > 0 ? "font-bold text-destructive" : "font-bold text-foreground"}>
-                      المتبقي {jd(remaining)}
-                    </span>
-                    {order.payment_method ? <span className="text-muted-foreground">{payMeta[order.payment_method].ar}</span> : null}
-                  </div>
-
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedId(order.id)}
-                      className="min-h-12 rounded-full bg-primary px-5 text-sm font-bold text-primary-foreground"
-                    >
-                      إدارة الطلب
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => printReceipt(order)}
-                      className="inline-flex min-h-12 items-center gap-2 rounded-full border border-primary px-5 text-sm font-bold text-primary"
-                    >
-                      <Printer className="h-4 w-4" aria-hidden="true" /> طباعة حرارية
-                    </button>
-                  </div>
-                </li>
-              );
-            })}
+            {list.map((order) => (
+              <OrderCard key={order.id} order={order} onOpen={openOrder} />
+            ))}
           </ul>
+
         )}
       </div>
 
