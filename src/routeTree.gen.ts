@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedKdsRouteImport } from './routes/_authenticated/kds'
+import { Route as AuthenticatedSalesRouteImport } from './routes/_authenticated/sales'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -39,18 +40,25 @@ const AuthenticatedKdsRoute = AuthenticatedKdsRouteImport.update({
   path: '/kds',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSalesRoute = AuthenticatedSalesRouteImport.update({
+  id: '/sales',
+  path: '/sales',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/kds': typeof AuthenticatedKdsRoute
+  '/sales': typeof AuthenticatedSalesRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/kds': typeof AuthenticatedKdsRoute
+  '/sales': typeof AuthenticatedSalesRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -59,12 +67,13 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/auth': typeof AuthRoute
   '/_authenticated/kds': typeof AuthenticatedKdsRoute
+  '/_authenticated/sales': typeof AuthenticatedSalesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/auth' | '/kds'
+  fullPaths: '/' | '/admin' | '/auth' | '/kds' | '/sales'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/auth' | '/kds'
+  to: '/' | '/admin' | '/auth' | '/kds' | '/sales'
   id:
     | '__root__'
     | '/'
@@ -72,6 +81,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/auth'
     | '/_authenticated/kds'
+    | '/_authenticated/sales'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -118,15 +128,24 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedKdsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/sales': {
+      id: '/_authenticated/sales'
+      path: '/sales'
+      fullPath: '/sales'
+      preLoaderRoute: typeof AuthenticatedSalesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedKdsRoute: typeof AuthenticatedKdsRoute
+  AuthenticatedSalesRoute: typeof AuthenticatedSalesRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedKdsRoute: AuthenticatedKdsRoute,
+  AuthenticatedSalesRoute: AuthenticatedSalesRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
