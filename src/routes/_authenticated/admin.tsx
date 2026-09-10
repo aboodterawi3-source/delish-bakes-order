@@ -812,14 +812,20 @@ function StaffRow({
         </button>
       </div>
 
-      <button
-        type="button"
-        onClick={onRemove}
-        aria-label={`حذف حساب ${member.email}`}
-        className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-destructive/40 px-4 text-sm font-bold text-destructive"
-      >
-        <Users className="h-4 w-4" aria-hidden /> حذف
-      </button>
+      {isSelf ? (
+        <span className="inline-flex min-h-12 items-center justify-center px-4 text-xs font-bold text-muted-foreground">
+          حسابك الحالي
+        </span>
+      ) : (
+        <button
+          type="button"
+          onClick={onRemove}
+          aria-label={`حذف حساب ${member.email}`}
+          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-destructive/40 px-4 text-sm font-bold text-destructive"
+        >
+          <Users className="h-4 w-4" aria-hidden /> حذف
+        </button>
+      )}
     </article>
   );
 }
