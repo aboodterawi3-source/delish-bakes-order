@@ -472,7 +472,6 @@ const OrderCard = memo(function OrderCard({
 });
 
 function OrderPanel({
-
   order,
   onClose,
   onPatch,
@@ -488,12 +487,15 @@ function OrderPanel({
   const [driverName, setDriverName] = useState(order.driver_name ?? "");
   const [driverPhone, setDriverPhone] = useState(order.driver_phone ?? "");
 
+  // Reset the local fields only when a different order opens, never while typing.
   useEffect(() => {
     setFee(String(order.delivery_fee));
     setDeposit(String(order.deposit_paid));
     setDriverName(order.driver_name ?? "");
     setDriverPhone(order.driver_phone ?? "");
-  }, [order]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [order.id]);
+
 
   const liveTotal = order.subtotal + (order.method === "delivery" ? Number(fee) || 0 : 0);
   const remaining = Math.max(liveTotal - (Number(deposit) || 0), 0);
