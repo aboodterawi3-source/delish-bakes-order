@@ -23,29 +23,30 @@ export type StorefrontOrderInput = {
  */
 export async function saveStorefrontOrder(input: StorefrontOrderInput) {
   const total = input.subtotal + input.delivery_fee;
+  // Customers may insert but not read orders, so the id is generated here
+  // instead of reading it back from the insert.
+  const orderId = crypto.randomUUID();
 
-  const { data: order, error } = await supabase
-    .from("orders")
-    .insert({
-      customer_name: input.customer_name,
-      customer_phone: input.customer_phone,
-      method: input.method,
-      area: input.area ?? null,
-      address: input.address ?? null,
-      requested_date: input.requested_date,
-      requested_time: input.requested_time,
-      notes: input.notes ?? null,
-      inscription: input.inscription ?? null,
-      design_image_url: input.design_image_url ?? null,
-      subtotal: input.subtotal,
-      delivery_fee: input.delivery_fee,
-      total,
-      status: "new",
-    })
-    .select("id, order_number")
-    .single();
+  const { error } = await supabase.from("orders").insert({
+    id: orderId,
+    customer_name: input.customer_name,
+    customer_phone: input.customer_phone,
+    method: input.method,
+    area: input.area ?? null,
+    address: input.address ?? null,
+    requested_date: input.requested_date,
+    requested_time: input.requested_time,
+    notes: input.notes ?? null,
+    inscription: input.inscription ?? null,
+    design_image_url: input.design_image_url ?? null,
+    subtotal: input.subtotal,
+    delivery_fee: input.delivery_fee,
+    total,
+    status: "new",
+  });
 
   if (error) throw new Error(error.message);
+
 
   const items = input.lines.map((line) => ({
     order_id: order.id,
