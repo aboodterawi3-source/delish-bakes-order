@@ -13,7 +13,7 @@ export type CartLine = {
   detailsEn: string[];
   notes?: string | undefined;
   /** Trusted description of the choice; the server re-prices from this. */
-  spec: LineSpec;
+  spec?: LineSpec | undefined;
 };
 
 
