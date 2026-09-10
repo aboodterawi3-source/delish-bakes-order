@@ -144,7 +144,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
           ),
         },
       });
-      setOrderNumber(null);
+      setOrderNumber(saved?.order_number ?? null);
     } catch {
       setSaveError(true);
     } finally {
