@@ -1,10 +1,9 @@
 import { useId, useRef, useState } from "react";
-import { Minus, Plus, Trash2, X } from "lucide-react";
+import { CheckCircle2, Minus, Plus, Trash2, X } from "lucide-react";
 import { DELIVERY_FEE, WHATSAPP } from "@/lib/menu";
 import { useCart } from "@/lib/cart";
 import { useLang } from "@/lib/i18n";
 import { useDismissable } from "@/lib/a11y";
-import { appendOrder, newOrderId, type Order } from "@/lib/orders";
 import { useServerFn } from "@tanstack/react-start";
 import { submitStorefrontOrder } from "@/lib/storefront-order.functions";
 
@@ -34,7 +33,9 @@ const empty: Form = {
 export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t, lang } = useLang();
   const { lines, setQty, remove, clear, subtotal, count } = useCart();
-  const [stage, setStage] = useState<"cart" | "checkout">("cart");
+  const [stage, setStage] = useState<"cart" | "checkout" | "done">("cart");
+  const [waUrl, setWaUrl] = useState("");
+  const [orderNumber, setOrderNumber] = useState<string | number | null>(null);
   const [form, setForm] = useState<Form>(empty);
   const [errors, setErrors] = useState<Partial<Record<keyof Form, boolean>>>({});
   const [sending, setSending] = useState(false);
@@ -102,39 +103,31 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
     return L.join("\n");
   };
 
-  const inscription = lines
-    .flatMap((l) => l.detailsAr.filter((d) => d.startsWith("الكتابة")))
-    .map((d) => d.replace(/^الكتابة:\s*/, ""))
-    .join(" / ");
+  /**
+   * Opens WhatsApp in a brand-new tab through a synthetic anchor click.
+   * This never touches the storefront tab's history, so "back" always
+   * returns to this success screen instead of a WhatsApp bridge page.
+   */
+  const openWhatsApp = (url: string) => {
+    const a = document.createElement("a");
+    a.href = url;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
 
   const send = async () => {
     if (!validate()) return;
     const url = `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(buildMessage())}`;
-    const order: Order = {
-      id: newOrderId(),
-      createdAt: new Date().toISOString(),
-      customer: form.name.trim(),
-      phone: form.phone.trim(),
-      method: form.method,
-      area: form.area.trim() || undefined,
-      address: form.address.trim() || undefined,
-      date: form.date,
-      time: form.time,
-      lines,
-      subtotal,
-      deliveryFee,
-      total,
-      notes: form.notes.trim() || undefined,
-      inscription: inscription || undefined,
-      designImage: lines.find((l) => l.designImage)?.designImage,
-      status: "new",
-    };
-    appendOrder(order);
+    setWaUrl(url);
 
     setSending(true);
     setSaveError(false);
     try {
-      await submitOrder({
+      const saved = await submitOrder({
         data: {
           customer_name: form.name.trim(),
           customer_phone: form.phone.trim(),
@@ -151,14 +144,16 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
           ),
         },
       });
+      setOrderNumber(saved?.order_number ?? null);
     } catch {
       setSaveError(true);
     } finally {
       setSending(false);
     }
 
-    const opened = window.open(url, "_blank", "noopener,noreferrer");
-    if (!opened) window.location.href = url;
+    setStage("done");
+    clear();
+    openWhatsApp(url);
   };
 
 
@@ -181,10 +176,18 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
       >
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <h2 id={titleId} className="font-display text-lg font-semibold">
-            {stage === "cart" ? t("cart") : t("checkout")}{" "}
-            <span className="text-sm font-normal text-muted-foreground">
-              ({count} {t("itemsCount")})
-            </span>
+            {stage === "done"
+              ? lang === "ar"
+                ? "تم إرسال الطلب"
+                : "Order sent"
+              : stage === "cart"
+                ? t("cart")
+                : t("checkout")}{" "}
+            {stage !== "done" && (
+              <span className="text-sm font-normal text-muted-foreground">
+                ({count} {t("itemsCount")})
+              </span>
+            )}
           </h2>
           <button
             ref={closeRef}
@@ -197,7 +200,51 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
         </div>
 
         <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
-          {lines.length === 0 && <p className="py-16 text-center text-sm text-muted-foreground">{t("emptyCart")}</p>}
+          {stage === "done" && (
+            <div className="flex flex-col items-center gap-4 py-12 text-center">
+              <CheckCircle2 className="h-14 w-14 text-whatsapp" aria-hidden="true" />
+              <h3 className="font-display text-xl font-semibold">
+                {lang === "ar" ? "تم تسجيل طلبك بنجاح" : "Your order was received"}
+              </h3>
+              {orderNumber != null && (
+                <p className="text-sm font-semibold">
+                  {lang === "ar" ? "رقم الطلب" : "Order number"}: <span dir="ltr">{orderNumber}</span>
+                </p>
+              )}
+              <p className="max-w-xs text-sm text-muted-foreground">
+                {lang === "ar"
+                  ? "فتحنا واتساب في نافذة جديدة لإرسال تفاصيل الطلب. إذا لم تُفتح، استخدم الزر أدناه."
+                  : "WhatsApp opened in a new tab with your order details. If it did not open, use the button below."}
+              </p>
+              {waUrl && (
+                <a
+                  href={waUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="grid min-h-12 w-full max-w-xs place-items-center rounded-full bg-whatsapp px-6 text-sm font-bold text-whatsapp-foreground"
+                >
+                  {lang === "ar" ? "فتح واتساب مرة أخرى" : "Open WhatsApp again"}
+                </a>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setStage("cart");
+                  setForm(empty);
+                  setWaUrl("");
+                  setOrderNumber(null);
+                  onClose();
+                }}
+                className="min-h-11 text-xs text-foreground underline"
+              >
+                {lang === "ar" ? "متابعة التسوّق" : "Back to the shop"}
+              </button>
+            </div>
+          )}
+
+          {stage !== "done" && lines.length === 0 && (
+            <p className="py-16 text-center text-sm text-muted-foreground">{t("emptyCart")}</p>
+          )}
 
           {stage === "cart" &&
             lines.map((l) => (
