@@ -87,20 +87,7 @@ function downloadCsv(name: string, headers: string[], rows: (string | number)[][
   URL.revokeObjectURL(url);
 }
 
-type Tab = "analytics" | "products" | "staff";
-
-const emptyProduct: ProductInput = {
-  slug: "",
-  name_ar: "",
-  name_en: "",
-  description_ar: "",
-  description_en: "",
-  category: "",
-  price: 0,
-  is_available: true,
-  is_featured: false,
-  sort_order: 0,
-};
+type Tab = "analytics" | "staff";
 
 function AdminPage() {
   const navigate = useNavigate();
