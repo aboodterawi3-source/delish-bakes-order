@@ -1,8 +1,8 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { Circle, Diamond } from "lucide-react";
 import { LangProvider, useLang } from "@/lib/i18n";
-import { CartProvider, useCart } from "@/lib/cart";
+import { CartProvider } from "@/lib/cart";
 import { OrderingDialogs } from "@/components/delish/OrderingDialogs";
 import { CartDrawer } from "@/components/delish/CartDrawer";
 
@@ -37,7 +37,6 @@ function Page() {
 
 function ReferenceStorefront() {
   const { dir } = useLang();
-  useCart();
   const [dialog, setDialog] = useState<"cake" | "shop" | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
 
