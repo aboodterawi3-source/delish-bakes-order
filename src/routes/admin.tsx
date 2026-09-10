@@ -6,10 +6,14 @@ import {
   CalendarClock,
   ClipboardList,
   Columns3,
+  Download,
   ExternalLink,
   List,
+  Printer,
   RefreshCw,
   Search,
+  TrendingUp,
+  Users,
   Wallet,
   X,
 } from "lucide-react";
@@ -111,6 +115,21 @@ function AdminPage() {
 
   const openOrder = orders.find((o) => o.id === openId) ?? null;
 
+  const exportExcel = () => {
+    const rows = [
+      ["Order", "Customer", "Phone", "Date", "Time", "Status", "Total JOD"],
+      ...orders.map((o) => [o.id, o.customer, o.phone, o.date, o.time, statusMeta[o.status].en, o.total.toFixed(2)]),
+    ];
+    const csv = rows.map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(",")).join("\n");
+    const url = URL.createObjectURL(new Blob(["\ufeff", csv], { type: "text/csv;charset=utf-8" }));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `delish-orders-${new Date().toISOString().slice(0, 10)}.csv`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+    setLive("تم تصدير ملف الطلبات");
+  };
+
   return (
     <div dir="rtl" className="min-h-dvh bg-background">
       <a
@@ -126,7 +145,13 @@ function AdminPage() {
             <h1 className="font-display text-xl font-bold sm:text-2xl">لوحة الطلبات</h1>
             <p className="mt-1 text-xs font-semibold text-gold-light">Delish Cake &amp; Bake — فريق العمل</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <button onClick={exportExcel} className="inline-flex min-h-12 items-center gap-2 rounded-full border border-primary-foreground/40 px-4 text-sm font-semibold">
+              <Download className="h-4 w-4" aria-hidden="true" /> Excel
+            </button>
+            <Link to="/kds" className="inline-flex min-h-12 items-center rounded-full border border-primary-foreground/40 px-4 text-sm font-semibold">
+              شاشة المطبخ
+            </Link>
             <button
               onClick={() => {
                 setOrders(loadOrders());
@@ -158,6 +183,28 @@ function AdminPage() {
           <Kpi icon={Wallet} label="إيرادات اليوم" value={jod(kpis.revenue)} />
           <Kpi icon={Columns3} label="جاهز للتسليم" value={String(kpis.ready)} />
         </div>
+
+        <section aria-labelledby="analytics-title" className="mt-8 grid gap-4 lg:grid-cols-2">
+          <div className="rounded-3xl border border-border bg-card p-5">
+            <h2 id="analytics-title" className="flex items-center gap-2 font-display text-lg font-bold"><TrendingUp className="h-5 w-5 text-gold-deep" /> تحليل المبيعات</h2>
+            <div className="mt-5 flex h-36 items-end gap-3" aria-label="مبيعات الطلبات الحالية">
+              {orders.slice(0, 7).reverse().map((order) => {
+                const max = Math.max(...orders.map((item) => item.total), 1);
+                return <div key={order.id} className="flex min-w-0 flex-1 flex-col items-center gap-2"><div className="w-full rounded-t-md bg-primary" style={{ height: `${Math.max(12, (order.total / max) * 110)}px` }} /><span className="truncate text-[10px] text-muted-foreground">{order.id.replace("DL-", "")}</span></div>;
+              })}
+            </div>
+          </div>
+          <div className="rounded-3xl border border-border bg-card p-5">
+            <h2 className="flex items-center gap-2 font-display text-lg font-bold"><Users className="h-5 w-5 text-gold-deep" /> دليل العملاء</h2>
+            <ul className="mt-4 max-h-40 space-y-2 overflow-y-auto">
+              {Array.from(new Map(orders.map((order) => [order.phone, order])).values()).map((order) => (
+                <li key={order.phone} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border pb-2 text-sm last:border-0">
+                  <span className="truncate font-semibold">{order.customer}</span><a dir="ltr" href={`tel:${order.phone}`} className="shrink-0 text-primary underline">{order.phone}</a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
 
         <section id="orders" aria-labelledby="orders-title" className="mt-8">
           <div className="flex flex-wrap items-end justify-between gap-3">
@@ -503,6 +550,10 @@ function OrderDialog({
             </div>
           </section>
 
+          <button type="button" onClick={() => window.print()} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-primary px-5 text-sm font-bold text-primary">
+            <Printer className="h-4 w-4" aria-hidden="true" /> طباعة حرارية
+          </button>
+
           <section aria-label="تحديث الحالة">
             <h3 className="mb-2 text-xs font-bold text-muted-foreground uppercase">تحديث الحالة</h3>
             <div className="flex flex-wrap gap-2">
@@ -525,7 +576,7 @@ function OrderDialog({
             href={waUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[#128C3C] px-5 text-sm font-bold text-white"
+            className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-whatsapp px-5 text-sm font-bold text-whatsapp-foreground"
           >
             <ExternalLink className="h-4 w-4" aria-hidden="true" />
             إرسال تحديث «{statusMeta[order.status].ar}» عبر واتساب

@@ -34,6 +34,7 @@ export type Order = {
 };
 
 const KEY = "delish-orders-v1";
+export const ORDER_EVENT = "delish-orders-updated";
 
 const today = () => new Date().toISOString().slice(0, 10);
 const iso = (minutesAgo: number) => new Date(Date.now() - minutesAgo * 60000).toISOString();
@@ -214,6 +215,7 @@ export function saveOrders(orders: Order[]) {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(KEY, JSON.stringify(orders));
+    window.dispatchEvent(new CustomEvent(ORDER_EVENT));
   } catch {
     /* storage unavailable */
   }
