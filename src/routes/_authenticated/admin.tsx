@@ -705,6 +705,17 @@ function StaffPanel() {
       <form
         onSubmit={(event) => {
           event.preventDefault();
+          if (!email.trim()) {
+            setNotice(null);
+            setError("البريد الإلكتروني مطلوب · Email is required");
+            return;
+          }
+          if (password.length < 8) {
+            setNotice(null);
+            setError("كلمة المرور 8 أحرف على الأقل · Password must be at least 8 characters");
+            return;
+          }
+          setError(null);
           createMutation.mutate();
         }}
         className="grid gap-3 rounded-2xl border border-border bg-card p-4 sm:grid-cols-2"
