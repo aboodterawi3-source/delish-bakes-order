@@ -1,5 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { assertRole, type StaffRoleName } from "@/lib/role-guard";
+
+const KITCHEN_ROLES: StaffRoleName[] = ["kitchen", "admin"];
+
 
 export type KdsItem = {
   id: string;
@@ -49,6 +53,7 @@ export const getKitchenAccess = createServerFn({ method: "GET" })
 export const getKitchenOrders = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<KdsOrder[]> => {
+    await assertRole(context, KITCHEN_ROLES);
     const { data, error } = await context.supabase
       .from("orders")
       .select(
@@ -92,6 +97,7 @@ export const markOrderReady = createServerFn({ method: "POST" })
     return input;
   })
   .handler(async ({ data, context }) => {
+    await assertRole(context, KITCHEN_ROLES);
     const { error } = await context.supabase
       .from("orders")
       .update({ status: "ready" })

@@ -1,5 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { assertRole, type StaffRoleName } from "@/lib/role-guard";
+
+const SOCIAL_ROLES: StaffRoleName[] = ["social", "sales", "admin"];
+
 
 export type SocialProduct = {
   id: string;
@@ -42,6 +46,7 @@ export const getSocialAccess = createServerFn({ method: "GET" })
 export const getSocialProducts = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<SocialProduct[]> => {
+    await assertRole(context, SOCIAL_ROLES);
     const { data, error } = await context.supabase
       .from("products")
       .select("id, name_ar, name_en, category, price")
@@ -73,6 +78,7 @@ export const createSocialOrder = createServerFn({ method: "POST" })
     return input;
   })
   .handler(async ({ data, context }) => {
+    await assertRole(context, SOCIAL_ROLES);
     const { data: product, error: productError } = await context.supabase
       .from("products")
       .select("id, name_ar, name_en, price")

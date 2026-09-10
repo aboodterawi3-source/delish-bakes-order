@@ -1,5 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { assertRole, type StaffRoleName } from "@/lib/role-guard";
+
+const SALES_ROLES: StaffRoleName[] = ["sales", "admin"];
+
 
 export type SalesStatus =
   | "new"
@@ -89,6 +93,7 @@ export const getSalesAccess = createServerFn({ method: "GET" })
 export const getSalesOrders = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<SalesOrder[]> => {
+    await assertRole(context, SALES_ROLES);
     const { data, error } = await context.supabase
       .from("orders")
       .select(SELECT)
@@ -121,6 +126,7 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
     return input;
   })
   .handler(async ({ data, context }): Promise<SalesOrder> => {
+    await assertRole(context, SALES_ROLES);
     const { orderId, ...patch } = data;
     const clean: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(patch)) {
@@ -152,6 +158,7 @@ export const getShiftReport = createServerFn({ method: "POST" })
     return input;
   })
   .handler(async ({ data, context }): Promise<ShiftReport> => {
+    await assertRole(context, SALES_ROLES);
     const { data: rows, error } = await context.supabase
       .from("orders")
       .select("status, total, deposit_paid, payment_method")
