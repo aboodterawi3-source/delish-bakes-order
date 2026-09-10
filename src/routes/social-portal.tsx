@@ -386,6 +386,16 @@ function SocialPortalPage() {
               {copied ? <Check className="h-4 w-4" aria-hidden="true" /> : <ClipboardCopy className="h-4 w-4" aria-hidden="true" />}
               {copied ? "تم النسخ" : "نسخ رسالة واتساب"}
             </button>
+            <a
+              href={whatsappUrl(summary)}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="فتح واتساب المحل مع نص الطلب"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#25D366] px-5 text-sm font-bold text-[#0B1F12] transition-opacity hover:opacity-90"
+            >
+              <MessageCircle className="h-4 w-4" aria-hidden="true" />
+              فتح واتساب · +962 77 917 9995
+            </a>
           </div>
         </form>
 
