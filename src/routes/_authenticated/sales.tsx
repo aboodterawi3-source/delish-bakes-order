@@ -103,7 +103,25 @@ ${order.inscription ? `<div>الكتابة: ${order.inscription}</div>` : ""}
   win.document.close();
 }
 
+const ORDERS_KEY = ["sales-orders"] as const;
+
+/** Mirrors the server update locally so the card repaints in the same frame. */
+function applyPatch(order: SalesOrder, input: OrderPatch): SalesOrder {
+  const next: SalesOrder = { ...order };
+  if (input.status !== undefined) next.status = input.status;
+  if (input.cancel_reason !== undefined) next.cancel_reason = input.cancel_reason;
+  if (input.method !== undefined) next.method = input.method;
+  if (input.delivery_fee !== undefined) next.delivery_fee = input.delivery_fee;
+  if (input.driver_name !== undefined) next.driver_name = input.driver_name;
+  if (input.driver_phone !== undefined) next.driver_phone = input.driver_phone;
+  if (input.deposit_paid !== undefined) next.deposit_paid = input.deposit_paid;
+  if (input.payment_method !== undefined) next.payment_method = input.payment_method;
+  next.total = next.subtotal + (next.method === "delivery" ? next.delivery_fee : 0);
+  return next;
+}
+
 function SalesPage() {
+
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const accessFn = useServerFn(getSalesAccess);
