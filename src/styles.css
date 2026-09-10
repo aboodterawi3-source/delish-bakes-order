@@ -143,6 +143,13 @@
   }
 }
 
+@media print {
+  body * { visibility: hidden; }
+  [role="dialog"], [role="dialog"] * { visibility: visible; }
+  [role="dialog"] { position: absolute; inset: 0; width: 80mm; max-height: none; overflow: visible; box-shadow: none; }
+  [role="dialog"] button, [role="dialog"] a { display: none; }
+}
+
 /* Delish reference palette: powder blue, crisp white, ink, azure, metallic gold. */
 :root {
   --radius: 0.75rem;
