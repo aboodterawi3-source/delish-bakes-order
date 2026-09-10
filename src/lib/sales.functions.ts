@@ -122,12 +122,13 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }): Promise<SalesOrder> => {
     const { orderId, ...patch } = data;
-    const clean = Object.fromEntries(
-      Object.entries(patch).filter(([, value]) => value !== undefined),
-    );
+    const clean: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(patch)) {
+      if (value !== undefined) clean[key] = value;
+    }
     const { data: row, error } = await context.supabase
       .from("orders")
-      .update(clean)
+      .update(clean as never)
       .eq("id", orderId)
       .select(SELECT)
       .single();
