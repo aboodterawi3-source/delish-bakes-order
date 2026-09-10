@@ -635,6 +635,13 @@ function StaffPanel() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
+  // The server refuses to delete the signed-in admin, so hide that action instead of erroring.
+  const me = useQuery({
+    queryKey: ["admin", "me"],
+    queryFn: async () => (await supabase.auth.getUser()).data.user?.id ?? null,
+    staleTime: 5 * 60_000,
+  });
+
   const invalidate = () => void queryClient.invalidateQueries({ queryKey: ["admin", "staff"] });
   const handleError = (caught: Error) => {
     setNotice(null);
@@ -738,6 +745,7 @@ function StaffPanel() {
             onReset={(pwd) => resetMutation.mutate({ userId: member.id, password: pwd })}
             onRole={(value) => roleMutation.mutate({ userId: member.id, role: value })}
             onRemove={() => removeMutation.mutate(member.id)}
+            isSelf={me.data === member.id}
           />
         ))}
       </div>
@@ -750,11 +758,13 @@ function StaffRow({
   onReset,
   onRole,
   onRemove,
+  isSelf = false,
 }: {
   member: { id: string; email: string; roles: StaffRole[]; last_sign_in_at: string | null };
   onReset: (password: string) => void;
   onRole: (role: StaffRole) => void;
   onRemove: () => void;
+  isSelf?: boolean;
 }) {
   const [password, setPassword] = useState("");
 
@@ -802,14 +812,20 @@ function StaffRow({
         </button>
       </div>
 
-      <button
-        type="button"
-        onClick={onRemove}
-        aria-label={`حذف حساب ${member.email}`}
-        className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-destructive/40 px-4 text-sm font-bold text-destructive"
-      >
-        <Users className="h-4 w-4" aria-hidden /> حذف
-      </button>
+      {isSelf ? (
+        <span className="inline-flex min-h-12 items-center justify-center px-4 text-xs font-bold text-muted-foreground">
+          حسابك الحالي
+        </span>
+      ) : (
+        <button
+          type="button"
+          onClick={onRemove}
+          aria-label={`حذف حساب ${member.email}`}
+          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-destructive/40 px-4 text-sm font-bold text-destructive"
+        >
+          <Users className="h-4 w-4" aria-hidden /> حذف
+        </button>
+      )}
     </article>
   );
 }
