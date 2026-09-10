@@ -1,6 +1,9 @@
 # Roadmap
 
-- [x] Keep the existing site layout and interactions unchanged
-- [x] Apply the sky-blue / white / azure palette from the reference design site-wide
-- [x] Keep the Delish name prominent in the display serif with brand accent color
-- [x] Verify storefront renders with no errors
+- [ ] Rebuild storefront as the exact split-card reference layout
+- [ ] Add gold outlined Delish wordmarks only
+- [ ] Connect Browse, Order, and Visit Our Shop to ordering flows
+- [ ] Extend custom cake flow with design image upload
+- [ ] Add admin analytics, customer directory, Excel export, and thermal print
+- [ ] Add `/kds` with live tracking, audio alerts, preparation details, and schedule editing
+- [ ] Verify responsive, bilingual, checkout, admin, and KDS flows
