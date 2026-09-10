@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { ClientOnly } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Loader2, ShieldCheck } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
@@ -18,7 +19,11 @@ export const Route = createFileRoute("/admin-setup")({
     ],
   }),
   ssr: false,
-  component: AdminSetupPage,
+  component: () => (
+    <ClientOnly fallback={null}>
+      <AdminSetupPage />
+    </ClientOnly>
+  ),
 });
 
 function AdminSetupPage() {

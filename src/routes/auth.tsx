@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { ClientOnly } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ChefHat, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,7 +17,11 @@ export const Route = createFileRoute("/auth")({
     ],
   }),
   ssr: false,
-  component: AuthPage,
+  component: () => (
+    <ClientOnly fallback={null}>
+      <AuthPage />
+    </ClientOnly>
+  ),
 });
 
 /** Sends each signed-in staff member to the screen their role uses. */

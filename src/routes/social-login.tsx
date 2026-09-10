@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { ClientOnly } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Loader2, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,7 +17,11 @@ export const Route = createFileRoute("/social-login")({
     ],
   }),
   ssr: false,
-  component: SocialLoginPage,
+  component: () => (
+    <ClientOnly fallback={null}>
+      <SocialLoginPage />
+    </ClientOnly>
+  ),
 });
 
 function SocialLoginPage() {
