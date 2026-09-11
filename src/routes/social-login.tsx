@@ -16,7 +16,6 @@ export const Route = createFileRoute("/social-login")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  ssr: false,
   component: SocialLoginPage,
 });
 

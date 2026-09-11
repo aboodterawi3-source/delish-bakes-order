@@ -18,7 +18,6 @@ export const Route = createFileRoute("/admin-setup")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  ssr: false,
   component: AdminSetupPage,
 });
 
@@ -29,7 +28,6 @@ function AdminSetupPage() {
   const [needsSetup, setNeedsSetup] = useState<boolean | null>(null);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [token, setToken] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,7 +40,7 @@ function AdminSetupPage() {
     setBusy(true);
     setError(null);
     try {
-      await create({ data: { username, password, token } });
+      await create({ data: { username, password } });
       await supabase.auth.signInWithPassword({ email: usernameToEmail(username), password });
       void navigate({ to: "/admin", replace: true });
     } catch (caught) {
@@ -108,20 +106,6 @@ function AdminSetupPage() {
                 onChange={(event) => setPassword(event.target.value)}
                 className="mt-1 min-h-12 w-full rounded-xl border border-input bg-background px-3 text-sm"
               />
-            </label>
-            <label className="block text-sm font-bold text-foreground">
-              رمز التهيئة · Setup token
-              <input
-                type="password"
-                required
-                autoComplete="off"
-                value={token}
-                onChange={(event) => setToken(event.target.value)}
-                className="mt-1 min-h-12 w-full rounded-xl border border-input bg-background px-3 text-sm"
-              />
-              <span className="mt-1 block text-xs font-normal text-muted-foreground">
-                الرمز محفوظ في إعدادات المتجر · Kept in your project secrets
-              </span>
             </label>
             {error && (
               <p role="alert" className="rounded-xl bg-destructive/10 p-3 text-xs font-bold text-destructive">
