@@ -167,6 +167,7 @@ export const saveMenuItem = createServerFn({ method: "POST" })
       description_en: data.description_en?.trim() || null,
       category: data.category.trim(),
       price: Number(data.price),
+      image_url: data.image_url?.trim() || null,
       is_available: !!data.is_available,
       is_featured: !!data.is_featured,
       sort_order: Number(data.sort_order ?? 0),
