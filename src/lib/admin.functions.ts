@@ -1,11 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { emailToUsername, normalizeUsername, usernameToEmail } from "@/lib/username";
 
 export type StaffRole = "admin" | "sales" | "kitchen" | "social";
 
 export type StaffMember = {
   id: string;
-  email: string;
+  username: string;
   roles: StaffRole[];
   created_at: string;
   last_sign_in_at: string | null;
@@ -86,13 +87,13 @@ export const getAdminSetupState = createServerFn({ method: "GET" }).handler(asyn
  * cannot claim the account.
  */
 export const bootstrapAdmin = createServerFn({ method: "POST" })
-  .inputValidator((input: { email: string; password: string; token: string }) => {
-    if (!input?.email?.trim()) throw new Error("البريد الإلكتروني مطلوب · Email is required");
+  .inputValidator((input: { username: string; password: string; token: string }) => {
+    if (!normalizeUsername(input?.username ?? "")) throw new Error("اسم المستخدم مطلوب · Name is required");
     if (!input?.password || input.password.length < 8) {
       throw new Error("كلمة المرور 8 أحرف على الأقل · Password must be at least 8 characters");
     }
     if (!input?.token?.trim()) throw new Error("رمز التهيئة مطلوب · Setup token is required");
-    return { email: input.email.trim().toLowerCase(), password: input.password, token: input.token.trim() };
+    return { email: usernameToEmail(input.username), password: input.password, token: input.token.trim() };
   })
   .handler(async ({ data }) => {
     const expected = process.env["ADMIN_SETUP_TOKEN"];
@@ -162,24 +163,24 @@ export const listStaff = createServerFn({ method: "GET" })
     return users.users
       .map((user) => ({
         id: user.id,
-        email: user.email ?? "—",
+        username: emailToUsername(user.email),
         roles: byUser.get(user.id) ?? [],
         created_at: user.created_at,
         last_sign_in_at: user.last_sign_in_at ?? null,
       }))
       .filter((member) => member.roles.length > 0)
-      .sort((a, b) => a.email.localeCompare(b.email));
+      .sort((a, b) => a.username.localeCompare(b.username));
   });
 
 export const createStaff = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { email: string; password: string; role: StaffRole }) => {
-    if (!input?.email?.trim()) throw new Error("البريد الإلكتروني مطلوب · Email is required");
+  .inputValidator((input: { username: string; password: string; role: StaffRole }) => {
+    if (!normalizeUsername(input?.username ?? "")) throw new Error("اسم المستخدم مطلوب · Name is required");
     if (!input?.password || input.password.length < 8) {
       throw new Error("كلمة المرور 8 أحرف على الأقل · Password must be at least 8 characters");
     }
     if (!["admin", "sales", "kitchen", "social"].includes(input.role)) throw new Error("Invalid role");
-    return { email: input.email.trim().toLowerCase(), password: input.password, role: input.role };
+    return { email: usernameToEmail(input.username), password: input.password, role: input.role };
   })
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
@@ -197,7 +198,7 @@ export const createStaff = createServerFn({ method: "POST" })
     if (created?.user) {
       userId = created.user.id;
     } else {
-      // The email may already belong to an existing account: update it instead of failing.
+      // The name may already belong to an existing account: update it instead of failing.
       const { data: existing } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 200 });
       const match = (existing?.users ?? []).find(
         (user) => (user.email ?? "").toLowerCase() === data.email,
@@ -405,7 +406,7 @@ export const getAdminAnalytics = createServerFn({ method: "GET" })
     if (agentMap.size > 0) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { data: users } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 200 });
-      agentNames = new Map((users?.users ?? []).map((user) => [user.id, user.email ?? user.id]));
+      agentNames = new Map((users?.users ?? []).map((user) => [user.id, emailToUsername(user.email) || user.id]));
     }
 
     return {
