@@ -174,6 +174,7 @@ export type Database = {
           name_ar: string
           name_en: string
           price: number
+          priority_color: Database["public"]["Enums"]["priority_color"] | null
           slug: string
           sort_order: number
           updated_at: string
@@ -190,6 +191,7 @@ export type Database = {
           name_ar: string
           name_en: string
           price?: number
+          priority_color?: Database["public"]["Enums"]["priority_color"] | null
           slug: string
           sort_order?: number
           updated_at?: string
@@ -206,6 +208,7 @@ export type Database = {
           name_ar?: string
           name_en?: string
           price?: number
+          priority_color?: Database["public"]["Enums"]["priority_color"] | null
           slug?: string
           sort_order?: number
           updated_at?: string
@@ -253,6 +256,12 @@ export type Database = {
         | "out_for_delivery"
         | "completed"
       payment_method: "cash" | "cliq" | "visa"
+      priority_color:
+        | "dark_red"
+        | "warm_orange"
+        | "golden_yellow"
+        | "sky_blue"
+        | "soft_green"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -393,6 +402,13 @@ export const Constants = {
         "completed",
       ],
       payment_method: ["cash", "cliq", "visa"],
+      priority_color: [
+        "dark_red",
+        "warm_orange",
+        "golden_yellow",
+        "sky_blue",
+        "soft_green",
+      ],
     },
   },
 } as const
