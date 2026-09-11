@@ -699,6 +699,18 @@ function MenuPanel() {
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {rows.map((item) => (
               <article key={item.id} className="rounded-2xl border border-white/12 bg-[oklch(0.22_0.04_255)] p-4">
+                {item.image_url ? (
+                  <img
+                    src={item.image_url}
+                    alt={`صورة ${item.name_ar}`}
+                    loading="lazy"
+                    className="mb-3 h-36 w-full rounded-xl object-cover"
+                  />
+                ) : (
+                  <div className="mb-3 grid h-36 w-full place-items-center rounded-xl border border-dashed border-white/20 text-xs text-white/45">
+                    لا توجد صورة · No image
+                  </div>
+                )}
                 <h4 className="font-display text-base font-bold">{item.name_ar}</h4>
                 <p className="text-xs text-white/60">{item.name_en}</p>
                 <p className="mt-2 text-lg font-bold">{jod(item.price)}</p>
