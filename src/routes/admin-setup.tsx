@@ -4,6 +4,7 @@ import { Loader2, ShieldCheck } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { bootstrapAdmin, getAdminSetupState } from "@/lib/admin.functions";
 import { supabase } from "@/integrations/supabase/client";
+import { usernameToEmail } from "@/lib/username";
 
 export const Route = createFileRoute("/admin-setup")({
   head: () => ({
@@ -26,7 +27,7 @@ function AdminSetupPage() {
   const checkState = useServerFn(getAdminSetupState);
   const create = useServerFn(bootstrapAdmin);
   const [needsSetup, setNeedsSetup] = useState<boolean | null>(null);
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [token, setToken] = useState("");
   const [busy, setBusy] = useState(false);
@@ -41,8 +42,8 @@ function AdminSetupPage() {
     setBusy(true);
     setError(null);
     try {
-      await create({ data: { email, password, token } });
-      await supabase.auth.signInWithPassword({ email, password });
+      await create({ data: { username, password, token } });
+      await supabase.auth.signInWithPassword({ email: usernameToEmail(username), password });
       void navigate({ to: "/admin", replace: true });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "تعذّر إنشاء الحساب · Could not create the account");
@@ -86,13 +87,13 @@ function AdminSetupPage() {
         {needsSetup === true && (
           <form onSubmit={submit} className="mt-6 space-y-4">
             <label className="block text-sm font-bold text-foreground">
-              البريد الإلكتروني · Email
+              اسم المستخدم · Name
               <input
-                type="email"
+                type="text"
                 required
-                autoComplete="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
+                autoComplete="username"
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
                 className="mt-1 min-h-12 w-full rounded-xl border border-input bg-background px-3 text-sm"
               />
             </label>

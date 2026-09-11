@@ -476,7 +476,7 @@ function StaffPanel() {
   const role = useServerFn(setStaffRole);
   const remove = useServerFn(removeStaff);
 
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [newRole, setNewRole] = useState<StaffRole>("sales");
   const [error, setError] = useState<string | null>(null);
@@ -496,14 +496,14 @@ function StaffPanel() {
   };
 
   const createMutation = useMutation({
-    mutationFn: () => create({ data: { email, password, role: newRole } }),
+    mutationFn: () => create({ data: { username, password, role: newRole } }),
     onSuccess: (result) => {
-      setEmail("");
+      setUsername("");
       setPassword("");
       setError(null);
       setNotice(
         result?.reused
-          ? "هذا البريد مسجّل مسبقاً: تم تحديث كلمة المرور والدور · Existing account updated"
+          ? "هذا الاسم مسجّل مسبقاً: تم تحديث كلمة المرور والدور · Existing account updated"
           : "تم إنشاء الحساب · Account created",
       );
       invalidate();
@@ -552,9 +552,9 @@ function StaffPanel() {
       <form
         onSubmit={(event) => {
           event.preventDefault();
-          if (!email.trim()) {
+          if (!username.trim()) {
             setNotice(null);
-            setError("البريد الإلكتروني مطلوب · Email is required");
+            setError("اسم المستخدم مطلوب · Name is required");
             return;
           }
           if (password.length < 8) {
@@ -567,7 +567,7 @@ function StaffPanel() {
         }}
         className="grid gap-3 rounded-2xl border border-border bg-card p-4 sm:grid-cols-2"
       >
-        <Text label="البريد الإلكتروني · Email" type="email" value={email} onChange={setEmail} required />
+        <Text label="اسم المستخدم · Name" type="text" value={username} onChange={setUsername} required />
         <Text label="كلمة المرور (8 أحرف+)" type="password" value={password} onChange={setPassword} required />
         <label className="block text-sm font-bold text-foreground">
           الدور · Role
@@ -584,7 +584,7 @@ function StaffPanel() {
         <div className="flex items-end">
         <button
             type="submit"
-            disabled={createMutation.isPending || password.length < 8 || !email.trim()}
+            disabled={createMutation.isPending || password.length < 8 || !username.trim()}
             className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-primary px-5 text-sm font-bold text-primary-foreground disabled:opacity-60"
           >
             {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Plus className="h-4 w-4" aria-hidden />}
@@ -618,7 +618,7 @@ function StaffRow({
   onRemove,
   isSelf = false,
 }: {
-  member: { id: string; email: string; roles: StaffRole[]; last_sign_in_at: string | null };
+  member: { id: string; username: string; roles: StaffRole[]; last_sign_in_at: string | null };
   onReset: (password: string) => void;
   onRole: (role: StaffRole) => void;
   onRemove: () => void;
@@ -629,7 +629,7 @@ function StaffRow({
   return (
     <article className="grid gap-3 rounded-2xl border border-border bg-card p-4 lg:grid-cols-[1fr_auto_auto]">
       <div>
-        <p className="font-bold text-foreground" dir="ltr">{member.email}</p>
+        <p className="font-bold text-foreground" dir="ltr">{member.username}</p>
         <p className="text-xs text-muted-foreground">
           {member.roles.map((r) => ROLE_LABEL[r]).join(" · ") || "بدون دور"}
           {member.last_sign_in_at ? ` · آخر دخول ${member.last_sign_in_at.slice(0, 10)}` : ""}
@@ -638,7 +638,7 @@ function StaffRow({
 
       <div className="flex flex-wrap items-center gap-2">
         <label className="text-xs font-bold text-muted-foreground">
-          <span className="sr-only">تغيير دور {member.email}</span>
+          <span className="sr-only">تغيير دور {member.username}</span>
           <select
             value={member.roles[0] ?? "sales"}
             onChange={(event) => onRole(event.target.value as StaffRole)}
@@ -654,7 +654,7 @@ function StaffRow({
           value={password}
           placeholder="كلمة مرور جديدة"
           onChange={(event) => setPassword(event.target.value)}
-          aria-label={`كلمة مرور جديدة لحساب ${member.email}`}
+          aria-label={`كلمة مرور جديدة لحساب ${member.username}`}
           className="min-h-12 w-40 rounded-xl border border-input bg-background px-3 text-sm"
         />
         <button
@@ -678,7 +678,7 @@ function StaffRow({
         <button
           type="button"
           onClick={onRemove}
-          aria-label={`حذف حساب ${member.email}`}
+          aria-label={`حذف حساب ${member.username}`}
           className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-destructive/40 px-4 text-sm font-bold text-destructive"
         >
           <Users className="h-4 w-4" aria-hidden /> حذف
