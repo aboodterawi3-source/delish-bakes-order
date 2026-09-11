@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Loader2, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { usernameToEmail } from "@/lib/username";
 
 export const Route = createFileRoute("/social-login")({
   head: () => ({
@@ -21,7 +22,7 @@ export const Route = createFileRoute("/social-login")({
 
 function SocialLoginPage() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,10 +37,10 @@ function SocialLoginPage() {
     event.preventDefault();
     setBusy(true);
     setError(null);
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email: usernameToEmail(username), password });
     setBusy(false);
     if (signInError) {
-      setError("بيانات الدخول غير صحيحة · Invalid email or password");
+      setError("بيانات الدخول غير صحيحة · Invalid name or password");
       return;
     }
     void navigate({ to: "/social-portal", replace: true });
@@ -62,13 +63,13 @@ function SocialLoginPage() {
 
         <form onSubmit={submit} className="mt-6 space-y-4">
           <label className="block text-sm font-bold text-foreground">
-            البريد الإلكتروني · Email
+            اسم المستخدم · Name
             <input
-              type="email"
+              type="text"
               required
-              autoComplete="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
+              autoComplete="username"
+              value={username}
+              onChange={(event) => setUsername(event.target.value)}
               className="mt-1 min-h-12 w-full rounded-xl border border-input bg-background px-3 text-sm"
             />
           </label>
