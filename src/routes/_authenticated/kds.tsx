@@ -639,6 +639,14 @@ function MenuPanel() {
             value={String(draft.sort_order)}
             onChange={(v) => field("sort_order", Number(v))}
           />
+          <div className="sm:col-span-2">
+            <MenuImageField
+              value={draft.image_url ?? ""}
+              onChange={(v) => field("image_url", v)}
+              onError={setError}
+            />
+          </div>
+
           <div className="flex flex-wrap items-center gap-4 pt-2 text-sm font-bold">
             <label className="inline-flex items-center gap-2">
               <input
