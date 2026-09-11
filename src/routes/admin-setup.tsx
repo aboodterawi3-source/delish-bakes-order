@@ -18,7 +18,6 @@ export const Route = createFileRoute("/admin-setup")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  ssr: false,
   component: AdminSetupPage,
 });
 
