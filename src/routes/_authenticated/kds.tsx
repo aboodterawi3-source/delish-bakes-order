@@ -28,6 +28,7 @@ import {
   type KdsOrder,
   type MenuItem,
   type MenuItemInput,
+  type PriorityColor,
 } from "@/lib/kds.functions";
 
 export const Route = createFileRoute("/_authenticated/kds")({
