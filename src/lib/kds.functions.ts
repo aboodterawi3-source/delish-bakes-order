@@ -117,6 +117,7 @@ export type MenuItem = {
   description_en: string | null;
   category: string;
   price: number;
+  image_url: string | null;
   is_available: boolean;
   is_featured: boolean;
   sort_order: number;
@@ -125,7 +126,7 @@ export type MenuItem = {
 export type MenuItemInput = Omit<MenuItem, "id"> & { id?: string };
 
 const MENU_SELECT =
-  "id, slug, name_ar, name_en, description_ar, description_en, category, price, is_available, is_featured, sort_order";
+  "id, slug, name_ar, name_en, description_ar, description_en, category, price, image_url, is_available, is_featured, sort_order";
 
 /** Full menu, including unavailable items, for the kitchen menu manager. */
 export const listMenuItems = createServerFn({ method: "GET" })
@@ -166,6 +167,7 @@ export const saveMenuItem = createServerFn({ method: "POST" })
       description_en: data.description_en?.trim() || null,
       category: data.category.trim(),
       price: Number(data.price),
+      image_url: data.image_url?.trim() || null,
       is_available: !!data.is_available,
       is_featured: !!data.is_featured,
       sort_order: Number(data.sort_order ?? 0),

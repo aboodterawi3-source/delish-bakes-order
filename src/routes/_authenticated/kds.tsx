@@ -542,6 +542,7 @@ const emptyMenuItem: MenuItemInput = {
   description_en: "",
   category: "",
   price: 0,
+  image_url: "",
   is_available: true,
   is_featured: false,
   sort_order: 0,
@@ -638,6 +639,14 @@ function MenuPanel() {
             value={String(draft.sort_order)}
             onChange={(v) => field("sort_order", Number(v))}
           />
+          <div className="sm:col-span-2">
+            <MenuImageField
+              value={draft.image_url ?? ""}
+              onChange={(v) => field("image_url", v)}
+              onError={setError}
+            />
+          </div>
+
           <div className="flex flex-wrap items-center gap-4 pt-2 text-sm font-bold">
             <label className="inline-flex items-center gap-2">
               <input
@@ -690,6 +699,18 @@ function MenuPanel() {
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {rows.map((item) => (
               <article key={item.id} className="rounded-2xl border border-white/12 bg-[oklch(0.22_0.04_255)] p-4">
+                {item.image_url ? (
+                  <img
+                    src={item.image_url}
+                    alt={`صورة ${item.name_ar}`}
+                    loading="lazy"
+                    className="mb-3 h-36 w-full rounded-xl object-cover"
+                  />
+                ) : (
+                  <div className="mb-3 grid h-36 w-full place-items-center rounded-xl border border-dashed border-white/20 text-xs text-white/45">
+                    لا توجد صورة · No image
+                  </div>
+                )}
                 <h4 className="font-display text-base font-bold">{item.name_ar}</h4>
                 <p className="text-xs text-white/60">{item.name_en}</p>
                 <p className="mt-2 text-lg font-bold">{jod(item.price)}</p>
@@ -748,5 +769,91 @@ function MenuField({
         className="mt-1 min-h-12 w-full rounded-xl border border-white/20 bg-[oklch(0.16_0.05_252)] px-3 text-sm font-normal text-white outline-none focus-visible:ring-2 focus-visible:ring-[oklch(0.65_0.12_230)]"
       />
     </label>
+  );
+}
+
+/** Ten years of validity so a stored signed link keeps working on the storefront. */
+const IMAGE_LINK_TTL = 60 * 60 * 24 * 3650;
+
+/** Upload a photo from the device, or paste an image link; both fill image_url. */
+function MenuImageField({
+  value,
+  onChange,
+  onError,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  onError: (message: string | null) => void;
+}) {
+  const [uploading, setUploading] = useState(false);
+
+  const upload = async (file: File) => {
+    setUploading(true);
+    onError(null);
+    try {
+      const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const path = `products/${crypto.randomUUID()}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from("product-images")
+        .upload(path, file, { contentType: file.type || "image/jpeg", upsert: false });
+      if (uploadError) throw new Error(uploadError.message);
+      const { data, error: signError } = await supabase.storage
+        .from("product-images")
+        .createSignedUrl(path, IMAGE_LINK_TTL);
+      if (signError || !data?.signedUrl) throw new Error(signError?.message ?? "تعذّر إنشاء رابط الصورة");
+      onChange(data.signedUrl);
+    } catch (caught) {
+      onError(caught instanceof Error ? caught.message : "تعذّر رفع الصورة · Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className="rounded-xl border border-white/15 p-3">
+      <p className="text-xs font-bold text-white/75">صورة المنتج · Item photo</p>
+      <div className="mt-2 flex flex-wrap items-start gap-3">
+        {value ? (
+          <img src={value} alt="معاينة صورة المنتج" className="h-24 w-24 rounded-xl object-cover" />
+        ) : (
+          <div className="grid h-24 w-24 place-items-center rounded-xl border border-dashed border-white/25 text-[11px] text-white/45">
+            بدون صورة
+          </div>
+        )}
+        <div className="flex min-w-52 flex-1 flex-col gap-2">
+          <label className="inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-full border border-white/25 px-4 text-sm font-bold">
+            {uploading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Plus className="h-4 w-4" aria-hidden />}
+            {uploading ? "جارٍ الرفع…" : "رفع صورة من الجهاز"}
+            <input
+              type="file"
+              accept="image/*"
+              className="sr-only"
+              disabled={uploading}
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (file) void upload(file);
+              }}
+            />
+          </label>
+          <input
+            type="url"
+            value={value}
+            placeholder="أو الصق رابط صورة · or paste image URL"
+            onChange={(event) => onChange(event.target.value)}
+            className="min-h-12 w-full rounded-xl border border-white/20 bg-[oklch(0.16_0.05_252)] px-3 text-sm text-white outline-none focus-visible:ring-2 focus-visible:ring-[oklch(0.65_0.12_230)]"
+          />
+          {value && (
+            <button
+              type="button"
+              onClick={() => onChange("")}
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[oklch(0.52_0.17_25)]/60 px-4 text-sm font-bold text-[oklch(0.75_0.14_25)]"
+            >
+              <Trash2 className="h-4 w-4" aria-hidden /> إزالة الصورة
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
