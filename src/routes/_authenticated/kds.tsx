@@ -542,6 +542,7 @@ const emptyMenuItem: MenuItemInput = {
   description_en: "",
   category: "",
   price: 0,
+  image_url: "",
   is_available: true,
   is_featured: false,
   sort_order: 0,
