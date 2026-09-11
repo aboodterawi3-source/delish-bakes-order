@@ -711,12 +711,56 @@ function MenuPanel() {
               <input
                 type="checkbox"
                 checked={draft.is_featured}
-                onChange={(event) => field("is_featured", event.target.checked)}
+                onChange={(event) =>
+                  setDraft((prev) =>
+                    prev
+                      ? {
+                          ...prev,
+                          is_featured: event.target.checked,
+                          priority_color: event.target.checked ? prev.priority_color : null,
+                        }
+                      : prev,
+                  )
+                }
                 className="h-5 w-5"
               />
-              مميز
+              مميز · Featured
             </label>
           </div>
+
+          {draft.is_featured && (
+            <fieldset className="sm:col-span-2 rounded-2xl border border-white/12 bg-white/[0.03] p-3">
+              <legend className="px-1 text-xs font-bold text-white/80">
+                لون الأولوية · Priority colour
+              </legend>
+              <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                {PRIORITY_OPTIONS.map((option) => {
+                  const active = draft.priority_color === option.value;
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => field("priority_color", active ? null : option.value)}
+                      className={`flex min-h-12 items-center gap-3 rounded-xl border px-3 py-2 text-start transition-colors ${
+                        active ? "border-white/80 bg-white/10" : "border-white/15 hover:bg-white/5"
+                      }`}
+                    >
+                      <span
+                        aria-hidden
+                        className="h-6 w-6 shrink-0 rounded-full border border-white/40"
+                        style={{ background: option.swatch.replace(/_/g, " ") }}
+                      />
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-bold">{option.label}</span>
+                        <span className="block truncate text-xs text-white/60">{option.hint}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </fieldset>
+          )}
           <div className="flex gap-2 sm:col-span-2">
             <button
               type="submit"
