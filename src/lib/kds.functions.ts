@@ -108,6 +108,17 @@ export const markOrderReady = createServerFn({ method: "POST" })
 
 /* ------------------------- menu & pricing management ------------------------ */
 
+/** Colour tiers that drive kitchen priority for featured items. */
+export const PRIORITY_COLORS = [
+  "dark_red",
+  "warm_orange",
+  "golden_yellow",
+  "sky_blue",
+  "soft_green",
+] as const;
+
+export type PriorityColor = (typeof PRIORITY_COLORS)[number];
+
 export type MenuItem = {
   id: string;
   slug: string;
@@ -120,13 +131,14 @@ export type MenuItem = {
   image_url: string | null;
   is_available: boolean;
   is_featured: boolean;
+  priority_color: PriorityColor | null;
   sort_order: number;
 };
 
 export type MenuItemInput = Omit<MenuItem, "id"> & { id?: string };
 
 const MENU_SELECT =
-  "id, slug, name_ar, name_en, description_ar, description_en, category, price, image_url, is_available, is_featured, sort_order";
+  "id, slug, name_ar, name_en, description_ar, description_en, category, price, image_url, is_available, is_featured, priority_color, sort_order";
 
 /** Full menu, including unavailable items, for the kitchen menu manager. */
 export const listMenuItems = createServerFn({ method: "GET" })
