@@ -82,24 +82,17 @@ export const getAdminSetupState = createServerFn({ method: "GET" }).handler(asyn
 });
 
 /**
- * Creates the very first admin account. Refuses once any admin exists and always
- * requires the out-of-band ADMIN_SETUP_TOKEN, so a stranger who finds the page
- * cannot claim the account.
+ * Creates the very first admin account. Refuses once any admin exists.
  */
 export const bootstrapAdmin = createServerFn({ method: "POST" })
-  .inputValidator((input: { username: string; password: string; token: string }) => {
+  .inputValidator((input: { username: string; password: string }) => {
     if (!normalizeUsername(input?.username ?? "")) throw new Error("اسم المستخدم مطلوب · Name is required");
     if (!input?.password || input.password.length < 8) {
       throw new Error("كلمة المرور 8 أحرف على الأقل · Password must be at least 8 characters");
     }
-    if (!input?.token?.trim()) throw new Error("رمز التهيئة مطلوب · Setup token is required");
-    return { email: usernameToEmail(input.username), password: input.password, token: input.token.trim() };
+    return { email: usernameToEmail(input.username), password: input.password };
   })
   .handler(async ({ data }) => {
-    const expected = process.env["ADMIN_SETUP_TOKEN"];
-    if (!expected || data.token !== expected) {
-      throw new Error("رمز التهيئة غير صحيح · Invalid setup token");
-    }
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { count } = await supabaseAdmin
       .from("user_roles")
