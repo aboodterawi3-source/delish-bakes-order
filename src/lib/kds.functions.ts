@@ -163,6 +163,9 @@ export const saveMenuItem = createServerFn({ method: "POST" })
     }
     if (!input?.category?.trim()) throw new Error("التصنيف مطلوب · Category is required");
     if (!(Number(input.price) >= 0)) throw new Error("السعر غير صحيح · Invalid price");
+    if (input.priority_color && !PRIORITY_COLORS.includes(input.priority_color)) {
+      throw new Error("لون الأولوية غير صحيح · Invalid priority colour");
+    }
     return input;
   })
   .handler(async ({ data, context }) => {
@@ -182,6 +185,7 @@ export const saveMenuItem = createServerFn({ method: "POST" })
       image_url: data.image_url?.trim() || null,
       is_available: !!data.is_available,
       is_featured: !!data.is_featured,
+      priority_color: data.is_featured ? (data.priority_color ?? null) : null,
       sort_order: Number(data.sort_order ?? 0),
     };
     const query = data.id
