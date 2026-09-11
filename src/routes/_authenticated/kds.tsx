@@ -812,6 +812,17 @@ function MenuPanel() {
                   {item.is_available ? "متاح" : "غير متاح"}
                   {item.is_featured ? " · مميز" : ""}
                 </p>
+                {item.is_featured && priorityOption(item.priority_color) && (
+                  <p
+                    className="mt-2 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold"
+                    style={{
+                      background: priorityOption(item.priority_color)!.swatch.replace(/_/g, " "),
+                      color: priorityOption(item.priority_color)!.text,
+                    }}
+                  >
+                    {priorityOption(item.priority_color)!.label}
+                  </p>
+                )}
                 <div className="mt-3 flex gap-2">
                   <button
                     type="button"
