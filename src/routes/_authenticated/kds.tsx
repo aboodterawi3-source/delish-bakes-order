@@ -28,6 +28,7 @@ import {
   type KdsOrder,
   type MenuItem,
   type MenuItemInput,
+  type PriorityColor,
 } from "@/lib/kds.functions";
 
 export const Route = createFileRoute("/_authenticated/kds")({
@@ -545,8 +546,57 @@ const emptyMenuItem: MenuItemInput = {
   image_url: "",
   is_available: true,
   is_featured: false,
+  priority_color: null,
   sort_order: 0,
 };
+
+/** Priority colour tiers offered when an item is marked featured. */
+const PRIORITY_OPTIONS: {
+  value: PriorityColor;
+  label: string;
+  hint: string;
+  swatch: string;
+  text: string;
+}[] = [
+  {
+    value: "dark_red",
+    label: "أحمر داكن · Dark Red",
+    hint: "أولوية قصوى · للكيكات الطوابق",
+    swatch: "oklch(0.42_0.16_25)",
+    text: "#fff",
+  },
+  {
+    value: "warm_orange",
+    label: "برتقالي دافئ · Warm Orange",
+    hint: "أولوية عالية · للبوفيهات",
+    swatch: "oklch(0.68_0.16_55)",
+    text: "#fff",
+  },
+  {
+    value: "golden_yellow",
+    label: "أصفر ذهبي · Golden Yellow",
+    hint: "أولوية 3 · للسبيشل كيك فقط",
+    swatch: "oklch(0.85_0.15_92)",
+    text: "#1b1200",
+  },
+  {
+    value: "sky_blue",
+    label: "أزرق سماوي · Sky Blue",
+    hint: "أولوية 4 · للميني كيك",
+    swatch: "oklch(0.80_0.10_230)",
+    text: "#0c1a2a",
+  },
+  {
+    value: "soft_green",
+    label: "أخضر هادئ · Soft Green",
+    hint: "أولوية أساسية · للبوكسات والجاهز",
+    swatch: "oklch(0.82_0.11_150)",
+    text: "#0a1f14",
+  },
+];
+
+const priorityOption = (value: PriorityColor | null | undefined) =>
+  PRIORITY_OPTIONS.find((option) => option.value === value) ?? null;
 
 const jod = (value: number) => `${value.toFixed(2)} د.أ`;
 
@@ -661,12 +711,56 @@ function MenuPanel() {
               <input
                 type="checkbox"
                 checked={draft.is_featured}
-                onChange={(event) => field("is_featured", event.target.checked)}
+                onChange={(event) =>
+                  setDraft((prev) =>
+                    prev
+                      ? {
+                          ...prev,
+                          is_featured: event.target.checked,
+                          priority_color: event.target.checked ? prev.priority_color : null,
+                        }
+                      : prev,
+                  )
+                }
                 className="h-5 w-5"
               />
-              مميز
+              مميز · Featured
             </label>
           </div>
+
+          {draft.is_featured && (
+            <fieldset className="sm:col-span-2 rounded-2xl border border-white/12 bg-white/[0.03] p-3">
+              <legend className="px-1 text-xs font-bold text-white/80">
+                لون الأولوية · Priority colour
+              </legend>
+              <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                {PRIORITY_OPTIONS.map((option) => {
+                  const active = draft.priority_color === option.value;
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => field("priority_color", active ? null : option.value)}
+                      className={`flex min-h-12 items-center gap-3 rounded-xl border px-3 py-2 text-start transition-colors ${
+                        active ? "border-white/80 bg-white/10" : "border-white/15 hover:bg-white/5"
+                      }`}
+                    >
+                      <span
+                        aria-hidden
+                        className="h-6 w-6 shrink-0 rounded-full border border-white/40"
+                        style={{ background: option.swatch.replace(/_/g, " ") }}
+                      />
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-bold">{option.label}</span>
+                        <span className="block truncate text-xs text-white/60">{option.hint}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </fieldset>
+          )}
           <div className="flex gap-2 sm:col-span-2">
             <button
               type="submit"
@@ -718,6 +812,17 @@ function MenuPanel() {
                   {item.is_available ? "متاح" : "غير متاح"}
                   {item.is_featured ? " · مميز" : ""}
                 </p>
+                {item.is_featured && priorityOption(item.priority_color) && (
+                  <p
+                    className="mt-2 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-bold"
+                    style={{
+                      background: priorityOption(item.priority_color)!.swatch.replace(/_/g, " "),
+                      color: priorityOption(item.priority_color)!.text,
+                    }}
+                  >
+                    {priorityOption(item.priority_color)!.label}
+                  </p>
+                )}
                 <div className="mt-3 flex gap-2">
                   <button
                     type="button"
