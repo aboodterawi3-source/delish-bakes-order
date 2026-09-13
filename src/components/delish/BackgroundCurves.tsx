@@ -43,10 +43,6 @@ export function BackgroundCurves({ className = "" }: { className?: string }) {
           fill="none"
         />
       </svg>
-      {/* Soft warm radial glow spots */}
-      <div className="absolute -top-32 -left-32 h-96 w-96 rounded-full bg-[#FDE2CF]/35 blur-3xl" />
-      <div className="absolute top-1/2 -right-32 h-96 w-96 rounded-full bg-[#EFA781]/20 blur-3xl" />
-      <div className="absolute -bottom-32 left-1/3 h-96 w-96 rounded-full bg-[#FDE2CF]/25 blur-3xl" />
     </div>
   );
 }

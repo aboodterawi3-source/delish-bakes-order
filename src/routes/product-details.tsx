@@ -9,6 +9,10 @@ export const Route = createFileRoute("/product-details")({
     meta: [
       { title: "Ombre Fondant Ruffle Cake | DELISH Bakes" },
       { name: "description", content: "Handcrafted ombre fondant ruffle wedding and celebration cake in shades of magenta, purple, and pastel blue." },
+      { property: "og:title", content: "Ombre Fondant Ruffle Cake | DELISH Bakes" },
+      { property: "og:description", content: "Handcrafted ombre fondant ruffle wedding and celebration cake in shades of magenta, purple, and pastel blue." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: ProductDetailsPageWrapper,
@@ -24,26 +28,27 @@ function ProductDetailsPageWrapper() {
 
 function ProductDetailsPage() {
   const navigate = useNavigate();
-  const { addItem, totalItems } = useCart();
+  const { add, count } = useCart();
   const [cartOpen, setCartOpen] = useState(false);
 
   return (
     <main className="min-h-dvh w-full bg-[#F9FBFC]">
       <ProductDetailsView
-        cartCount={totalItems || 1}
+        cartCount={count}
         onBack={() => {
           void navigate({ to: "/discover" });
         }}
         onOpenCart={() => setCartOpen(true)}
         onAddToCart={(item) => {
-          addItem({
-            productId: "prod-ombre-ruffle",
-            nameAr: "كيك أمبري فوندان رفل",
-            nameEn: item.name,
-            unitPrice: item.price,
-            quantity: item.quantity,
-            optionsAr: [item.size],
-            optionsEn: [item.size],
+          add({
+            ar: "كيك أمبري فوندان رفل",
+            en: item.name,
+            unit: item.price,
+            qty: item.quantity,
+            image: "/images/ombre-ruffle-cake.jpg",
+            detailsAr: [item.size],
+            detailsEn: [item.size],
+            spec: { kind: "catalog", productId: "prod-ombre-ruffle" },
           });
           setCartOpen(true);
         }}
