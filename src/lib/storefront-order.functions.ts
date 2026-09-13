@@ -18,6 +18,8 @@ const MAX_LINES = 40;
 const MAX_QTY = 50;
 const MAX_IMAGE_BYTES = 1_500_000;
 const IMAGE_PREFIX = /^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=]+$/;
+/** Signed link returned by uploadDesignImage for photos kept in Cloud storage. */
+const STORAGE_URL = /^https:\/\/[a-z0-9.-]+\/storage\/v1\/object\/sign\/order-designs\/[\w./-]+\?[\w=%&.-]+$/i;
 
 const text = (value: unknown, max: number, label: string, required = false) => {
   const trimmed = typeof value === "string" ? value.trim() : "";
