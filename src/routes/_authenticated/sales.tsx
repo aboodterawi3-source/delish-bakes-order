@@ -543,6 +543,11 @@ const OrderCard = memo(function OrderCard({
           <CalendarClock className="h-4 w-4" aria-hidden="true" />
           {order.requested_date} · {order.requested_time.slice(0, 5)}
         </span>
+        {order.schedule_updated_at ? (
+          <span className="rounded-full bg-gold px-3 py-1 text-[11px] font-bold text-white">
+            تم تعديل الموعد 🔄
+          </span>
+        ) : null}
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
@@ -573,6 +578,15 @@ const OrderCard = memo(function OrderCard({
         >
           <Printer className="h-4 w-4" aria-hidden="true" /> طباعة حرارية
         </button>
+        {order.schedule_updated_at ? (
+          <button
+            type="button"
+            onClick={() => sendScheduleConfirmation(order)}
+            className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[#166534] px-5 text-sm font-bold text-white transition-transform hover:scale-[1.02] active:scale-95"
+          >
+            <MessageCircle className="h-4 w-4" aria-hidden="true" /> إرسال تأكيد التعديل للواتساب
+          </button>
+        ) : null}
       </div>
     </li>
   );
