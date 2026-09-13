@@ -32,7 +32,7 @@ function DiscoverPage() {
   const [cartOpen, setCartOpen] = useState(false);
 
   return (
-    <main className="min-h-dvh w-full bg-[#F9FBFC]">
+    <main className="min-h-dvh w-full bg-background">
       <DiscoverView
         cartCount={count}
         onOpenCart={() => setCartOpen(true)}
