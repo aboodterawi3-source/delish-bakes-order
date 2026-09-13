@@ -23,13 +23,14 @@ import {
   getSalesOrders,
   getShiftReport,
   updateSalesOrder,
+  updateSalesOrderItemPrice,
   type OrderPatch,
   type PaymentMethod,
   type SalesOrder,
   type SalesStatus,
   type ShiftReport,
 } from "@/lib/sales.functions";
-
+import { getMyPermissions } from "@/lib/permissions.functions";
 
 export const Route = createFileRoute("/_authenticated/sales")({
   head: () => ({
@@ -49,14 +50,14 @@ export const Route = createFileRoute("/_authenticated/sales")({
 const flow: SalesStatus[] = ["new", "baking", "ready", "out_for_delivery", "completed"];
 
 const statusMeta: Record<SalesStatus, { ar: string; en: string; chip: string }> = {
-  new: { ar: "قيد الانتظار", en: "Pending", chip: "bg-secondary text-secondary-foreground" },
-  confirmed: { ar: "مؤكد", en: "Confirmed", chip: "bg-secondary text-secondary-foreground" },
-  baking: { ar: "قيد التنفيذ", en: "In production", chip: "bg-[oklch(0.68_0.16_52)] text-white" },
-  ready: { ar: "جاهز بالمحل", en: "Ready at store", chip: "bg-[oklch(0.74_0.11_230)] text-white" },
-  out_for_delivery: { ar: "خارج للتوصيل", en: "Out for delivery", chip: "bg-primary text-primary-foreground" },
-  completed: { ar: "مكتمل", en: "Completed", chip: "bg-[oklch(0.62_0.13_150)] text-white" },
-  delivered: { ar: "تم التسليم", en: "Delivered", chip: "bg-[oklch(0.62_0.13_150)] text-white" },
-  cancelled: { ar: "ملغي", en: "Canceled", chip: "bg-destructive text-destructive-foreground" },
+  new: { ar: "قيد الانتظار", en: "Pending", chip: "bg-[#FDE2CF] text-[#7B3F00]" },
+  confirmed: { ar: "مؤكد", en: "Confirmed", chip: "bg-[#FDE2CF] text-[#7B3F00]" },
+  baking: { ar: "قيد التنفيذ", en: "In production", chip: "bg-[#EFA781] text-white" },
+  ready: { ar: "جاهز بالمحل", en: "Ready at store", chip: "bg-[#B8860B] text-white" },
+  out_for_delivery: { ar: "خارج للتوصيل", en: "Out for delivery", chip: "bg-[#8B4513] text-white" },
+  completed: { ar: "مكتمل", en: "Completed", chip: "bg-[#166534] text-white" },
+  delivered: { ar: "تم التسليم", en: "Delivered", chip: "bg-[#166534] text-white" },
+  cancelled: { ar: "ملغي", en: "Canceled", chip: "bg-red-600 text-white" },
 };
 
 const payMeta: Record<PaymentMethod, { ar: string; en: string }> = {
@@ -127,7 +128,9 @@ function SalesPage() {
   const accessFn = useServerFn(getSalesAccess);
   const ordersFn = useServerFn(getSalesOrders);
   const updateFn = useServerFn(updateSalesOrder);
+  const updatePriceFn = useServerFn(updateSalesOrderItemPrice);
   const reportFn = useServerFn(getShiftReport);
+  const permissionsFn = useServerFn(getMyPermissions);
 
   const [term, setTerm] = useState("");
   const search = useDebouncedValue(term, 180);
@@ -141,8 +144,6 @@ function SalesPage() {
   const access = useQuery({
     queryKey: ["sales-access"],
     queryFn: () => accessFn({}),
-    // Roles can change (or the signed-in account can switch), so never serve a
-    // stale access answer from a previous session.
     staleTime: 0,
     gcTime: 0,
     refetchOnMount: "always",
@@ -150,11 +151,18 @@ function SalesPage() {
   });
 
   const allowed = access.data?.allowed === true;
+
+  const permissions = useQuery({
+    queryKey: ["my-sales-permissions"],
+    queryFn: () => permissionsFn({}),
+    enabled: allowed,
+    staleTime: 30_000,
+  });
+
   const orders = useQuery({
     queryKey: ORDERS_KEY,
     queryFn: () => ordersFn({}),
     enabled: allowed,
-    // Realtime carries the updates; polling is only a safety net.
     refetchInterval: 30_000,
     staleTime: 10_000,
   });
@@ -175,6 +183,16 @@ function SalesPage() {
     onSuccess: (row) => {
       queryClient.setQueryData<SalesOrder[]>(ORDERS_KEY, (rows) =>
         (rows ?? []).map((order) => (order.id === row.id ? row : order)),
+      );
+    },
+  });
+
+  const updateItemPrice = useMutation({
+    mutationFn: (input: { itemId: string; orderId: string; newUnitPrice: number }) =>
+      updatePriceFn({ data: input }),
+    onSuccess: (updatedOrder) => {
+      queryClient.setQueryData<SalesOrder[]>(ORDERS_KEY, (rows) =>
+        (rows ?? []).map((order) => (order.id === updatedOrder.id ? updatedOrder : order)),
       );
     },
   });
@@ -316,6 +334,10 @@ function SalesPage() {
       {selected ? (
         <OrderPanel
           order={selected}
+          permissions={permissions.data}
+          onUpdateItemPrice={(itemId, newUnitPrice) =>
+            updateItemPrice.mutate({ itemId, orderId: selected.id, newUnitPrice })
+          }
           onClose={() => setSelectedId(null)}
           onPatch={(input) => patch.mutate({ ...input, orderId: selected.id })}
           onCancel={() => {
@@ -479,11 +501,15 @@ const OrderCard = memo(function OrderCard({
 
 function OrderPanel({
   order,
+  permissions,
+  onUpdateItemPrice,
   onClose,
   onPatch,
   onCancel,
 }: {
   order: SalesOrder;
+  permissions?: { permittedProductIds: string[]; isAdmin: boolean };
+  onUpdateItemPrice?: (itemId: string, newUnitPrice: number) => void;
   onClose: () => void;
   onPatch: (input: Omit<OrderPatch, "orderId">) => void;
   onCancel: () => void;
@@ -651,13 +677,60 @@ function OrderPanel({
         <section className="mt-6">
           <h3 className="text-sm font-bold text-foreground">تفاصيل الطلب</h3>
           <ul className="mt-2 space-y-2 text-sm">
-            {order.items.map((item) => (
-              <li key={item.id} className="rounded-xl bg-secondary/60 p-3">
-                <p className="font-bold text-foreground">{item.quantity} × {item.name_ar}</p>
-                {item.options_ar.length ? <p className="text-xs text-muted-foreground">{item.options_ar.join(" · ")}</p> : null}
-                {item.notes ? <p className="text-xs text-foreground">ملاحظة: {item.notes}</p> : null}
-              </li>
-            ))}
+            {order.items.map((item) => {
+              const canEditPrice = Boolean(
+                permissions?.isAdmin ||
+                (item.product_id && permissions?.permittedProductIds?.includes(item.product_id))
+              );
+              return (
+                <li key={item.id} className="rounded-2xl border border-slate-100 bg-[#F9FBFC] p-3.5 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="font-bold text-[#3E2723]">{item.quantity} × {item.name_ar}</p>
+                      <p className="text-xs text-[#7A6458] font-medium">{item.name_en}</p>
+                    </div>
+                    {canEditPrice ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200/80 px-2 py-0.5 text-[10px] font-bold text-amber-900 shadow-xs">
+                        تعديل السعر ✏️
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">
+                        مقيد 🔒
+                      </span>
+                    )}
+                  </div>
+                  {item.options_ar.length ? <p className="text-xs text-[#8B4513]">{item.options_ar.join(" · ")}</p> : null}
+                  {item.notes ? <p className="text-xs text-[#3E2723]">ملاحظة: {item.notes}</p> : null}
+
+                  {/* Price modifier inline control */}
+                  <div className="flex items-center justify-between border-t border-slate-200/60 pt-2 text-xs">
+                    <span className="text-[#7A6458] font-medium">سعر الوحدة · Unit Price:</span>
+                    {canEditPrice && onUpdateItemPrice ? (
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.25"
+                          defaultValue={item.unit_price}
+                          onBlur={(e) => {
+                            const val = parseFloat(e.target.value);
+                            if (!isNaN(val) && val !== item.unit_price) {
+                              onUpdateItemPrice(item.id, val);
+                            }
+                          }}
+                          className="w-20 rounded-lg border border-amber-300 bg-white px-2 py-1 text-center text-xs font-bold text-[#3E2723] focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                        />
+                        <span className="font-bold text-[#8B4513]">د.أ</span>
+                      </div>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-700">
+                        🔒 {jd(item.unit_price)}
+                      </span>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
           </ul>
           {order.inscription ? <p className="mt-2 text-sm text-foreground">الكتابة على الكيك: {order.inscription}</p> : null}
           {order.notes ? <p className="mt-2 text-sm text-foreground">ملاحظات العميل: {order.notes}</p> : null}

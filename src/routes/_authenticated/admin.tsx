@@ -16,6 +16,9 @@ import {
   TrendingUp,
   Users,
   Wallet,
+  Lock,
+  Unlock,
+  SlidersHorizontal,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -29,6 +32,10 @@ import {
   type OrderLog,
   type StaffRole,
 } from "@/lib/admin.functions";
+import {
+  getStaffPermissionMatrix,
+  updateStaffProductPermission,
+} from "@/lib/permissions.functions";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
@@ -87,7 +94,7 @@ function downloadCsv(name: string, headers: string[], rows: (string | number)[][
   URL.revokeObjectURL(url);
 }
 
-type Tab = "analytics" | "staff";
+type Tab = "analytics" | "staff" | "permissions";
 
 function AdminPage() {
   const navigate = useNavigate();
@@ -116,22 +123,22 @@ function AdminPage() {
 
   if (access.isLoading) {
     return (
-      <main dir="rtl" className="grid min-h-dvh place-items-center bg-background">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" aria-label="جاري التحميل" />
+      <main dir="rtl" className="grid min-h-dvh place-items-center bg-[#F9FBFC]">
+        <Loader2 className="h-6 w-6 animate-spin text-[#B8860B]" aria-label="جاري التحميل" />
       </main>
     );
   }
 
   if (!access.data?.allowed) {
     return (
-      <main dir="rtl" className="grid min-h-dvh place-items-center bg-background px-4">
-        <div className="max-w-sm rounded-3xl border border-border bg-card p-6 text-center">
-          <h1 className="font-display text-lg font-bold text-foreground">هذه اللوحة للمديرين فقط</h1>
-          <p className="mt-2 text-sm text-muted-foreground">This dashboard is limited to admin accounts.</p>
+      <main dir="rtl" className="grid min-h-dvh place-items-center bg-[#F9FBFC] px-4">
+        <div className="max-w-sm rounded-3xl border border-slate-200 bg-white p-6 text-center shadow-lg">
+          <h1 className="font-display text-lg font-bold text-[#3E2723]">هذه اللوحة للمديرين فقط</h1>
+          <p className="mt-2 text-sm text-[#7A6458]">This dashboard is limited to admin accounts.</p>
           <button
             type="button"
             onClick={() => void signOut()}
-            className="mt-4 inline-flex min-h-12 items-center justify-center rounded-full bg-primary px-5 text-sm font-bold text-primary-foreground"
+            className="mt-4 inline-flex min-h-12 items-center justify-center rounded-full bg-[#8B4513] px-5 text-sm font-bold text-white shadow-sm hover:bg-[#5D2E17]"
           >
             تسجيل الخروج · Sign out
           </button>
@@ -143,39 +150,43 @@ function AdminPage() {
   const data = analytics.data;
 
   return (
-    <main dir="rtl" className="min-h-dvh bg-background pb-16">
-      <header className="border-b border-border bg-card">
+    <main dir="rtl" className="min-h-dvh bg-[#F9FBFC] text-[#3E2723] bg-delish-pattern pb-16">
+      <header className="border-b border-[#F1F5F9] bg-white/95 backdrop-blur-md shadow-xs">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-4">
           <div className="me-auto">
-            <h1 className="font-display text-xl font-bold delish-wordmark">Delish</h1>
-            <p className="text-xs font-bold text-muted-foreground">لوحة الإدارة · Admin dashboard</p>
+            <div className="flex items-center gap-2">
+              <span className="font-serif text-2xl font-bold tracking-widest text-[#B8860B] uppercase">DELISH</span>
+              <span className="font-script text-2xl italic text-[#8B4513] -mt-1">Bakes</span>
+            </div>
+            <p className="text-xs font-bold text-[#7A6458]">لوحة الإدارة الشاملة · Admin Dashboard</p>
           </div>
           <Link
             to="/"
-            className="inline-flex min-h-12 items-center rounded-full border border-border px-4 text-sm font-bold text-foreground"
+            className="inline-flex min-h-11 items-center rounded-full border border-slate-200 bg-white px-4 text-xs font-bold text-[#5D2E17] hover:bg-slate-50 shadow-xs"
           >
             المتجر · Store
           </Link>
           <button
             type="button"
             onClick={() => void analytics.refetch()}
-            className="inline-flex min-h-12 items-center gap-2 rounded-full border border-border px-4 text-sm font-bold text-foreground"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-4 text-xs font-bold text-[#5D2E17] hover:bg-slate-50 shadow-xs"
           >
-            <RefreshCw className="h-4 w-4" aria-hidden /> تحديث
+            <RefreshCw className="h-3.5 w-3.5" aria-hidden /> تحديث
           </button>
           <button
             type="button"
             onClick={() => void signOut()}
-            className="inline-flex min-h-12 items-center gap-2 rounded-full bg-primary px-4 text-sm font-bold text-primary-foreground"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-[#8B4513] px-4 text-xs font-bold text-white shadow-xs hover:bg-[#5D2E17]"
           >
-            <LogOut className="h-4 w-4" aria-hidden /> خروج
+            <LogOut className="h-3.5 w-3.5" aria-hidden /> خروج
           </button>
         </div>
-        <nav aria-label="أقسام اللوحة" className="mx-auto flex max-w-6xl gap-2 overflow-x-auto px-4 pb-3">
+        <nav aria-label="أقسام اللوحة" className="mx-auto flex max-w-6xl gap-2 overflow-x-auto px-4 pb-3 no-scrollbar">
           {(
             [
-              ["analytics", "التحليلات والسجلات"],
-              ["staff", "حسابات الموظفين"],
+              ["analytics", "التحليلات والسجلات · Analytics"],
+              ["staff", "حسابات الموظفين · Staff"],
+              ["permissions", "مصفوفة صلاحيات الأسعار · Price Permissions"],
             ] as [Tab, string][]
           ).map(([key, label]) => (
             <button
@@ -183,8 +194,10 @@ function AdminPage() {
               type="button"
               aria-current={tab === key ? "page" : undefined}
               onClick={() => setTab(key)}
-              className={`min-h-12 whitespace-nowrap rounded-full px-4 text-sm font-bold transition-colors ${
-                tab === key ? "bg-primary text-primary-foreground" : "border border-border text-foreground"
+              className={`min-h-11 whitespace-nowrap rounded-full px-5 text-xs sm:text-sm font-bold transition-all ${
+                tab === key
+                  ? "bg-[#8B4513] text-white shadow-sm"
+                  : "border border-slate-200 bg-white text-[#5D2E17] hover:bg-slate-50"
               }`}
             >
               {label}
@@ -318,6 +331,7 @@ function AdminPage() {
         )}
 
         {tab === "staff" && <StaffPanel />}
+        {tab === "permissions" && <StaffPermissionMatrixPanel />}
       </div>
     </main>
   );
@@ -685,5 +699,213 @@ function StaffRow({
         </button>
       )}
     </article>
+  );
+}
+
+function StaffPermissionMatrixPanel() {
+  const queryClient = useQueryClient();
+  const matrixFn = useServerFn(getStaffPermissionMatrix);
+  const updatePermFn = useServerFn(updateStaffProductPermission);
+  const staffFn = useServerFn(listStaff);
+
+  const matrixQuery = useQuery({
+    queryKey: ["admin", "permission-matrix"],
+    queryFn: () => matrixFn({}),
+    staleTime: 30_000,
+  });
+
+  const staffQuery = useQuery({
+    queryKey: ["admin", "staff-list"],
+    queryFn: () => staffFn({}),
+    staleTime: 60_000,
+  });
+
+  const [selectedUserId, setSelectedUserId] = useState<string>("");
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const staffMembers = staffQuery.data ?? [];
+  const activeUserId = selectedUserId || (staffMembers[0]?.id ?? "");
+
+  const updateMutation = useMutation({
+    mutationFn: (input: { userId: string; productId: string; canEditPrice: boolean }) =>
+      updatePermFn({ data: input }),
+    onSuccess: (_, variables) => {
+      queryClient.setQueryData(["admin", "permission-matrix"], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          matrix: {
+            ...old.matrix,
+            [variables.userId]: {
+              ...(old.matrix?.[variables.userId] ?? {}),
+              [variables.productId]: variables.canEditPrice,
+            },
+          },
+        };
+      });
+    },
+  });
+
+  const products = matrixQuery.data?.products ?? [];
+  const matrix = (matrixQuery.data?.matrix ?? {}) as Record<string, Record<string, boolean>>;
+
+  const filteredProducts = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    if (!term) return products;
+    return products.filter(
+      (p) =>
+        p.name_ar.toLowerCase().includes(term) ||
+        p.name_en.toLowerCase().includes(term) ||
+        p.category.toLowerCase().includes(term)
+    );
+  }, [products, searchTerm]);
+
+  const grantAll = (grant: boolean) => {
+    if (!activeUserId) return;
+    for (const prod of products) {
+      updateMutation.mutate({
+        userId: activeUserId,
+        productId: prod.id,
+        canEditPrice: grant,
+      });
+    }
+  };
+
+  return (
+    <section aria-labelledby="matrix-heading" className="space-y-6">
+      <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-[0_8px_24px_-8px_rgba(62,39,35,0.06)]">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
+          <div>
+            <h2 id="matrix-heading" className="font-serif text-lg font-bold text-[#3E2723]">
+              مصفوفة صلاحيات تعديل الأسعار للموظفين
+            </h2>
+            <p className="text-xs text-[#7A6458]">
+              Staff Price Modification Matrix · حدد المنتجات المسموح لكل موظف مبيعات تعديل سعرها بالطلب
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => grantAll(true)}
+              className="inline-flex items-center gap-1.5 rounded-full bg-[#FDE2CF] px-4 py-2 text-xs font-bold text-[#7B3F00] hover:bg-[#fed6bc] transition shadow-xs"
+            >
+              <Unlock className="h-3.5 w-3.5 text-[#B8860B]" />
+              منح تعديل الكل
+            </button>
+            <button
+              type="button"
+              onClick={() => grantAll(false)}
+              className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition shadow-xs"
+            >
+              <Lock className="h-3.5 w-3.5 text-slate-400" />
+              تقييد الكل (قفل)
+            </button>
+          </div>
+        </div>
+
+        {/* Employee Selector Bar */}
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          <span className="text-xs font-bold text-[#3E2723]">الموظف · Staff:</span>
+          <div className="flex flex-wrap gap-2">
+            {staffMembers.map((member) => {
+              const active = activeUserId === member.id;
+              return (
+                <button
+                  key={member.id}
+                  type="button"
+                  onClick={() => setSelectedUserId(member.id)}
+                  className={`rounded-full px-4 py-1.5 text-xs font-bold transition-all ${
+                    active
+                      ? "bg-[#8B4513] text-white shadow-sm"
+                      : "border border-slate-200 bg-white text-[#5D2E17] hover:bg-slate-50"
+                  }`}
+                >
+                  {member.username} ({member.roles.join(", ")})
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Search Bar */}
+        <div className="mt-4">
+          <input
+            type="search"
+            placeholder="بحث بالمنتج أو التصنيف…"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full max-w-sm rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 py-2 text-xs text-[#3E2723] focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+          />
+        </div>
+
+        {/* Matrix Table */}
+        <div className="mt-5 overflow-x-auto rounded-2xl border border-slate-100">
+          <table className="w-full text-start text-xs sm:text-sm">
+            <thead className="bg-[#F9FBFC] text-xs font-bold text-[#7A6458]">
+              <tr>
+                <th scope="col" className="p-3 text-start">المنتج · Product</th>
+                <th scope="col" className="p-3 text-start">التصنيف</th>
+                <th scope="col" className="p-3 text-start">السعر الافتراضي</th>
+                <th scope="col" className="p-3 text-start">صلاحية تعديل السعر (can_edit_price)</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 bg-white">
+              {filteredProducts.map((prod) => {
+                const canEdit = matrix?.[activeUserId]?.[prod.id] ?? true;
+                return (
+                  <tr
+                    key={prod.id}
+                    className="transition hover:bg-[#FDE2CF]/15"
+                  >
+                    <td className="p-3">
+                      <p className="font-bold text-[#3E2723]">{prod.name_ar}</p>
+                      <p className="text-[11px] text-[#7A6458]">{prod.name_en}</p>
+                    </td>
+                    <td className="p-3">
+                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600">
+                        {prod.category}
+                      </span>
+                    </td>
+                    <td className="p-3 font-bold text-[#5D2E17]">
+                      {jod(prod.price)}
+                    </td>
+                    <td className="p-3">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateMutation.mutate({
+                            userId: activeUserId,
+                            productId: prod.id,
+                            canEditPrice: !canEdit,
+                          })
+                        }
+                        className={`inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-extrabold transition-all shadow-xs ${
+                          canEdit
+                            ? "bg-amber-50 border border-amber-300 text-amber-900 hover:bg-amber-100"
+                            : "bg-slate-100 border border-slate-200 text-slate-600 hover:bg-slate-200"
+                        }`}
+                      >
+                        {canEdit ? (
+                          <>
+                            <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                            <span>مسموح بتعديل السعر ✏️</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="h-2 w-2 rounded-full bg-slate-400" />
+                            <span>مقيد · سعر ثابت فقط 🔒</span>
+                          </>
+                        )}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
   );
 }

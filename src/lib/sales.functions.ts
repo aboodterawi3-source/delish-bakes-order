@@ -25,6 +25,7 @@ export type SalesItem = {
   unit_price: number;
   options_ar: string[];
   notes: string | null;
+  product_id?: string | null;
 };
 
 export type SalesOrder = {
@@ -56,7 +57,7 @@ export type SalesOrder = {
 };
 
 const SELECT =
-  "id, order_number, customer_name, customer_phone, method, area, address, requested_date, requested_time, notes, staff_notes, inscription, design_image_url, subtotal, delivery_fee, total, deposit_paid, payment_method, driver_name, driver_phone, cancel_reason, status, created_at, updated_at, order_items(id, name_ar, name_en, quantity, unit_price, options_ar, notes)";
+  "id, order_number, customer_name, customer_phone, method, area, address, requested_date, requested_time, notes, staff_notes, inscription, design_image_url, subtotal, delivery_fee, total, deposit_paid, payment_method, driver_name, driver_phone, cancel_reason, status, created_at, updated_at, order_items(id, name_ar, name_en, quantity, unit_price, options_ar, notes, product_id)";
 
 type Row = Record<string, unknown> & { order_items?: unknown[] };
 
@@ -74,6 +75,7 @@ const toOrder = (row: Row): SalesOrder => ({
     unit_price: Number(item['unit_price'] ?? 0),
     options_ar: (item['options_ar'] as string[]) ?? [],
     notes: (item['notes'] as string | null) ?? null,
+    product_id: (item['product_id'] as string | null) ?? null,
   })),
 });
 
@@ -140,6 +142,50 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
       .single();
     if (error) throw new Error(error.message);
     return toOrder(row as Row);
+  });
+
+export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: { itemId: string; orderId: string; newUnitPrice: number }) => input)
+  .handler(async ({ input, context }): Promise<SalesOrder> => {
+    await assertRole(context, SALES_ROLES);
+    // Update order_items table
+    const { error: itemError } = await context.supabase
+      .from("order_items")
+      .update({ unit_price: input.newUnitPrice })
+      .eq("id", input.itemId);
+    if (itemError) throw new Error(itemError.message);
+
+    // Recalculate order subtotal and total
+    const { data: items, error: fetchError } = await context.supabase
+      .from("order_items")
+      .select("unit_price, quantity")
+      .eq("order_id", input.orderId);
+    if (fetchError) throw new Error(fetchError.message);
+
+    const subtotal = (items ?? []).reduce(
+      (acc, it) => acc + Number(it.unit_price) * Number(it.quantity),
+      0
+    );
+
+    const { data: currentOrder } = await context.supabase
+      .from("orders")
+      .select("delivery_fee, method")
+      .eq("id", input.orderId)
+      .single();
+
+    const deliveryFee = currentOrder?.method === "delivery" ? Number(currentOrder?.delivery_fee ?? 0) : 0;
+    const total = subtotal + deliveryFee;
+
+    const { data: updatedOrder, error: orderError } = await context.supabase
+      .from("orders")
+      .update({ subtotal, total })
+      .eq("id", input.orderId)
+      .select(SELECT)
+      .single();
+    if (orderError) throw new Error(orderError.message);
+
+    return toOrder(updatedOrder as Row);
   });
 
 export type ShiftReport = {

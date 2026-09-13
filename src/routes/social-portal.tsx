@@ -195,23 +195,26 @@ function SocialPortalPage() {
   };
 
   return (
-    <main dir="rtl" className="min-h-dvh bg-background pb-16">
-      <header className="border-b border-border bg-card">
+    <main dir="rtl" className="min-h-dvh bg-[#F9FBFC] text-[#3E2723] bg-delish-pattern pb-16">
+      <header className="border-b border-[#F1F5F9] bg-white/95 backdrop-blur-md shadow-xs">
         <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-4">
-          <span className="grid h-12 w-12 place-items-center rounded-xl bg-primary text-primary-foreground">
+          <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#FDE2CF] text-[#7B3F00] shadow-sm">
             <Sparkles className="h-6 w-6" aria-hidden="true" />
           </span>
           <div className="me-auto">
-            <h1 className="font-display text-xl font-bold text-foreground">بوابة السوشال ميديا</h1>
-            <p className="text-xs text-muted-foreground">
-              <span className="delish-wordmark">Delish</span> · إدخال الطلبات فوراً للمبيعات والمطبخ
+            <div className="flex items-center gap-2">
+              <h1 className="font-serif text-xl font-bold text-[#3E2723]">بوابة السوشال ميديا</h1>
+              <span className="font-script text-2xl italic text-[#8B4513] -mt-1">Delish</span>
+            </div>
+            <p className="text-xs font-bold text-[#7A6458]">
+              إدخال الطلبات فوراً للمبيعات والمطبخ · Social Order Entry
             </p>
           </div>
           <button
             type="button"
             onClick={signOut}
             aria-label="تسجيل الخروج"
-            className="grid h-12 w-12 place-items-center rounded-full border border-border text-foreground"
+            className="grid h-11 w-11 place-items-center rounded-full border border-slate-200 bg-white text-[#5D2E17] hover:bg-slate-50 shadow-xs"
           >
             <LogOut className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -220,30 +223,30 @@ function SocialPortalPage() {
 
       <div className="mx-auto max-w-3xl px-4 py-6">
         {done ? (
-          <p role="status" className="mb-4 rounded-2xl bg-[oklch(0.62_0.13_150)]/15 p-4 text-sm font-bold text-foreground">
+          <p role="status" className="mb-4 rounded-2xl bg-amber-50 border border-amber-200 p-4 text-sm font-bold text-amber-900 shadow-xs">
             تم إرسال الطلب {done} ويظهر الآن على شاشة المبيعات والمطبخ ✅
           </p>
         ) : null}
         {error ? (
-          <p role="alert" className="mb-4 rounded-2xl bg-destructive/10 p-4 text-sm font-bold text-destructive">
+          <p role="alert" className="mb-4 rounded-2xl bg-red-50 border border-red-200 p-4 text-sm font-bold text-red-900 shadow-xs">
             {error}
           </p>
         ) : null}
 
-        <form onSubmit={onSubmit} className="grid gap-4 rounded-3xl border border-border bg-card p-5">
-          <h2 className="font-display text-lg font-bold text-foreground">طلب جديد · New order</h2>
+        <form onSubmit={onSubmit} className="grid gap-4 rounded-3xl border border-slate-100 bg-white p-6 shadow-[0_8px_24px_-8px_rgba(62,39,35,0.06)]">
+          <h2 className="font-serif text-lg font-bold text-[#3E2723]">طلب جديد · New order</h2>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <label className="block text-sm font-bold text-foreground">
+            <label className="block text-sm font-bold text-[#3E2723]">
               اسم العميل · Customer name
               <input
                 required
                 value={form.customer_name}
                 onChange={(event) => set("customer_name", event.target.value)}
-                className="mt-1 min-h-12 w-full rounded-xl border border-input bg-background px-3 text-sm"
+                className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
               />
             </label>
-            <label className="block text-sm font-bold text-foreground">
+            <label className="block text-sm font-bold text-[#3E2723]">
               رقم الهاتف · Phone
               <input
                 required
@@ -251,17 +254,17 @@ function SocialPortalPage() {
                 inputMode="tel"
                 value={form.customer_phone}
                 onChange={(event) => set("customer_phone", event.target.value)}
-                className="mt-1 min-h-12 w-full rounded-xl border border-input bg-background px-3 text-sm"
+                className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
               />
             </label>
 
-            <label className="block text-sm font-bold text-foreground">
+            <label className="block text-sm font-bold text-[#3E2723]">
               المنتج · Product
               <select
                 required
                 value={form.product_id}
                 onChange={(event) => set("product_id", event.target.value)}
-                className="mt-1 min-h-12 w-full rounded-xl border border-input bg-background px-3 text-sm"
+                className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
               >
                 <option value="">اختر المنتج…</option>
                 {(products.data ?? []).map((row) => (
@@ -271,7 +274,7 @@ function SocialPortalPage() {
                 ))}
               </select>
             </label>
-            <label className="block text-sm font-bold text-foreground">
+            <label className="block text-sm font-bold text-[#3E2723]">
               الكمية · Quantity
               <input
                 type="number"
@@ -280,11 +283,11 @@ function SocialPortalPage() {
                 required
                 value={form.quantity}
                 onChange={(event) => set("quantity", Math.max(1, Number(event.target.value) || 1))}
-                className="mt-1 min-h-12 w-full rounded-xl border border-input bg-background px-3 text-sm"
+                className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
               />
             </label>
 
-            <fieldset className="text-sm font-bold text-foreground">
+            <fieldset className="text-sm font-bold text-[#3E2723]">
               <legend>طريقة التسليم · Fulfilment</legend>
               <div className="mt-1 flex gap-2">
                 {(["pickup", "delivery"] as const).map((method) => (
@@ -293,7 +296,11 @@ function SocialPortalPage() {
                     type="button"
                     onClick={() => set("method", method)}
                     aria-pressed={form.method === method}
-                    className={`min-h-12 flex-1 rounded-full px-3 text-sm font-bold ${form.method === method ? "bg-primary text-primary-foreground" : "border border-border text-foreground"}`}
+                    className={`min-h-11 flex-1 rounded-xl px-4 text-xs font-bold transition-all ${
+                      form.method === method
+                        ? "bg-[#8B4513] text-white shadow-sm"
+                        : "border border-slate-200 bg-white text-[#5D2E17] hover:bg-slate-50"
+                    }`}
                   >
                     {method === "pickup" ? "استلام من المحل" : "توصيل"}
                   </button>
@@ -301,34 +308,35 @@ function SocialPortalPage() {
               </div>
             </fieldset>
 
-            <label className="block text-sm font-bold text-foreground">
-              تاريخ المناسبة · Event date
-              <input
-                type="date"
-                value={form.event_date}
-                onChange={(event) => set("event_date", event.target.value)}
-                className="mt-1 min-h-12 w-full rounded-xl border border-input bg-background px-3 text-sm"
-              />
-            </label>
-
-            <label className="block text-sm font-bold text-foreground">
-              تاريخ التسليم/الاستلام · Pickup/Delivery date
+            <label className="block text-sm font-bold text-[#3E2723]">
+              تاريخ التسليم · Date
               <input
                 type="date"
                 required
                 value={form.requested_date}
                 onChange={(event) => set("requested_date", event.target.value)}
-                className="mt-1 min-h-12 w-full rounded-xl border border-input bg-background px-3 text-sm"
+                className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
               />
             </label>
-            <label className="block text-sm font-bold text-foreground">
-              وقت التسليم/الاستلام · Time
+
+            <label className="block text-sm font-bold text-[#3E2723]">
+              وقت التسليم · Time
               <input
                 type="time"
                 required
                 value={form.requested_time}
                 onChange={(event) => set("requested_time", event.target.value)}
-                className="mt-1 min-h-12 w-full rounded-xl border border-input bg-background px-3 text-sm"
+                className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+              />
+            </label>
+
+            <label className="block text-sm font-bold text-[#3E2723]">
+              تاريخ المناسبة (اختياري)
+              <input
+                type="date"
+                value={form.event_date}
+                onChange={(event) => set("event_date", event.target.value)}
+                className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
               />
             </label>
           </div>
@@ -337,43 +345,47 @@ function SocialPortalPage() {
             type="button"
             onClick={() => set("is_urgent", !form.is_urgent)}
             aria-pressed={form.is_urgent}
-            className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-5 text-sm font-bold ${form.is_urgent ? "bg-destructive text-destructive-foreground" : "border border-destructive text-destructive"}`}
+            className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 text-xs font-bold transition-all ${
+              form.is_urgent ? "bg-red-600 text-white shadow-sm" : "border border-red-300 text-red-700 bg-red-50/50 hover:bg-red-50"
+            }`}
           >
             <AlertTriangle className="h-4 w-4" aria-hidden="true" /> 🚨 مستعجل · Urgent
           </button>
 
-          <label className="block text-sm font-bold text-foreground">
+          <label className="block text-sm font-bold text-[#3E2723]">
             ملاحظات التصميم الخاص · Special custom design notes
             <textarea
               rows={3}
               value={form.design_notes}
               onChange={(event) => set("design_notes", event.target.value)}
-              className="mt-1 w-full rounded-xl border border-input bg-background p-3 text-sm"
+              className="mt-1 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
             />
           </label>
 
-          <label className="block text-sm font-bold text-foreground">
+          <label className="block text-sm font-bold text-[#3E2723]">
             ملاحظات داخلية للموظفين · Internal staff notes
             <textarea
               rows={3}
               value={form.staff_notes}
               onChange={(event) => set("staff_notes", event.target.value)}
-              className="mt-1 w-full rounded-xl border border-input bg-background p-3 text-sm"
+              className="mt-1 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
             />
-            <span className="mt-1 block text-xs font-normal text-muted-foreground">
+            <span className="mt-1 block text-xs font-normal text-[#7A6458]">
               خاصة بالمبيعات والإدارة فقط — لا تظهر على شاشة المطبخ ولا في رسالة واتساب.
             </span>
           </label>
 
           {product ? (
-            <p className="text-sm font-bold text-foreground">الإجمالي التقديري: {jd(total)}</p>
+            <p className="text-base font-extrabold text-[#5D2E17] bg-[#FDE2CF]/40 p-3 rounded-xl border border-[#EFA781]/30">
+              الإجمالي التقديري: {jd(total)}
+            </p>
           ) : null}
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 pt-2">
             <button
               type="submit"
               disabled={submit.isPending}
-              className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-full bg-primary px-5 text-sm font-bold text-primary-foreground disabled:opacity-60"
+              className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-full bg-[#8B4513] px-6 text-sm font-bold text-white shadow-sm hover:bg-[#5D2E17] disabled:opacity-60 transition"
             >
               {submit.isPending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Send className="h-4 w-4" aria-hidden="true" />}
               إرسال فوري للطلب
@@ -381,7 +393,7 @@ function SocialPortalPage() {
             <button
               type="button"
               onClick={() => void copy()}
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-primary px-5 text-sm font-bold text-primary"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#B8860B] bg-white px-5 text-sm font-bold text-[#8B4513] hover:bg-[#FDE2CF]/30 shadow-xs transition"
             >
               {copied ? <Check className="h-4 w-4" aria-hidden="true" /> : <ClipboardCopy className="h-4 w-4" aria-hidden="true" />}
               {copied ? "تم النسخ" : "نسخ رسالة واتساب"}
@@ -391,7 +403,7 @@ function SocialPortalPage() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="فتح واتساب المحل مع نص الطلب"
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#25D366] px-5 text-sm font-bold text-[#0B1F12] transition-opacity hover:opacity-90"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#25D366] px-5 text-sm font-bold text-white shadow-sm hover:brightness-95 transition"
             >
               <MessageCircle className="h-4 w-4" aria-hidden="true" />
               فتح واتساب · +962 77 917 9995

@@ -13,8 +13,11 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AdminSetupRouteImport } from './routes/admin-setup'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as DiscoverRouteImport } from './routes/discover'
+import { Route as ProductDetailsRouteImport } from './routes/product-details'
 import { Route as SocialLoginRouteImport } from './routes/social-login'
 import { Route as SocialPortalRouteImport } from './routes/social-portal'
+import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedKdsRouteImport } from './routes/_authenticated/kds'
 import { Route as AuthenticatedSalesRouteImport } from './routes/_authenticated/sales'
@@ -38,6 +41,16 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DiscoverRoute = DiscoverRouteImport.update({
+  id: '/discover',
+  path: '/discover',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProductDetailsRoute = ProductDetailsRouteImport.update({
+  id: '/product-details',
+  path: '/product-details',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SocialLoginRoute = SocialLoginRouteImport.update({
   id: '/social-login',
   path: '/social-login',
@@ -46,6 +59,11 @@ const SocialLoginRoute = SocialLoginRouteImport.update({
 const SocialPortalRoute = SocialPortalRouteImport.update({
   id: '/social-portal',
   path: '/social-portal',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WelcomeRoute = WelcomeRouteImport.update({
+  id: '/welcome',
+  path: '/welcome',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
@@ -68,8 +86,11 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin-setup': typeof AdminSetupRoute
   '/auth': typeof AuthRoute
+  '/discover': typeof DiscoverRoute
+  '/product-details': typeof ProductDetailsRoute
   '/social-login': typeof SocialLoginRoute
   '/social-portal': typeof SocialPortalRoute
+  '/welcome': typeof WelcomeRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/kds': typeof AuthenticatedKdsRoute
   '/sales': typeof AuthenticatedSalesRoute
@@ -78,8 +99,11 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin-setup': typeof AdminSetupRoute
   '/auth': typeof AuthRoute
+  '/discover': typeof DiscoverRoute
+  '/product-details': typeof ProductDetailsRoute
   '/social-login': typeof SocialLoginRoute
   '/social-portal': typeof SocialPortalRoute
+  '/welcome': typeof WelcomeRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/kds': typeof AuthenticatedKdsRoute
   '/sales': typeof AuthenticatedSalesRoute
@@ -90,8 +114,11 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/admin-setup': typeof AdminSetupRoute
   '/auth': typeof AuthRoute
+  '/discover': typeof DiscoverRoute
+  '/product-details': typeof ProductDetailsRoute
   '/social-login': typeof SocialLoginRoute
   '/social-portal': typeof SocialPortalRoute
+  '/welcome': typeof WelcomeRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/kds': typeof AuthenticatedKdsRoute
   '/_authenticated/sales': typeof AuthenticatedSalesRoute
@@ -102,8 +129,11 @@ export interface FileRouteTypes {
     | '/'
     | '/admin-setup'
     | '/auth'
+    | '/discover'
+    | '/product-details'
     | '/social-login'
     | '/social-portal'
+    | '/welcome'
     | '/admin'
     | '/kds'
     | '/sales'
@@ -112,8 +142,11 @@ export interface FileRouteTypes {
     | '/'
     | '/admin-setup'
     | '/auth'
+    | '/discover'
+    | '/product-details'
     | '/social-login'
     | '/social-portal'
+    | '/welcome'
     | '/admin'
     | '/kds'
     | '/sales'
@@ -123,8 +156,11 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/admin-setup'
     | '/auth'
+    | '/discover'
+    | '/product-details'
     | '/social-login'
     | '/social-portal'
+    | '/welcome'
     | '/_authenticated/admin'
     | '/_authenticated/kds'
     | '/_authenticated/sales'
@@ -135,8 +171,11 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AdminSetupRoute: typeof AdminSetupRoute
   AuthRoute: typeof AuthRoute
+  DiscoverRoute: typeof DiscoverRoute
+  ProductDetailsRoute: typeof ProductDetailsRoute
   SocialLoginRoute: typeof SocialLoginRoute
   SocialPortalRoute: typeof SocialPortalRoute
+  WelcomeRoute: typeof WelcomeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -169,6 +208,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/discover': {
+      id: '/discover'
+      path: '/discover'
+      fullPath: '/discover'
+      preLoaderRoute: typeof DiscoverRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/product-details': {
+      id: '/product-details'
+      path: '/product-details'
+      fullPath: '/product-details'
+      preLoaderRoute: typeof ProductDetailsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/social-login': {
       id: '/social-login'
       path: '/social-login'
@@ -181,6 +234,13 @@ declare module '@tanstack/react-router' {
       path: '/social-portal'
       fullPath: '/social-portal'
       preLoaderRoute: typeof SocialPortalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/welcome': {
+      id: '/welcome'
+      path: '/welcome'
+      fullPath: '/welcome'
+      preLoaderRoute: typeof WelcomeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/admin': {
@@ -227,8 +287,11 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AdminSetupRoute: AdminSetupRoute,
   AuthRoute: AuthRoute,
+  DiscoverRoute: DiscoverRoute,
+  ProductDetailsRoute: ProductDetailsRoute,
   SocialLoginRoute: SocialLoginRoute,
   SocialPortalRoute: SocialPortalRoute,
+  WelcomeRoute: WelcomeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

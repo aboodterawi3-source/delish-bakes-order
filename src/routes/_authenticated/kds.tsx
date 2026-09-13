@@ -270,7 +270,7 @@ function KdsPage() {
 
   if (access.isLoading) {
     return (
-      <p dir="rtl" className="grid min-h-dvh place-items-center bg-[oklch(0.13_0.06_250)] text-sm text-white/70">
+      <p dir="rtl" className="grid min-h-dvh place-items-center bg-[#F9FBFC] text-sm text-[#7A6458]">
         جارٍ التحقق…
       </p>
     );
@@ -278,14 +278,14 @@ function KdsPage() {
 
   if (!allowed) {
     return (
-      <main dir="rtl" className="grid min-h-dvh place-items-center bg-[oklch(0.13_0.06_250)] px-4 text-center">
-        <div className="max-w-sm rounded-3xl border border-white/10 bg-[oklch(0.22_0.04_255)] p-6 text-white shadow-xl">
+      <main dir="rtl" className="grid min-h-dvh place-items-center bg-[#F9FBFC] px-4 text-center">
+        <div className="max-w-sm rounded-3xl border border-slate-200 bg-white p-6 text-[#3E2723] shadow-xl">
           <h1 className="font-display text-xl font-bold">لا تملك صلاحية المطبخ</h1>
-          <p className="mt-2 text-sm text-white/70">Your account has no kitchen access. Ask an admin to grant the kitchen role.</p>
+          <p className="mt-2 text-sm text-[#7A6458]">Your account has no kitchen access. Ask an admin to grant the kitchen role.</p>
           <button
             type="button"
             onClick={() => void signOut()}
-            className="mt-5 min-h-12 w-full rounded-full bg-[oklch(0.65_0.12_230)] px-5 text-sm font-bold text-white"
+            className="mt-5 min-h-12 w-full rounded-full bg-[#8B4513] px-5 text-sm font-bold text-white shadow-sm hover:bg-[#5D2E17]"
           >
             تسجيل الخروج · Sign out
           </button>
@@ -295,15 +295,18 @@ function KdsPage() {
   }
 
   return (
-    <div dir="rtl" className="min-h-dvh bg-[oklch(0.13_0.06_250)] text-white">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-4">
+    <div dir="rtl" className="min-h-dvh bg-[#F9FBFC] text-[#3E2723] bg-delish-pattern pb-16">
+      <header className="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-3 border-b border-[#F1F5F9] bg-white/95 px-4 py-3.5 backdrop-blur-md shadow-xs">
         <div className="flex min-w-0 items-center gap-3">
-          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-[oklch(0.65_0.12_230)]">
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#FDE2CF] text-[#7B3F00] shadow-sm">
             <ChefHat className="h-6 w-6" />
           </span>
           <div className="min-w-0">
-            <h1 className="truncate font-display text-xl font-bold sm:text-2xl">شاشة المطبخ</h1>
-            <p className="text-xs text-white/65">{visible.length} طلب للتجهيز · Kitchen Display</p>
+            <div className="flex items-center gap-2">
+              <h1 className="truncate font-serif text-xl font-bold text-[#3E2723] sm:text-2xl">شاشة المطبخ</h1>
+              <span className="font-script text-2xl text-[#8B4513] -mt-1 hidden sm:inline">Delish</span>
+            </div>
+            <p className="text-xs text-[#7A6458] font-medium">{visible.length} طلب للتجهيز · Kitchen Display</p>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -311,26 +314,26 @@ function KdsPage() {
             type="button"
             onClick={startShift}
             disabled={shiftOn}
-            className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[oklch(0.65_0.12_230)] px-4 text-sm font-bold disabled:opacity-70"
+            className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[#FDE2CF] px-5 text-sm font-bold text-[#7B3F00] shadow-xs hover:bg-[#fed6bc] disabled:opacity-70"
           >
-            <Bell className="h-4 w-4" />
+            <Bell className="h-4 w-4 text-[#B8860B]" />
             {shiftOn ? "الوردية جارية 🔔" : "بدء وردية المطبخ 🔔"}
           </button>
           <button
             type="button"
             onClick={() => void orders.refetch()}
             aria-label="تحديث"
-            className="grid h-12 w-12 place-items-center rounded-full border border-white/25"
+            className="grid h-12 w-12 place-items-center rounded-full border border-slate-200 bg-white text-[#5D2E17] shadow-xs hover:bg-slate-50"
           >
-            <RefreshCw className={`h-5 w-5 ${orders.isFetching ? "animate-spin" : ""}`} />
+            <RefreshCw className={`h-4 w-4 ${orders.isFetching ? "animate-spin" : ""}`} />
           </button>
           <button
             type="button"
             onClick={() => void signOut()}
             aria-label="تسجيل الخروج"
-            className="grid h-12 w-12 place-items-center rounded-full border border-white/25"
+            className="grid h-12 w-12 place-items-center rounded-full border border-slate-200 bg-white text-[#5D2E17] shadow-xs hover:bg-slate-50"
           >
-            <LogOut className="h-5 w-5" />
+            <LogOut className="h-4 w-4" />
           </button>
         </div>
         <nav aria-label="أقسام شاشة المطبخ" className="flex w-full gap-2 overflow-x-auto pt-1 no-scrollbar">
@@ -345,8 +348,10 @@ function KdsPage() {
               type="button"
               aria-current={view === key ? "page" : undefined}
               onClick={() => setView(key)}
-              className={`inline-flex min-h-12 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-bold transition-colors ${
-                view === key ? "bg-[oklch(0.65_0.12_230)] text-white" : "border border-white/25 text-white/80"
+              className={`inline-flex min-h-12 shrink-0 items-center gap-2 rounded-full px-5 text-sm font-bold transition-all ${
+                view === key
+                  ? "bg-[#8B4513] text-white shadow-sm"
+                  : "border border-slate-200 bg-white text-[#5D2E17] hover:bg-slate-50"
               }`}
             >
               <Icon className="h-4 w-4" aria-hidden /> {label}
@@ -359,15 +364,17 @@ function KdsPage() {
         <MenuPanel />
       ) : (
         <>
-          <div className="flex gap-2 overflow-x-auto px-4 py-3 no-scrollbar">
+          <div className="flex gap-2 overflow-x-auto px-4 py-3.5 no-scrollbar">
             {(Object.keys(filterMeta) as Filter[]).map((key) => (
               <button
                 key={key}
                 type="button"
                 onClick={() => setFilter(key)}
                 aria-pressed={filter === key}
-                className={`min-h-12 shrink-0 rounded-full px-4 text-sm font-bold transition-colors ${
-                  filter === key ? "bg-[oklch(0.65_0.12_230)] text-white" : "border border-white/25 text-white/80"
+                className={`min-h-11 shrink-0 rounded-full px-4 text-xs font-bold transition-all ${
+                  filter === key
+                    ? "bg-[#8B4513] text-white shadow-sm"
+                    : "border border-slate-200 bg-white text-[#5D2E17] hover:bg-slate-50"
                 }`}
               >
                 {filterMeta[key].ar}
@@ -375,10 +382,12 @@ function KdsPage() {
             ))}
           </div>
 
-          <main className="grid gap-4 px-3 pb-8 sm:grid-cols-2 xl:grid-cols-3">
-            {orders.isLoading && <p className="p-6 text-sm text-white/60">جارٍ تحميل الطلبات…</p>}
+          <main className="grid gap-4 px-4 pb-8 sm:grid-cols-2 xl:grid-cols-3">
+            {orders.isLoading && <p className="p-6 text-sm text-[#7A6458]">جارٍ تحميل الطلبات…</p>}
             {!orders.isLoading && visible.length === 0 && (
-              <p className="p-10 text-center text-sm text-white/55 sm:col-span-2 xl:col-span-3">لا توجد طلبات لهذا اليوم</p>
+              <div className="p-12 text-center text-sm text-[#7A6458] sm:col-span-2 xl:col-span-3 rounded-3xl bg-white/70 border border-slate-100">
+                لا توجد طلبات لهذا اليوم
+              </div>
             )}
             {visible.map((order) => (
               <KdsCard key={order.id} order={order} busy={pending === order.id} onReady={onReady} onZoom={setZoom} />
@@ -392,15 +401,15 @@ function KdsPage() {
           role="dialog"
           aria-modal="true"
           aria-label="صورة التصميم"
-          className="fixed inset-0 z-50 grid place-items-center bg-[oklch(0.13_0.06_250)]/90 p-4"
+          className="fixed inset-0 z-50 grid place-items-center bg-black/70 backdrop-blur-sm p-4"
           onClick={() => setZoom(null)}
         >
-          <img src={zoom} alt="صورة تصميم الكيك بالحجم الكامل" className="max-h-[85dvh] w-auto max-w-full rounded-2xl" />
+          <img src={zoom} alt="صورة تصميم الكيك بالحجم الكامل" className="max-h-[85dvh] w-auto max-w-full rounded-2xl shadow-2xl" />
           <button
             type="button"
             onClick={() => setZoom(null)}
             aria-label="إغلاق"
-            className="absolute right-4 top-4 grid h-12 w-12 place-items-center rounded-full bg-[oklch(0.22_0.04_255)] text-white shadow-lg"
+            className="absolute right-4 top-4 grid h-12 w-12 place-items-center rounded-full bg-white text-[#3E2723] shadow-lg"
           >
             <X className="h-5 w-5" />
           </button>
@@ -423,112 +432,98 @@ const KdsCard = memo(function KdsCard({
   onZoom: (url: string) => void;
 }) {
   const meta = tierMeta[orderTier(order)];
-  const isLight = meta.fg !== "#ffffff";
+  const isReady = order.status === "ready";
   return (
     <article
-      className="relative overflow-hidden rounded-2xl shadow-lg"
-      style={{
-        backgroundColor: meta.bg,
-        color: meta.fg,
-        boxShadow: `0 10px 28px -10px oklch(0 0 0 / 0.35), ${meta.glow}`,
-      }}
+      className="relative overflow-hidden rounded-3xl border border-slate-100 bg-white p-5 shadow-[0_10px_28px_-10px_rgba(62,39,35,0.08)] transition-all hover:shadow-md"
     >
-      <div className="p-4">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <h2 className="truncate font-bold" style={{ color: meta.fg }}>
-              {order.order_number} · {order.customer_name}
-            </h2>
-            <p className="mt-1 flex items-center gap-1 text-xs" style={{ color: meta.fgMuted }}>
-              <Clock3 className="h-3.5 w-3.5" />
-              {order.requested_date} · {order.requested_time.slice(0, 5)} · {order.method === "delivery" ? "توصيل" : "استلام"}
-            </p>
-          </div>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <h2 className="truncate font-sans text-base font-extrabold text-[#3E2723]">
+            {order.order_number} · {order.customer_name}
+          </h2>
+          <p className="mt-1 flex items-center gap-1 text-xs text-[#7A6458]">
+            <Clock3 className="h-3.5 w-3.5 text-[#B8860B]" />
+            {order.requested_date} · {order.requested_time.slice(0, 5)} · {order.method === "delivery" ? "توصيل" : "استلام"}
+          </p>
+        </div>
+        <div className="flex flex-col items-end gap-1.5 shrink-0">
+          {/* Gold / Amber status chip */}
           <span
-            className="shrink-0 rounded-full px-3 py-1 text-xs font-bold"
-            style={{ backgroundColor: meta.fg, color: meta.bg }}
+            className={`rounded-full px-3.5 py-1 text-xs font-extrabold shadow-xs ${
+              isReady
+                ? "bg-[#B8860B] text-white"
+                : "bg-[#FDE2CF] text-[#7B3F00]"
+            }`}
           >
+            {isReady ? "جاهز · Ready" : "قيد التجهيز · Preparing"}
+          </span>
+          <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-bold text-slate-600">
             {meta.ar}
           </span>
         </div>
+      </div>
 
-        <ul
-          className="mt-4 space-y-3 border-y py-3"
-          style={{ borderColor: isLight ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.15)" }}
-        >
-          {order.items.map((item) => (
-            <li key={item.id}>
-              <p className="text-sm font-bold" style={{ color: meta.fg }}>
-                {item.quantity}× {item.name_ar}
+      <ul className="mt-4 space-y-2 border-y border-slate-100 py-3 text-[#3E2723]">
+        {order.items.map((item) => (
+          <li key={item.id} className="rounded-2xl bg-[#F9FBFC] p-3 border border-slate-100">
+            <p className="text-sm font-bold text-[#3E2723]">
+              {item.quantity}× {item.name_ar}
+            </p>
+            <p className="text-xs text-[#7A6458]">
+              {item.name_en}
+            </p>
+            {item.options_ar.map((option) => (
+              <p key={option} className="mt-0.5 text-xs text-[#8B4513]">
+                • {option}
               </p>
-              <p className="text-xs" style={{ color: meta.fgMuted }}>
-                {item.name_en}
+            ))}
+            {item.notes && (
+              <p className="mt-1 rounded-md bg-amber-50 p-1.5 text-xs font-bold text-amber-900 border border-amber-200/60">
+                ملاحظة: {item.notes}
               </p>
-              {item.options_ar.map((option) => (
-                <p key={option} className="mt-0.5 text-xs" style={{ color: meta.fgMuted }}>
-                  • {option}
-                </p>
-              ))}
-              {item.notes && (
-                <p
-                  className="mt-1 text-xs font-bold"
-                  style={{ color: isLight ? "#3a2a0a" : "#fff7cc" }}
-                >
-                  ملاحظة: {item.notes}
-                </p>
-              )}
-            </li>
-          ))}
-        </ul>
+            )}
+          </li>
+        ))}
+      </ul>
 
-        {order.inscription && (
-          <p
-            className="mt-3 rounded-lg p-2 text-xs font-bold"
-            style={{
-              backgroundColor: isLight ? "rgba(0,0,0,0.12)" : "rgba(0,0,0,0.22)",
-              color: meta.fg,
-            }}
-          >
-            الكتابة: {order.inscription}
-          </p>
-        )}
+      {order.inscription && (
+        <p className="mt-3 rounded-xl bg-[#FDE2CF]/50 p-2.5 text-xs font-bold text-[#7B3F00] border border-[#EFA781]/40">
+          الكتابة على الكيك: {order.inscription}
+        </p>
+      )}
 
-        {order.design_image_url && (
-          <button
-            type="button"
-            onClick={() => onZoom(order.design_image_url as string)}
-            className="mt-3 block w-full overflow-hidden rounded-xl"
-            style={{ border: `1px solid ${isLight ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.2)"}` }}
-          >
-            <img
-              src={order.design_image_url}
-              alt={`صورة تصميم الطلب ${order.order_number}`}
-              loading="lazy"
-              className="h-36 w-full object-cover"
-            />
-            <span
-              className="block py-2 text-xs font-bold"
-              style={{
-                backgroundColor: isLight ? "rgba(0,0,0,0.18)" : "rgba(0,0,0,0.25)",
-                color: meta.fg,
-              }}
-            >
-              تكبير الصورة · Zoom
-            </span>
-          </button>
-        )}
-
+      {order.design_image_url && (
         <button
           type="button"
-          onClick={() => void onReady(order.id)}
-          disabled={busy || order.status === "ready"}
-          className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl px-3 text-sm font-bold disabled:opacity-60"
-          style={{ backgroundColor: meta.fg, color: meta.bg }}
+          onClick={() => onZoom(order.design_image_url as string)}
+          className="mt-3 block w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 transition hover:opacity-95"
         >
-          <CheckCircle2 className="h-4 w-4" />
-          {order.status === "ready" ? "جاهز ✓ Ready" : "تم التجهيز · Mark as Ready"}
+          <img
+            src={order.design_image_url}
+            alt={`صورة تصميم الطلب ${order.order_number}`}
+            loading="lazy"
+            className="h-36 w-full object-cover"
+          />
+          <span className="block py-2 text-xs font-bold bg-[#FDE2CF]/70 text-[#7B3F00]">
+            تكبير الصورة · Zoom Design
+          </span>
         </button>
-      </div>
+      )}
+
+      <button
+        type="button"
+        onClick={() => void onReady(order.id)}
+        disabled={busy || isReady}
+        className={`mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl px-4 text-sm font-bold transition-all shadow-sm ${
+          isReady
+            ? "bg-amber-100 text-amber-900 border border-amber-300 opacity-90 cursor-default"
+            : "bg-[#8B4513] text-white hover:bg-[#5D2E17] hover:shadow-md active:scale-98"
+        }`}
+      >
+        <CheckCircle2 className="h-4 w-4" />
+        {isReady ? "تم التجهيز وهو جاهز ✓" : "تم التجهيز · Mark as Ready"}
+      </button>
     </article>
   );
 });

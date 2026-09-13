@@ -150,89 +150,103 @@
   [role="dialog"] button, [role="dialog"] a { display: none; }
 }
 
-/* Delish reference palette: powder blue, crisp white, ink, azure, metallic gold. */
+/* Delish luxury reference palette: Soft cream, Warm Gold, Peach/Coral, Earthy Dark Brown. */
 :root {
-  --radius: 0.75rem;
-  --background: oklch(0.957 0.024 228);
-  --foreground: oklch(0.24 0.045 263);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.24 0.045 263);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.24 0.045 263);
-  --primary: oklch(0.67 0.17 239);
-  --primary-foreground: oklch(0.99 0.004 232);
-  --secondary: oklch(0.955 0.025 228);
-  --secondary-foreground: oklch(0.24 0.045 263);
-  --muted: oklch(0.97 0.014 228);
-  --muted-foreground: oklch(0.54 0.052 255);
-  --accent: oklch(0.67 0.17 239);
-  --accent-foreground: oklch(0.99 0.004 232);
-  --destructive: oklch(0.55 0.19 27);
-  --destructive-foreground: oklch(0.99 0 0);
-  --border: oklch(0.91 0.024 228);
-  --input: oklch(0.88 0.035 228);
-  --ring: oklch(0.67 0.17 239);
-  --gold: oklch(0.72 0.14 83);
-  --gold-deep: oklch(0.62 0.13 76);
-  --gold-light: oklch(0.9 0.08 88);
-  --cocoa: oklch(0.24 0.045 263);
-  --whatsapp: oklch(0.56 0.16 148);
-  --whatsapp-foreground: oklch(1 0 0);
-  --hero-blue: oklch(0.91 0.052 226);
-  --hero-blue-deep: oklch(0.86 0.072 225);
-  --gradient-gold: linear-gradient(120deg, oklch(0.62 0.13 76), oklch(0.78 0.13 88), oklch(0.9 0.08 88), oklch(0.62 0.13 76));
-  --gradient-hero: linear-gradient(145deg, var(--hero-blue) 0%, oklch(0.93 0.045 225) 54%, var(--hero-blue-deep) 100%);
-  --shadow-soft: 0 18px 38px -24px oklch(0.3 0.05 250 / 0.28);
-  --shadow-gold: 0 8px 18px -10px oklch(0.62 0.13 76 / 0.32);
+  --radius: 0.875rem;
+  --background: #F9FBFC;
+  --foreground: #3E2723;
+  --card: #ffffff;
+  --card-foreground: #3E2723;
+  --popover: #ffffff;
+  --popover-foreground: #3E2723;
+  --primary: #8B4513;
+  --primary-foreground: #ffffff;
+  --secondary: #FDE2CF;
+  --secondary-foreground: #5D2E17;
+  --muted: #F3F4F6;
+  --muted-foreground: #71717A;
+  --accent: #B8860B;
+  --accent-foreground: #ffffff;
+  --destructive: #DC2626;
+  --destructive-foreground: #ffffff;
+  --border: #F1F5F9;
+  --input: #E2E8F0;
+  --ring: #B8860B;
+  --gold: #B8860B;
+  --gold-deep: #8B4513;
+  --gold-light: #FDE2CF;
+  --peach: #FDE2CF;
+  --peach-coral: #EFA781;
+  --cocoa: #3E2723;
+  --cocoa-deep: #5D2E17;
+  --whatsapp: #25D366;
+  --whatsapp-foreground: #ffffff;
+  --gradient-gold: linear-gradient(135deg, #B8860B 0%, #D4AF37 50%, #8B4513 100%);
+  --gradient-peach: linear-gradient(135deg, #FDE2CF 0%, #EFA781 100%);
+  --shadow-soft: 0 10px 30px -10px rgba(93, 46, 23, 0.08);
+  --shadow-card: 0 12px 36px -12px rgba(62, 39, 35, 0.09);
 }
-
 
 @theme inline {
   --color-gold: var(--gold);
   --color-gold-deep: var(--gold-deep);
   --color-gold-light: var(--gold-light);
+  --color-peach: var(--peach);
+  --color-peach-coral: var(--peach-coral);
   --color-cocoa: var(--cocoa);
+  --color-cocoa-deep: var(--cocoa-deep);
   --color-whatsapp: var(--whatsapp);
   --color-whatsapp-foreground: var(--whatsapp-foreground);
-  --font-display: "Playfair Display", "Amiri", Georgia, serif;
-  --font-sans: "Cairo", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Playfair Display", Georgia, serif;
+  --font-script: "Great Vibes", "Playfair Display", cursive, serif;
+  --font-sans: "Plus Jakarta Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 body {
   font-family: var(--font-sans);
+  background-color: var(--background);
+  color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
 }
 
 h1, h2, h3, .font-display {
   font-family: var(--font-display);
 }
 
-:root:dir(rtl) h1,
-:root:dir(rtl) h2,
-:root:dir(rtl) h3,
-:root:dir(rtl) .font-display {
-  font-family: "Cairo", var(--font-display);
+.font-script {
+  font-family: "Great Vibes", cursive, "Playfair Display", serif;
+}
+
+.font-sans-ui {
+  font-family: "Plus Jakarta Sans", "Inter", sans-serif;
 }
 
 @utility text-gold-gradient {
   background-image: var(--gradient-gold);
   background-clip: text;
+  -webkit-background-clip: text;
   color: transparent;
 }
 
 @utility delish-wordmark {
-  color: var(--gold);
-  -webkit-text-stroke: 1px oklch(0 0 0);
-  paint-order: stroke fill;
+  color: #B8860B;
+  letter-spacing: 0.12em;
+  font-weight: 700;
 }
 
-@utility reference-hero {
-  background: var(--gradient-hero);
+@utility bg-delish-pattern {
+  background-color: #F9FBFC;
+  background-image: radial-gradient(at 100% 0%, rgba(253, 226, 207, 0.35) 0px, transparent 55%),
+                    radial-gradient(at 0% 100%, rgba(239, 167, 129, 0.2) 0px, transparent 50%),
+                    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 800' preserveAspectRatio='none'%3E%3Cpath d='M-100,50 C300,100 450,400 1300,300' fill='none' stroke='%23B8860B' stroke-opacity='0.08' stroke-width='1.5'/%3E%3Cpath d='M-50,200 C400,220 600,550 1250,500' fill='none' stroke='%23EFA781' stroke-opacity='0.12' stroke-width='1.5'/%3E%3Cpath d='M-150,450 C250,500 500,750 1350,650' fill='none' stroke='%23B8860B' stroke-opacity='0.06' stroke-width='1.5'/%3E%3Cpath d='M100,-100 C300,300 700,500 1100,900' fill='none' stroke='%238B4513' stroke-opacity='0.05' stroke-width='1.2'/%3E%3C/svg%3E");
+  background-attachment: fixed;
+  background-size: cover;
 }
 
 @utility surface-card {
-  background-color: var(--color-card);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-soft);
+  background-color: #ffffff;
+  border: 1px solid #F1F5F9;
+  box-shadow: var(--shadow-card);
 }
 
 @utility no-scrollbar {
@@ -243,9 +257,8 @@ h1, h2, h3, .font-display {
 }
 
 @layer base {
-  /* Meaningful, high-contrast keyboard focus everywhere (WCAG 2.4.7 / 2.4.11) */
   :focus-visible {
-    outline: 3px solid var(--gold-deep, oklch(0.62 0.12 78));
+    outline: 2px solid #B8860B;
     outline-offset: 2px;
     border-radius: 0.75rem;
   }
