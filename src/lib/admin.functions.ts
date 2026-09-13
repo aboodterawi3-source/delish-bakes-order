@@ -4,6 +4,15 @@ import { emailToUsername, normalizeUsername, usernameToEmail } from "@/lib/usern
 
 export type StaffRole = "admin" | "sales" | "kitchen" | "social";
 
+function authErrorMessage(message: string): string {
+  const m = message.toLowerCase();
+  if (m.includes("weak") || m.includes("easy to guess") || m.includes("pwned") || m.includes("leaked")) {
+    return "كلمة المرور ضعيفة أو مكشوفة، اختر كلمة أقوى (8 أحرف مع أرقام ورموز) · Password is too weak or leaked, pick a stronger one (8+ chars with numbers and symbols)";
+  }
+  return message;
+}
+
+
 export type StaffMember = {
   id: string;
   username: string;
@@ -91,7 +100,7 @@ export const bootstrapAdmin = createServerFn({ method: "POST" })
       password: data.password,
       email_confirm: true,
     });
-    if (error || !created.user) throw new Error(error?.message ?? "Could not create the admin account");
+    if (error || !created.user) throw new Error(authErrorMessage(error?.message ?? "Could not create the admin account"));
     const { error: roleError } = await supabaseAdmin
       .from("user_roles")
       .insert({ user_id: created.user.id, role: "admin" });
@@ -182,12 +191,12 @@ export const createStaff = createServerFn({ method: "POST" })
       const match = (existing?.users ?? []).find(
         (user) => (user.email ?? "").toLowerCase() === data.email,
       );
-      if (!match) throw new Error(error?.message ?? "تعذّر إنشاء الحساب · Could not create the account");
+      if (!match) throw new Error(authErrorMessage(error?.message ?? "تعذّر إنشاء الحساب · Could not create the account"));
       const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(match.id, {
         password: data.password,
         email_confirm: true,
       });
-      if (updateError) throw new Error(updateError.message);
+      if (updateError) throw new Error(authErrorMessage(updateError.message));
       userId = match.id;
       reused = true;
     }
@@ -212,7 +221,7 @@ export const resetStaffPassword = createServerFn({ method: "POST" })
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.auth.admin.updateUserById(data.userId, { password: data.password });
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(authErrorMessage(error.message));
     return { ok: true };
   });
 
