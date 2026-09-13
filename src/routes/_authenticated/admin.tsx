@@ -36,6 +36,12 @@ import {
   getStaffPermissionMatrix,
   updateStaffProductPermission,
 } from "@/lib/permissions.functions";
+import {
+  listAuditLogs,
+  listStaffAuthorizations,
+  setStaffAuthorization,
+  type StaffAuthorizationRow,
+} from "@/lib/authorization.functions";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
