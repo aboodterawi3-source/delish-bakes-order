@@ -5,43 +5,31 @@ import {
   Crown,
   ShieldCheck,
   ShoppingBag,
-  ReceiptPercent,
+  ReceiptCent,
   ChefHat,
-  Utensils,
   MessageSquareHeart,
-  Sparkles,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { usernameToEmail } from "@/lib/username";
 import { DelishLogo } from "@/components/delish/DelishLogo";
 import { BackgroundCurves } from "@/components/delish/BackgroundCurves";
 
-const roleSchema = {
-  role: {
-    type: "string" as const,
-    optional: true,
-  },
-};
-
 export const Route = createFileRoute("/auth")({
   validateSearch: (search) => {
     const raw = (search as { role?: unknown }).role;
-    return { role: typeof raw === "string" ? raw : undefined };
+    return raw && typeof raw === "string" ? { role: raw } : {};
   },
-  head: ({ search }) => {
-    const portal = portalMeta(search.role);
-    return {
-      meta: [
-        { title: `${portal.titleAr} | ${portal.titleEn}` },
-        { name: "description", content: portal.description },
-        { name: "robots", content: "noindex, nofollow" },
-        { property: "og:title", content: `${portal.titleAr} | ${portal.titleEn}` },
-        { property: "og:description", content: portal.description },
-        { property: "og:type", content: "website" },
-        { name: "twitter:card", content: "summary" },
-      ],
-    };
-  },
+  head: () => ({
+    meta: [
+      { title: "دخول الموظفين | Delish Staff Sign In" },
+      { name: "description", content: "تسجيل دخول فريق عمل ديليش للوصول إلى البوابات الداخلية." },
+      { name: "robots", content: "noindex, nofollow" },
+      { property: "og:title", content: "دخول الموظفين | Delish Staff Sign In" },
+      { property: "og:description", content: "Delish staff portal sign in." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: AuthPage,
 });
 
