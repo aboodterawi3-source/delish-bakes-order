@@ -339,6 +339,7 @@ function AdminPage() {
 
         {tab === "staff" && <StaffPanel />}
         {tab === "permissions" && <StaffPermissionMatrixPanel />}
+        {tab === "authorization" && <AuthorizationPanel />}
       </div>
     </main>
   );
