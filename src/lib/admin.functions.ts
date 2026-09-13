@@ -100,7 +100,7 @@ export const bootstrapAdmin = createServerFn({ method: "POST" })
       password: data.password,
       email_confirm: true,
     });
-    if (error || !created.user) throw new Error(error?.message ?? "Could not create the admin account");
+    if (error || !created.user) throw new Error(authErrorMessage(error?.message ?? "Could not create the admin account"));
     const { error: roleError } = await supabaseAdmin
       .from("user_roles")
       .insert({ user_id: created.user.id, role: "admin" });
