@@ -11,12 +11,14 @@ import {
   Loader2,
   Lock,
   LogOut,
+  MessageCircle,
   Printer,
   RefreshCw,
   Search,
   Store,
   X,
 } from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useOrdersRealtime } from "@/hooks/use-orders-realtime";
@@ -236,7 +238,7 @@ function SalesPage() {
     mutationFn: (orderId: string) => editLinkFn({ data: { orderId } }),
     onSuccess: (result) => {
       setMoneyError(null);
-      setEditLink(`${window.location.origin}/order-edit?token=${result.token}`);
+      setEditLink(`${window.location.origin}/edit-order?token=${result.token}`);
     },
     onError: (error: Error) => setMoneyError(error.message),
   });
