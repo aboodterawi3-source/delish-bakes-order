@@ -28,6 +28,8 @@ export type KdsOrder = {
   design_image_url: string | null;
   /** Customer-facing notes only; staff notes and money fields never reach the kitchen. */
   notes: string | null;
+  /** Set when a customer moved the pickup/delivery slot through their edit link. */
+  schedule_updated_at: string | null;
   created_at: string;
   items: KdsItem[];
 };
@@ -59,7 +61,7 @@ export const getKitchenOrders = createServerFn({ method: "GET" })
     const { data, error } = await context.supabase
       .from("orders")
       .select(
-        "id, order_number, customer_name, method, requested_date, requested_time, status, inscription, design_image_url, notes, created_at, order_items(id, name_ar, name_en, quantity, options_ar, options_en, notes, products(category))",
+        "id, order_number, customer_name, method, requested_date, requested_time, status, inscription, design_image_url, notes, schedule_updated_at, created_at, order_items(id, name_ar, name_en, quantity, options_ar, options_en, notes, products(category))",
       )
       .in("status", ["new", "confirmed", "baking", "ready"])
       .order("requested_date", { ascending: true })
@@ -78,6 +80,7 @@ export const getKitchenOrders = createServerFn({ method: "GET" })
       inscription: order.inscription,
       design_image_url: order.design_image_url,
       notes: order.notes,
+      schedule_updated_at: order.schedule_updated_at,
       created_at: order.created_at,
       items: (order.order_items ?? []).map((item) => ({
         id: item.id,

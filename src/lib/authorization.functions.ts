@@ -334,23 +334,63 @@ export const getOrderByEditToken = createServerFn({ method: "POST" })
     return { order, expires_at: row.expires_at };
   });
 
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const TIME_PATTERN = /^\d{2}:\d{2}(:\d{2})?$/;
+
 export const submitOrderEdit = createServerFn({ method: "POST" })
-  .inputValidator((input: { token: string; notes: string; inscription: string; customer_phone: string }) => ({
-    token: String(input?.token ?? ""),
-    notes: String(input?.notes ?? "").slice(0, 600),
-    inscription: String(input?.inscription ?? "").slice(0, 200),
-    customer_phone: String(input?.customer_phone ?? "").slice(0, 30),
-  }))
+  .inputValidator(
+    (input: {
+      token: string;
+      notes?: string;
+      inscription?: string;
+      customer_phone?: string;
+      requested_date?: string;
+      requested_time?: string;
+    }) => {
+      const requestedDate = String(input?.requested_date ?? "").trim();
+      const requestedTime = String(input?.requested_time ?? "").trim();
+      if (requestedDate && !DATE_PATTERN.test(requestedDate)) {
+        throw new Error("التاريخ غير صالح · Invalid date");
+      }
+      if (requestedTime && !TIME_PATTERN.test(requestedTime)) {
+        throw new Error("الوقت غير صالح · Invalid time");
+      }
+      return {
+        token: String(input?.token ?? ""),
+        notes: input?.notes === undefined ? undefined : String(input.notes).slice(0, 600),
+        inscription:
+          input?.inscription === undefined ? undefined : String(input.inscription).slice(0, 200),
+        customer_phone:
+          input?.customer_phone === undefined ? undefined : String(input.customer_phone).slice(0, 30),
+        requested_date: requestedDate,
+        requested_time: requestedTime,
+      };
+    },
+  )
   .handler(async ({ data }) => {
     const row = await loadToken(data.token);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
+    const { data: before } = await supabaseAdmin
+      .from("orders")
+      .select("requested_date, requested_time")
+      .eq("id", row.order_id)
+      .single();
+
+    const scheduleChanged =
+      (data.requested_date && data.requested_date !== before?.requested_date) ||
+      (data.requested_time &&
+        data.requested_time.slice(0, 5) !== String(before?.requested_time ?? "").slice(0, 5));
+
     const { error } = await supabaseAdmin
       .from("orders")
       .update({
-        notes: data.notes.trim() || null,
-        inscription: data.inscription.trim() || null,
-        ...(data.customer_phone.trim() ? { customer_phone: data.customer_phone.trim() } : {}),
+        ...(data.notes === undefined ? {} : { notes: data.notes.trim() || null }),
+        ...(data.inscription === undefined ? {} : { inscription: data.inscription.trim() || null }),
+        ...(data.customer_phone?.trim() ? { customer_phone: data.customer_phone.trim() } : {}),
+        ...(data.requested_date ? { requested_date: data.requested_date } : {}),
+        ...(data.requested_time ? { requested_time: data.requested_time } : {}),
+        ...(scheduleChanged ? { schedule_updated_at: new Date().toISOString() } : {}),
       } as never)
       .eq("id", row.order_id);
     if (error) throw new Error(error.message);

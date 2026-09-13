@@ -11,12 +11,14 @@ import {
   Loader2,
   Lock,
   LogOut,
+  MessageCircle,
   Printer,
   RefreshCw,
   Search,
   Store,
   X,
 } from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useOrdersRealtime } from "@/hooks/use-orders-realtime";
@@ -111,6 +113,22 @@ ${order.inscription ? `<div>الكتابة: ${order.inscription}</div>` : ""}
   if (!win) return;
   win.document.write(html);
   win.document.close();
+}
+
+/** Jordanian numbers arrive as 07…; WhatsApp needs the international form. */
+function waNumber(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.startsWith("962")) return digits;
+  if (digits.startsWith("0")) return `962${digits.slice(1)}`;
+  return digits;
+}
+
+/** Arabic-only schedule confirmation, opened in WhatsApp with a clipboard fallback. */
+function sendScheduleConfirmation(order: SalesOrder) {
+  const message = `أهلاً بك من مخبز ديلش! 🌸 تم تحديث موعد طلبك رقم ${order.order_number} بنجاح إلى ${order.requested_date} الساعة ${order.requested_time.slice(0, 5)}. يسعدنا خدمتكم دائماً!`;
+  void navigator.clipboard?.writeText(message).catch(() => undefined);
+  window.open(`https://wa.me/${waNumber(order.customer_phone)}?text=${encodeURIComponent(message)}`, "_blank", "noopener");
+  toast("تم تجهيز رسالة التأكيد للواتساب 📲");
 }
 
 const ORDERS_KEY = ["sales-orders"] as const;
@@ -236,7 +254,7 @@ function SalesPage() {
     mutationFn: (orderId: string) => editLinkFn({ data: { orderId } }),
     onSuccess: (result) => {
       setMoneyError(null);
-      setEditLink(`${window.location.origin}/order-edit?token=${result.token}`);
+      setEditLink(`${window.location.origin}/edit-order?token=${result.token}`);
     },
     onError: (error: Error) => setMoneyError(error.message),
   });
@@ -541,6 +559,11 @@ const OrderCard = memo(function OrderCard({
           <CalendarClock className="h-4 w-4" aria-hidden="true" />
           {order.requested_date} · {order.requested_time.slice(0, 5)}
         </span>
+        {order.schedule_updated_at ? (
+          <span className="rounded-full bg-gold px-3 py-1 text-[11px] font-bold text-white">
+            تم تعديل الموعد 🔄
+          </span>
+        ) : null}
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
@@ -571,6 +594,15 @@ const OrderCard = memo(function OrderCard({
         >
           <Printer className="h-4 w-4" aria-hidden="true" /> طباعة حرارية
         </button>
+        {order.schedule_updated_at ? (
+          <button
+            type="button"
+            onClick={() => sendScheduleConfirmation(order)}
+            className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[#166534] px-5 text-sm font-bold text-white transition-transform hover:scale-[1.02] active:scale-95"
+          >
+            <MessageCircle className="h-4 w-4" aria-hidden="true" /> إرسال تأكيد التعديل للواتساب
+          </button>
+        ) : null}
       </div>
     </li>
   );
