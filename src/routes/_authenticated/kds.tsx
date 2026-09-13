@@ -7,27 +7,18 @@ import {
   CheckCircle2,
   ChefHat,
   Clock3,
-  LayoutGrid,
   Loader2,
   LogOut,
-  NotebookPen,
-  Plus,
   RefreshCw,
-  Trash2,
   X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrdersRealtime } from "@/hooks/use-orders-realtime";
 import {
-  deleteMenuItem,
   getKitchenAccess,
   getKitchenOrders,
-  listMenuItems,
   markOrderReady,
-  saveMenuItem,
   type KdsOrder,
-  type MenuItem,
-  type MenuItemInput,
   type PriorityColor,
 } from "@/lib/kds.functions";
 
