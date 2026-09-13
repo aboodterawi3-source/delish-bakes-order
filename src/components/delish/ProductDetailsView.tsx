@@ -41,6 +41,7 @@ export function ProductDetailsView({
   };
 
   const currentPrice = (sizePricing[size] || 130.51) * quantity;
+  const selectedImage = thumbnails[selectedThumb] ?? thumbnails[0];
 
   const handleAdd = () => {
     setAddedAnimation(true);
@@ -139,7 +140,7 @@ export function ProductDetailsView({
           {/* Main Large Centered Image */}
           <div className="h-72 w-56 sm:h-80 sm:w-64 flex items-center justify-center drop-shadow-[0_18px_30px_rgba(62,39,35,0.18)]">
             <img
-              src={thumbnails[selectedThumb].src}
+              src={selectedImage?.src ?? "/images/ombre-ruffle-cake.jpg"}
               alt="Ombre Fondant Ruffle Cake in blue and purple ruffles"
               className="max-h-full max-w-full object-contain transition-all duration-500 animate-fadeIn"
             />
@@ -216,7 +217,7 @@ export function ProductDetailsView({
               >
                 {Object.keys(sizePricing).map((s) => (
                   <option key={s} value={s}>
-                    {s} — ${sizePricing[s].toFixed(2)}
+                    {s} — ${(sizePricing[s] ?? 130.51).toFixed(2)}
                   </option>
                 ))}
               </select>
@@ -242,7 +243,7 @@ export function ProductDetailsView({
         <button
           type="button"
           onClick={handleAdd}
-          className="inline-flex min-h-[50px] items-center justify-center gap-2 rounded-2xl bg-[#8B4513] px-7 py-3.5 text-xs sm:text-sm font-bold uppercase tracking-wider text-white shadow-[0_8px_20px_-4px_rgba(139,69,19,0.4)] transition-all hover:bg-[#5D2E17] hover:shadow-[0_10px_24px_-4px_rgba(93,46,23,0.5)] active:scale-[0.98]"
+          className="inline-flex min-h-[50px] items-center justify-center gap-2 rounded-full bg-primary px-7 py-3.5 text-xs sm:text-sm font-bold uppercase text-primary-foreground shadow-sm transition-all hover:bg-cocoa-deep active:scale-[0.98]"
         >
           {addedAnimation ? (
             <>

@@ -28,10 +28,10 @@ export function DiscoverView({
   const [searchQuery, setSearchQuery] = useState("");
 
   const categories = [
-    { name: "Cake", bg: "bg-[#FDE2CF]/55 text-[#5D2E17]", border: "border-[#EFA781]/40", img: "/images/ube-drip-cake.jpg" },
-    { name: "Pastry", bg: "bg-[#E0F2FE]/70 text-[#0369A1]", border: "border-[#BAE6FD]/60", img: "/images/croissants.jpg" },
-    { name: "Cupcake", bg: "bg-[#F3E8FF]/70 text-[#7E22CE]", border: "border-[#E9D5FF]/60", img: "/images/macaron-stack.jpg" },
-    { name: "Donuts", bg: "bg-[#ECFEFF]/70 text-[#0E7490]", border: "border-[#CFFAFE]/60", img: "/images/macaron-pair.jpg" },
+    { name: "Cake", bg: "bg-secondary text-secondary-foreground", border: "border-peach-coral/40", img: "/images/ube-drip-cake.jpg" },
+    { name: "Pastry", bg: "bg-card text-foreground", border: "border-border", img: "/images/croissants.jpg" },
+    { name: "Cupcake", bg: "bg-secondary/70 text-secondary-foreground", border: "border-peach-coral/30", img: "/images/macaron-stack.jpg" },
+    { name: "Donuts", bg: "bg-card text-foreground", border: "border-border", img: "/images/macaron-pair.jpg" },
   ];
 
   return (
@@ -99,7 +99,7 @@ export function DiscoverView({
         {/* Promotional Hero Banner Card */}
         <section
           aria-label="Promotional offer"
-          className="relative overflow-hidden rounded-3xl bg-[#EFA781] p-5 text-white shadow-[0_14px_32px_-8px_rgba(239,167,129,0.45)]"
+          className="relative overflow-hidden rounded-3xl bg-peach-coral p-5 text-primary-foreground shadow-[var(--shadow-soft)]"
         >
           {/* Subtle dual-tone organic curve inside promo card */}
           <div className="absolute -right-8 -bottom-10 h-44 w-44 rounded-full bg-[#FDE2CF]/40 blur-2xl" />
@@ -204,19 +204,19 @@ export function DiscoverView({
 
           {/* Card 1: Ube Flavoured Cake (Pixel perfect from reference) */}
           <div
-            className="group relative overflow-hidden rounded-3xl bg-[#F5E8FF] p-4 sm:p-5 border border-purple-200/50 shadow-[0_10px_28px_-10px_rgba(147,51,234,0.12)] transition-all hover:shadow-[0_14px_36px_-10px_rgba(147,51,234,0.2)]"
+            className="group relative overflow-hidden rounded-3xl bg-secondary/75 p-4 sm:p-5 border border-peach-coral/30 shadow-[var(--shadow-soft)] transition-all hover:shadow-[var(--shadow-card)]"
           >
             {/* Top row: Title + Heart favorite */}
             <div className="flex items-start justify-between">
               <div>
                 <Link
                   to="/product-details"
-                  className="font-sans text-base sm:text-lg font-extrabold text-[#2E1065] hover:text-[#581C87]"
+                  className="font-sans text-base sm:text-lg font-extrabold text-foreground hover:text-primary"
                 >
                   Ube Flavoured<br />Cake
                 </Link>
                 {/* Rating badge */}
-                <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-[#7E22CE]">
+                <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-primary">
                   <Star className="h-3.5 w-3.5 fill-[#EAB308] text-[#EAB308]" />
                   <span>4.9</span>
                   <span className="text-purple-400/90">(128)</span>
@@ -306,7 +306,7 @@ export function DiscoverView({
 
           {/* Card 2: German Chocolate Cake */}
           <div
-            className="group relative overflow-hidden rounded-3xl bg-[#FCEDE3] p-4 sm:p-5 border border-orange-200/50 shadow-[0_10px_28px_-10px_rgba(239,167,129,0.15)] transition-all hover:shadow-[0_14px_36px_-10px_rgba(239,167,129,0.22)]"
+            className="group relative overflow-hidden rounded-3xl bg-card p-4 sm:p-5 border border-border shadow-[var(--shadow-soft)] transition-all hover:shadow-[var(--shadow-card)]"
           >
             <div className="flex items-start justify-between">
               <div>

@@ -9,6 +9,10 @@ export const Route = createFileRoute("/discover")({
     meta: [
       { title: "Discover | DELISH Bakes Luxury Patisserie" },
       { name: "description", content: "Explore freshly baked croissants, celebration cakes, and signature macarons." },
+      { property: "og:title", content: "Discover | DELISH Bakes Luxury Patisserie" },
+      { property: "og:description", content: "Explore freshly baked croissants, celebration cakes, and signature macarons." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: DiscoverPageWrapper,
@@ -24,13 +28,13 @@ function DiscoverPageWrapper() {
 
 function DiscoverPage() {
   const navigate = useNavigate();
-  const { totalItems } = useCart();
+  const { count } = useCart();
   const [cartOpen, setCartOpen] = useState(false);
 
   return (
     <main className="min-h-dvh w-full bg-[#F9FBFC]">
       <DiscoverView
-        cartCount={totalItems || 2}
+        cartCount={count}
         onOpenCart={() => setCartOpen(true)}
         onSelectProduct={(_id) => {
           void navigate({ to: "/product-details" });

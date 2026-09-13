@@ -14,6 +14,8 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AdminSetupRouteImport } from './routes/admin-setup'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as DiscoverRouteImport } from './routes/discover'
+import { Route as KitchenRouteImport } from './routes/kitchen'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as ProductDetailsRouteImport } from './routes/product-details'
 import { Route as SocialLoginRouteImport } from './routes/social-login'
 import { Route as SocialPortalRouteImport } from './routes/social-portal'
@@ -44,6 +46,16 @@ const AuthRoute = AuthRouteImport.update({
 const DiscoverRoute = DiscoverRouteImport.update({
   id: '/discover',
   path: '/discover',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KitchenRoute = KitchenRouteImport.update({
+  id: '/kitchen',
+  path: '/kitchen',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProductDetailsRoute = ProductDetailsRouteImport.update({
@@ -87,6 +99,8 @@ export interface FileRoutesByFullPath {
   '/admin-setup': typeof AdminSetupRoute
   '/auth': typeof AuthRoute
   '/discover': typeof DiscoverRoute
+  '/kitchen': typeof KitchenRoute
+  '/login': typeof LoginRoute
   '/product-details': typeof ProductDetailsRoute
   '/social-login': typeof SocialLoginRoute
   '/social-portal': typeof SocialPortalRoute
@@ -100,6 +114,8 @@ export interface FileRoutesByTo {
   '/admin-setup': typeof AdminSetupRoute
   '/auth': typeof AuthRoute
   '/discover': typeof DiscoverRoute
+  '/kitchen': typeof KitchenRoute
+  '/login': typeof LoginRoute
   '/product-details': typeof ProductDetailsRoute
   '/social-login': typeof SocialLoginRoute
   '/social-portal': typeof SocialPortalRoute
@@ -115,6 +131,8 @@ export interface FileRoutesById {
   '/admin-setup': typeof AdminSetupRoute
   '/auth': typeof AuthRoute
   '/discover': typeof DiscoverRoute
+  '/kitchen': typeof KitchenRoute
+  '/login': typeof LoginRoute
   '/product-details': typeof ProductDetailsRoute
   '/social-login': typeof SocialLoginRoute
   '/social-portal': typeof SocialPortalRoute
@@ -130,6 +148,8 @@ export interface FileRouteTypes {
     | '/admin-setup'
     | '/auth'
     | '/discover'
+    | '/kitchen'
+    | '/login'
     | '/product-details'
     | '/social-login'
     | '/social-portal'
@@ -143,6 +163,8 @@ export interface FileRouteTypes {
     | '/admin-setup'
     | '/auth'
     | '/discover'
+    | '/kitchen'
+    | '/login'
     | '/product-details'
     | '/social-login'
     | '/social-portal'
@@ -157,6 +179,8 @@ export interface FileRouteTypes {
     | '/admin-setup'
     | '/auth'
     | '/discover'
+    | '/kitchen'
+    | '/login'
     | '/product-details'
     | '/social-login'
     | '/social-portal'
@@ -172,6 +196,8 @@ export interface RootRouteChildren {
   AdminSetupRoute: typeof AdminSetupRoute
   AuthRoute: typeof AuthRoute
   DiscoverRoute: typeof DiscoverRoute
+  KitchenRoute: typeof KitchenRoute
+  LoginRoute: typeof LoginRoute
   ProductDetailsRoute: typeof ProductDetailsRoute
   SocialLoginRoute: typeof SocialLoginRoute
   SocialPortalRoute: typeof SocialPortalRoute
@@ -213,6 +239,20 @@ declare module '@tanstack/react-router' {
       path: '/discover'
       fullPath: '/discover'
       preLoaderRoute: typeof DiscoverRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/kitchen': {
+      id: '/kitchen'
+      path: '/kitchen'
+      fullPath: '/kitchen'
+      preLoaderRoute: typeof KitchenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/product-details': {
@@ -288,6 +328,8 @@ const rootRouteChildren: RootRouteChildren = {
   AdminSetupRoute: AdminSetupRoute,
   AuthRoute: AuthRoute,
   DiscoverRoute: DiscoverRoute,
+  KitchenRoute: KitchenRoute,
+  LoginRoute: LoginRoute,
   ProductDetailsRoute: ProductDetailsRoute,
   SocialLoginRoute: SocialLoginRoute,
   SocialPortalRoute: SocialPortalRoute,

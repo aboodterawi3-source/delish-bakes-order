@@ -334,7 +334,7 @@ function SalesPage() {
       {selected ? (
         <OrderPanel
           order={selected}
-          permissions={permissions.data}
+          permissions={permissions.data ?? { permittedProductIds: [], isAdmin: false }}
           onUpdateItemPrice={(itemId, newUnitPrice) =>
             updateItemPrice.mutate({ itemId, orderId: selected.id, newUnitPrice })
           }
