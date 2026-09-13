@@ -50,7 +50,9 @@ function validate(input: StorefrontOrderRequest) {
   let designImage: string | null = null;
   if (typeof input?.design_image === "string" && input.design_image.trim()) {
     const raw = input.design_image.trim();
-    if (!IMAGE_PREFIX.test(raw)) throw new Error("صورة غير مدعومة · Unsupported image format");
+    if (!IMAGE_PREFIX.test(raw) && !STORAGE_URL.test(raw)) {
+      throw new Error("صورة غير مدعومة · Unsupported image format");
+    }
     if (raw.length > MAX_IMAGE_BYTES) throw new Error("حجم الصورة كبير جداً · Image is too large");
     designImage = raw;
   }
