@@ -3,6 +3,7 @@ import { useState } from "react";
 import { ProductDetailsView } from "@/components/delish/ProductDetailsView";
 import { CartDrawer } from "@/components/delish/CartDrawer";
 import { CartProvider, useCart } from "@/lib/cart";
+import { customizationSummary } from "@/components/delish/CakeCustomizationPanel";
 
 export const Route = createFileRoute("/product-details")({
   head: () => ({
@@ -40,14 +41,18 @@ function ProductDetailsPage() {
         }}
         onOpenCart={() => setCartOpen(true)}
         onAddToCart={(item) => {
+          const extras = customizationSummary(item.customization);
+          const notes = item.customization.notes.trim();
           add({
             ar: "كيك أمبري فوندان رفل",
             en: item.name,
             unit: item.price,
             qty: item.quantity,
             image: "/images/ombre-ruffle-cake.jpg",
-            detailsAr: [item.size],
-            detailsEn: [item.size],
+            designImage: item.customization.designImageUrl ?? undefined,
+            notes: notes || undefined,
+            detailsAr: [item.size, ...extras.ar],
+            detailsEn: [item.size, ...extras.en],
             spec: { kind: "catalog", productId: "p1" },
           });
           setCartOpen(true);

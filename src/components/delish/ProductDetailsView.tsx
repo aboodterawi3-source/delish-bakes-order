@@ -3,11 +3,22 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { ChevronLeft, ShoppingBag, ChevronDown, Plus, Minus, Check } from "lucide-react";
 import { DelishLogo } from "./DelishLogo";
 import { BackgroundCurves } from "./BackgroundCurves";
+import {
+  CakeCustomizationPanel,
+  emptyCustomization,
+  type Customization,
+} from "./CakeCustomizationPanel";
 
 interface ProductDetailsViewProps {
   onBack?: () => void;
   onOpenCart?: () => void;
-  onAddToCart?: (item: { name: string; size: string; quantity: number; price: number }) => void;
+  onAddToCart?: (item: {
+    name: string;
+    size: string;
+    quantity: number;
+    price: number;
+    customization: Customization;
+  }) => void;
   cartCount?: number;
   isEmbedded?: boolean;
 }
@@ -25,6 +36,7 @@ export function ProductDetailsView({
   const [size, setSize] = useState("8 inch Celebration");
   const [descriptionOpen, setDescriptionOpen] = useState(true);
   const [addedAnimation, setAddedAnimation] = useState(false);
+  const [customization, setCustomization] = useState<Customization>(emptyCustomization);
 
   const thumbnails = [
     { id: 0, src: "/images/ombre-ruffle-cake.jpg", alt: "Ombre Fondant Ruffle Cake" },
@@ -51,6 +63,7 @@ export function ProductDetailsView({
       size,
       quantity,
       price: sizePricing[size] || 130.51,
+      customization,
     });
   };
 
@@ -225,6 +238,8 @@ export function ProductDetailsView({
             </div>
           </div>
         </div>
+
+        <CakeCustomizationPanel value={customization} onChange={setCustomization} />
       </main>
 
       {/* Sticky Bottom Action Bar */}
