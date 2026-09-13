@@ -157,7 +157,28 @@ export function LangToggle({
         title={lang === "ar" ? "English" : "العربية"}
         className={`inline-flex items-center gap-1.5 rounded-full bg-[#FDE2CF] px-3 py-1 text-xs font-semibold text-[#7B3F00] shadow-sm transition-transform hover:scale-105 active:scale-95 ${className}`}
       >
-        <span className={lang === "ar" ? "opacity-100" : "opacity-60
+        <span className={lang === "ar" ? "opacity-100" : "opacity-60"}>عربي</span>
+        <span className="opacity-60">|</span>
+        <span className={lang === "en" ? "opacity-100" : "opacity-60"}>EN</span>
+      </button>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      aria-label={lang === "ar" ? "التبديل إلى الإنجليزية" : "Switch to Arabic"}
+      title={lang === "ar" ? "English" : "العربية"}
+      className={`inline-flex h-9 items-center gap-1 rounded-full border border-border bg-card/90 px-2.5 text-[11px] font-extrabold text-primary shadow-sm transition-transform hover:scale-[1.04] active:scale-95 ${className}`}
+    >
+      <Languages className="h-3.5 w-3.5" aria-hidden="true" />
+      <span className={lang === "ar" ? "text-primary" : "text-muted-foreground"}>AR</span>
+      <span className="text-muted-foreground/60">|</span>
+      <span className={lang === "en" ? "text-primary" : "text-muted-foreground"}>EN</span>
+    </button>
+  );
+}
 
 export const arabicNum = (n: number | string, lang: Lang) =>
   lang === "ar" ? String(n).replace(/\d/g, (d) => "٠١٢٣٤٥٦٧٨٩"[Number(d)]!) : String(n);
