@@ -18,6 +18,8 @@ const MAX_LINES = 40;
 const MAX_QTY = 50;
 const MAX_IMAGE_BYTES = 1_500_000;
 const IMAGE_PREFIX = /^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=]+$/;
+/** Signed link returned by uploadDesignImage for photos kept in Cloud storage. */
+const STORAGE_URL = /^https:\/\/[a-z0-9.-]+\/storage\/v1\/object\/sign\/order-designs\/[\w./-]+\?[\w=%&.-]+$/i;
 
 const text = (value: unknown, max: number, label: string, required = false) => {
   const trimmed = typeof value === "string" ? value.trim() : "";
@@ -48,7 +50,9 @@ function validate(input: StorefrontOrderRequest) {
   let designImage: string | null = null;
   if (typeof input?.design_image === "string" && input.design_image.trim()) {
     const raw = input.design_image.trim();
-    if (!IMAGE_PREFIX.test(raw)) throw new Error("صورة غير مدعومة · Unsupported image format");
+    if (!IMAGE_PREFIX.test(raw) && !STORAGE_URL.test(raw)) {
+      throw new Error("صورة غير مدعومة · Unsupported image format");
+    }
     if (raw.length > MAX_IMAGE_BYTES) throw new Error("حجم الصورة كبير جداً · Image is too large");
     designImage = raw;
   }
