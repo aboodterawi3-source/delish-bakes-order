@@ -338,8 +338,7 @@ function KdsPage() {
         </div>
       </header>
 
-      <>
-          <div className="flex gap-2 overflow-x-auto px-4 py-3.5 no-scrollbar">
+      <div className="flex gap-2 overflow-x-auto px-4 py-3.5 no-scrollbar">
             {(Object.keys(filterMeta) as Filter[]).map((key) => (
               <button
                 key={key}
