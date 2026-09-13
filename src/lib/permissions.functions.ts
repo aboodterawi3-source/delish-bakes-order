@@ -1,6 +1,17 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+type PermissionRow = { user_id: string; product_id: string; can_edit_price: boolean };
+type PermissionQuery = {
+  select: (columns: string) => PermissionQuery;
+  eq: (column: string, value: string) => Promise<{ data: PermissionRow[] | null; error: unknown }>;
+  then: Promise<{ data: PermissionRow[] | null; error: unknown }>["then"];
+  upsert: (value: PermissionRow & { updated_at: string }, options: { onConflict: string }) => Promise<{ error: unknown }>;
+};
+
+const permissionsTable = (client: unknown) =>
+  (client as { from: (table: string) => PermissionQuery }).from("sales_product_permissions");
+
 export type ProductPermissionRecord = {
   id: string;
   user_id: string;
@@ -32,15 +43,12 @@ export const getMyPermissions = createServerFn({ method: "GET" })
 
     // Try querying sales_product_permissions table in Supabase
     try {
-      const { data, error } = await context.supabase
-        .from("sales_product_permissions")
+      const { data, error } = await permissionsTable(context.supabase)
         .select("product_id, can_edit_price")
         .eq("user_id", context.userId);
 
       if (!error && data) {
-        const permitted = data
-          .filter((p: { can_edit_price: boolean }) => p.can_edit_price)
-          .map((p: { product_id: string }) => p.product_id);
+        const permitted = data.filter((p) => p.can_edit_price).map((p) => p.product_id);
         return { permittedProductIds: permitted, isAdmin };
       }
     } catch {
@@ -51,7 +59,8 @@ export const getMyPermissions = createServerFn({ method: "GET" })
     const permittedFromCache: string[] = [];
     for (const [key, val] of permissionCache.entries()) {
       if (key.startsWith(`${context.userId}:`) && val) {
-        permittedFromCache.push(key.split(":")[1]);
+        const productId = key.split(":")[1];
+        if (productId) permittedFromCache.push(productId);
       }
     }
 
@@ -82,8 +91,7 @@ export const getStaffPermissionMatrix = createServerFn({ method: "GET" })
     // Try fetching existing permissions from Supabase
     let dbPerms: { user_id: string; product_id: string; can_edit_price: boolean }[] = [];
     try {
-      const { data, error } = await context.supabase
-        .from("sales_product_permissions")
+      const { data, error } = await permissionsTable(context.supabase)
         .select("user_id, product_id, can_edit_price");
       if (!error && data) {
         dbPerms = data;
@@ -123,18 +131,18 @@ export const getStaffPermissionMatrix = createServerFn({ method: "GET" })
  */
 export const updateStaffProductPermission = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((input: { userId: string; productId: string; canEditPrice: boolean }) => input)
-  .handler(async ({ input, context }) => {
+  .inputValidator((input: { userId: string; productId: string; canEditPrice: boolean }) => input)
+  .handler(async ({ data, context }) => {
     // Update local cache immediately
-    permissionCache.set(cacheKey(input.userId, input.productId), input.canEditPrice);
+    permissionCache.set(cacheKey(data.userId, data.productId), data.canEditPrice);
 
     // Persist to Supabase if table exists
     try {
-      await context.supabase.from("sales_product_permissions").upsert(
+      await permissionsTable(context.supabase).upsert(
         {
-          user_id: input.userId,
-          product_id: input.productId,
-          can_edit_price: input.canEditPrice,
+          user_id: data.userId,
+          product_id: data.productId,
+          can_edit_price: data.canEditPrice,
           updated_at: new Date().toISOString(),
         },
         { onConflict: "user_id,product_id" }
@@ -143,5 +151,5 @@ export const updateStaffProductPermission = createServerFn({ method: "POST" })
       // Graceful fallback to cache
     }
 
-    return { success: true, userId: input.userId, productId: input.productId, canEditPrice: input.canEditPrice };
+    return { success: true, userId: data.userId, productId: data.productId, canEditPrice: data.canEditPrice };
   });

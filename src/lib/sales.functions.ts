@@ -146,21 +146,21 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
 
 export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((input: { itemId: string; orderId: string; newUnitPrice: number }) => input)
-  .handler(async ({ input, context }): Promise<SalesOrder> => {
+  .inputValidator((input: { itemId: string; orderId: string; newUnitPrice: number }) => input)
+  .handler(async ({ data, context }): Promise<SalesOrder> => {
     await assertRole(context, SALES_ROLES);
     // Update order_items table
     const { error: itemError } = await context.supabase
       .from("order_items")
-      .update({ unit_price: input.newUnitPrice })
-      .eq("id", input.itemId);
+      .update({ unit_price: data.newUnitPrice })
+      .eq("id", data.itemId);
     if (itemError) throw new Error(itemError.message);
 
     // Recalculate order subtotal and total
     const { data: items, error: fetchError } = await context.supabase
       .from("order_items")
       .select("unit_price, quantity")
-      .eq("order_id", input.orderId);
+      .eq("order_id", data.orderId);
     if (fetchError) throw new Error(fetchError.message);
 
     const subtotal = (items ?? []).reduce(
@@ -171,7 +171,7 @@ export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
     const { data: currentOrder } = await context.supabase
       .from("orders")
       .select("delivery_fee, method")
-      .eq("id", input.orderId)
+      .eq("id", data.orderId)
       .single();
 
     const deliveryFee = currentOrder?.method === "delivery" ? Number(currentOrder?.delivery_fee ?? 0) : 0;
