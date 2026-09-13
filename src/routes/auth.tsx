@@ -154,8 +154,8 @@ function AuthPage() {
             <Icon className="h-8 w-8" />
           </div>
 
-          <div>
-            <h1 className="font-display text-xl font-bold text-[#3E2723]">
+          <div className="max-w-[16rem]">
+            <h1 className="font-display text-balance text-lg font-bold leading-snug text-[#3E2723] sm:text-xl">
               {portal.titleAr} <span className="text-[#B8860B]">|</span> {portal.titleEn}
             </h1>
             <p className="mt-1 text-xs text-[#8B4513]/80">{portal.subtitle}</p>
