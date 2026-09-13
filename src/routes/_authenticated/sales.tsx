@@ -31,6 +31,7 @@ import {
   type ShiftReport,
 } from "@/lib/sales.functions";
 import { getMyPermissions } from "@/lib/permissions.functions";
+import { CmsPanel } from "@/components/delish/CmsPanel";
 
 export const Route = createFileRoute("/_authenticated/sales")({
   head: () => ({
@@ -317,7 +318,30 @@ function SalesPage() {
       </header>
 
       <div className="mx-auto max-w-6xl px-4 py-5">
-        {orders.isPending ? (
+        <nav className="mb-5 flex flex-wrap gap-2" aria-label="أقسام واجهة المبيعات">
+          {([
+            { value: "orders" as const, ar: "الطلبات", en: "Orders" },
+            { value: "site" as const, ar: "إدارة الموقع", en: "Website" },
+          ]).map((item) => (
+            <button
+              key={item.value}
+              type="button"
+              aria-current={view === item.value}
+              onClick={() => setView(item.value)}
+              className={`min-h-12 rounded-full px-6 text-sm font-bold transition ${
+                view === item.value
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "border border-border bg-card text-foreground hover:bg-secondary/40"
+              }`}
+            >
+              {item.ar} · {item.en}
+            </button>
+          ))}
+        </nav>
+
+        {view === "site" ? (
+          <CmsPanel />
+        ) : orders.isPending ? (
           <p className="py-10 text-center text-sm text-muted-foreground">جار تحميل الطلبات…</p>
         ) : list.length === 0 ? (
           <p className="py-10 text-center text-sm text-muted-foreground">لا توجد طلبات مطابقة</p>
@@ -327,7 +351,6 @@ function SalesPage() {
               <OrderCard key={order.id} order={order} onOpen={openOrder} />
             ))}
           </ul>
-
         )}
       </div>
 
