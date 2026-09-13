@@ -1,8 +1,13 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/login")({
-  beforeLoad: () => {
-    throw redirect({ to: "/auth" });
+  validateSearch: (search) => {
+    const raw = (search as { role?: unknown }).role;
+    return raw && typeof raw === "string" ? { role: raw } : {};
+  },
+  beforeLoad: ({ search }) => {
+    const role = (search as { role?: string }).role;
+    throw redirect({ to: "/auth", search: role ? { role } : {} });
   },
   head: () => ({
     meta: [
