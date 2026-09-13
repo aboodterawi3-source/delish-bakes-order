@@ -115,6 +115,22 @@ ${order.inscription ? `<div>الكتابة: ${order.inscription}</div>` : ""}
   win.document.close();
 }
 
+/** Jordanian numbers arrive as 07…; WhatsApp needs the international form. */
+function waNumber(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.startsWith("962")) return digits;
+  if (digits.startsWith("0")) return `962${digits.slice(1)}`;
+  return digits;
+}
+
+/** Arabic-only schedule confirmation, opened in WhatsApp with a clipboard fallback. */
+function sendScheduleConfirmation(order: SalesOrder) {
+  const message = `أهلاً بك من مخبز ديلش! 🌸 تم تحديث موعد طلبك رقم ${order.order_number} بنجاح إلى ${order.requested_date} الساعة ${order.requested_time.slice(0, 5)}. يسعدنا خدمتكم دائماً!`;
+  void navigator.clipboard?.writeText(message).catch(() => undefined);
+  window.open(`https://wa.me/${waNumber(order.customer_phone)}?text=${encodeURIComponent(message)}`, "_blank", "noopener");
+  toast("تم تجهيز رسالة التأكيد للواتساب 📲");
+}
+
 const ORDERS_KEY = ["sales-orders"] as const;
 
 /** Mirrors the server update locally so the card repaints in the same frame. */
