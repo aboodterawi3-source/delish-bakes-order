@@ -36,6 +36,12 @@ import {
   getStaffPermissionMatrix,
   updateStaffProductPermission,
 } from "@/lib/permissions.functions";
+import {
+  listAuditLogs,
+  listStaffAuthorizations,
+  setStaffAuthorization,
+  type StaffAuthorizationRow,
+} from "@/lib/authorization.functions";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
@@ -94,7 +100,7 @@ function downloadCsv(name: string, headers: string[], rows: (string | number)[][
   URL.revokeObjectURL(url);
 }
 
-type Tab = "analytics" | "staff" | "permissions";
+type Tab = "analytics" | "staff" | "permissions" | "authorization";
 
 function AdminPage() {
   const navigate = useNavigate();
@@ -187,6 +193,7 @@ function AdminPage() {
               ["analytics", "التحليلات والسجلات · Analytics"],
               ["staff", "حسابات الموظفين · Staff"],
               ["permissions", "مصفوفة صلاحيات الأسعار · Price Permissions"],
+              ["authorization", "تصاريح الموظفين والأسعار والخصومات · Authorization"],
             ] as [Tab, string][]
           ).map(([key, label]) => (
             <button
@@ -332,6 +339,7 @@ function AdminPage() {
 
         {tab === "staff" && <StaffPanel />}
         {tab === "permissions" && <StaffPermissionMatrixPanel />}
+        {tab === "authorization" && <AuthorizationPanel />}
       </div>
     </main>
   );
@@ -902,6 +910,183 @@ function StaffPermissionMatrixPanel() {
                   </tr>
                 );
               })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ============ Staff Authorization, Price & Discount Controls ============ */
+
+function AuthorizationPanel() {
+  const queryClient = useQueryClient();
+  const listFn = useServerFn(listStaffAuthorizations);
+  const saveFn = useServerFn(setStaffAuthorization);
+  const auditFn = useServerFn(listAuditLogs);
+  const [error, setError] = useState<string | null>(null);
+
+  const rows = useQuery({
+    queryKey: ["admin", "authorizations"],
+    queryFn: () => listFn({}),
+    staleTime: 15_000,
+  });
+
+  const audit = useQuery({
+    queryKey: ["admin", "audit-logs"],
+    queryFn: () => auditFn({}),
+    staleTime: 15_000,
+  });
+
+  const save = useMutation({
+    mutationFn: (input: { userId: string } & Partial<StaffAuthorizationRow>) => saveFn({ data: input }),
+    onSuccess: () => {
+      setError(null);
+      void queryClient.invalidateQueries({ queryKey: ["admin", "authorizations"] });
+    },
+    onError: (err: Error) => setError(err.message),
+  });
+
+  return (
+    <section className="space-y-6">
+      <div className="rounded-3xl border border-border bg-card p-4 sm:p-6">
+        <h2 className="flex items-center gap-2 text-lg font-bold text-foreground">
+          <SlidersHorizontal className="h-5 w-5 text-primary" aria-hidden="true" />
+          تصاريح الموظفين والأسعار والخصومات · Staff Authorization, Price &amp; Discount Controls
+        </h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          فعّل تعديل الأسعار أو الخصومات لكل موظف مبيعات، وحدّد أقصى نسبة خصم مسموحة.
+        </p>
+
+        {error ? (
+          <p className="mt-3 rounded-xl bg-destructive/10 p-3 text-xs font-bold text-destructive">{error}</p>
+        ) : null}
+
+        {rows.isPending ? (
+          <p className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> جارٍ التحميل…
+          </p>
+        ) : (
+          <ul className="mt-4 space-y-3">
+            {(rows.data ?? []).map((row) => (
+              <li key={row.user_id} className="rounded-2xl border border-border bg-background p-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="me-auto font-bold text-foreground">{row.username}</p>
+                  {row.roles.map((role) => (
+                    <span key={role} className="rounded-full bg-gold/15 px-2 py-0.5 text-[10px] font-bold text-gold">
+                      {role}
+                    </span>
+                  ))}
+                </div>
+
+                <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      save.mutate({ userId: row.user_id, allow_price_override: !row.allow_price_override })
+                    }
+                    aria-pressed={row.allow_price_override}
+                    className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-4 text-sm font-bold transition-transform hover:scale-[1.02] active:scale-95 ${
+                      row.allow_price_override
+                        ? "bg-primary text-primary-foreground"
+                        : "border border-input bg-card text-muted-foreground"
+                    }`}
+                  >
+                    {row.allow_price_override ? (
+                      <Unlock className="h-4 w-4" aria-hidden="true" />
+                    ) : (
+                      <Lock className="h-4 w-4" aria-hidden="true" />
+                    )}
+                    تعديل الأسعار · Price overrides
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      save.mutate({ userId: row.user_id, allow_custom_discount: !row.allow_custom_discount })
+                    }
+                    aria-pressed={row.allow_custom_discount}
+                    className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-4 text-sm font-bold transition-transform hover:scale-[1.02] active:scale-95 ${
+                      row.allow_custom_discount
+                        ? "bg-primary text-primary-foreground"
+                        : "border border-input bg-card text-muted-foreground"
+                    }`}
+                  >
+                    {row.allow_custom_discount ? (
+                      <Unlock className="h-4 w-4" aria-hidden="true" />
+                    ) : (
+                      <Lock className="h-4 w-4" aria-hidden="true" />
+                    )}
+                    خصم خاص · Custom discount
+                  </button>
+
+                  <label className="block text-xs font-bold text-foreground">
+                    أقصى نسبة خصم % · Max discount
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="1"
+                      defaultValue={row.max_discount_percent}
+                      onBlur={(event) => {
+                        const value = Number(event.target.value);
+                        if (Number.isFinite(value) && value !== row.max_discount_percent) {
+                          save.mutate({ userId: row.user_id, max_discount_percent: value });
+                        }
+                      }}
+                      className="mt-1 min-h-12 w-full rounded-xl border border-input bg-card px-3 text-sm text-foreground"
+                    />
+                  </label>
+                </div>
+              </li>
+            ))}
+            {(rows.data ?? []).length === 0 ? (
+              <li className="text-sm text-muted-foreground">لا يوجد موظفو مبيعات بعد.</li>
+            ) : null}
+          </ul>
+        )}
+      </div>
+
+      <div className="rounded-3xl border border-border bg-card p-4 sm:p-6">
+        <h3 className="text-base font-bold text-foreground">سجل التدقيق · Audit log</h3>
+        <p className="mt-1 text-xs text-muted-foreground">سجل غير قابل للتعديل لكل تغيير على الأسعار والخصومات.</p>
+        <div className="mt-3 overflow-x-auto">
+          <table className="w-full text-start text-xs sm:text-sm">
+            <thead>
+              <tr className="text-muted-foreground">
+                <th className="p-2 text-start">الموظف</th>
+                <th className="p-2 text-start">الطلب</th>
+                <th className="p-2 text-start">الإجراء</th>
+                <th className="p-2 text-start">قبل</th>
+                <th className="p-2 text-start">بعد</th>
+                <th className="p-2 text-start">الخصم</th>
+                <th className="p-2 text-start">السبب</th>
+                <th className="p-2 text-start">الوقت</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(audit.data ?? []).map((entry) => (
+                <tr key={entry.id} className="border-t border-border text-foreground">
+                  <td className="p-2 font-bold">{entry.staff_name}</td>
+                  <td className="p-2">{entry.order_number ?? "—"}</td>
+                  <td className="p-2">{entry.action}</td>
+                  <td className="p-2">{entry.original_amount ?? "—"}</td>
+                  <td className="p-2">{entry.modified_amount ?? "—"}</td>
+                  <td className="p-2">{entry.discount_percent != null ? `${entry.discount_percent}%` : "—"}</td>
+                  <td className="p-2">{entry.reason ?? "—"}</td>
+                  <td className="p-2 text-muted-foreground">
+                    {new Date(entry.created_at).toLocaleString("ar-JO")}
+                  </td>
+                </tr>
+              ))}
+              {(audit.data ?? []).length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="p-3 text-muted-foreground">
+                    لا توجد سجلات بعد.
+                  </td>
+                </tr>
+              ) : null}
             </tbody>
           </table>
         </div>

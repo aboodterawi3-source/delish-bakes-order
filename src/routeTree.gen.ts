@@ -16,6 +16,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as DiscoverRouteImport } from './routes/discover'
 import { Route as KitchenRouteImport } from './routes/kitchen'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as OrderEditRouteImport } from './routes/order-edit'
 import { Route as ProductDetailsRouteImport } from './routes/product-details'
 import { Route as SocialLoginRouteImport } from './routes/social-login'
 import { Route as SocialPortalRouteImport } from './routes/social-portal'
@@ -56,6 +57,11 @@ const KitchenRoute = KitchenRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OrderEditRoute = OrderEditRouteImport.update({
+  id: '/order-edit',
+  path: '/order-edit',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProductDetailsRoute = ProductDetailsRouteImport.update({
@@ -101,6 +107,7 @@ export interface FileRoutesByFullPath {
   '/discover': typeof DiscoverRoute
   '/kitchen': typeof KitchenRoute
   '/login': typeof LoginRoute
+  '/order-edit': typeof OrderEditRoute
   '/product-details': typeof ProductDetailsRoute
   '/social-login': typeof SocialLoginRoute
   '/social-portal': typeof SocialPortalRoute
@@ -116,6 +123,7 @@ export interface FileRoutesByTo {
   '/discover': typeof DiscoverRoute
   '/kitchen': typeof KitchenRoute
   '/login': typeof LoginRoute
+  '/order-edit': typeof OrderEditRoute
   '/product-details': typeof ProductDetailsRoute
   '/social-login': typeof SocialLoginRoute
   '/social-portal': typeof SocialPortalRoute
@@ -133,6 +141,7 @@ export interface FileRoutesById {
   '/discover': typeof DiscoverRoute
   '/kitchen': typeof KitchenRoute
   '/login': typeof LoginRoute
+  '/order-edit': typeof OrderEditRoute
   '/product-details': typeof ProductDetailsRoute
   '/social-login': typeof SocialLoginRoute
   '/social-portal': typeof SocialPortalRoute
@@ -150,6 +159,7 @@ export interface FileRouteTypes {
     | '/discover'
     | '/kitchen'
     | '/login'
+    | '/order-edit'
     | '/product-details'
     | '/social-login'
     | '/social-portal'
@@ -165,6 +175,7 @@ export interface FileRouteTypes {
     | '/discover'
     | '/kitchen'
     | '/login'
+    | '/order-edit'
     | '/product-details'
     | '/social-login'
     | '/social-portal'
@@ -181,6 +192,7 @@ export interface FileRouteTypes {
     | '/discover'
     | '/kitchen'
     | '/login'
+    | '/order-edit'
     | '/product-details'
     | '/social-login'
     | '/social-portal'
@@ -198,6 +210,7 @@ export interface RootRouteChildren {
   DiscoverRoute: typeof DiscoverRoute
   KitchenRoute: typeof KitchenRoute
   LoginRoute: typeof LoginRoute
+  OrderEditRoute: typeof OrderEditRoute
   ProductDetailsRoute: typeof ProductDetailsRoute
   SocialLoginRoute: typeof SocialLoginRoute
   SocialPortalRoute: typeof SocialPortalRoute
@@ -253,6 +266,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/order-edit': {
+      id: '/order-edit'
+      path: '/order-edit'
+      fullPath: '/order-edit'
+      preLoaderRoute: typeof OrderEditRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/product-details': {
@@ -330,6 +350,7 @@ const rootRouteChildren: RootRouteChildren = {
   DiscoverRoute: DiscoverRoute,
   KitchenRoute: KitchenRoute,
   LoginRoute: LoginRoute,
+  OrderEditRoute: OrderEditRoute,
   ProductDetailsRoute: ProductDetailsRoute,
   SocialLoginRoute: SocialLoginRoute,
   SocialPortalRoute: SocialPortalRoute,

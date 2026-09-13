@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   ChefHat,
   Clock3,
+  Download,
   Loader2,
   LogOut,
   RefreshCw,
@@ -36,6 +37,30 @@ export const Route = createFileRoute("/_authenticated/kds")({
   }),
   component: KdsPage,
 });
+
+/**
+ * Saves the original, uncompressed reference image so the kitchen can send it
+ * straight to the edible printer.
+ */
+async function downloadDesignImage(url: string, orderNumber: string) {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error("download failed");
+    const blob = await response.blob();
+    const extension = (blob.type.split("/")[1] ?? "jpg").replace("jpeg", "jpg");
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = objectUrl;
+    link.download = `delish-${orderNumber}.${extension}`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(objectUrl);
+  } catch {
+    // Signed URL expired or blocked: open it so the cook can still save manually.
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+}
 
 type Tier = "multi" | "buffet" | "special" | "mini" | "box" | "standard";
 
@@ -457,22 +482,38 @@ const KdsCard = memo(function KdsCard({
         </p>
       )}
 
+      {order.notes && (
+        <p className="mt-3 rounded-xl border border-card/30 bg-card/20 p-2.5 text-xs font-bold">
+          ملاحظات الطلب: {order.notes}
+        </p>
+      )}
+
       {order.design_image_url && (
-        <button
-          type="button"
-          onClick={() => onZoom(order.design_image_url as string)}
-          className="mt-3 block w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 transition hover:opacity-95"
-        >
-          <img
-            src={order.design_image_url}
-            alt={`صورة تصميم الطلب ${order.order_number}`}
-            loading="lazy"
-            className="h-36 w-full object-cover"
-          />
-          <span className="block py-2 text-xs font-bold bg-[#FDE2CF]/70 text-[#7B3F00]">
-            تكبير الصورة · Zoom Design
-          </span>
-        </button>
+        <div className="mt-3 space-y-2">
+          <button
+            type="button"
+            onClick={() => onZoom(order.design_image_url as string)}
+            className="block w-full overflow-hidden rounded-2xl border border-card/40 bg-card/20 transition-transform hover:scale-[1.01] active:scale-95"
+          >
+            <img
+              src={order.design_image_url}
+              alt={`صورة تصميم الطلب ${order.order_number}`}
+              loading="lazy"
+              className="h-36 w-full object-cover"
+            />
+            <span className="block bg-peach-coral/80 py-2 text-xs font-bold text-primary">
+              تكبير الصورة · Zoom Design
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => void downloadDesignImage(order.design_image_url as string, order.order_number)}
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-card/90 px-4 text-xs font-bold text-primary shadow-sm transition-transform hover:scale-[1.02] active:scale-95"
+          >
+            <Download className="h-4 w-4" />
+            تحميل الصورة للطباعة · Download for printing
+          </button>
+        </div>
       )}
 
       <button

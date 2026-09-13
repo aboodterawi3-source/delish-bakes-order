@@ -7,7 +7,9 @@ import {
   BadgeDollarSign,
   Bike,
   CalendarClock,
+  Link2,
   Loader2,
+  Lock,
   LogOut,
   Printer,
   RefreshCw,
@@ -31,6 +33,12 @@ import {
   type ShiftReport,
 } from "@/lib/sales.functions";
 import { getMyPermissions } from "@/lib/permissions.functions";
+import {
+  applyOrderDiscount,
+  createOrderEditLink,
+  getMyAuthorization,
+  type StaffAuthorization,
+} from "@/lib/authorization.functions";
 import { CmsPanel } from "@/components/delish/CmsPanel";
 
 export const Route = createFileRoute("/_authenticated/sales")({
@@ -132,7 +140,12 @@ function SalesPage() {
   const updatePriceFn = useServerFn(updateSalesOrderItemPrice);
   const reportFn = useServerFn(getShiftReport);
   const permissionsFn = useServerFn(getMyPermissions);
+  const authorizationFn = useServerFn(getMyAuthorization);
+  const discountFn = useServerFn(applyOrderDiscount);
+  const editLinkFn = useServerFn(createOrderEditLink);
 
+  const [editLink, setEditLink] = useState<string | null>(null);
+  const [moneyError, setMoneyError] = useState<string | null>(null);
   const [term, setTerm] = useState("");
   const search = useDebouncedValue(term, 180);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -157,6 +170,14 @@ function SalesPage() {
   const permissions = useQuery({
     queryKey: ["my-sales-permissions"],
     queryFn: () => permissionsFn({}),
+    enabled: allowed,
+    staleTime: 30_000,
+  });
+
+  /** Admin-granted money privileges: price overrides and custom discounts. */
+  const authorization = useQuery({
+    queryKey: ["my-authorization"],
+    queryFn: () => authorizationFn({}),
     enabled: allowed,
     staleTime: 30_000,
   });
@@ -193,10 +214,31 @@ function SalesPage() {
     mutationFn: (input: { itemId: string; orderId: string; newUnitPrice: number }) =>
       updatePriceFn({ data: input }),
     onSuccess: (updatedOrder) => {
+      setMoneyError(null);
       queryClient.setQueryData<SalesOrder[]>(ORDERS_KEY, (rows) =>
         (rows ?? []).map((order) => (order.id === updatedOrder.id ? updatedOrder : order)),
       );
     },
+    onError: (error: Error) => setMoneyError(error.message),
+  });
+
+  const discount = useMutation({
+    mutationFn: (input: { orderId: string; percent: number; reason: string }) =>
+      discountFn({ data: input }),
+    onSuccess: () => {
+      setMoneyError(null);
+      void queryClient.invalidateQueries({ queryKey: ORDERS_KEY });
+    },
+    onError: (error: Error) => setMoneyError(error.message),
+  });
+
+  const issueEditLink = useMutation({
+    mutationFn: (orderId: string) => editLinkFn({ data: { orderId } }),
+    onSuccess: (result) => {
+      setMoneyError(null);
+      setEditLink(`${window.location.origin}/order-edit?token=${result.token}`);
+    },
+    onError: (error: Error) => setMoneyError(error.message),
   });
 
   useOrdersRealtime(ORDERS_KEY, allowed, "sales-orders-live");
@@ -359,10 +401,21 @@ function SalesPage() {
         <OrderPanel
           order={selected}
           permissions={permissions.data ?? { permittedProductIds: [], isAdmin: false }}
+          authorization={authorization.data ?? null}
+          moneyError={moneyError}
+          editLink={editLink}
+          onApplyDiscount={(percent, reason) =>
+            discount.mutate({ orderId: selected.id, percent, reason })
+          }
+          onIssueEditLink={() => issueEditLink.mutate(selected.id)}
           onUpdateItemPrice={(itemId, newUnitPrice) =>
             updateItemPrice.mutate({ itemId, orderId: selected.id, newUnitPrice })
           }
-          onClose={() => setSelectedId(null)}
+          onClose={() => {
+            setSelectedId(null);
+            setEditLink(null);
+            setMoneyError(null);
+          }}
           onPatch={(input) => patch.mutate({ ...input, orderId: selected.id })}
           onCancel={() => {
             setCancelReason("");
@@ -526,6 +579,11 @@ const OrderCard = memo(function OrderCard({
 function OrderPanel({
   order,
   permissions,
+  authorization,
+  moneyError,
+  editLink,
+  onApplyDiscount,
+  onIssueEditLink,
   onUpdateItemPrice,
   onClose,
   onPatch,
@@ -533,6 +591,11 @@ function OrderPanel({
 }: {
   order: SalesOrder;
   permissions?: { permittedProductIds: string[]; isAdmin: boolean };
+  authorization?: (StaffAuthorization & { isAdmin: boolean }) | null;
+  moneyError?: string | null;
+  editLink?: string | null;
+  onApplyDiscount?: (percent: number, reason: string) => void;
+  onIssueEditLink?: () => void;
   onUpdateItemPrice?: (itemId: string, newUnitPrice: number) => void;
   onClose: () => void;
   onPatch: (input: Omit<OrderPatch, "orderId">) => void;
@@ -542,6 +605,12 @@ function OrderPanel({
   const [deposit, setDeposit] = useState(String(order.deposit_paid));
   const [driverName, setDriverName] = useState(order.driver_name ?? "");
   const [driverPhone, setDriverPhone] = useState(order.driver_phone ?? "");
+  const [discountPercent, setDiscountPercent] = useState(String(order.discount_percent || ""));
+  const [discountReason, setDiscountReason] = useState("");
+
+  const mayOverridePrice = Boolean(authorization?.allow_price_override);
+  const mayDiscount = Boolean(authorization?.allow_custom_discount);
+  const discountCap = authorization?.max_discount_percent ?? 0;
 
   // Reset the local fields only when a different order opens, never while typing.
   useEffect(() => {
@@ -549,11 +618,16 @@ function OrderPanel({
     setDeposit(String(order.deposit_paid));
     setDriverName(order.driver_name ?? "");
     setDriverPhone(order.driver_phone ?? "");
+    setDiscountPercent(String(order.discount_percent || ""));
+    setDiscountReason("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order.id]);
 
 
-  const liveTotal = order.subtotal + (order.method === "delivery" ? Number(fee) || 0 : 0);
+  const liveTotal = Math.max(
+    order.subtotal + (order.method === "delivery" ? Number(fee) || 0 : 0) - order.discount_amount,
+    0,
+  );
   const remaining = Math.max(liveTotal - (Number(deposit) || 0), 0);
   const stageIndex = flow.indexOf(order.status);
   const next = stageIndex >= 0 && stageIndex < flow.length - 1 ? flow[stageIndex + 1] : null;
@@ -668,8 +742,101 @@ function OrderPanel({
           <div className="mt-2 space-y-1 text-sm">
             <div className="flex justify-between text-foreground"><span>المجموع الفرعي</span><span>{jd(order.subtotal)}</span></div>
             <div className="flex justify-between text-foreground"><span>التوصيل</span><span>{jd(order.method === "delivery" ? Number(fee) || 0 : 0)}</span></div>
+            {order.discount_amount > 0 ? (
+              <div className="flex justify-between text-destructive">
+                <span>الخصم ({order.discount_percent}%)</span>
+                <span>− {jd(order.discount_amount)}</span>
+              </div>
+            ) : null}
             <div className="flex justify-between font-bold text-foreground"><span>الإجمالي</span><span>{jd(liveTotal)}</span></div>
           </div>
+
+          {/* Custom discount — only for employees an admin has authorized */}
+          <div className="mt-4 rounded-2xl border border-border bg-background p-3">
+            <div className="flex items-center gap-2">
+              <h4 className="me-auto text-sm font-bold text-foreground">خصم خاص · Custom discount</h4>
+              {mayDiscount ? (
+                <span className="rounded-full bg-gold/15 px-2 py-0.5 text-[10px] font-bold text-gold">
+                  حتى {discountCap}%
+                </span>
+              ) : (
+                <span
+                  title="تحتاج تصريح المدير · Requires admin authorization"
+                  className="inline-flex items-center gap-1 rounded-full bg-gold/15 px-2 py-0.5 text-[10px] font-bold text-gold"
+                >
+                  <Lock className="h-3 w-3" aria-hidden="true" /> تحتاج تصريح المدير
+                </span>
+              )}
+            </div>
+
+            {mayDiscount ? (
+              <div className="mt-2 space-y-2">
+                <input
+                  type="number"
+                  min="0"
+                  max={discountCap}
+                  step="1"
+                  value={discountPercent}
+                  onChange={(event) => setDiscountPercent(event.target.value)}
+                  aria-label="نسبة الخصم"
+                  className="min-h-12 w-full rounded-xl border border-input bg-card px-3 text-sm"
+                />
+                <input
+                  value={discountReason}
+                  onChange={(event) => setDiscountReason(event.target.value)}
+                  placeholder="سبب الخصم · Reason"
+                  className="min-h-12 w-full rounded-xl border border-input bg-card px-3 text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => onApplyDiscount?.(Number(discountPercent) || 0, discountReason)}
+                  className="min-h-12 w-full rounded-full bg-primary px-4 text-sm font-bold text-primary-foreground transition-transform hover:scale-[1.01] active:scale-95"
+                >
+                  تطبيق الخصم · Apply discount
+                </button>
+              </div>
+            ) : (
+              <p className="mt-2 text-xs text-muted-foreground">
+                لا يمكنك منح خصم على هذا الحساب. اطلب من المدير تفعيل الصلاحية.
+              </p>
+            )}
+          </div>
+
+          {/* One-time, one-hour customer edit link */}
+          <div className="mt-3 rounded-2xl border border-border bg-background p-3">
+            <button
+              type="button"
+              onClick={() => onIssueEditLink?.()}
+              className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-primary px-4 text-sm font-bold text-primary transition-transform hover:scale-[1.01] active:scale-95"
+            >
+              <Link2 className="h-4 w-4" aria-hidden="true" /> رابط تعديل للعميل (ساعة واحدة)
+            </button>
+            {editLink ? (
+              <div className="mt-2 space-y-2">
+                <input
+                  readOnly
+                  dir="ltr"
+                  value={editLink}
+                  onFocus={(event) => event.currentTarget.select()}
+                  className="min-h-12 w-full rounded-xl border border-input bg-card px-3 text-xs"
+                />
+                <button
+                  type="button"
+                  onClick={() => void navigator.clipboard?.writeText(editLink)}
+                  className="min-h-11 w-full rounded-full bg-secondary px-4 text-xs font-bold text-secondary-foreground"
+                >
+                  نسخ الرابط · Copy link
+                </button>
+                <p className="text-[11px] text-muted-foreground">
+                  يعمل لمرة واحدة فقط ويُقفل بعد الاستخدام أو بعد ساعة.
+                </p>
+              </div>
+            ) : null}
+          </div>
+
+          {moneyError ? (
+            <p className="mt-3 rounded-xl bg-destructive/10 p-3 text-xs font-bold text-destructive">{moneyError}</p>
+          ) : null}
           <label className="mt-3 block text-sm font-bold text-foreground">
             العربون المدفوع · Deposit paid
             <input
@@ -702,33 +869,39 @@ function OrderPanel({
           <h3 className="text-sm font-bold text-foreground">تفاصيل الطلب</h3>
           <ul className="mt-2 space-y-2 text-sm">
             {order.items.map((item) => {
-              const canEditPrice = Boolean(
-                permissions?.isAdmin ||
-                (item.product_id && permissions?.permittedProductIds?.includes(item.product_id))
-              );
+              // Two gates: the admin-granted override privilege AND the per-product allow list.
+              const canEditPrice =
+                mayOverridePrice &&
+                Boolean(
+                  permissions?.isAdmin ||
+                    (item.product_id && permissions?.permittedProductIds?.includes(item.product_id)),
+                );
               return (
-                <li key={item.id} className="rounded-2xl border border-slate-100 bg-[#F9FBFC] p-3.5 space-y-2">
+                <li key={item.id} className="space-y-2 rounded-2xl border border-border bg-background p-3.5">
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <p className="font-bold text-[#3E2723]">{item.quantity} × {item.name_ar}</p>
-                      <p className="text-xs text-[#7A6458] font-medium">{item.name_en}</p>
+                      <p className="font-bold text-foreground">{item.quantity} × {item.name_ar}</p>
+                      <p className="text-xs font-medium text-muted-foreground">{item.name_en}</p>
                     </div>
                     {canEditPrice ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200/80 px-2 py-0.5 text-[10px] font-bold text-amber-900 shadow-xs">
-                        تعديل السعر ✏️
+                      <span className="inline-flex items-center gap-1 rounded-full bg-gold/15 px-2 py-0.5 text-[10px] font-bold text-gold">
+                        تعديل السعر مسموح
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">
-                        مقيد 🔒
+                      <span
+                        title="تحتاج تصريح المدير · Requires admin authorization"
+                        className="inline-flex items-center gap-1 rounded-full bg-gold/15 px-2 py-0.5 text-[10px] font-bold text-gold"
+                      >
+                        <Lock className="h-3 w-3" aria-hidden="true" /> مقيد
                       </span>
                     )}
                   </div>
-                  {item.options_ar.length ? <p className="text-xs text-[#8B4513]">{item.options_ar.join(" · ")}</p> : null}
-                  {item.notes ? <p className="text-xs text-[#3E2723]">ملاحظة: {item.notes}</p> : null}
+                  {item.options_ar.length ? <p className="text-xs text-primary">{item.options_ar.join(" · ")}</p> : null}
+                  {item.notes ? <p className="text-xs text-foreground">ملاحظة: {item.notes}</p> : null}
 
                   {/* Price modifier inline control */}
-                  <div className="flex items-center justify-between border-t border-slate-200/60 pt-2 text-xs">
-                    <span className="text-[#7A6458] font-medium">سعر الوحدة · Unit Price:</span>
+                  <div className="flex items-center justify-between border-t border-border pt-2 text-xs">
+                    <span className="font-medium text-muted-foreground">سعر الوحدة · Unit Price:</span>
                     {canEditPrice && onUpdateItemPrice ? (
                       <div className="flex items-center gap-1.5">
                         <input
@@ -736,19 +909,23 @@ function OrderPanel({
                           min="0"
                           step="0.25"
                           defaultValue={item.unit_price}
-                          onBlur={(e) => {
-                            const val = parseFloat(e.target.value);
-                            if (!isNaN(val) && val !== item.unit_price) {
-                              onUpdateItemPrice(item.id, val);
+                          aria-label="سعر الوحدة"
+                          onBlur={(event) => {
+                            const value = parseFloat(event.target.value);
+                            if (!Number.isNaN(value) && value !== item.unit_price) {
+                              onUpdateItemPrice(item.id, value);
                             }
                           }}
-                          className="w-20 rounded-lg border border-amber-300 bg-white px-2 py-1 text-center text-xs font-bold text-[#3E2723] focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                          className="w-20 rounded-lg border border-input bg-card px-2 py-1 text-center text-xs font-bold text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         />
-                        <span className="font-bold text-[#8B4513]">د.أ</span>
+                        <span className="font-bold text-primary">د.أ</span>
                       </div>
                     ) : (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-700">
-                        🔒 {jd(item.unit_price)}
+                      <span
+                        title="تحتاج تصريح المدير · Requires admin authorization"
+                        className="inline-flex items-center gap-1 rounded-full bg-gold/15 px-2.5 py-0.5 text-xs font-bold text-gold"
+                      >
+                        <Lock className="h-3 w-3" aria-hidden="true" /> {jd(item.unit_price)}
                       </span>
                     )}
                   </div>

@@ -5,6 +5,8 @@ import { DelishLogo } from "./DelishLogo";
 import { BackgroundCurves } from "./BackgroundCurves";
 import { useStorefrontContent } from "@/hooks/use-storefront-content";
 import { priceForSize, tintFill, type StorefrontProduct } from "@/lib/storefront-content";
+import { LangToggle, useLang, type Lang } from "@/lib/i18n";
+import { formatJod } from "@/lib/currency";
 
 interface DiscoverViewProps {
   onSelectProduct?: (productId: string) => void;
@@ -20,6 +22,7 @@ export function DiscoverView({
   isEmbedded = false,
 }: DiscoverViewProps) {
   const content = useStorefrontContent();
+  const { t, lang, dir } = useLang();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -40,11 +43,16 @@ export function DiscoverView({
       );
   }, [products, selectedCategory, searchQuery]);
 
-  const activeCategoryName =
-    categories.find((category) => category.id === selectedCategory)?.name_en ?? null;
+  const activeCategory = categories.find((category) => category.id === selectedCategory) ?? null;
+  const activeCategoryName = activeCategory
+    ? lang === "ar"
+      ? activeCategory.name_ar
+      : activeCategory.name_en
+    : null;
 
   return (
     <div
+      dir={dir}
       className={`relative flex min-h-dvh w-full flex-col overflow-y-auto bg-background text-foreground ${
         isEmbedded ? "min-h-[740px] max-h-[820px] rounded-[38px] shadow-2xl border-4 border-cocoa" : ""
       }`}
@@ -62,10 +70,11 @@ export function DiscoverView({
         </div>
 
         <div className="flex items-center gap-2">
+          <LangToggle />
           <button
             type="button"
             onClick={() => setSearchOpen(!searchOpen)}
-            aria-label="Search"
+            aria-label={lang === "ar" ? "بحث" : "Search"}
             className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card/90 text-primary shadow-sm transition hover:bg-secondary/40 active:scale-95"
           >
             <Search className="h-4 w-4" />
@@ -73,7 +82,7 @@ export function DiscoverView({
           <button
             type="button"
             onClick={onOpenCart}
-            aria-label="Cart"
+            aria-label={t("cart")}
             className="relative flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card/90 text-primary shadow-sm transition hover:bg-secondary/40 active:scale-95"
           >
             <ShoppingBag className="h-4 w-4" />
@@ -90,7 +99,7 @@ export function DiscoverView({
         <div className="relative z-20 px-5 pt-2 pb-1">
           <input
             type="search"
-            placeholder="Search cakes, pastries, croissants..."
+            placeholder={t("search")}
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
             className="w-full rounded-2xl border border-input bg-card px-4 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -144,14 +153,14 @@ export function DiscoverView({
         {categories.length > 0 && (
           <section aria-label="Discover by category" className="space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-foreground sm:text-base">Discover By Category</h3>
+              <h3 className="text-sm font-bold text-foreground sm:text-base">{t("discoverByCategory")}</h3>
               {selectedCategory && (
                 <button
                   type="button"
                   onClick={() => setSelectedCategory(null)}
-                  className="text-xs font-semibold text-primary hover:underline"
+                  className="text-xs font-semibold text-primary transition-transform hover:underline active:scale-95"
                 >
-                  Show all
+                  {t("showAll")}
                 </button>
               )}
             </div>
@@ -173,17 +182,17 @@ export function DiscoverView({
                       {category.image_url ? (
                         <img
                           src={category.image_url}
-                          alt={category.name_en}
+                          alt={lang === "ar" ? category.name_ar : category.name_en}
                           className="h-full w-full rounded-xl object-cover"
                         />
                       ) : (
                         <span className="grid h-full w-full place-items-center rounded-xl text-[11px] font-bold text-muted-foreground">
-                          {category.name_en.slice(0, 1)}
+                          {(lang === "ar" ? category.name_ar : category.name_en).slice(0, 1)}
                         </span>
                       )}
                     </div>
                     <span className="text-[11px] font-bold tracking-tight text-foreground">
-                      {category.name_en}
+                      {lang === "ar" ? category.name_ar : category.name_en}
                     </span>
                   </button>
                 );
@@ -196,11 +205,11 @@ export function DiscoverView({
         <section aria-label="Popular cakes" className="space-y-3 pb-6">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-foreground sm:text-base">
-              {activeCategoryName ? `Popular ${activeCategoryName}` : "Popular Cake"}
+              {activeCategoryName ? `${t("popular")} · ${activeCategoryName}` : t("popular")}
             </h3>
             <Link
               to="/product-details"
-              aria-label="See all"
+              aria-label={t("showAll")}
               className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
             >
               <ArrowRight className="h-3.5 w-3.5" />
@@ -209,15 +218,15 @@ export function DiscoverView({
 
           {content.isPending ? (
             <p className="flex items-center justify-center gap-2 py-10 text-xs text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Loading the menu…
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> {t("loadingMenu")}
             </p>
           ) : visible.length === 0 ? (
             <p className="rounded-3xl border border-border bg-card/70 py-10 text-center text-xs text-muted-foreground">
-              Nothing here yet — check back soon.
+              {t("emptyMenu")}
             </p>
           ) : (
             visible.map((product) => (
-              <ProductCard key={product.id} product={product} onSelect={onSelectProduct} />
+              <ProductCard key={product.id} product={product} lang={lang} onSelect={onSelectProduct} />
             ))
           )}
         </section>
@@ -228,11 +237,14 @@ export function DiscoverView({
 
 const ProductCard = memo(function ProductCard({
   product,
+  lang,
   onSelect,
 }: {
   product: StorefrontProduct;
+  lang: Lang;
   onSelect?: ((productId: string) => void) | undefined;
 }) {
+  const name = lang === "ar" ? product.name_ar : product.name_en;
   const [size, setSize] = useState<string | null>(product.sizes[0]?.label ?? null);
   const [qty, setQty] = useState(1);
   const [favourite, setFavourite] = useState(false);
@@ -248,9 +260,9 @@ const ProductCard = memo(function ProductCard({
         <div>
           <Link
             to="/product-details"
-            className="font-sans text-base font-extrabold text-foreground hover:text-primary sm:text-lg"
+            className="font-sans text-base font-extrabold text-foreground transition-transform hover:text-primary sm:text-lg"
           >
-            {product.name_en}
+            {name}
           </Link>
           <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-primary">
             <Star className="h-3.5 w-3.5 fill-gold text-gold" />
@@ -264,7 +276,7 @@ const ProductCard = memo(function ProductCard({
         <button
           type="button"
           onClick={() => setFavourite(!favourite)}
-          aria-label="Add to favorites"
+          aria-label={lang === "ar" ? "إضافة إلى المفضلة" : "Add to favorites"}
           aria-pressed={favourite}
           className="flex h-8 w-8 items-center justify-center rounded-full bg-card/90 shadow-sm transition hover:bg-card active:scale-95"
         >
@@ -301,7 +313,7 @@ const ProductCard = memo(function ProductCard({
               <button
                 type="button"
                 onClick={() => setQty(Math.max(1, qty - 1))}
-                aria-label="Decrease quantity"
+                aria-label={lang === "ar" ? "تقليل الكمية" : "Decrease quantity"}
                 className="p-1 transition hover:text-gold-light active:scale-90"
               >
                 <Minus className="h-3 w-3" />
@@ -310,7 +322,7 @@ const ProductCard = memo(function ProductCard({
               <button
                 type="button"
                 onClick={() => setQty(qty + 1)}
-                aria-label="Increase quantity"
+                aria-label={lang === "ar" ? "زيادة الكمية" : "Increase quantity"}
                 className="p-1 transition hover:text-gold-light active:scale-90"
               >
                 <Plus className="h-3 w-3" />
@@ -320,7 +332,7 @@ const ProductCard = memo(function ProductCard({
 
           <div className="pt-1">
             <span className="inline-block rounded-full bg-gold-deep px-4 py-1.5 text-xs font-extrabold text-primary-foreground shadow-sm sm:text-sm">
-              {(unit * qty).toFixed(2)} JD
+              {formatJod(unit * qty, lang)}
             </span>
           </div>
         </div>
@@ -328,19 +340,19 @@ const ProductCard = memo(function ProductCard({
         <button
           type="button"
           onClick={() => onSelect?.(product.id)}
-          aria-label={`Open ${product.name_en}`}
-          className="h-28 w-28 overflow-hidden rounded-2xl transition-transform duration-300 group-hover:scale-105 sm:h-32 sm:w-32"
+          aria-label={name}
+          className="h-28 w-28 overflow-hidden rounded-2xl transition-transform duration-300 hover:scale-[1.02] group-hover:scale-105 active:scale-95 sm:h-32 sm:w-32"
         >
           {product.image_url ? (
             <img
               src={product.image_url}
-              alt={product.name_en}
+              alt={name}
               loading="lazy"
               className="h-full w-full object-cover"
             />
           ) : (
             <span className="grid h-full w-full place-items-center bg-card text-[11px] font-bold text-muted-foreground">
-              {product.name_en}
+              {name}
             </span>
           )}
         </button>
