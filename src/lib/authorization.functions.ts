@@ -385,9 +385,9 @@ export const submitOrderEdit = createServerFn({ method: "POST" })
     const { error } = await supabaseAdmin
       .from("orders")
       .update({
-        notes: data.notes.trim() || null,
-        inscription: data.inscription.trim() || null,
-        ...(data.customer_phone.trim() ? { customer_phone: data.customer_phone.trim() } : {}),
+        ...(data.notes === undefined ? {} : { notes: data.notes.trim() || null }),
+        ...(data.inscription === undefined ? {} : { inscription: data.inscription.trim() || null }),
+        ...(data.customer_phone?.trim() ? { customer_phone: data.customer_phone.trim() } : {}),
         ...(data.requested_date ? { requested_date: data.requested_date } : {}),
         ...(data.requested_time ? { requested_time: data.requested_time } : {}),
         ...(scheduleChanged ? { schedule_updated_at: new Date().toISOString() } : {}),
