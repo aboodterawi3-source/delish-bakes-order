@@ -193,6 +193,7 @@ function AdminPage() {
               ["analytics", "التحليلات والسجلات · Analytics"],
               ["staff", "حسابات الموظفين · Staff"],
               ["permissions", "مصفوفة صلاحيات الأسعار · Price Permissions"],
+              ["authorization", "تصاريح الموظفين والأسعار والخصومات · Authorization"],
             ] as [Tab, string][]
           ).map(([key, label]) => (
             <button
