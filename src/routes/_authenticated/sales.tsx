@@ -136,6 +136,7 @@ function SalesPage() {
   const [term, setTerm] = useState("");
   const search = useDebouncedValue(term, 180);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [view, setView] = useState<"orders" | "site">("orders");
   const [cancelFor, setCancelFor] = useState<SalesOrder | null>(null);
   const [cancelReason, setCancelReason] = useState("");
   const [shiftOpen, setShiftOpen] = useState(false);
