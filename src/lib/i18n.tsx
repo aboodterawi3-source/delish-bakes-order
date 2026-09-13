@@ -139,8 +139,31 @@ export function LangProvider({ children }: { children: ReactNode }) {
 export const useLang = () => useContext(LangContext);
 
 /** AR | EN pill toggle for public headers. */
-export function LangToggle({ className = "" }: { className?: string }) {
+export function LangToggle({
+  className = "",
+  variant = "default",
+}: {
+  className?: string;
+  variant?: "default" | "peach";
+}) {
   const { lang, toggle } = useLang();
+
+  if (variant === "peach") {
+    return (
+      <button
+        type="button"
+        onClick={toggle}
+        aria-label={lang === "ar" ? "التبديل إلى الإنجليزية" : "Switch to Arabic"}
+        title={lang === "ar" ? "English" : "العربية"}
+        className={`inline-flex items-center gap-1.5 rounded-full bg-[#FDE2CF] px-3 py-1 text-xs font-semibold text-[#7B3F00] shadow-sm transition-transform hover:scale-105 active:scale-95 ${className}`}
+      >
+        <span className={lang === "ar" ? "opacity-100" : "opacity-60"}>عربي</span>
+        <span className="opacity-60">|</span>
+        <span className={lang === "en" ? "opacity-100" : "opacity-60"}>EN</span>
+      </button>
+    );
+  }
+
   return (
     <button
       type="button"

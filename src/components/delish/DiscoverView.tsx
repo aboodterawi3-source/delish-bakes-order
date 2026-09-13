@@ -61,16 +61,13 @@ export function DiscoverView({
 
       {/* Top Header Bar */}
       <header className="sticky top-0 z-20 flex items-center justify-between border-b border-border/80 bg-background/80 px-5 py-3.5 backdrop-blur-md">
-        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-xs font-extrabold text-secondary-foreground shadow-sm ring-2 ring-peach-coral/30">
-          A
-        </div>
+        <LangToggle variant="peach" />
 
         <div className="flex flex-col items-center">
           <DelishLogo size="sm" />
         </div>
 
         <div className="flex items-center gap-2">
-          <LangToggle />
           <button
             type="button"
             onClick={() => setSearchOpen(!searchOpen)}
