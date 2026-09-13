@@ -180,7 +180,7 @@ export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
     const { data: updatedOrder, error: orderError } = await context.supabase
       .from("orders")
       .update({ subtotal, total })
-      .eq("id", input.orderId)
+      .eq("id", data.orderId)
       .select(SELECT)
       .single();
     if (orderError) throw new Error(orderError.message);
