@@ -4,6 +4,15 @@ import { emailToUsername, normalizeUsername, usernameToEmail } from "@/lib/usern
 
 export type StaffRole = "admin" | "sales" | "kitchen" | "social";
 
+function authErrorMessage(message: string): string {
+  const m = message.toLowerCase();
+  if (m.includes("weak") || m.includes("easy to guess") || m.includes("pwned") || m.includes("leaked")) {
+    return "كلمة المرور ضعيفة أو مكشوفة، اختر كلمة أقوى (8 أحرف مع أرقام ورموز) · Password is too weak or leaked, pick a stronger one (8+ chars with numbers and symbols)";
+  }
+  return message;
+}
+
+
 export type StaffMember = {
   id: string;
   username: string;
