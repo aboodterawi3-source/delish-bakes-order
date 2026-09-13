@@ -336,34 +336,9 @@ function KdsPage() {
             <LogOut className="h-4 w-4" />
           </button>
         </div>
-        <nav aria-label="أقسام شاشة المطبخ" className="flex w-full gap-2 overflow-x-auto pt-1 no-scrollbar">
-          {(
-            [
-              ["board", "شاشة الطلبات", LayoutGrid],
-              ["menu", "المنتجات والأسعار", NotebookPen],
-            ] as ["board" | "menu", string, typeof LayoutGrid][]
-          ).map(([key, label, Icon]) => (
-            <button
-              key={key}
-              type="button"
-              aria-current={view === key ? "page" : undefined}
-              onClick={() => setView(key)}
-              className={`inline-flex min-h-12 shrink-0 items-center gap-2 rounded-full px-5 text-sm font-bold transition-all ${
-                view === key
-                  ? "bg-[#8B4513] text-white shadow-sm"
-                  : "border border-slate-200 bg-white text-[#5D2E17] hover:bg-slate-50"
-              }`}
-            >
-              <Icon className="h-4 w-4" aria-hidden /> {label}
-            </button>
-          ))}
-        </nav>
       </header>
 
-      {view === "menu" ? (
-        <MenuPanel />
-      ) : (
-        <>
+      <>
           <div className="flex gap-2 overflow-x-auto px-4 py-3.5 no-scrollbar">
             {(Object.keys(filterMeta) as Filter[]).map((key) => (
               <button
