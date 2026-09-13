@@ -6,6 +6,8 @@ import { Pic } from "@/components/delish/Pic";
 import { useLang } from "@/lib/i18n";
 import { useCart } from "@/lib/cart";
 import { Chip } from "./ProductModal";
+import { IMAGE_ACCEPT } from "@/lib/image-validation";
+import { convertToWebp } from "@/lib/image-webp";
 
 export function CakeBuilder({ onDone }: { onDone: () => void }) {
   const { t, lang, dir } = useLang();
@@ -18,6 +20,7 @@ export function CakeBuilder({ onDone }: { onDone: () => void }) {
   const [message, setMessage] = useState("");
   const [added, setAdded] = useState(false);
   const [designImage, setDesignImage] = useState<string | undefined>();
+  const [imageError, setImageError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const total = useMemo(
@@ -138,18 +141,30 @@ export function CakeBuilder({ onDone }: { onDone: () => void }) {
               <input
                 ref={fileRef}
                 type="file"
-                accept="image/*"
+                accept={IMAGE_ACCEPT}
                 className="sr-only"
                 onChange={(event) => {
                   const file = event.target.files?.[0];
+                  event.target.value = "";
                   if (!file) return;
-                  const reader = new FileReader();
-                  reader.onload = () => {
-                    if (typeof reader.result === "string") setDesignImage(reader.result);
-                  };
-                  reader.readAsDataURL(file);
+                  setImageError(null);
+                  void (async () => {
+                    try {
+                      // Genuine JPG/PNG only, 5MB max — re-encoded to a light WebP.
+                      const converted = await convertToWebp(file);
+                      setDesignImage(converted.dataUrl);
+                    } catch (error) {
+                      setDesignImage(undefined);
+                      setImageError(
+                        error instanceof Error
+                          ? error.message
+                          : "يُسمح بصور JPG أو PNG فقط · Only JPG or PNG images are allowed",
+                      );
+                    }
+                  })();
                 }}
               />
+              {imageError && <p className="mt-2 text-xs font-semibold text-destructive">{imageError}</p>}
               {designImage ? (
                 <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-border bg-background p-2">
                   <img src={designImage} alt={lang === "ar" ? "معاينة تصميم الكيكة" : "Cake design preview"} className="h-20 w-full min-w-0 rounded-xl object-cover" />
