@@ -24,6 +24,7 @@ import {
   uploadSiteImage,
 } from "@/lib/cms.functions";
 import { convertToWebp, formatBytes } from "@/lib/image-webp";
+import { IMAGE_ACCEPT } from "@/lib/image-validation";
 import {
   TINTS,
   tintFill,
@@ -171,7 +172,7 @@ function ImageField({
         <input
           ref={inputRef}
           type="file"
-          accept="image/*"
+          accept={IMAGE_ACCEPT}
           className="hidden"
           onChange={(event) => void pick(event.target.files?.[0])}
         />
