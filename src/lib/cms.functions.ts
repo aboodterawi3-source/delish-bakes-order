@@ -20,11 +20,10 @@ import {
  */
 const CMS_ROLES: StaffRoleName[] = ["sales", "admin"];
 
-const MAX_IMAGE_BYTES = 3_000_000;
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const SITE_BUCKET = "site-media";
 /** Five years: banner and product photos must keep working on the storefront. */
 const SIGNED_URL_TTL = 60 * 60 * 24 * 365 * 5;
-const DATA_URL = /^data:image\/(webp|png|jpe?g);base64,([A-Za-z0-9+/=]+)$/;
 
 const clean = (value: unknown, max: number, label: string, required = false) => {
   const trimmed = typeof value === "string" ? value.trim() : "";
@@ -275,23 +274,17 @@ export const deleteStorefrontProduct = createServerFn({ method: "POST" })
 export const uploadSiteImage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { data_url: string; folder?: string }) => {
-    const match = DATA_URL.exec(typeof input?.data_url === "string" ? input.data_url.trim() : "");
-    if (!match) throw new Error("صيغة صورة غير مدعومة · Unsupported image format");
-    const base64 = match[2]!;
-    if (Math.floor(base64.length * 0.75) > MAX_IMAGE_BYTES) {
-      throw new Error("حجم الصورة كبير جداً · Image is too large");
-    }
+    const image = decodeValidatedImage(input?.data_url, MAX_IMAGE_BYTES);
     const folder = input?.folder === "banner" || input?.folder === "categories" ? input.folder : "products";
-    return { ext: match[1] === "jpeg" ? "jpg" : match[1]!, base64, folder };
+    return { ...image, folder };
   })
   .handler(async ({ data, context }) => {
     await assertRole(context, CMS_ROLES);
-    const binary = Uint8Array.from(atob(data.base64), (char) => char.charCodeAt(0));
     const path = `${data.folder}/${crypto.randomUUID()}.${data.ext}`;
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin.storage.from(SITE_BUCKET).upload(path, binary, {
-      contentType: `image/${data.ext === "jpg" ? "jpeg" : data.ext}`,
+    const { error } = await supabaseAdmin.storage.from(SITE_BUCKET).upload(path, data.binary, {
+      contentType: data.contentType,
       upsert: false,
     });
     if (error) throw new Error(error.message);
