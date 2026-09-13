@@ -221,7 +221,7 @@ export const resetStaffPassword = createServerFn({ method: "POST" })
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.auth.admin.updateUserById(data.userId, { password: data.password });
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(authErrorMessage(error.message));
     return { ok: true };
   });
 
