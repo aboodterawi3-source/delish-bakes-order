@@ -7,6 +7,8 @@
  * still get a crisp reference, and storage/bandwidth stay small.
  */
 
+import { assertSafeImageFile } from "@/lib/image-validation";
+
 const TARGET_BYTES = 520_000;
 const MAX_EDGE = 2000;
 const QUALITY = 0.9;
@@ -42,9 +44,9 @@ async function loadBitmap(file: File): Promise<{ width: number; height: number; 
 }
 
 export async function convertToWebp(file: File): Promise<ConvertedImage> {
-  if (!file.type.startsWith("image/")) {
-    throw new Error("الملف ليس صورة · The file is not an image");
-  }
+  // Strict gate: genuine JPG/PNG only, 5MB max.
+  await assertSafeImageFile(file);
+
 
   const { width, height, draw } = await loadBitmap(file);
   if (!width || !height) throw new Error("تعذّر قراءة الصورة · Could not read the image");

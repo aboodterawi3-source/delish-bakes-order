@@ -2,6 +2,7 @@ import { useId, useRef, useState } from "react";
 import { ChevronDown, ImageUp, Loader2, Minus, Plus, Trash2 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { convertToWebp, formatBytes } from "@/lib/image-webp";
+import { IMAGE_ACCEPT } from "@/lib/image-validation";
 import { uploadDesignImage } from "@/lib/design-upload.functions";
 
 export type Customization = {
@@ -391,7 +392,7 @@ export function CakeCustomizationPanel({
         <input
           ref={fileRef}
           type="file"
-          accept="image/*"
+          accept={IMAGE_ACCEPT}
           className="sr-only"
           onChange={(e) => void handleFile(e.target.files?.[0])}
         />
