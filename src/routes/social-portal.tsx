@@ -7,7 +7,6 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   createSocialOrder,
   getSocialAccess,
-  getSocialProducts,
   type SocialOrderInput,
 } from "@/lib/social.functions";
 
@@ -34,7 +33,7 @@ export const Route = createFileRoute("/social-portal")({
 const emptyForm = {
   customer_name: "",
   customer_phone: "",
-  product_id: "",
+  order_details: "",
   quantity: 1,
   method: "pickup" as "pickup" | "delivery",
   requested_date: "",
@@ -45,8 +44,6 @@ const emptyForm = {
   staff_notes: "",
 };
 
-const jd = (value: number) => `${value.toFixed(2)} د.أ`;
-
 /** Official Delish store WhatsApp number (international format, no "+"). */
 const WHATSAPP_NUMBER = "962779179995";
 /** Universal share link — uses wa.me directly, no API endpoints or iframes. */
@@ -55,7 +52,6 @@ const whatsappUrl = (text: string) => `https://wa.me/${WHATSAPP_NUMBER}?text=${e
 function SocialPortalPage() {
   const navigate = useNavigate();
   const accessFn = useServerFn(getSocialAccess);
-  const productsFn = useServerFn(getSocialProducts);
   const createFn = useServerFn(createSocialOrder);
 
   const [form, setForm] = useState(emptyForm);
@@ -64,22 +60,11 @@ function SocialPortalPage() {
   const [error, setError] = useState<string | null>(null);
 
   const access = useQuery({ queryKey: ["social-access"], queryFn: () => accessFn({}) });
-  const products = useQuery({
-    queryKey: ["social-products"],
-    queryFn: () => productsFn({}),
-    enabled: access.data?.allowed === true,
-  });
 
   const set = useCallback(<K extends keyof typeof emptyForm>(key: K, value: (typeof emptyForm)[K]) => {
     setForm((current) => ({ ...current, [key]: value }));
     setCopied(false);
   }, []);
-
-  const product = useMemo(
-    () => (products.data ?? []).find((row) => row.id === form.product_id) ?? null,
-    [products.data, form.product_id],
-  );
-  const total = (product?.price ?? 0) * form.quantity;
 
   /** Customer-facing summary — internal staff notes are deliberately excluded. */
   const summary = useMemo(() => {
@@ -87,16 +72,16 @@ function SocialPortalPage() {
       "طلب جديد · Delish Cake & Bake",
       `الاسم: ${form.customer_name || "—"}`,
       `الهاتف: ${form.customer_phone || "—"}`,
-      `المنتج: ${product ? `${product.name_ar} × ${form.quantity}` : "—"}`,
+      `تفاصيل الطلب: ${form.order_details.trim() || "—"}`,
+      `الكمية: ${form.quantity}`,
       `الاستلام: ${form.method === "delivery" ? "توصيل" : "استلام من المحل"}`,
       `تاريخ ووقت التسليم: ${form.requested_date || "—"} ${form.requested_time || ""}`.trim(),
     ];
     if (form.event_date) lines.push(`تاريخ المناسبة: ${form.event_date}`);
     if (form.is_urgent) lines.push("🚨 طلب مستعجل");
     if (form.design_notes.trim()) lines.push(`ملاحظات التصميم: ${form.design_notes.trim()}`);
-    if (product) lines.push(`الإجمالي: ${jd(total)}`);
     return lines.join("\n");
-  }, [form, product, total]);
+  }, [form]);
 
   const submit = useMutation({
     mutationFn: (input: SocialOrderInput) => createFn({ data: input }),
@@ -182,7 +167,7 @@ function SocialPortalPage() {
     submit.mutate({
       customer_name: form.customer_name,
       customer_phone: form.customer_phone,
-      product_id: form.product_id,
+      order_details: form.order_details,
       quantity: form.quantity,
       method: form.method,
       requested_date: form.requested_date,
@@ -258,21 +243,17 @@ function SocialPortalPage() {
               />
             </label>
 
-            <label className="block text-sm font-bold text-[#3E2723]">
-              المنتج · Product
-              <select
+            <label className="block text-sm font-bold text-[#3E2723] sm:col-span-2">
+              تفاصيل طلب الزبون · Customer Order Details
+              <textarea
                 required
-                value={form.product_id}
-                onChange={(event) => set("product_id", event.target.value)}
-                className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
-              >
-                <option value="">اختر المنتج…</option>
-                {(products.data ?? []).map((row) => (
-                  <option key={row.id} value={row.id}>
-                    {row.name_ar} — {jd(row.price)}
-                  </option>
-                ))}
-              </select>
+                rows={5}
+                maxLength={2000}
+                value={form.order_details}
+                onChange={(event) => set("order_details", event.target.value)}
+                placeholder="اكتب تفاصيل الطلب كاملة: التصميم، الألوان، الكتابة، المكونات…"
+                className="mt-1 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] p-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+              />
             </label>
             <label className="block text-sm font-bold text-[#3E2723]">
               الكمية · Quantity
@@ -374,12 +355,6 @@ function SocialPortalPage() {
               خاصة بالمبيعات والإدارة فقط — لا تظهر على شاشة المطبخ ولا في رسالة واتساب.
             </span>
           </label>
-
-          {product ? (
-            <p className="text-base font-extrabold text-[#5D2E17] bg-[#FDE2CF]/40 p-3 rounded-xl border border-[#EFA781]/30">
-              الإجمالي التقديري: {jd(total)}
-            </p>
-          ) : null}
 
           <div className="flex flex-wrap gap-2 pt-2">
             <button
