@@ -152,7 +152,15 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
 
 export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { itemId: string; orderId: string; newUnitPrice: number }) => input)
+  .inputValidator((input: { itemId: string; orderId: string; newUnitPrice: number }) => {
+    if (!input?.itemId) throw new Error("itemId is required");
+    if (!input?.orderId) throw new Error("orderId is required");
+    const price = Number(input.newUnitPrice);
+    if (!Number.isFinite(price) || price < 0 || price > 100000) {
+      throw new Error("سعر غير صالح · Invalid price");
+    }
+    return { itemId: String(input.itemId), orderId: String(input.orderId), newUnitPrice: price };
+  })
   .handler(async ({ data, context }): Promise<SalesOrder> => {
     await assertRole(context, SALES_ROLES);
 
@@ -165,9 +173,18 @@ export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
 
     const { data: before } = await context.supabase
       .from("order_items")
-      .select("unit_price, quantity")
+      .select("unit_price, quantity, product_id, order_id")
       .eq("id", data.itemId)
       .single();
+    if (!before || before.order_id !== data.orderId) {
+      throw new Error("عنصر غير موجود · Order item not found");
+    }
+
+    // The per-product allow list configured by the admin is enforced here, not in the UI.
+    const { canEditProductPrice } = await import("@/lib/permissions.functions");
+    if (!(await canEditProductPrice(context as never, before.product_id))) {
+      throw new Error("غير مصرّح بتعديل سعر هذا المنتج · Not authorised to reprice this product");
+    }
 
     // Update order_items table
     const { error: itemError } = await context.supabase
