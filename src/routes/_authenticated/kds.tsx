@@ -367,8 +367,6 @@ function KdsPage() {
               <KdsCard key={order.id} order={order} busy={pending === order.id} onReady={onReady} onZoom={setZoom} />
             ))}
           </main>
-        </>
-      )}
 
       {zoom && (
         <div
