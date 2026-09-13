@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { deliveryFeeFor, priceLine, type LineSpec } from "@/lib/order-pricing";
+import { decodeValidatedImage } from "@/lib/image-validation";
 
 export type StorefrontOrderRequest = {
   customer_name: string;
