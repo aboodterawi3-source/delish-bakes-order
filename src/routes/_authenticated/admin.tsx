@@ -100,7 +100,7 @@ function downloadCsv(name: string, headers: string[], rows: (string | number)[][
   URL.revokeObjectURL(url);
 }
 
-type Tab = "analytics" | "staff" | "permissions";
+type Tab = "analytics" | "staff" | "permissions" | "authorization";
 
 function AdminPage() {
   const navigate = useNavigate();
