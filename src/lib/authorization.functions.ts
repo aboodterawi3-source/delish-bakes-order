@@ -357,9 +357,11 @@ export const submitOrderEdit = createServerFn({ method: "POST" })
       }
       return {
         token: String(input?.token ?? ""),
-        notes: String(input?.notes ?? "").slice(0, 600),
-        inscription: String(input?.inscription ?? "").slice(0, 200),
-        customer_phone: String(input?.customer_phone ?? "").slice(0, 30),
+        notes: input?.notes === undefined ? undefined : String(input.notes).slice(0, 600),
+        inscription:
+          input?.inscription === undefined ? undefined : String(input.inscription).slice(0, 200),
+        customer_phone:
+          input?.customer_phone === undefined ? undefined : String(input.customer_phone).slice(0, 30),
         requested_date: requestedDate,
         requested_time: requestedTime,
       };
