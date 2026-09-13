@@ -14,6 +14,94 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_logs: {
+        Row: {
+          action: string
+          created_at: string
+          discount_percent: number | null
+          id: string
+          modified_amount: number | null
+          order_id: string | null
+          order_number: string | null
+          original_amount: number | null
+          reason: string | null
+          staff_name: string
+          staff_user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          discount_percent?: number | null
+          id?: string
+          modified_amount?: number | null
+          order_id?: string | null
+          order_number?: string | null
+          original_amount?: number | null
+          reason?: string | null
+          staff_name: string
+          staff_user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          discount_percent?: number | null
+          id?: string
+          modified_amount?: number | null
+          order_id?: string | null
+          order_number?: string | null
+          original_amount?: number | null
+          reason?: string | null
+          staff_name?: string
+          staff_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_edit_tokens: {
+        Row: {
+          created_at: string
+          created_by: string
+          expires_at: string
+          id: string
+          order_id: string
+          token_hash: string
+          used_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          expires_at: string
+          id?: string
+          order_id: string
+          token_hash: string
+          used_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          expires_at?: string
+          id?: string
+          order_id?: string
+          token_hash?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_edit_tokens_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_items: {
         Row: {
           created_at: string
@@ -83,6 +171,8 @@ export type Database = {
           delivery_fee: number
           deposit_paid: number
           design_image_url: string | null
+          discount_amount: number
+          discount_percent: number
           driver_name: string | null
           driver_phone: string | null
           event_date: string | null
@@ -112,6 +202,8 @@ export type Database = {
           delivery_fee?: number
           deposit_paid?: number
           design_image_url?: string | null
+          discount_amount?: number
+          discount_percent?: number
           driver_name?: string | null
           driver_phone?: string | null
           event_date?: string | null
@@ -141,6 +233,8 @@ export type Database = {
           delivery_fee?: number
           deposit_paid?: number
           design_image_url?: string | null
+          discount_amount?: number
+          discount_percent?: number
           driver_name?: string | null
           driver_phone?: string | null
           event_date?: string | null
@@ -240,6 +334,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      staff_permissions: {
+        Row: {
+          allow_custom_discount: boolean
+          allow_price_override: boolean
+          created_at: string
+          id: string
+          max_discount_percent: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          allow_custom_discount?: boolean
+          allow_price_override?: boolean
+          created_at?: string
+          id?: string
+          max_discount_percent?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          allow_custom_discount?: boolean
+          allow_price_override?: boolean
+          created_at?: string
+          id?: string
+          max_discount_percent?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       storefront_banner: {
         Row: {

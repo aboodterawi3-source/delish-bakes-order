@@ -44,6 +44,8 @@ export type SalesOrder = {
   design_image_url: string | null;
   subtotal: number;
   delivery_fee: number;
+  discount_amount: number;
+  discount_percent: number;
   total: number;
   deposit_paid: number;
   payment_method: PaymentMethod | null;
@@ -57,7 +59,7 @@ export type SalesOrder = {
 };
 
 const SELECT =
-  "id, order_number, customer_name, customer_phone, method, area, address, requested_date, requested_time, notes, staff_notes, inscription, design_image_url, subtotal, delivery_fee, total, deposit_paid, payment_method, driver_name, driver_phone, cancel_reason, status, created_at, updated_at, order_items(id, name_ar, name_en, quantity, unit_price, options_ar, notes, product_id)";
+  "id, order_number, customer_name, customer_phone, method, area, address, requested_date, requested_time, notes, staff_notes, inscription, design_image_url, subtotal, delivery_fee, discount_amount, discount_percent, total, deposit_paid, payment_method, driver_name, driver_phone, cancel_reason, status, created_at, updated_at, order_items(id, name_ar, name_en, quantity, unit_price, options_ar, notes, product_id)";
 
 type Row = Record<string, unknown> & { order_items?: unknown[] };
 
@@ -65,6 +67,8 @@ const toOrder = (row: Row): SalesOrder => ({
   ...(row as unknown as Omit<SalesOrder, "items">),
   subtotal: Number(row['subtotal'] ?? 0),
   delivery_fee: Number(row['delivery_fee'] ?? 0),
+  discount_amount: Number(row['discount_amount'] ?? 0),
+  discount_percent: Number(row['discount_percent'] ?? 0),
   total: Number(row['total'] ?? 0),
   deposit_paid: Number(row['deposit_paid'] ?? 0),
   items: ((row.order_items ?? []) as Record<string, unknown>[]).map((item) => ({
@@ -149,6 +153,20 @@ export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
   .inputValidator((input: { itemId: string; orderId: string; newUnitPrice: number }) => input)
   .handler(async ({ data, context }): Promise<SalesOrder> => {
     await assertRole(context, SALES_ROLES);
+
+    // Price overrides are a per-employee privilege granted by an admin.
+    const { resolveAuthorization, writeAudit, staffName } = await import("@/lib/authorization.functions");
+    const auth = await resolveAuthorization(context as never);
+    if (!auth.allow_price_override) {
+      throw new Error("تحتاج تصريح المدير لتعديل السعر · Requires admin authorization");
+    }
+
+    const { data: before } = await context.supabase
+      .from("order_items")
+      .select("unit_price, quantity")
+      .eq("id", data.itemId)
+      .single();
+
     // Update order_items table
     const { error: itemError } = await context.supabase
       .from("order_items")
@@ -185,7 +203,21 @@ export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
       .single();
     if (orderError) throw new Error(orderError.message);
 
-    return toOrder(updatedOrder as Row);
+    const order = toOrder(updatedOrder as Row);
+
+    await writeAudit({
+      order_id: order.id,
+      order_number: order.order_number,
+      staff_user_id: context.userId,
+      staff_name: staffName(context as never),
+      action: "price_override",
+      original_amount: Number(before?.unit_price ?? 0),
+      modified_amount: data.newUnitPrice,
+      discount_percent: null,
+      reason: "Unit price adjusted on the sales desk",
+    });
+
+    return order;
   });
 
 export type ShiftReport = {

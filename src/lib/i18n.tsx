@@ -1,8 +1,19 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+import { Languages } from "lucide-react";
 
 export type Lang = "ar" | "en";
 
 type Dict = Record<string, { ar: string; en: string }>;
+
+const STORAGE_KEY = "delish-lang";
 
 export const t_: Dict = {
   brandTag: { ar: "حلويات فاخرة · عمّان، الأردن", en: "Luxury Patisserie · Amman, Jordan" },
@@ -33,6 +44,15 @@ export const t_: Dict = {
   total: { ar: "الإجمالي", en: "Total" },
   checkout: { ar: "إتمام الطلب", en: "Checkout" },
   jod: { ar: "د.أ", en: "JOD" },
+  description: { ar: "الوصف", en: "Description" },
+  from: { ar: "يبدأ من", en: "From" },
+  search: { ar: "ابحث عن كيك أو حلويات…", en: "Search cakes, pastries, croissants..." },
+  discoverByCategory: { ar: "تصفّح حسب القسم", en: "Discover By Category" },
+  showAll: { ar: "إظهار الكل", en: "Show all" },
+  popular: { ar: "الأكثر طلباً", en: "Popular Cake" },
+  loadingMenu: { ar: "جار تحميل القائمة…", en: "Loading the menu…" },
+  emptyMenu: { ar: "لا يوجد شيء هنا بعد — عُد قريباً.", en: "Nothing here yet — check back soon." },
+  celebrationCakes: { ar: "كيك المناسبات", en: "Celebration Cakes" },
   builderTitle: { ar: "صمّم كيكتك الخاصة", en: "Design your own cake" },
   builderSub: { ar: "أربع خطوات بسيطة، ونحن نتولّى الباقي.", en: "Four simple steps, we handle the rest." },
   step: { ar: "خطوة", en: "Step" },
@@ -76,25 +96,66 @@ export const t_: Dict = {
   whatsapp: { ar: "واتساب", en: "WhatsApp" },
 };
 
-type Ctx = { lang: Lang; setLang: (l: Lang) => void; t: (k: keyof typeof t_ | string) => string; dir: "rtl" | "ltr" };
+type Ctx = {
+  lang: Lang;
+  setLang: (l: Lang) => void;
+  toggle: () => void;
+  t: (k: keyof typeof t_ | string) => string;
+  dir: "rtl" | "ltr";
+};
 
-const LangContext = createContext<Ctx>({ lang: "ar", setLang: () => {}, t: (k) => String(k), dir: "rtl" });
+const LangContext = createContext<Ctx>({
+  lang: "ar",
+  setLang: () => {},
+  toggle: () => {},
+  t: (k) => String(k),
+  dir: "rtl",
+});
 
 export function LangProvider({ children }: { children: ReactNode }) {
+  // Arabic is the default everywhere; a saved choice is restored after hydration.
   const [lang, setLang] = useState<Lang>("ar");
-  const dir = lang === "ar" ? "rtl" : "ltr";
+  const dir: "rtl" | "ltr" = lang === "ar" ? "rtl" : "ltr";
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem(STORAGE_KEY);
+    if (saved === "en" || saved === "ar") setLang(saved);
+  }, []);
 
   useEffect(() => {
     document.documentElement.lang = lang;
     document.documentElement.dir = dir;
+    window.localStorage.setItem(STORAGE_KEY, lang);
   }, [lang, dir]);
 
-  const t = (k: string) => (t_[k] ? t_[k][lang] : k);
+  const toggle = useCallback(() => setLang((current) => (current === "ar" ? "en" : "ar")), []);
+  const t = useCallback((k: string) => (t_[k] ? t_[k]![lang] : k), [lang]);
 
-  return <LangContext.Provider value={{ lang, setLang, t, dir }}>{children}</LangContext.Provider>;
+  const value = useMemo(() => ({ lang, setLang, toggle, t, dir }), [lang, toggle, t, dir]);
+
+  return <LangContext.Provider value={value}>{children}</LangContext.Provider>;
 }
 
 export const useLang = () => useContext(LangContext);
+
+/** AR | EN pill toggle for public headers. */
+export function LangToggle({ className = "" }: { className?: string }) {
+  const { lang, toggle } = useLang();
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      aria-label={lang === "ar" ? "التبديل إلى الإنجليزية" : "Switch to Arabic"}
+      title={lang === "ar" ? "English" : "العربية"}
+      className={`inline-flex h-9 items-center gap-1 rounded-full border border-border bg-card/90 px-2.5 text-[11px] font-extrabold text-primary shadow-sm transition-transform hover:scale-[1.04] active:scale-95 ${className}`}
+    >
+      <Languages className="h-3.5 w-3.5" aria-hidden="true" />
+      <span className={lang === "ar" ? "text-primary" : "text-muted-foreground"}>AR</span>
+      <span className="text-muted-foreground/60">|</span>
+      <span className={lang === "en" ? "text-primary" : "text-muted-foreground"}>EN</span>
+    </button>
+  );
+}
 
 export const arabicNum = (n: number | string, lang: Lang) =>
   lang === "ar" ? String(n).replace(/\d/g, (d) => "٠١٢٣٤٥٦٧٨٩"[Number(d)]!) : String(n);
