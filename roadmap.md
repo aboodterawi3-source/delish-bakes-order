@@ -10,3 +10,6 @@
 - [x] Replace the public demo showcase with the clean three-screen Delish storefront
 - [x] Apply the cream, gold, bronze, peach identity across storefront and staff portals
 - [x] Add clean `/login` and `/kitchen` compatibility routes
+- [x] Add the customization accordion and smart WebP uploader on product details
+- [x] Make the sales desk the only place that edits the customer app (banner, categories, products)
+- [x] Remove catalog management from kitchen and admin
