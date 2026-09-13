@@ -124,6 +124,67 @@ export type OrderPatch = {
   payment_method?: PaymentMethod | null;
 };
 
+const STATUSES: SalesStatus[] = [
+  "new",
+  "confirmed",
+  "baking",
+  "ready",
+  "out_for_delivery",
+  "completed",
+  "delivered",
+  "cancelled",
+];
+const PAYMENT_METHODS: PaymentMethod[] = ["cash", "cliq", "visa"];
+
+/** Only these columns may be written through this endpoint. Money that needs an
+ * admin grant (subtotal, total, discounts, item prices) goes through
+ * applyOrderDiscount / updateSalesOrderItemPrice so caps and audit logs apply. */
+const buildOrderPatch = (input: OrderPatch): Record<string, unknown> => {
+  const patch: Record<string, unknown> = {};
+
+  if (input.status !== undefined) {
+    if (!STATUSES.includes(input.status)) throw new Error("حالة غير صالحة · Invalid status");
+    patch['status'] = input.status;
+  }
+  if (input.cancel_reason !== undefined) {
+    patch['cancel_reason'] = input.cancel_reason ? String(input.cancel_reason).slice(0, 500) : null;
+  }
+  if (input.method !== undefined) {
+    if (input.method !== "delivery" && input.method !== "pickup") {
+      throw new Error("طريقة غير صالحة · Invalid method");
+    }
+    patch['method'] = input.method;
+  }
+  if (input.delivery_fee !== undefined) {
+    const fee = Number(input.delivery_fee);
+    if (!Number.isFinite(fee) || fee < 0 || fee > 1000) {
+      throw new Error("أجرة توصيل غير صالحة · Invalid delivery fee");
+    }
+    patch['delivery_fee'] = fee;
+  }
+  if (input.deposit_paid !== undefined) {
+    const deposit = Number(input.deposit_paid);
+    if (!Number.isFinite(deposit) || deposit < 0 || deposit > 100000) {
+      throw new Error("عربون غير صالح · Invalid deposit");
+    }
+    patch['deposit_paid'] = deposit;
+  }
+  if (input.payment_method !== undefined) {
+    if (input.payment_method !== null && !PAYMENT_METHODS.includes(input.payment_method)) {
+      throw new Error("طريقة دفع غير صالحة · Invalid payment method");
+    }
+    patch['payment_method'] = input.payment_method;
+  }
+  if (input.driver_name !== undefined) {
+    patch['driver_name'] = input.driver_name ? String(input.driver_name).slice(0, 120) : null;
+  }
+  if (input.driver_phone !== undefined) {
+    patch['driver_phone'] = input.driver_phone ? String(input.driver_phone).slice(0, 40) : null;
+  }
+
+  return patch;
+};
+
 export const updateSalesOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: OrderPatch) => {
@@ -135,20 +196,20 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }): Promise<SalesOrder> => {
     await assertRole(context, SALES_ROLES);
-    const { orderId, ...patch } = data;
-    const clean: Record<string, unknown> = {};
-    for (const [key, value] of Object.entries(patch)) {
-      if (value !== undefined) clean[key] = value;
+    const clean = buildOrderPatch(data);
+    if (Object.keys(clean).length === 0) {
+      throw new Error("لا يوجد تغيير · Nothing to update");
     }
     const { data: row, error } = await context.supabase
       .from("orders")
       .update(clean as never)
-      .eq("id", orderId)
+      .eq("id", data.orderId)
       .select(SELECT)
       .single();
     if (error) throw new Error(error.message);
     return toOrder(row as Row);
   });
+
 
 export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
