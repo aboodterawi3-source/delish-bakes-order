@@ -191,12 +191,12 @@ export const createStaff = createServerFn({ method: "POST" })
       const match = (existing?.users ?? []).find(
         (user) => (user.email ?? "").toLowerCase() === data.email,
       );
-      if (!match) throw new Error(error?.message ?? "تعذّر إنشاء الحساب · Could not create the account");
+      if (!match) throw new Error(authErrorMessage(error?.message ?? "تعذّر إنشاء الحساب · Could not create the account"));
       const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(match.id, {
         password: data.password,
         email_confirm: true,
       });
-      if (updateError) throw new Error(updateError.message);
+      if (updateError) throw new Error(authErrorMessage(updateError.message));
       userId = match.id;
       reused = true;
     }
