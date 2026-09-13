@@ -1,8 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { usernameToEmail } from "@/lib/username";
+import { DelishLogo } from "@/components/delish/DelishLogo";
+import { BackgroundCurves } from "@/components/delish/BackgroundCurves";
 
 export const Route = createFileRoute("/social-login")({
   head: () => ({
@@ -46,13 +48,12 @@ function SocialLoginPage() {
   };
 
   return (
-    <main dir="rtl" className="grid min-h-dvh place-items-center bg-background px-4 py-10">
-      <div className="w-full max-w-sm rounded-3xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
-        <div className="flex items-center gap-3">
-          <span className="grid h-12 w-12 place-items-center rounded-xl bg-primary text-primary-foreground">
-            <Sparkles className="h-6 w-6" aria-hidden="true" />
-          </span>
-          <div>
+    <main dir="rtl" className="relative grid min-h-dvh place-items-center overflow-hidden bg-background px-4 py-10">
+      <BackgroundCurves />
+      <div className="relative z-10 w-full max-w-sm rounded-3xl border border-border bg-card p-7 shadow-[var(--shadow-soft)]">
+        <div className="flex flex-col items-center text-center">
+          <DelishLogo size="md" />
+          <div className="mt-5">
             <h1 className="font-display text-xl font-bold text-foreground">دخول فريق السوشال</h1>
             <p className="text-xs text-muted-foreground">
               <span className="delish-wordmark">Delish</span> Social Portal

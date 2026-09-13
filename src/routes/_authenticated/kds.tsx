@@ -435,14 +435,15 @@ const KdsCard = memo(function KdsCard({
   const isReady = order.status === "ready";
   return (
     <article
-      className="relative overflow-hidden rounded-3xl border border-slate-100 bg-white p-5 shadow-[0_10px_28px_-10px_rgba(62,39,35,0.08)] transition-all hover:shadow-md"
+      className="relative overflow-hidden rounded-3xl border border-card/40 p-5 transition-transform hover:-translate-y-0.5"
+      style={{ backgroundColor: meta.bg, color: meta.fg, boxShadow: meta.glow }}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <h2 className="truncate font-sans text-base font-extrabold text-[#3E2723]">
+          <h2 className="truncate font-sans text-base font-extrabold">
             {order.order_number} · {order.customer_name}
           </h2>
-          <p className="mt-1 flex items-center gap-1 text-xs text-[#7A6458]">
+          <p className="mt-1 flex items-center gap-1 text-xs" style={{ color: meta.fgMuted }}>
             <Clock3 className="h-3.5 w-3.5 text-[#B8860B]" />
             {order.requested_date} · {order.requested_time.slice(0, 5)} · {order.method === "delivery" ? "توصيل" : "استلام"}
           </p>
@@ -458,23 +459,23 @@ const KdsCard = memo(function KdsCard({
           >
             {isReady ? "جاهز · Ready" : "قيد التجهيز · Preparing"}
           </span>
-          <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-bold text-slate-600">
+           <span className="rounded-full bg-card/85 px-2.5 py-0.5 text-[10px] font-bold text-foreground">
             {meta.ar}
           </span>
         </div>
       </div>
 
-      <ul className="mt-4 space-y-2 border-y border-slate-100 py-3 text-[#3E2723]">
+      <ul className="mt-4 space-y-2 border-y border-card/30 py-3">
         {order.items.map((item) => (
-          <li key={item.id} className="rounded-2xl bg-[#F9FBFC] p-3 border border-slate-100">
-            <p className="text-sm font-bold text-[#3E2723]">
+          <li key={item.id} className="rounded-2xl border border-card/25 bg-card/15 p-3">
+            <p className="text-sm font-bold">
               {item.quantity}× {item.name_ar}
             </p>
-            <p className="text-xs text-[#7A6458]">
+            <p className="text-xs" style={{ color: meta.fgMuted }}>
               {item.name_en}
             </p>
             {item.options_ar.map((option) => (
-              <p key={option} className="mt-0.5 text-xs text-[#8B4513]">
+              <p key={option} className="mt-0.5 text-xs font-medium">
                 • {option}
               </p>
             ))}
@@ -641,12 +642,12 @@ function MenuPanel() {
       <div className="flex flex-wrap items-center gap-3">
         <div className="me-auto">
           <h2 className="font-display text-lg font-bold">إدارة المنتجات والأسعار</h2>
-          <p className="text-xs text-white/60">Products &amp; menu management · {(items.data ?? []).length} منتج</p>
+          <p className="text-xs text-muted-foreground">Products &amp; menu management · {(items.data ?? []).length} منتج</p>
         </div>
         <button
           type="button"
           onClick={() => setDraft({ ...emptyMenuItem })}
-          className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[oklch(0.65_0.12_230)] px-5 text-sm font-bold text-white"
+          className="inline-flex min-h-12 items-center gap-2 rounded-full bg-primary px-5 text-sm font-bold text-primary-foreground"
         >
           <Plus className="h-4 w-4" aria-hidden /> منتج جديد
         </button>
@@ -664,7 +665,7 @@ function MenuPanel() {
             event.preventDefault();
             saveMutation.mutate(draft);
           }}
-          className="grid gap-3 rounded-2xl border border-white/12 bg-[oklch(0.22_0.04_255)] p-4 sm:grid-cols-2"
+          className="grid gap-3 rounded-3xl border border-border bg-card p-5 shadow-[var(--shadow-soft)] sm:grid-cols-2"
         >
           <MenuField label="الاسم بالعربية" value={draft.name_ar} onChange={(v) => field("name_ar", v)} required />
           <MenuField label="الاسم بالإنجليزية" value={draft.name_en} onChange={(v) => field("name_en", v)} required />
@@ -724,8 +725,8 @@ function MenuPanel() {
           </div>
 
           {draft.is_featured && (
-            <fieldset className="sm:col-span-2 rounded-2xl border border-white/12 bg-white/[0.03] p-3">
-              <legend className="px-1 text-xs font-bold text-white/80">
+            <fieldset className="sm:col-span-2 rounded-2xl border border-border bg-secondary/30 p-3">
+              <legend className="px-1 text-xs font-bold text-foreground">
                 لون الأولوية · Priority colour
               </legend>
               <div className="mt-2 grid gap-2 sm:grid-cols-2">
@@ -738,17 +739,17 @@ function MenuPanel() {
                       aria-pressed={active}
                       onClick={() => field("priority_color", active ? null : option.value)}
                       className={`flex min-h-12 items-center gap-3 rounded-xl border px-3 py-2 text-start transition-colors ${
-                        active ? "border-white/80 bg-white/10" : "border-white/15 hover:bg-white/5"
+                        active ? "border-gold bg-secondary" : "border-border bg-card hover:bg-secondary/40"
                       }`}
                     >
                       <span
                         aria-hidden
-                        className="h-6 w-6 shrink-0 rounded-full border border-white/40"
+                         className="h-6 w-6 shrink-0 rounded-full border border-border"
                         style={{ background: option.swatch.replace(/_/g, " ") }}
                       />
                       <span className="min-w-0">
                         <span className="block truncate text-sm font-bold">{option.label}</span>
-                        <span className="block truncate text-xs text-white/60">{option.hint}</span>
+                         <span className="block truncate text-xs text-muted-foreground">{option.hint}</span>
                       </span>
                     </button>
                   );
@@ -760,14 +761,14 @@ function MenuPanel() {
             <button
               type="submit"
               disabled={saveMutation.isPending}
-              className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[oklch(0.65_0.12_230)] px-5 text-sm font-bold text-white disabled:opacity-60"
+              className="inline-flex min-h-12 items-center gap-2 rounded-full bg-primary px-5 text-sm font-bold text-primary-foreground disabled:opacity-60"
             >
               {saveMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />} حفظ
             </button>
             <button
               type="button"
               onClick={() => setDraft(null)}
-              className="inline-flex min-h-12 items-center rounded-full border border-white/25 px-5 text-sm font-bold"
+              className="inline-flex min-h-12 items-center rounded-full border border-border bg-card px-5 text-sm font-bold"
             >
               إلغاء
             </button>
@@ -775,19 +776,19 @@ function MenuPanel() {
         </form>
       )}
 
-      {items.isLoading && <p className="text-sm text-white/60">جارٍ تحميل المنتجات…</p>}
+      {items.isLoading && <p className="text-sm text-muted-foreground">جارٍ تحميل المنتجات…</p>}
       {!items.isLoading && grouped.length === 0 && (
-        <p className="rounded-2xl border border-white/12 p-8 text-center text-sm text-white/60">
+        <p className="rounded-2xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
           لا توجد منتجات بعد · أضف أول منتج
         </p>
       )}
 
       {grouped.map(([category, rows]) => (
         <section key={category} aria-label={category} className="space-y-3">
-          <h3 className="font-display text-base font-bold text-white/90">{category}</h3>
+          <h3 className="font-display text-base font-bold text-foreground">{category}</h3>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {rows.map((item) => (
-              <article key={item.id} className="rounded-2xl border border-white/12 bg-[oklch(0.22_0.04_255)] p-4">
+              <article key={item.id} className="rounded-3xl border border-border bg-card p-4 shadow-[var(--shadow-soft)]">
                 {item.image_url ? (
                   <img
                     src={item.image_url}
@@ -796,14 +797,14 @@ function MenuPanel() {
                     className="mb-3 h-36 w-full rounded-xl object-cover"
                   />
                 ) : (
-                  <div className="mb-3 grid h-36 w-full place-items-center rounded-xl border border-dashed border-white/20 text-xs text-white/45">
+                  <div className="mb-3 grid h-36 w-full place-items-center rounded-xl border border-dashed border-border text-xs text-muted-foreground">
                     لا توجد صورة · No image
                   </div>
                 )}
                 <h4 className="font-display text-base font-bold">{item.name_ar}</h4>
-                <p className="text-xs text-white/60">{item.name_en}</p>
+                <p className="text-xs text-muted-foreground">{item.name_en}</p>
                 <p className="mt-2 text-lg font-bold">{jod(item.price)}</p>
-                <p className="mt-1 text-xs text-white/60">
+                <p className="mt-1 text-xs text-muted-foreground">
                   {item.is_available ? "متاح" : "غير متاح"}
                   {item.is_featured ? " · مميز" : ""}
                 </p>
@@ -822,7 +823,7 @@ function MenuPanel() {
                   <button
                     type="button"
                     onClick={() => setDraft({ ...item })}
-                    className="inline-flex min-h-12 flex-1 items-center justify-center rounded-full border border-white/25 text-sm font-bold"
+                    className="inline-flex min-h-12 flex-1 items-center justify-center rounded-full border border-border text-sm font-bold text-primary"
                   >
                     تعديل
                   </button>
@@ -858,7 +859,7 @@ function MenuField({
   required?: boolean;
 }) {
   return (
-    <label className="block text-xs font-bold text-white/75">
+    <label className="block text-xs font-bold text-foreground">
       {label}
       <input
         type={type}
@@ -866,7 +867,7 @@ function MenuField({
         required={required}
         step={type === "number" ? "0.01" : undefined}
         onChange={(event) => onChange(event.target.value)}
-        className="mt-1 min-h-12 w-full rounded-xl border border-white/20 bg-[oklch(0.16_0.05_252)] px-3 text-sm font-normal text-white outline-none focus-visible:ring-2 focus-visible:ring-[oklch(0.65_0.12_230)]"
+        className="mt-1 min-h-12 w-full rounded-xl border border-input bg-background px-3 text-sm font-normal text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
       />
     </label>
   );
@@ -910,18 +911,18 @@ function MenuImageField({
   };
 
   return (
-    <div className="rounded-xl border border-white/15 p-3">
-      <p className="text-xs font-bold text-white/75">صورة المنتج · Item photo</p>
+    <div className="rounded-xl border border-border p-3">
+      <p className="text-xs font-bold text-foreground">صورة المنتج · Item photo</p>
       <div className="mt-2 flex flex-wrap items-start gap-3">
         {value ? (
           <img src={value} alt="معاينة صورة المنتج" className="h-24 w-24 rounded-xl object-cover" />
         ) : (
-          <div className="grid h-24 w-24 place-items-center rounded-xl border border-dashed border-white/25 text-[11px] text-white/45">
+          <div className="grid h-24 w-24 place-items-center rounded-xl border border-dashed border-border text-[11px] text-muted-foreground">
             بدون صورة
           </div>
         )}
         <div className="flex min-w-52 flex-1 flex-col gap-2">
-          <label className="inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-full border border-white/25 px-4 text-sm font-bold">
+          <label className="inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-full border border-border px-4 text-sm font-bold text-primary">
             {uploading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Plus className="h-4 w-4" aria-hidden />}
             {uploading ? "جارٍ الرفع…" : "رفع صورة من الجهاز"}
             <input
@@ -941,7 +942,7 @@ function MenuImageField({
             value={value}
             placeholder="أو الصق رابط صورة · or paste image URL"
             onChange={(event) => onChange(event.target.value)}
-            className="min-h-12 w-full rounded-xl border border-white/20 bg-[oklch(0.16_0.05_252)] px-3 text-sm text-white outline-none focus-visible:ring-2 focus-visible:ring-[oklch(0.65_0.12_230)]"
+            className="min-h-12 w-full rounded-xl border border-input bg-background px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
           {value && (
             <button

@@ -48,7 +48,7 @@ function ProductDetailsPage() {
             image: "/images/ombre-ruffle-cake.jpg",
             detailsAr: [item.size],
             detailsEn: [item.size],
-            spec: { kind: "catalog", productId: "prod-ombre-ruffle" },
+            spec: { kind: "catalog", productId: "p1" },
           });
           setCartOpen(true);
         }}
