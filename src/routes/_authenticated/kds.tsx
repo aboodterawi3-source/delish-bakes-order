@@ -435,6 +435,11 @@ const KdsCard = memo(function KdsCard({
             <Clock3 className="h-3.5 w-3.5 text-[#B8860B]" />
             {order.requested_date} · {order.requested_time.slice(0, 5)} · {order.method === "delivery" ? "توصيل" : "استلام"}
           </p>
+          {order.schedule_updated_at && (
+            <p className="mt-2 inline-flex rounded-full bg-[#B8860B] px-3 py-1 text-[11px] font-extrabold text-white shadow-sm">
+              تم تعديل الموعد 🔄
+            </p>
+          )}
         </div>
         <div className="flex flex-col items-end gap-1.5 shrink-0">
           {/* Gold / Amber status chip */}
