@@ -185,6 +185,13 @@
   --gradient-peach: linear-gradient(135deg, #FDE2CF 0%, #EFA781 100%);
   --shadow-soft: 0 10px 30px -10px rgba(93, 46, 23, 0.08);
   --shadow-card: 0 12px 36px -12px rgba(62, 39, 35, 0.09);
+  /* Soft pastel fills used by the sales-managed category ribbon and product cards. */
+  --tint-blush: oklch(0.94 0.035 30);
+  --tint-butter: oklch(0.96 0.045 95);
+  --tint-pistachio: oklch(0.94 0.04 145);
+  --tint-sky: oklch(0.94 0.03 235);
+  --tint-lilac: oklch(0.94 0.035 305);
+  --tint-cream: oklch(0.98 0.008 90);
 }
 
 @theme inline {
@@ -197,6 +204,12 @@
   --color-cocoa-deep: var(--cocoa-deep);
   --color-whatsapp: var(--whatsapp);
   --color-whatsapp-foreground: var(--whatsapp-foreground);
+  --color-tint-blush: var(--tint-blush);
+  --color-tint-butter: var(--tint-butter);
+  --color-tint-pistachio: var(--tint-pistachio);
+  --color-tint-sky: var(--tint-sky);
+  --color-tint-lilac: var(--tint-lilac);
+  --color-tint-cream: var(--tint-cream);
   --font-display: "Playfair Display", Georgia, serif;
   --font-script: "Great Vibes", "Playfair Display", cursive, serif;
   --font-sans: "Plus Jakarta Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;

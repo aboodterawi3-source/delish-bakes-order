@@ -106,7 +106,7 @@ export const markOrderReady = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-/* ------------------------- menu & pricing management ------------------------ */
+/* --------------------------- kitchen priority tiers -------------------------- */
 
 /** Colour tiers that drive kitchen priority for featured items. */
 export const PRIORITY_COLORS = [
@@ -118,93 +118,3 @@ export const PRIORITY_COLORS = [
 ] as const;
 
 export type PriorityColor = (typeof PRIORITY_COLORS)[number];
-
-export type MenuItem = {
-  id: string;
-  slug: string;
-  name_ar: string;
-  name_en: string;
-  description_ar: string | null;
-  description_en: string | null;
-  category: string;
-  price: number;
-  image_url: string | null;
-  is_available: boolean;
-  is_featured: boolean;
-  priority_color: PriorityColor | null;
-  sort_order: number;
-};
-
-export type MenuItemInput = Omit<MenuItem, "id"> & { id?: string };
-
-const MENU_SELECT =
-  "id, slug, name_ar, name_en, description_ar, description_en, category, price, image_url, is_available, is_featured, priority_color, sort_order";
-
-/** Full menu, including unavailable items, for the kitchen menu manager. */
-export const listMenuItems = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<MenuItem[]> => {
-    await assertRole(context, KITCHEN_ROLES);
-    const { data, error } = await context.supabase
-      .from("products")
-      .select(MENU_SELECT)
-      .order("category")
-      .order("sort_order");
-    if (error) throw new Error(error.message);
-    return (data ?? []).map((row) => ({ ...(row as MenuItem), price: Number(row.price ?? 0) }));
-  });
-
-/** Creates or updates one menu item. */
-export const saveMenuItem = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((input: MenuItemInput) => {
-    if (!input?.name_ar?.trim() || !input?.name_en?.trim()) {
-      throw new Error("الاسم بالعربية والإنجليزية مطلوب · Arabic and English names are required");
-    }
-    if (!input?.category?.trim()) throw new Error("التصنيف مطلوب · Category is required");
-    if (!(Number(input.price) >= 0)) throw new Error("السعر غير صحيح · Invalid price");
-    if (input.priority_color && !PRIORITY_COLORS.includes(input.priority_color)) {
-      throw new Error("لون الأولوية غير صحيح · Invalid priority colour");
-    }
-    return input;
-  })
-  .handler(async ({ data, context }) => {
-    await assertRole(context, KITCHEN_ROLES);
-    const slug =
-      data.slug?.trim() ||
-      data.name_en.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") ||
-      `product-${Date.now()}`;
-    const row = {
-      slug,
-      name_ar: data.name_ar.trim(),
-      name_en: data.name_en.trim(),
-      description_ar: data.description_ar?.trim() || null,
-      description_en: data.description_en?.trim() || null,
-      category: data.category.trim(),
-      price: Number(data.price),
-      image_url: data.image_url?.trim() || null,
-      is_available: !!data.is_available,
-      is_featured: !!data.is_featured,
-      priority_color: data.is_featured ? (data.priority_color ?? null) : null,
-      sort_order: Number(data.sort_order ?? 0),
-    };
-    const query = data.id
-      ? context.supabase.from("products").update(row as never).eq("id", data.id)
-      : context.supabase.from("products").insert(row as never);
-    const { error } = await query;
-    if (error) throw new Error(error.message);
-    return { ok: true };
-  });
-
-export const deleteMenuItem = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((input: { id: string }) => {
-    if (!input?.id) throw new Error("id is required");
-    return input;
-  })
-  .handler(async ({ data, context }) => {
-    await assertRole(context, KITCHEN_ROLES);
-    const { error } = await context.supabase.from("products").delete().eq("id", data.id);
-    if (error) throw new Error(error.message);
-    return { ok: true };
-  });

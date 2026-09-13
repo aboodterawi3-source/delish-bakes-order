@@ -1,0 +1,777 @@
+import { useCallback, useMemo, useRef, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import {
+  ArrowDown,
+  ArrowUp,
+  ImagePlus,
+  Loader2,
+  Pencil,
+  Plus,
+  Star,
+  Trash2,
+  X,
+} from "lucide-react";
+import {
+  deleteCategory,
+  deleteStorefrontProduct,
+  getCmsContent,
+  reorderCategories,
+  saveBanner,
+  saveCategory,
+  saveStorefrontProduct,
+  setProductVisibility,
+  uploadSiteImage,
+} from "@/lib/cms.functions";
+import { convertToWebp, formatBytes } from "@/lib/image-webp";
+import {
+  TINTS,
+  tintFill,
+  type SizePrice,
+  type StorefrontCategory,
+  type StorefrontProduct,
+} from "@/lib/storefront-content";
+
+const CMS_KEY = ["cms-content"] as const;
+
+const DEFAULT_SIZES: SizePrice[] = [
+  { label: "6 inch", price: 0 },
+  { label: "9 inch", price: 0 },
+  { label: "12 inch", price: 0 },
+];
+
+type Tab = "banner" | "categories" | "products";
+
+const tabs: { value: Tab; ar: string; en: string }[] = [
+  { value: "banner", ar: "البانر", en: "Banner" },
+  { value: "categories", ar: "الأقسام", en: "Categories" },
+  { value: "products", ar: "المنتجات", en: "Products" },
+];
+
+const field =
+  "min-h-12 w-full rounded-2xl border border-input bg-background px-4 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+const label = "block text-xs font-bold text-foreground";
+const primaryBtn =
+  "inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-primary px-5 text-sm font-bold text-primary-foreground transition disabled:opacity-60";
+const ghostBtn =
+  "inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-border px-4 text-xs font-bold text-foreground transition hover:bg-secondary/40";
+
+/** Website controller: the sales desk owns the customer app's content. */
+export function CmsPanel() {
+  const [tab, setTab] = useState<Tab>("banner");
+  const content = useQuery({ queryKey: CMS_KEY, queryFn: () => getCmsContent() });
+
+  if (content.isPending) {
+    return (
+      <p className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> جار تحميل المحتوى…
+      </p>
+    );
+  }
+
+  if (content.isError) {
+    return (
+      <p className="py-12 text-center text-sm text-destructive">
+        {(content.error as Error).message}
+      </p>
+    );
+  }
+
+  return (
+    <section className="space-y-5">
+      <div className="flex flex-wrap gap-2" role="tablist" aria-label="إدارة الموقع">
+        {tabs.map((item) => (
+          <button
+            key={item.value}
+            type="button"
+            role="tab"
+            aria-selected={tab === item.value}
+            onClick={() => setTab(item.value)}
+            className={`min-h-11 rounded-full px-5 text-xs font-bold transition ${
+              tab === item.value
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "border border-border bg-card text-foreground hover:bg-secondary/40"
+            }`}
+          >
+            {item.ar} · {item.en}
+          </button>
+        ))}
+      </div>
+
+      {tab === "banner" && <BannerEditor banner={content.data.banner} />}
+      {tab === "categories" && <CategoriesEditor categories={content.data.categories} />}
+      {tab === "products" && (
+        <ProductsEditor products={content.data.products} categories={content.data.categories} />
+      )}
+    </section>
+  );
+}
+
+/* ---------------------------- image upload field ---------------------------- */
+
+function ImageField({
+  value,
+  folder,
+  onChange,
+}: {
+  value: string | null;
+  folder: "banner" | "categories" | "products";
+  onChange: (url: string | null) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const uploadFn = useServerFn(uploadSiteImage);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+
+  const pick = useCallback(
+    async (file: File | undefined) => {
+      if (!file) return;
+      setBusy(true);
+      setError(null);
+      setNote(null);
+      try {
+        // Convert on the device first: WebP at 90% quality, ~500KB target.
+        const converted = await convertToWebp(file);
+        const uploaded = await uploadFn({ data: { data_url: converted.dataUrl, folder } });
+        onChange(uploaded.url);
+        setNote(`${formatBytes(converted.originalBytes)} → ${formatBytes(converted.bytes)} WebP`);
+      } catch (uploadError) {
+        setError(uploadError instanceof Error ? uploadError.message : "تعذّر رفع الصورة");
+      } finally {
+        setBusy(false);
+        if (inputRef.current) inputRef.current.value = "";
+      }
+    },
+    [folder, onChange, uploadFn],
+  );
+
+  return (
+    <div className="space-y-2">
+      <span className={label}>الصورة · Image</span>
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="h-20 w-20 overflow-hidden rounded-2xl border border-border bg-secondary/30">
+          {value ? (
+            <img src={value} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <span className="grid h-full w-full place-items-center text-[10px] text-muted-foreground">
+              لا صورة
+            </span>
+          )}
+        </div>
+        <button type="button" onClick={() => inputRef.current?.click()} disabled={busy} className={ghostBtn}>
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <ImagePlus className="h-4 w-4" aria-hidden />}
+          {busy ? "جار الرفع…" : "رفع صورة · Upload"}
+        </button>
+        {value && (
+          <button type="button" onClick={() => onChange(null)} className={ghostBtn}>
+            <X className="h-4 w-4" aria-hidden /> إزالة
+          </button>
+        )}
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(event) => void pick(event.target.files?.[0])}
+        />
+      </div>
+      <input
+        type="url"
+        value={value ?? ""}
+        onChange={(event) => onChange(event.target.value.trim() || null)}
+        placeholder="أو ألصق رابط صورة · or paste an image URL"
+        className={field}
+      />
+      {note && <p className="text-[11px] text-muted-foreground">{note}</p>}
+      {error && <p className="text-[11px] font-bold text-destructive">{error}</p>}
+    </div>
+  );
+}
+
+/* -------------------------------- tint picker ------------------------------- */
+
+function TintPicker({ value, onChange }: { value: string | null; onChange: (tint: string) => void }) {
+  return (
+    <div className="space-y-2">
+      <span className={label}>لون البطاقة · Card tint</span>
+      <div className="flex flex-wrap gap-2">
+        {TINTS.map((tint) => (
+          <button
+            key={tint.value}
+            type="button"
+            aria-pressed={value === tint.value}
+            onClick={() => onChange(tint.value)}
+            className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-xs font-bold text-foreground transition ${
+              value === tint.value ? "border-primary ring-2 ring-primary" : "border-border"
+            } ${tint.fill}`}
+          >
+            {tint.ar} · {tint.en}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* --------------------------------- banner ---------------------------------- */
+
+function BannerEditor({ banner }: { banner: { discount_text: string; subtitle: string; button_text: string; image_url: string | null } | null }) {
+  const queryClient = useQueryClient();
+  const saveFn = useServerFn(saveBanner);
+  const [form, setForm] = useState({
+    discount_text: banner?.discount_text ?? "40% OFF",
+    subtitle: banner?.subtitle ?? "Everyone's Favorite",
+    button_text: banner?.button_text ?? "Order Now",
+    image_url: banner?.image_url ?? null,
+  });
+
+  const save = useMutation({
+    mutationFn: () => saveFn({ data: form }),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: CMS_KEY }),
+  });
+
+  return (
+    <form
+      className="space-y-4 rounded-3xl border border-border bg-card p-5"
+      onSubmit={(event) => {
+        event.preventDefault();
+        save.mutate();
+      }}
+    >
+      <h3 className="font-display text-lg font-bold text-foreground">بانر العروض · Hero banner</h3>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <label className="space-y-1.5">
+          <span className={label}>نص الخصم · Discount text</span>
+          <input value={form.discount_text} onChange={(e) => setForm({ ...form, discount_text: e.target.value })} className={field} required />
+        </label>
+        <label className="space-y-1.5">
+          <span className={label}>العنوان الفرعي · Subtitle</span>
+          <input value={form.subtitle} onChange={(e) => setForm({ ...form, subtitle: e.target.value })} className={field} required />
+        </label>
+        <label className="space-y-1.5">
+          <span className={label}>نص الزر · Button text</span>
+          <input value={form.button_text} onChange={(e) => setForm({ ...form, button_text: e.target.value })} className={field} required />
+        </label>
+      </div>
+
+      <ImageField value={form.image_url} folder="banner" onChange={(url) => setForm({ ...form, image_url: url })} />
+
+      <div className="flex items-center gap-3">
+        <button type="submit" disabled={save.isPending} className={primaryBtn}>
+          {save.isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />} نشر البانر · Publish
+        </button>
+        {save.isSuccess && <span className="text-xs font-bold text-primary">تم النشر ✓</span>}
+        {save.isError && <span className="text-xs font-bold text-destructive">{(save.error as Error).message}</span>}
+      </div>
+    </form>
+  );
+}
+
+/* ------------------------------- categories -------------------------------- */
+
+type CategoryDraft = {
+  id?: string | undefined;
+  name_en: string;
+  name_ar: string;
+  image_url: string | null;
+  tint: string;
+  is_active: boolean;
+};
+
+const emptyCategory: CategoryDraft = {
+  name_en: "",
+  name_ar: "",
+  image_url: null,
+  tint: "blush",
+  is_active: true,
+};
+
+function CategoriesEditor({ categories }: { categories: StorefrontCategory[] }) {
+  const queryClient = useQueryClient();
+  const saveFn = useServerFn(saveCategory);
+  const deleteFn = useServerFn(deleteCategory);
+  const reorderFn = useServerFn(reorderCategories);
+  const [draft, setDraft] = useState<CategoryDraft | null>(null);
+
+  const refresh = () => void queryClient.invalidateQueries({ queryKey: CMS_KEY });
+  const save = useMutation({
+    mutationFn: (input: CategoryDraft) =>
+      saveFn({
+        data: {
+          id: input.id,
+          name_en: input.name_en,
+          name_ar: input.name_ar,
+          image_url: input.image_url,
+          tint: input.tint,
+          is_active: input.is_active,
+          sort_order: categories.length + 1,
+        },
+      }),
+    onSuccess: () => {
+      setDraft(null);
+      refresh();
+    },
+  });
+  const remove = useMutation({ mutationFn: (id: string) => deleteFn({ data: { id } }), onSuccess: refresh });
+  const reorder = useMutation({ mutationFn: (ids: string[]) => reorderFn({ data: { ids } }), onSuccess: refresh });
+
+  const move = (index: number, direction: -1 | 1) => {
+    const ids = categories.map((category) => category.id);
+    const target = index + direction;
+    if (target < 0 || target >= ids.length) return;
+    [ids[index], ids[target]] = [ids[target]!, ids[index]!];
+    reorder.mutate(ids);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <button type="button" onClick={() => setDraft({ ...emptyCategory })} className={primaryBtn}>
+          <Plus className="h-4 w-4" aria-hidden /> قسم جديد · New category
+        </button>
+        <p className="text-xs text-muted-foreground">الترتيب هنا هو نفس ترتيب الشريط عند العميل.</p>
+      </div>
+
+      <ul className="grid gap-3">
+        {categories.map((category, index) => (
+          <li
+            key={category.id}
+            className={`flex flex-wrap items-center gap-3 rounded-3xl border border-border p-4 ${tintFill(category.tint)}`}
+          >
+            <div className="h-12 w-12 overflow-hidden rounded-2xl bg-card/80">
+              {category.image_url ? (
+                <img src={category.image_url} alt="" loading="lazy" className="h-full w-full object-cover" />
+              ) : (
+                <span className="grid h-full w-full place-items-center text-xs font-bold text-muted-foreground">
+                  {category.name_en.slice(0, 1)}
+                </span>
+              )}
+            </div>
+            <div className="me-auto">
+              <p className="text-sm font-bold text-foreground">
+                {category.name_ar} · {category.name_en}
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                {category.is_active ? "ظاهر للعميل" : "مخفي"} · #{category.sort_order}
+              </p>
+            </div>
+            <button type="button" aria-label="أعلى" onClick={() => move(index, -1)} className={ghostBtn}>
+              <ArrowUp className="h-4 w-4" aria-hidden />
+            </button>
+            <button type="button" aria-label="أسفل" onClick={() => move(index, 1)} className={ghostBtn}>
+              <ArrowDown className="h-4 w-4" aria-hidden />
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                setDraft({
+                  id: category.id,
+                  name_en: category.name_en,
+                  name_ar: category.name_ar,
+                  image_url: category.image_url,
+                  tint: category.tint,
+                  is_active: category.is_active,
+                })
+              }
+              className={ghostBtn}
+            >
+              <Pencil className="h-4 w-4" aria-hidden /> تعديل
+            </button>
+            <button
+              type="button"
+              onClick={() => remove.mutate(category.id)}
+              className={`${ghostBtn} text-destructive`}
+            >
+              <Trash2 className="h-4 w-4" aria-hidden /> حذف
+            </button>
+          </li>
+        ))}
+      </ul>
+
+      {draft && (
+        <form
+          className="space-y-4 rounded-3xl border border-border bg-card p-5"
+          onSubmit={(event) => {
+            event.preventDefault();
+            save.mutate(draft);
+          }}
+        >
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="space-y-1.5">
+              <span className={label}>الاسم بالعربية</span>
+              <input value={draft.name_ar} onChange={(e) => setDraft({ ...draft, name_ar: e.target.value })} className={field} required />
+            </label>
+            <label className="space-y-1.5">
+              <span className={label}>Name in English</span>
+              <input value={draft.name_en} onChange={(e) => setDraft({ ...draft, name_en: e.target.value })} className={field} required />
+            </label>
+          </div>
+          <ImageField value={draft.image_url} folder="categories" onChange={(url) => setDraft({ ...draft, image_url: url })} />
+          <TintPicker value={draft.tint} onChange={(tint) => setDraft({ ...draft, tint })} />
+          <label className="flex items-center gap-3 text-sm font-bold text-foreground">
+            <input
+              type="checkbox"
+              checked={draft.is_active}
+              onChange={(e) => setDraft({ ...draft, is_active: e.target.checked })}
+              className="h-5 w-5 rounded border-input"
+            />
+            ظاهر عند العميل · Visible
+          </label>
+          <div className="flex flex-wrap items-center gap-3">
+            <button type="submit" disabled={save.isPending} className={primaryBtn}>
+              {save.isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />} حفظ · Save
+            </button>
+            <button type="button" onClick={() => setDraft(null)} className={ghostBtn}>
+              إلغاء
+            </button>
+            {save.isError && <span className="text-xs font-bold text-destructive">{(save.error as Error).message}</span>}
+          </div>
+        </form>
+      )}
+    </div>
+  );
+}
+
+/* -------------------------------- products --------------------------------- */
+
+type ProductDraft = {
+  id?: string | undefined;
+  name_en: string;
+  name_ar: string;
+  description_en: string;
+  description_ar: string;
+  category: string;
+  category_id: string | null;
+  price: string;
+  sizes: { label: string; price: string }[];
+  image_url: string | null;
+  tint: string;
+  rating: string;
+  rating_count: string;
+  is_available: boolean;
+  is_popular: boolean;
+};
+
+const emptyProduct: ProductDraft = {
+  name_en: "",
+  name_ar: "",
+  description_en: "",
+  description_ar: "",
+  category: "cakes",
+  category_id: null,
+  price: "0",
+  sizes: DEFAULT_SIZES.map((size) => ({ label: size.label, price: "" })),
+  image_url: null,
+  tint: "cream",
+  rating: "4.8",
+  rating_count: "0",
+  is_available: true,
+  is_popular: true,
+};
+
+const toDraft = (product: StorefrontProduct): ProductDraft => ({
+  id: product.id,
+  name_en: product.name_en,
+  name_ar: product.name_ar,
+  description_en: product.description_en ?? "",
+  description_ar: product.description_ar ?? "",
+  category: product.category,
+  category_id: product.category_id,
+  price: String(product.price),
+  sizes: (product.sizes.length ? product.sizes : DEFAULT_SIZES).map((size) => ({
+    label: size.label,
+    price: size.price ? String(size.price) : "",
+  })),
+  image_url: product.image_url,
+  tint: product.tint ?? "cream",
+  rating: String(product.rating),
+  rating_count: String(product.rating_count),
+  is_available: product.is_available,
+  is_popular: product.is_popular,
+});
+
+function ProductsEditor({
+  products,
+  categories,
+}: {
+  products: StorefrontProduct[];
+  categories: StorefrontCategory[];
+}) {
+  const queryClient = useQueryClient();
+  const saveFn = useServerFn(saveStorefrontProduct);
+  const visibilityFn = useServerFn(setProductVisibility);
+  const deleteFn = useServerFn(deleteStorefrontProduct);
+  const [draft, setDraft] = useState<ProductDraft | null>(null);
+  const [search, setSearch] = useState("");
+
+  const refresh = () => void queryClient.invalidateQueries({ queryKey: CMS_KEY });
+
+  const save = useMutation({
+    mutationFn: (input: ProductDraft) =>
+      saveFn({
+        data: {
+          id: input.id,
+          name_en: input.name_en,
+          name_ar: input.name_ar,
+          description_en: input.description_en,
+          description_ar: input.description_ar,
+          category: input.category,
+          category_id: input.category_id,
+          price: Number(input.price) || 0,
+          sizes: input.sizes
+            .filter((size) => size.label.trim() && size.price !== "")
+            .map((size) => ({ label: size.label.trim(), price: Number(size.price) || 0 })),
+          image_url: input.image_url,
+          tint: input.tint,
+          rating: Number(input.rating) || 0,
+          rating_count: Number(input.rating_count) || 0,
+          is_available: input.is_available,
+          is_popular: input.is_popular,
+        },
+      }),
+    onSuccess: () => {
+      setDraft(null);
+      refresh();
+    },
+  });
+
+  const toggle = useMutation({
+    mutationFn: (input: { id: string; is_available?: boolean; is_popular?: boolean }) =>
+      visibilityFn({ data: input }),
+    onSuccess: refresh,
+  });
+
+  const remove = useMutation({ mutationFn: (id: string) => deleteFn({ data: { id } }), onSuccess: refresh });
+
+  const list = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    if (!needle) return products;
+    return products.filter((product) =>
+      `${product.name_ar} ${product.name_en} ${product.category}`.toLowerCase().includes(needle),
+    );
+  }, [products, search]);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <button type="button" onClick={() => setDraft({ ...emptyProduct, sizes: emptyProduct.sizes.map((s) => ({ ...s })) })} className={primaryBtn}>
+          <Plus className="h-4 w-4" aria-hidden /> منتج جديد · New product
+        </button>
+        <input
+          type="search"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="ابحث عن منتج…"
+          className="min-h-12 flex-1 rounded-full border border-input bg-background px-4 text-sm"
+        />
+      </div>
+
+      <ul className="grid gap-3">
+        {list.map((product) => (
+          <li
+            key={product.id}
+            className={`flex flex-wrap items-center gap-3 rounded-3xl border border-border p-4 ${tintFill(product.tint)}`}
+          >
+            <div className="h-14 w-14 overflow-hidden rounded-2xl bg-card/80">
+              {product.image_url ? (
+                <img src={product.image_url} alt="" loading="lazy" className="h-full w-full object-cover" />
+              ) : (
+                <span className="grid h-full w-full place-items-center text-[10px] text-muted-foreground">لا صورة</span>
+              )}
+            </div>
+            <div className="me-auto min-w-40">
+              <p className="text-sm font-bold text-foreground">
+                {product.name_ar} · {product.name_en}
+              </p>
+              <p className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                <span>{product.price.toFixed(2)} د.أ</span>
+                {product.sizes.length > 0 && <span>{product.sizes.map((s) => s.label).join(" · ")}</span>}
+                <span className="inline-flex items-center gap-0.5">
+                  <Star className="h-3 w-3 fill-gold text-gold" aria-hidden /> {product.rating.toFixed(1)}
+                </span>
+              </p>
+            </div>
+
+            <label className="inline-flex items-center gap-2 text-xs font-bold text-foreground">
+              <input
+                type="checkbox"
+                checked={product.is_available}
+                onChange={(event) => toggle.mutate({ id: product.id, is_available: event.target.checked })}
+                className="h-5 w-5 rounded border-input"
+              />
+              {product.is_available ? "متوفر · Active" : "غير متوفر · Out of stock"}
+            </label>
+
+            <label className="inline-flex items-center gap-2 text-xs font-bold text-foreground">
+              <input
+                type="checkbox"
+                checked={product.is_popular}
+                onChange={(event) => toggle.mutate({ id: product.id, is_popular: event.target.checked })}
+                className="h-5 w-5 rounded border-input"
+              />
+              في الأشهر · Popular
+            </label>
+
+            <button type="button" onClick={() => setDraft(toDraft(product))} className={ghostBtn}>
+              <Pencil className="h-4 w-4" aria-hidden /> تعديل · Edit
+            </button>
+            <button type="button" onClick={() => remove.mutate(product.id)} className={`${ghostBtn} text-destructive`}>
+              <Trash2 className="h-4 w-4" aria-hidden /> حذف
+            </button>
+          </li>
+        ))}
+      </ul>
+
+      {draft && (
+        <form
+          className="space-y-4 rounded-3xl border border-border bg-card p-5"
+          onSubmit={(event) => {
+            event.preventDefault();
+            save.mutate(draft);
+          }}
+        >
+          <h3 className="font-display text-lg font-bold text-foreground">
+            {draft.id ? "تعديل منتج · Edit product" : "منتج جديد · New product"}
+          </h3>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="space-y-1.5">
+              <span className={label}>الاسم بالعربية</span>
+              <input value={draft.name_ar} onChange={(e) => setDraft({ ...draft, name_ar: e.target.value })} className={field} required />
+            </label>
+            <label className="space-y-1.5">
+              <span className={label}>Name in English</span>
+              <input value={draft.name_en} onChange={(e) => setDraft({ ...draft, name_en: e.target.value })} className={field} required />
+            </label>
+            <label className="space-y-1.5">
+              <span className={label}>الوصف بالعربية</span>
+              <textarea
+                value={draft.description_ar}
+                onChange={(e) => setDraft({ ...draft, description_ar: e.target.value })}
+                rows={3}
+                className="w-full rounded-2xl border border-input bg-background p-3 text-sm"
+              />
+            </label>
+            <label className="space-y-1.5">
+              <span className={label}>Description in English</span>
+              <textarea
+                value={draft.description_en}
+                onChange={(e) => setDraft({ ...draft, description_en: e.target.value })}
+                rows={3}
+                className="w-full rounded-2xl border border-input bg-background p-3 text-sm"
+              />
+            </label>
+            <label className="space-y-1.5">
+              <span className={label}>القسم · Category</span>
+              <select
+                value={draft.category_id ?? ""}
+                onChange={(e) => setDraft({ ...draft, category_id: e.target.value || null })}
+                className={field}
+              >
+                <option value="">— بدون قسم —</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name_ar} · {category.name_en}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="space-y-1.5">
+              <span className={label}>التصنيف الداخلي · Internal tag</span>
+              <input value={draft.category} onChange={(e) => setDraft({ ...draft, category: e.target.value })} className={field} required />
+            </label>
+            <label className="space-y-1.5">
+              <span className={label}>السعر الأساسي · Base price</span>
+              <input type="number" min="0" step="0.01" value={draft.price} onChange={(e) => setDraft({ ...draft, price: e.target.value })} className={field} required />
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="space-y-1.5">
+                <span className={label}>التقييم · Rating</span>
+                <input type="number" min="0" max="5" step="0.1" value={draft.rating} onChange={(e) => setDraft({ ...draft, rating: e.target.value })} className={field} />
+              </label>
+              <label className="space-y-1.5">
+                <span className={label}>عدد التقييمات</span>
+                <input type="number" min="0" step="1" value={draft.rating_count} onChange={(e) => setDraft({ ...draft, rating_count: e.target.value })} className={field} />
+              </label>
+            </div>
+          </div>
+
+          <fieldset className="space-y-2">
+            <legend className={label}>الأحجام والأسعار · Sizes &amp; prices</legend>
+            <div className="grid gap-2 sm:grid-cols-3">
+              {draft.sizes.map((size, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <input
+                    value={size.label}
+                    onChange={(e) => {
+                      const sizes = draft.sizes.map((row, i) => (i === index ? { ...row, label: e.target.value } : row));
+                      setDraft({ ...draft, sizes });
+                    }}
+                    placeholder="6 inch"
+                    className={field}
+                    aria-label="حجم"
+                  />
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={size.price}
+                    onChange={(e) => {
+                      const sizes = draft.sizes.map((row, i) => (i === index ? { ...row, price: e.target.value } : row));
+                      setDraft({ ...draft, sizes });
+                    }}
+                    placeholder="السعر"
+                    className={field}
+                    aria-label="سعر الحجم"
+                  />
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => setDraft({ ...draft, sizes: [...draft.sizes, { label: "", price: "" }] })}
+              className={ghostBtn}
+            >
+              <Plus className="h-4 w-4" aria-hidden /> حجم إضافي
+            </button>
+          </fieldset>
+
+          <ImageField value={draft.image_url} folder="products" onChange={(url) => setDraft({ ...draft, image_url: url })} />
+          <TintPicker value={draft.tint} onChange={(tint) => setDraft({ ...draft, tint })} />
+
+          <div className="flex flex-wrap gap-5">
+            <label className="flex items-center gap-3 text-sm font-bold text-foreground">
+              <input
+                type="checkbox"
+                checked={draft.is_available}
+                onChange={(e) => setDraft({ ...draft, is_available: e.target.checked })}
+                className="h-5 w-5 rounded border-input"
+              />
+              متوفر · Active
+            </label>
+            <label className="flex items-center gap-3 text-sm font-bold text-foreground">
+              <input
+                type="checkbox"
+                checked={draft.is_popular}
+                onChange={(e) => setDraft({ ...draft, is_popular: e.target.checked })}
+                className="h-5 w-5 rounded border-input"
+              />
+              يظهر في Popular Cakes
+            </label>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <button type="submit" disabled={save.isPending} className={primaryBtn}>
+              {save.isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />} حفظ ونشر · Save
+            </button>
+            <button type="button" onClick={() => setDraft(null)} className={ghostBtn}>
+              إلغاء
+            </button>
+            {save.isError && <span className="text-xs font-bold text-destructive">{(save.error as Error).message}</span>}
+          </div>
+        </form>
+      )}
+    </div>
+  );
+}

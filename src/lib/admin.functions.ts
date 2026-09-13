@@ -12,20 +12,6 @@ export type StaffMember = {
   last_sign_in_at: string | null;
 };
 
-export type AdminProduct = {
-  id: string;
-  slug: string;
-  name_ar: string;
-  name_en: string;
-  description_ar: string | null;
-  description_en: string | null;
-  category: string;
-  price: number;
-  is_available: boolean;
-  is_featured: boolean;
-  sort_order: number;
-};
-
 export type OrderLog = {
   id: string;
   order_number: string;
@@ -257,75 +243,6 @@ export const removeStaff = createServerFn({ method: "POST" })
     if (data.userId === context.userId) throw new Error("لا يمكنك حذف حسابك · You cannot remove your own account");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.auth.admin.deleteUser(data.userId);
-    if (error) throw new Error(error.message);
-    return { ok: true };
-  });
-
-/* --------------------------------- products -------------------------------- */
-
-const PRODUCT_SELECT =
-  "id, slug, name_ar, name_en, description_ar, description_en, category, price, is_available, is_featured, sort_order";
-
-export const listAdminProducts = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<AdminProduct[]> => {
-    await assertAdmin(context);
-    const { data, error } = await context.supabase
-      .from("products")
-      .select(PRODUCT_SELECT)
-      .order("category")
-      .order("sort_order");
-    if (error) throw new Error(error.message);
-    return (data ?? []).map((row) => ({ ...(row as AdminProduct), price: Number(row.price ?? 0) }));
-  });
-
-export type ProductInput = Omit<AdminProduct, "id"> & { id?: string };
-
-export const saveProduct = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((input: ProductInput) => {
-    if (!input?.name_ar?.trim() || !input?.name_en?.trim()) {
-      throw new Error("الاسم بالعربية والإنجليزية مطلوب · Arabic and English names are required");
-    }
-    if (!input?.category?.trim()) throw new Error("التصنيف مطلوب · Category is required");
-    if (!(Number(input.price) >= 0)) throw new Error("السعر غير صحيح · Invalid price");
-    return input;
-  })
-  .handler(async ({ data, context }) => {
-    await assertAdmin(context);
-    const slug =
-      data.slug?.trim() ||
-      data.name_en.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") ||
-      `product-${Date.now()}`;
-    const row = {
-      slug,
-      name_ar: data.name_ar.trim(),
-      name_en: data.name_en.trim(),
-      description_ar: data.description_ar?.trim() || null,
-      description_en: data.description_en?.trim() || null,
-      category: data.category.trim(),
-      price: Number(data.price),
-      is_available: !!data.is_available,
-      is_featured: !!data.is_featured,
-      sort_order: Number(data.sort_order ?? 0),
-    };
-    const query = data.id
-      ? context.supabase.from("products").update(row as never).eq("id", data.id)
-      : context.supabase.from("products").insert(row as never);
-    const { error } = await query;
-    if (error) throw new Error(error.message);
-    return { ok: true };
-  });
-
-export const deleteProduct = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((input: { id: string }) => {
-    if (!input?.id) throw new Error("id is required");
-    return input;
-  })
-  .handler(async ({ data, context }) => {
-    await assertAdmin(context);
-    const { error } = await context.supabase.from("products").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });

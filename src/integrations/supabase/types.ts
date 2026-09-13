@@ -164,6 +164,7 @@ export type Database = {
       products: {
         Row: {
           category: string
+          category_id: string | null
           created_at: string
           description_ar: string | null
           description_en: string | null
@@ -171,16 +172,22 @@ export type Database = {
           image_url: string | null
           is_available: boolean
           is_featured: boolean
+          is_popular: boolean
           name_ar: string
           name_en: string
           price: number
           priority_color: Database["public"]["Enums"]["priority_color"] | null
+          rating: number
+          rating_count: number
+          sizes: Json
           slug: string
           sort_order: number
+          tint: string | null
           updated_at: string
         }
         Insert: {
           category: string
+          category_id?: string | null
           created_at?: string
           description_ar?: string | null
           description_en?: string | null
@@ -188,16 +195,22 @@ export type Database = {
           image_url?: string | null
           is_available?: boolean
           is_featured?: boolean
+          is_popular?: boolean
           name_ar: string
           name_en: string
           price?: number
           priority_color?: Database["public"]["Enums"]["priority_color"] | null
+          rating?: number
+          rating_count?: number
+          sizes?: Json
           slug: string
           sort_order?: number
+          tint?: string | null
           updated_at?: string
         }
         Update: {
           category?: string
+          category_id?: string | null
           created_at?: string
           description_ar?: string | null
           description_en?: string | null
@@ -205,12 +218,97 @@ export type Database = {
           image_url?: string | null
           is_available?: boolean
           is_featured?: boolean
+          is_popular?: boolean
           name_ar?: string
           name_en?: string
           price?: number
           priority_color?: Database["public"]["Enums"]["priority_color"] | null
+          rating?: number
+          rating_count?: number
+          sizes?: Json
           slug?: string
           sort_order?: number
+          tint?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "storefront_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      storefront_banner: {
+        Row: {
+          button_text: string
+          created_at: string
+          discount_text: string
+          id: string
+          image_url: string | null
+          is_active: boolean
+          singleton: boolean
+          subtitle: string
+          updated_at: string
+        }
+        Insert: {
+          button_text?: string
+          created_at?: string
+          discount_text?: string
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          singleton?: boolean
+          subtitle?: string
+          updated_at?: string
+        }
+        Update: {
+          button_text?: string
+          created_at?: string
+          discount_text?: string
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          singleton?: boolean
+          subtitle?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      storefront_categories: {
+        Row: {
+          created_at: string
+          id: string
+          image_url: string | null
+          is_active: boolean
+          name_ar: string
+          name_en: string
+          sort_order: number
+          tint: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          name_ar: string
+          name_en: string
+          sort_order?: number
+          tint?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          name_ar?: string
+          name_en?: string
+          sort_order?: number
+          tint?: string
           updated_at?: string
         }
         Relationships: []
