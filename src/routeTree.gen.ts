@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AdminSetupRouteImport } from './routes/admin-setup'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as DiscoverRouteImport } from './routes/discover'
+import { Route as EditOrderRouteImport } from './routes/edit-order'
 import { Route as KitchenRouteImport } from './routes/kitchen'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as OrderEditRouteImport } from './routes/order-edit'
@@ -47,6 +48,11 @@ const AuthRoute = AuthRouteImport.update({
 const DiscoverRoute = DiscoverRouteImport.update({
   id: '/discover',
   path: '/discover',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EditOrderRoute = EditOrderRouteImport.update({
+  id: '/edit-order',
+  path: '/edit-order',
   getParentRoute: () => rootRouteImport,
 } as any)
 const KitchenRoute = KitchenRouteImport.update({
@@ -105,6 +111,7 @@ export interface FileRoutesByFullPath {
   '/admin-setup': typeof AdminSetupRoute
   '/auth': typeof AuthRoute
   '/discover': typeof DiscoverRoute
+  '/edit-order': typeof EditOrderRoute
   '/kitchen': typeof KitchenRoute
   '/login': typeof LoginRoute
   '/order-edit': typeof OrderEditRoute
@@ -121,6 +128,7 @@ export interface FileRoutesByTo {
   '/admin-setup': typeof AdminSetupRoute
   '/auth': typeof AuthRoute
   '/discover': typeof DiscoverRoute
+  '/edit-order': typeof EditOrderRoute
   '/kitchen': typeof KitchenRoute
   '/login': typeof LoginRoute
   '/order-edit': typeof OrderEditRoute
@@ -139,6 +147,7 @@ export interface FileRoutesById {
   '/admin-setup': typeof AdminSetupRoute
   '/auth': typeof AuthRoute
   '/discover': typeof DiscoverRoute
+  '/edit-order': typeof EditOrderRoute
   '/kitchen': typeof KitchenRoute
   '/login': typeof LoginRoute
   '/order-edit': typeof OrderEditRoute
@@ -157,6 +166,7 @@ export interface FileRouteTypes {
     | '/admin-setup'
     | '/auth'
     | '/discover'
+    | '/edit-order'
     | '/kitchen'
     | '/login'
     | '/order-edit'
@@ -173,6 +183,7 @@ export interface FileRouteTypes {
     | '/admin-setup'
     | '/auth'
     | '/discover'
+    | '/edit-order'
     | '/kitchen'
     | '/login'
     | '/order-edit'
@@ -190,6 +201,7 @@ export interface FileRouteTypes {
     | '/admin-setup'
     | '/auth'
     | '/discover'
+    | '/edit-order'
     | '/kitchen'
     | '/login'
     | '/order-edit'
@@ -208,6 +220,7 @@ export interface RootRouteChildren {
   AdminSetupRoute: typeof AdminSetupRoute
   AuthRoute: typeof AuthRoute
   DiscoverRoute: typeof DiscoverRoute
+  EditOrderRoute: typeof EditOrderRoute
   KitchenRoute: typeof KitchenRoute
   LoginRoute: typeof LoginRoute
   OrderEditRoute: typeof OrderEditRoute
@@ -252,6 +265,13 @@ declare module '@tanstack/react-router' {
       path: '/discover'
       fullPath: '/discover'
       preLoaderRoute: typeof DiscoverRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/edit-order': {
+      id: '/edit-order'
+      path: '/edit-order'
+      fullPath: '/edit-order'
+      preLoaderRoute: typeof EditOrderRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/kitchen': {
@@ -348,6 +368,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminSetupRoute: AdminSetupRoute,
   AuthRoute: AuthRoute,
   DiscoverRoute: DiscoverRoute,
+  EditOrderRoute: EditOrderRoute,
   KitchenRoute: KitchenRoute,
   LoginRoute: LoginRoute,
   OrderEditRoute: OrderEditRoute,
