@@ -146,6 +146,8 @@ export function ProductModal({ product, onClose }: { product: Product | null; on
             </Group>
           )}
 
+          <CakeCustomizationPanel value={customization} onChange={setCustomization} />
+
           <div>
             <label htmlFor={notesId} className="mb-2 block text-xs font-bold tracking-wide text-muted-foreground uppercase">
               {t("notes")}
