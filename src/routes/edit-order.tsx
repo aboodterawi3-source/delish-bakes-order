@@ -145,7 +145,7 @@ function EditOrderPage() {
 
               <button
                 type="button"
-                disabled={save.isPending || !date || !time}
+                disabled={save.isPending || expired || !date || !time}
                 onClick={() => save.mutate()}
                 className="min-h-12 w-full rounded-full bg-[#8B4513] px-6 text-sm font-bold text-white shadow-sm transition-transform hover:scale-[1.02] active:scale-95 disabled:opacity-60"
               >
