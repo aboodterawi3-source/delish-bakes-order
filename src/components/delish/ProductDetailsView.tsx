@@ -127,12 +127,10 @@ export function ProductDetailsView({
       </header>
 
       {/* Main Product Showcase Block */}
-      <main className="relative z-10 flex-1 space-y-4 px-5 pt-3 pb-24">
-        <div className="relative flex min-h-[290px] items-center justify-center sm:min-h-[340px]">
-          {/* Vertical thumbnail gallery, flipped to the correct side per language */}
-          <div
-            className={`absolute top-1/2 z-10 flex -translate-y-1/2 flex-col gap-2.5 ${ar ? "right-0" : "left-0"}`}
-          >
+      <main className="relative z-10 w-full max-w-3xl flex-1 space-y-4 self-center overflow-x-hidden px-4 pt-3 pb-24 sm:px-5">
+        <div className="flex min-h-[290px] items-center justify-center gap-3 sm:min-h-[340px] sm:gap-5">
+          {/* Vertical thumbnail gallery; the flex row flips itself in Arabic */}
+          <div className="z-10 flex shrink-0 flex-col gap-2.5">
             {thumbnails.map((thumb) => {
               const active = selectedThumb === thumb.id;
               return (
@@ -142,9 +140,9 @@ export function ProductDetailsView({
                   onClick={() => setSelectedThumb(thumb.id)}
                   aria-pressed={active}
                   aria-label={thumb.alt}
-                  className={`h-11 w-11 overflow-hidden rounded-xl bg-card p-0.5 shadow-sm transition-all duration-200 ${
+                  className={`h-10 w-10 overflow-hidden rounded-xl bg-card p-0.5 shadow-sm transition-all duration-200 sm:h-11 sm:w-11 ${
                     active
-                      ? "scale-110 shadow-md ring-2 ring-primary"
+                      ? "shadow-md ring-2 ring-primary"
                       : "opacity-70 hover:scale-105 hover:opacity-100"
                   }`}
                 >
@@ -154,7 +152,7 @@ export function ProductDetailsView({
             })}
           </div>
 
-          <div className="flex h-72 w-56 items-center justify-center sm:h-80 sm:w-64">
+          <div className="flex h-64 min-w-0 flex-1 items-center justify-center sm:h-80">
             <img
               src={selectedImage?.src ?? "/images/ombre-ruffle-cake.jpg"}
               alt={ar ? "كيكة أومبري بطبقات الفوندان" : "Ombre Fondant Ruffle Cake"}
