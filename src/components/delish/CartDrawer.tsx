@@ -1,6 +1,7 @@
 import { useId, useRef, useState } from "react";
 import { CheckCircle2, Minus, Plus, Trash2, X } from "lucide-react";
-import { DELIVERY_FEE, WHATSAPP } from "@/lib/menu";
+import { WHATSAPP } from "@/lib/menu";
+import { DELIVERY_ZONES, feeForArea } from "@/lib/delivery-zones";
 import { useCart } from "@/lib/cart";
 import { useLang } from "@/lib/i18n";
 import { useDismissable } from "@/lib/a11y";
@@ -47,7 +48,8 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
 
   useDismissable(open, onClose);
 
-  const deliveryFee = form.method === "delivery" && count > 0 ? DELIVERY_FEE : 0;
+  const areaFee = feeForArea(form.area);
+  const deliveryFee = form.method === "delivery" && count > 0 ? (areaFee ?? 0) : 0;
   const total = subtotal + deliveryFee;
 
   const set = (k: keyof Form, v: string) => setForm((f) => ({ ...f, [k]: v }));
