@@ -43,6 +43,7 @@ export function SocialPanel() {
   const createFn = useServerFn(createSocialOrder);
 
   const [form, setForm] = useState(emptyForm);
+  const [customization, setCustomization] = useState<Customization>(emptyCustomization);
   const [copied, setCopied] = useState(false);
   const [done, setDone] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -53,6 +54,8 @@ export function SocialPanel() {
     setForm((current) => ({ ...current, [key]: value }));
     setCopied(false);
   }, []);
+
+  const extras = useMemo(() => customizationSummary(customization), [customization]);
 
   /** Customer-facing summary — internal staff notes are deliberately excluded. */
   const summary = useMemo(() => {
@@ -67,9 +70,12 @@ export function SocialPanel() {
     ];
     if (form.event_date) lines.push(`تاريخ المناسبة: ${form.event_date}`);
     if (form.is_urgent) lines.push("🚨 طلب مستعجل");
+    if (extras.ar.length) lines.push(...extras.ar.map((line) => `• ${line}`));
+    const extraNotes = customization.notes.trim();
+    if (extraNotes) lines.push(`ملاحظات إضافية: ${extraNotes}`);
     if (form.design_notes.trim()) lines.push(`ملاحظات التصميم: ${form.design_notes.trim()}`);
     return lines.join("\n");
-  }, [form]);
+  }, [form, extras, customization.notes]);
 
   const submit = useMutation({
     mutationFn: (input: SocialOrderInput) => createFn({ data: input }),
@@ -77,7 +83,9 @@ export function SocialPanel() {
       setDone(order.order_number);
       setError(null);
       setForm(emptyForm);
+      setCustomization(emptyCustomization);
     },
+
     onError: (mutationError: Error) => setError(mutationError.message),
   });
 
