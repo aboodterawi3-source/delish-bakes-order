@@ -792,7 +792,7 @@ function StaffPermissionMatrixPanel() {
 
   return (
     <section aria-labelledby="matrix-heading" className="space-y-6">
-      <div className="rounded-3xl border border-slate-100 bg-white p-6 shadow-[0_8px_24px_-8px_rgba(62,39,35,0.06)]">
+      <div className="rounded-3xl border border-slate-100 bg-white p-4 shadow-[0_8px_24px_-8px_rgba(62,39,35,0.06)] sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
           <div>
             <h2 id="matrix-heading" className="font-serif text-lg font-bold text-[#3E2723]">

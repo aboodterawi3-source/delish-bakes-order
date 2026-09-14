@@ -330,7 +330,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                 <legend className="mb-2 text-xs font-bold tracking-wide text-muted-foreground uppercase">
                   {t("method")}
                 </legend>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid gap-2 min-[360px]:grid-cols-2">
                   {(["delivery", "pickup"] as const).map((m) => (
                     <button
                       key={m}
