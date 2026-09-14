@@ -916,7 +916,14 @@ function OrderPanel({
                       </span>
                     )}
                   </div>
-                  {item.options_ar.length ? <p className="text-xs text-primary">{item.options_ar.join(" · ")}</p> : null}
+                  {item.options_ar.length ? (
+                    <ul className="space-y-0.5 text-xs font-semibold text-primary">
+                      {item.options_ar.map((option) => (
+                        <li key={option}>• {option}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+
                   {item.notes ? <p className="text-xs text-foreground">ملاحظة: {item.notes}</p> : null}
 
                   {/* Price modifier inline control */}
