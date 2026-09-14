@@ -45,8 +45,29 @@ import {
 } from "@/lib/authorization.functions";
 import { CmsPanel } from "@/components/delish/CmsPanel";
 
+/** Saves the customer's original reference photo so sales can print or forward it. */
+async function downloadDesignImage(url: string, orderNumber: string) {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error("download failed");
+    const blob = await response.blob();
+    const extension = (blob.type.split("/")[1] ?? "jpg").replace("jpeg", "jpg");
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = objectUrl;
+    link.download = `delish-${orderNumber}.${extension}`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(objectUrl);
+  } catch {
+    // Signed URL expired or blocked: open it so staff can still save manually.
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+}
 
 const flow: SalesStatus[] = ["new", "baking", "ready", "out_for_delivery", "completed"];
+
 
 const statusMeta: Record<SalesStatus, { ar: string; en: string; chip: string }> = {
   new: { ar: "قيد الانتظار", en: "Pending", chip: "bg-[#FDE2CF] text-[#7B3F00]" },
