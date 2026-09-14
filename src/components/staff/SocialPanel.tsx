@@ -9,6 +9,13 @@ import {
   getSocialAccess,
   type SocialOrderInput,
 } from "@/lib/social.functions";
+import {
+  CakeCustomizationPanel,
+  customizationSummary,
+  emptyCustomization,
+  type Customization,
+} from "@/components/delish/CakeCustomizationPanel";
+
 
 
 const emptyForm = {
