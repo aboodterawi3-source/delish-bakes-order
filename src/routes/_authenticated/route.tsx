@@ -2,6 +2,7 @@ import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 
 function roleHintFromPath(pathname: string): string | undefined {
+  if (pathname.startsWith("/staff")) return undefined;
   if (pathname.startsWith("/admin")) return "admin";
   if (pathname.startsWith("/sales")) return "sales";
   if (pathname.startsWith("/kds")) return "kitchen";

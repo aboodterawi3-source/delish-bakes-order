@@ -30,7 +30,7 @@ function SocialLoginPage() {
 
   useEffect(() => {
     void supabase.auth.getUser().then(({ data }) => {
-      if (data.user) void navigate({ to: "/social-portal", replace: true });
+      if (data.user) void navigate({ to: "/staff", search: { tab: "social" as const }, replace: true });
     });
   }, [navigate]);
 
@@ -44,7 +44,7 @@ function SocialLoginPage() {
       setError("بيانات الدخول غير صحيحة · Invalid name or password");
       return;
     }
-    void navigate({ to: "/social-portal", replace: true });
+    void navigate({ to: "/staff", search: { tab: "social" as const }, replace: true });
   };
 
   return (
