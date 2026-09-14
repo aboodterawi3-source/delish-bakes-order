@@ -6,6 +6,12 @@ import { Pic } from "@/components/delish/Pic";
 import { useLang } from "@/lib/i18n";
 import { useCart } from "@/lib/cart";
 import { useDismissable } from "@/lib/a11y";
+import {
+  CakeCustomizationPanel,
+  customizationSummary,
+  emptyCustomization,
+  type Customization,
+} from "./CakeCustomizationPanel";
 
 
 export function ProductModal({ product, onClose }: { product: Product | null; onClose: () => void }) {
@@ -15,6 +21,7 @@ export function ProductModal({ product, onClose }: { product: Product | null; on
   const [flavorId, setFlavorId] = useState<string | null>(null);
   const [qty, setQty] = useState(1);
   const [notes, setNotes] = useState("");
+  const [customization, setCustomization] = useState<Customization>(emptyCustomization);
   const titleId = useId();
   const notesId = useId();
 
@@ -27,6 +34,7 @@ export function ProductModal({ product, onClose }: { product: Product | null; on
       setFlavorId(product.flavors?.[0]?.id ?? null);
       setQty(1);
       setNotes("");
+      setCustomization(emptyCustomization);
     }
   }, [product]);
 
@@ -43,6 +51,9 @@ export function ProductModal({ product, onClose }: { product: Product | null; on
   const label = (o: Option) => (lang === "ar" ? o.ar : o.en);
 
   const submit = () => {
+    const extras = customizationSummary(customization);
+    const extraNote = customization.notes.trim();
+    const allNotes = [notes.trim(), extraNote].filter(Boolean).join(" — ");
     add({
       ar: product.ar,
       en: product.en,
@@ -55,11 +66,20 @@ export function ProductModal({ product, onClose }: { product: Product | null; on
         flavorId: flavor?.id,
       },
       image: imageSets[product.image]!.src,
-      detailsAr: [size ? `${t_ar("size")}: ${size.ar}` : "", flavor ? `${t_ar("flavor")}: ${flavor.ar}` : ""].filter(
-        Boolean,
-      ),
-      detailsEn: [size ? `Size: ${size.en}` : "", flavor ? `Flavor: ${flavor.en}` : ""].filter(Boolean),
-      notes: notes.trim() || undefined,
+      designImage: customization.designImageUrl ?? undefined,
+      detailsAr: [
+        size ? `${t_ar("size")}: ${size.ar}` : "",
+        flavor ? `${t_ar("flavor")}: ${flavor.ar}` : "",
+        ...extras.ar,
+      ].filter(Boolean),
+      detailsEn: [
+        size ? `Size: ${size.en}` : "",
+        flavor ? `Flavor: ${flavor.en}` : "",
+        ...extras.en,
+      ].filter(Boolean),
+      extrasAr: extras.ar,
+      extrasEn: extras.en,
+      notes: allNotes || undefined,
     });
     onClose();
   };
@@ -125,6 +145,8 @@ export function ProductModal({ product, onClose }: { product: Product | null; on
               ))}
             </Group>
           )}
+
+          <CakeCustomizationPanel value={customization} onChange={setCustomization} />
 
           <div>
             <label htmlFor={notesId} className="mb-2 block text-xs font-bold tracking-wide text-muted-foreground uppercase">
