@@ -1,7 +1,7 @@
 import { useId, useRef, useState } from "react";
 import { CheckCircle2, Minus, Plus, Trash2, X } from "lucide-react";
 import { WHATSAPP } from "@/lib/menu";
-import { DELIVERY_ZONES, feeForArea } from "@/lib/delivery-zones";
+import { DELIVERY_ZONES, OTHER_GOVERNORATES_AREA, feeForArea } from "@/lib/delivery-zones";
 import { useCart } from "@/lib/cart";
 import { useLang } from "@/lib/i18n";
 import { useDismissable } from "@/lib/a11y";
