@@ -46,7 +46,15 @@ export type PricedLine = {
 const pick = (list: Option[] | undefined, id: string | undefined | null) =>
   list?.find((option) => option.id === id) ?? null;
 
-export function priceLine(spec: LineSpec, quantity: number, notes: string | null): PricedLine {
+/** Free extras picked by the customer (candles, balloons, topper, gift…). */
+export type LineExtras = { ar: string[]; en: string[] };
+
+export function priceLine(
+  spec: LineSpec,
+  quantity: number,
+  notes: string | null,
+  extras: LineExtras = { ar: [], en: [] },
+): PricedLine {
   if (spec.kind === "catalog") {
     const product = products.find((candidate) => candidate.id === spec.productId);
     if (!product) {
