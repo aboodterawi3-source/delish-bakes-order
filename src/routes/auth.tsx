@@ -117,9 +117,9 @@ function AuthPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    void supabase.auth.getUser().then(async ({ data }) => {
+    void supabase.auth.getUser().then(({ data }) => {
       if (!data.user) return;
-      void navigate({ to: await landingPath(data.user.id), replace: true });
+      void navigate({ to: landingPath(), replace: true });
     });
   }, [navigate]);
 
