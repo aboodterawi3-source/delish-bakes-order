@@ -966,8 +966,35 @@ function OrderPanel({
             <p className="mt-2 rounded-xl bg-primary/10 p-3 text-sm text-foreground">ملاحظات داخلية: {order.staff_notes}</p>
           ) : null}
           {order.design_image_url ? (
-            <img src={order.design_image_url} alt={`صورة التصميم المطلوب للطلب ${order.order_number}`} loading="lazy" className="mt-3 w-full rounded-xl" />
+            <div className="mt-3 space-y-2">
+              <img
+                src={order.design_image_url}
+                alt={`صورة التصميم المطلوب للطلب ${order.order_number}`}
+                loading="lazy"
+                className="w-full rounded-xl"
+              />
+              <div className="flex flex-wrap gap-2">
+                <a
+                  href={order.design_image_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full border border-primary px-4 text-xs font-bold text-primary"
+                >
+                  فتح الصورة · View
+                </a>
+                <button
+                  type="button"
+                  onClick={() =>
+                    void downloadDesignImage(order.design_image_url as string, order.order_number)
+                  }
+                  className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full bg-primary px-4 text-xs font-bold text-primary-foreground"
+                >
+                  <Download className="h-4 w-4" aria-hidden="true" /> تحميل الصورة · Download
+                </button>
+              </div>
+            </div>
           ) : null}
+
         </section>
 
         <button
