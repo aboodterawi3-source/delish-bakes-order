@@ -17,7 +17,26 @@ export type SocialOrderInput = {
   is_urgent: boolean;
   design_notes?: string | null;
   staff_notes?: string | null;
+  /** Chosen extras (candles, balloons, acrylic topper, gift phones…) — labels only. */
+  extras_ar?: string[] | null;
+  extras_en?: string[] | null;
+  /** Signed link of the customer's reference photo. */
+  design_image_url?: string | null;
 };
+
+const MAX_EXTRAS = 20;
+const MAX_EXTRA_LENGTH = 160;
+
+/** Extras are plain labels; keep them short, single-line and bounded. */
+const extraList = (value: unknown): string[] => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entry) => (typeof entry === "string" ? entry.replace(/[\r\n]+/g, " ").trim() : ""))
+    .filter((entry) => entry.length > 0)
+    .slice(0, MAX_EXTRAS)
+    .map((entry) => entry.slice(0, MAX_EXTRA_LENGTH));
+};
+
 
 /** Confirms the signed-in user may use the social media portal. */
 export const getSocialAccess = createServerFn({ method: "GET" })
