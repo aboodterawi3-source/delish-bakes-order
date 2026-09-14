@@ -695,7 +695,7 @@ function OrderPanel({
 
         <section className="mt-6">
           <h3 className="text-sm font-bold text-foreground">طريقة التسليم</h3>
-          <div className="mt-2 flex gap-2">
+          <div className="mt-2 flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => onPatch({ method: "pickup", delivery_fee: 0 })}
@@ -868,14 +868,14 @@ function OrderPanel({
             />
           </label>
           <p className={`mt-2 text-sm font-bold ${remaining > 0 ? "text-destructive" : "text-foreground"}`}>المتبقي: {jd(remaining)}</p>
-          <div className="mt-3 flex gap-2">
+          <div className="mt-3 flex flex-wrap gap-2">
             {(["cash", "cliq", "visa"] as PaymentMethod[]).map((method) => (
               <button
                 key={method}
                 type="button"
                 onClick={() => onPatch({ payment_method: method })}
                 aria-pressed={order.payment_method === method}
-                className={`min-h-12 flex-1 rounded-full px-3 text-sm font-bold ${order.payment_method === method ? "bg-primary text-primary-foreground" : "border border-border text-foreground"}`}
+                className={`min-h-12 min-w-20 flex-1 rounded-full px-2 text-sm font-bold ${order.payment_method === method ? "bg-primary text-primary-foreground" : "border border-border text-foreground"}`}
               >
                 {payMeta[method].ar}
               </button>
@@ -896,8 +896,8 @@ function OrderPanel({
                 );
               return (
                 <li key={item.id} className="space-y-2 rounded-2xl border border-border bg-background p-3.5">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
+                  <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
+                    <div className="min-w-0">
                       <p className="font-bold text-foreground">{item.quantity} × {item.name_ar}</p>
                       <p className="text-xs font-medium text-muted-foreground">{item.name_en}</p>
                     </div>
@@ -918,7 +918,7 @@ function OrderPanel({
                   {item.notes ? <p className="text-xs text-foreground">ملاحظة: {item.notes}</p> : null}
 
                   {/* Price modifier inline control */}
-                  <div className="flex items-center justify-between border-t border-border pt-2 text-xs">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2 text-xs">
                     <span className="font-medium text-muted-foreground">سعر الوحدة · Unit Price:</span>
                     {canEditPrice && onUpdateItemPrice ? (
                       <div className="flex items-center gap-1.5">

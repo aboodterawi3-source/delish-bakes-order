@@ -17,9 +17,9 @@ export function OrderingDialogs({ kind, onClose, onCart }: { kind: DialogKind; o
   if (!kind) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-foreground/45 sm:items-center sm:p-5">
+    <div className="fixed inset-0 z-50 flex max-w-full items-end justify-center overflow-x-hidden bg-foreground/45 sm:items-center sm:p-5">
       <button type="button" tabIndex={-1} aria-label="Close" onClick={onClose} className="absolute inset-0 cursor-default" />
-      <section role="dialog" aria-modal="true" aria-labelledby={titleId} className="relative max-h-[94dvh] w-full max-w-5xl overflow-y-auto rounded-t-3xl bg-card shadow-[var(--shadow-soft)] sm:rounded-3xl">
+      <section role="dialog" aria-modal="true" aria-labelledby={titleId} className="relative max-h-[94dvh] w-full max-w-5xl min-w-0 overflow-x-hidden overflow-y-auto rounded-t-3xl bg-card shadow-[var(--shadow-soft)] sm:rounded-3xl">
         <header className="sticky top-0 z-10 grid grid-cols-[minmax(0,1fr)_auto] items-center border-b border-border bg-card px-5 py-3">
           <h2 id={titleId} className="truncate font-display text-xl font-bold">
             {kind === "cake" ? (lang === "ar" ? "صمّم كيكتك" : "Design your cake") : lang === "ar" ? "قائمة ديليش" : "Delish menu"}
@@ -28,7 +28,7 @@ export function OrderingDialogs({ kind, onClose, onCart }: { kind: DialogKind; o
             <X className="h-5 w-5" aria-hidden="true" />
           </button>
         </header>
-        <div className="p-5 sm:p-7">
+        <div className="p-4 sm:p-7">
           {kind === "cake" ? <CakeBuilder onDone={() => { onClose(); onCart(); }} /> : <QuickShop onCart={onCart} />}
         </div>
       </section>
@@ -58,13 +58,13 @@ function QuickShop({ onCart }: { onCart: () => void }) {
             <div className="p-4">
               <h3 className="font-display font-bold">{lang === "ar" ? product.ar : product.en}</h3>
               <p className="mt-1 text-xs text-muted-foreground">{lang === "ar" ? product.descAr : product.descEn}</p>
-              <div className="mt-4 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3">
+              <div className="mt-4 flex flex-wrap items-center gap-3">
                 <div className="flex items-center rounded-full border border-border">
                   <button type="button" onClick={() => setQuantities((q) => ({ ...q, [product.id]: Math.max(1, qty - 1) }))} aria-label="Decrease" className="grid h-12 w-10 place-items-center"><Minus className="h-4 w-4" /></button>
                   <span className="w-6 text-center text-sm font-bold">{qty}</span>
                   <button type="button" onClick={() => setQuantities((q) => ({ ...q, [product.id]: qty + 1 }))} aria-label="Increase" className="grid h-12 w-10 place-items-center"><Plus className="h-4 w-4" /></button>
                 </div>
-                <button type="button" onClick={() => addProduct(product)} className="min-h-12 rounded-full bg-primary px-4 text-sm font-bold text-primary-foreground">
+                <button type="button" onClick={() => addProduct(product)} className="min-h-12 min-w-0 flex-1 rounded-full bg-primary px-4 text-sm font-bold text-primary-foreground">
                   {product.price.toFixed(2)} {t("jod")} · {t("addToCart")}
                 </button>
               </div>

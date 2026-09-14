@@ -315,7 +315,7 @@ export function AdminPanel() {
                   <h2 id="agents-heading" className="font-display text-lg font-bold text-foreground">
                     أداء فريق السوشال ميديا
                   </h2>
-                  <div className="overflow-x-auto rounded-2xl border border-border bg-card">
+                   <div className="overscroll-x-contain overflow-x-auto rounded-2xl border border-border bg-card">
                     <table className="w-full min-w-[32rem] text-start text-sm">
                       <thead className="bg-muted text-xs font-bold text-muted-foreground">
                         <tr>
@@ -373,7 +373,7 @@ function OrderLogs({ title, rows, showReason }: { title: string; rows: OrderLog[
       <h2 className="font-display text-lg font-bold text-foreground">
         {title} <span className="text-sm font-bold text-muted-foreground">({rows.length})</span>
       </h2>
-      <div className="overflow-x-auto rounded-2xl border border-border bg-card">
+       <div className="overscroll-x-contain overflow-x-auto rounded-2xl border border-border bg-card">
         <table className="w-full min-w-[40rem] text-start text-sm">
           <thead className="bg-muted text-xs font-bold text-muted-foreground">
             <tr>
@@ -436,7 +436,7 @@ function CustomerDirectory({ customers }: { customers: { phone: string; name: st
           className="min-h-12 w-full rounded-full border border-input bg-background ps-9 pe-4 text-sm"
         />
       </label>
-      <div className="overflow-x-auto rounded-2xl border border-border bg-card">
+       <div className="overscroll-x-contain overflow-x-auto rounded-2xl border border-border bg-card">
          <table className="w-full min-w-[32rem] text-start text-sm">
           <thead className="bg-muted text-xs font-bold text-muted-foreground">
             <tr>
@@ -859,14 +859,14 @@ function StaffPermissionMatrixPanel() {
         </div>
 
         {/* Matrix Table */}
-        <div className="mt-5 overflow-x-auto rounded-2xl border border-slate-100">
-          <table className="w-full text-start text-xs sm:text-sm">
+        <div className="mt-5 overscroll-x-contain overflow-x-auto rounded-2xl border border-slate-100">
+          <table className="w-full min-w-[38rem] text-start text-xs sm:text-sm">
             <thead className="bg-[#F9FBFC] text-xs font-bold text-[#7A6458]">
               <tr>
-                <th scope="col" className="p-3 text-start">المنتج · Product</th>
-                <th scope="col" className="p-3 text-start">التصنيف</th>
-                <th scope="col" className="p-3 text-start">السعر الافتراضي</th>
-                <th scope="col" className="p-3 text-start">صلاحية تعديل السعر (can_edit_price)</th>
+                <th scope="col" className="whitespace-nowrap p-3 text-start">المنتج · Product</th>
+                <th scope="col" className="whitespace-nowrap p-3 text-start">التصنيف</th>
+                <th scope="col" className="whitespace-nowrap p-3 text-start">السعر الافتراضي</th>
+                <th scope="col" className="whitespace-nowrap p-3 text-start">صلاحية تعديل السعر (can_edit_price)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
@@ -1062,18 +1062,18 @@ function AuthorizationPanel() {
       <div className="rounded-3xl border border-border bg-card p-4 sm:p-6">
         <h3 className="text-base font-bold text-foreground">سجل التدقيق · Audit log</h3>
         <p className="mt-1 text-xs text-muted-foreground">سجل غير قابل للتعديل لكل تغيير على الأسعار والخصومات.</p>
-        <div className="mt-3 overflow-x-auto">
-          <table className="w-full text-start text-xs sm:text-sm">
+        <div className="mt-3 overscroll-x-contain overflow-x-auto">
+          <table className="w-full min-w-[50rem] text-start text-xs sm:text-sm">
             <thead>
               <tr className="text-muted-foreground">
-                <th className="p-2 text-start">الموظف</th>
-                <th className="p-2 text-start">الطلب</th>
-                <th className="p-2 text-start">الإجراء</th>
-                <th className="p-2 text-start">قبل</th>
-                <th className="p-2 text-start">بعد</th>
-                <th className="p-2 text-start">الخصم</th>
-                <th className="p-2 text-start">السبب</th>
-                <th className="p-2 text-start">الوقت</th>
+                <th className="whitespace-nowrap p-2 text-start">الموظف</th>
+                <th className="whitespace-nowrap p-2 text-start">الطلب</th>
+                <th className="whitespace-nowrap p-2 text-start">الإجراء</th>
+                <th className="whitespace-nowrap p-2 text-start">قبل</th>
+                <th className="whitespace-nowrap p-2 text-start">بعد</th>
+                <th className="whitespace-nowrap p-2 text-start">الخصم</th>
+                <th className="whitespace-nowrap p-2 text-start">السبب</th>
+                <th className="whitespace-nowrap p-2 text-start">الوقت</th>
               </tr>
             </thead>
             <tbody>

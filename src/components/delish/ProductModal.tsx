@@ -140,7 +140,7 @@ export function ProductModal({ product, onClose }: { product: Product | null; on
             />
           </div>
 
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-1 rounded-full border border-border px-1">
               <button
                 onClick={() => setQty((q) => Math.max(1, q - 1))}

@@ -251,7 +251,7 @@ export function SocialPanel() {
 
             <fieldset className="text-sm font-bold text-[#3E2723]">
               <legend>طريقة التسليم · Fulfilment</legend>
-              <div className="mt-1 flex gap-2">
+              <div className="mt-1 flex flex-wrap gap-2">
                 {(["pickup", "delivery"] as const).map((method) => (
                   <button
                     key={method}
