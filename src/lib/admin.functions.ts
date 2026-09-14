@@ -95,17 +95,35 @@ export const bootstrapAdmin = createServerFn({ method: "POST" })
       .eq("role", "admin");
     if ((count ?? 0) > 0) throw new Error("Setup already completed");
 
+    // Reuse an existing account with the same name instead of failing on a duplicate.
+    let userId: string | null = null;
     const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
       email: data.email,
       password: data.password,
       email_confirm: true,
     });
-    if (error || !created.user) throw new Error(authErrorMessage(error?.message ?? "Could not create the admin account"));
+    if (created?.user) {
+      userId = created.user.id;
+    } else {
+      const { data: list } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 200 });
+      const existing = list?.users.find(
+        (user) => (user.email ?? "").toLowerCase() === data.email.toLowerCase(),
+      );
+      if (!existing) throw new Error(authErrorMessage(error?.message ?? "Could not create the admin account"));
+      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(existing.id, {
+        password: data.password,
+        email_confirm: true,
+      });
+      if (updateError) throw new Error(authErrorMessage(updateError.message));
+      userId = existing.id;
+    }
+
     const { error: roleError } = await supabaseAdmin
       .from("user_roles")
-      .insert({ user_id: created.user.id, role: "admin" });
+      .upsert({ user_id: userId, role: "admin" }, { onConflict: "user_id,role" });
     if (roleError) throw new Error(roleError.message);
     return { ok: true };
+
   });
 
 async function assertAdmin(context: { supabase: { from: (t: string) => any }; userId: string }) {
