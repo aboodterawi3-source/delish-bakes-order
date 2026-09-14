@@ -350,8 +350,33 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
               {form.method === "delivery" && (
                 <>
                   <Field label={t("area")} error={errors["area"]} errText={t("required")}>
-                    {(p) => <input className={inputCls} value={form.area} onChange={(e) => set("area", e.target.value)} {...p} />}
+                    {(p) => (
+                      <select
+                        className={inputCls}
+                        value={form.area}
+                        onChange={(e) => set("area", e.target.value)}
+                        {...p}
+                      >
+                        <option value="">{lang === "ar" ? "اختر المنطقة" : "Select your area"}</option>
+                        {DELIVERY_ZONES.map((zone) => (
+                          <optgroup key={zone.labelEn} label={lang === "ar" ? zone.labelAr : zone.labelEn}>
+                            {zone.areas.map((area) => (
+                              <option key={`${zone.labelEn}-${area}`} value={area}>
+                                {area} — {zone.fee.toFixed(2)} {t("jod")}
+                              </option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
+                    )}
                   </Field>
+                  {areaFee !== null && (
+                    <p className="-mt-2 text-xs font-semibold text-muted-foreground">
+                      {lang === "ar"
+                        ? `أجرة التوصيل لهذه المنطقة: ${areaFee.toFixed(2)} د.أ`
+                        : `Delivery fee for this area: ${areaFee.toFixed(2)} JOD`}
+                    </p>
+                  )}
                   <Field label={t("address")} error={errors["address"]} errText={t("required")}>
                     {(p) => (
                       <textarea
