@@ -1,4 +1,4 @@
-import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -10,25 +10,6 @@ import {
   type SocialOrderInput,
 } from "@/lib/social.functions";
 
-export const Route = createFileRoute("/social-portal")({
-  head: () => ({
-    meta: [
-      { title: "بوابة السوشال ميديا | Delish Social Portal" },
-      { name: "description", content: "إدخال طلبات ديليش من فريق السوشال ميديا فوراً إلى المبيعات والمطبخ." },
-      { name: "robots", content: "noindex, nofollow" },
-      { property: "og:title", content: "بوابة السوشال ميديا | Delish Social Portal" },
-      { property: "og:description", content: "Social media order entry portal for Delish Cake & Bake." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-    ],
-  }),
-  ssr: false,
-  beforeLoad: async () => {
-    const { data, error } = await supabase.auth.getUser();
-    if (error || !data.user) throw redirect({ to: "/social-login" });
-  },
-  component: SocialPortalPage,
-});
 
 const emptyForm = {
   customer_name: "",
@@ -49,7 +30,7 @@ const WHATSAPP_NUMBER = "962779179995";
 /** Universal share link — uses wa.me directly, no API endpoints or iframes. */
 const whatsappUrl = (text: string) => `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`;
 
-function SocialPortalPage() {
+export function SocialPanel() {
   const navigate = useNavigate();
   const accessFn = useServerFn(getSocialAccess);
   const createFn = useServerFn(createSocialOrder);

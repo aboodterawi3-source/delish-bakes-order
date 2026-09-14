@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -43,27 +43,9 @@ import {
   type StaffAuthorizationRow,
 } from "@/lib/authorization.functions";
 
-export const Route = createFileRoute("/_authenticated/admin")({
-  head: () => ({
-    meta: [
-      { title: "لوحة إدارة ديليش | Delish Admin Dashboard" },
-      {
-        name: "description",
-        content: "لوحة إدارة ديليش: حسابات الموظفين، المنتجات والأسعار، الإيرادات وطرق الدفع، وسجل العملاء.",
-      },
-      { name: "robots", content: "noindex, nofollow" },
-      { property: "og:title", content: "لوحة إدارة ديليش | Delish Admin Dashboard" },
-      { property: "og:description", content: "Staff accounts, products, revenue analytics and customer directory." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-    ],
-  }),
-  component: AdminPage,
-  errorComponent: AdminErrorScreen,
-});
 
 /** Keeps an authorisation failure from blanking the screen. */
-function AdminErrorScreen({ error }: { error: Error }) {
+export function AdminErrorScreen({ error }: { error: Error }) {
   const navigate = useNavigate();
   const leave = async () => {
     await supabase.auth.signOut();
@@ -129,7 +111,7 @@ function downloadCsv(name: string, headers: string[], rows: (string | number)[][
 
 type Tab = "analytics" | "staff" | "permissions" | "authorization";
 
-function AdminPage() {
+export function AdminPanel() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<Tab>("analytics");

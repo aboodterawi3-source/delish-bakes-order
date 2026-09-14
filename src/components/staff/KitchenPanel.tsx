@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -23,20 +23,6 @@ import {
   type PriorityColor,
 } from "@/lib/kds.functions";
 
-export const Route = createFileRoute("/_authenticated/kds")({
-  head: () => ({
-    meta: [
-      { title: "شاشة المطبخ | Delish Kitchen Display" },
-      { name: "description", content: "شاشة تجهيز طلبات مطبخ ديليش مع أولويات ملوّنة وتنبيه صوتي." },
-      { name: "robots", content: "noindex, nofollow" },
-      { property: "og:title", content: "شاشة المطبخ | Delish Kitchen Display" },
-      { property: "og:description", content: "Live kitchen preparation display for Delish Cake & Bake." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-    ],
-  }),
-  component: KdsPage,
-});
 
 /**
  * Saves the original, uncompressed reference image so the kitchen can send it
@@ -164,7 +150,7 @@ const filterMeta: Record<Filter, { ar: string; en: string }> = {
   all: { ar: "كل الطلبات النشطة", en: "All active" },
 };
 
-function KdsPage() {
+export function KitchenPanel() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const fetchOrders = useServerFn(getKitchenOrders);

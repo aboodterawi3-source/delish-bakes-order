@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -43,20 +43,6 @@ import {
 } from "@/lib/authorization.functions";
 import { CmsPanel } from "@/components/delish/CmsPanel";
 
-export const Route = createFileRoute("/_authenticated/sales")({
-  head: () => ({
-    meta: [
-      { title: "واجهة المبيعات | Delish Sales Desk" },
-      { name: "description", content: "إدارة طلبات ديليش: البحث، الحالة، التوصيل، الدفعات وإغلاق الشيفت المالي." },
-      { name: "robots", content: "noindex, nofollow" },
-      { property: "og:title", content: "واجهة المبيعات | Delish Sales Desk" },
-      { property: "og:description", content: "Sales desk for Delish Cake & Bake orders." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-    ],
-  }),
-  component: SalesPage,
-});
 
 const flow: SalesStatus[] = ["new", "baking", "ready", "out_for_delivery", "completed"];
 
@@ -148,7 +134,7 @@ function applyPatch(order: SalesOrder, input: OrderPatch): SalesOrder {
   return next;
 }
 
-function SalesPage() {
+export function SalesPanel() {
 
   const navigate = useNavigate();
   const queryClient = useQueryClient();
