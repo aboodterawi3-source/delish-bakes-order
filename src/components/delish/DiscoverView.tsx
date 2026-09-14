@@ -60,14 +60,14 @@ export function DiscoverView({
       <BackgroundCurves />
 
       {/* Top Header Bar */}
-      <header className="sticky top-0 z-20 flex items-center justify-between border-b border-border/80 bg-background/80 px-5 py-3.5 backdrop-blur-md">
-        <LangToggle variant="peach" />
+      <header className="sticky top-0 z-20 flex items-center justify-between gap-2 border-b border-border/80 bg-background/80 px-4 py-3.5 backdrop-blur-md sm:px-5">
+        <LangToggle variant="peach" className="shrink-0" />
 
-        <div className="flex flex-col items-center">
+        <div className="flex min-w-0 flex-col items-center">
           <DelishLogo size="sm" />
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"
             onClick={() => setSearchOpen(!searchOpen)}
@@ -105,7 +105,7 @@ export function DiscoverView({
         </div>
       )}
 
-      <main className="relative z-10 flex-1 space-y-6 px-5 py-4">
+      <main className="relative z-10 w-full max-w-3xl flex-1 space-y-6 self-center overflow-x-hidden px-4 py-4 sm:px-5">
         {/* Promotional hero banner — edited by the sales desk */}
         {banner && (
           <section
@@ -253,11 +253,11 @@ const ProductCard = memo(function ProductCard({
         product.tint,
       )}`}
     >
-      <div className="flex items-start justify-between">
-        <div>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
           <Link
             to="/product-details"
-            className="font-sans text-base font-extrabold text-foreground transition-transform hover:text-primary sm:text-lg"
+            className="block break-words font-sans text-base font-extrabold text-foreground transition-transform hover:text-primary sm:text-lg"
           >
             {name}
           </Link>
@@ -275,7 +275,7 @@ const ProductCard = memo(function ProductCard({
           onClick={() => setFavourite(!favourite)}
           aria-label={lang === "ar" ? "إضافة إلى المفضلة" : "Add to favorites"}
           aria-pressed={favourite}
-          className="flex h-8 w-8 items-center justify-center rounded-full bg-card/90 shadow-sm transition hover:bg-card active:scale-95"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-card/90 shadow-sm transition hover:bg-card active:scale-95"
         >
           <Heart
             className={`h-4 w-4 ${favourite ? "fill-destructive text-destructive" : "text-muted-foreground"}`}
@@ -283,8 +283,8 @@ const ProductCard = memo(function ProductCard({
         </button>
       </div>
 
-      <div className="mt-3 grid grid-cols-[1fr_auto] items-center gap-2">
-        <div className="space-y-3">
+      <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+        <div className="min-w-0 space-y-3">
           {product.sizes.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
               {product.sizes.map((option) => (
@@ -338,7 +338,7 @@ const ProductCard = memo(function ProductCard({
           type="button"
           onClick={() => onSelect?.(product.id)}
           aria-label={name}
-          className="h-28 w-28 overflow-hidden rounded-2xl transition-transform duration-300 hover:scale-[1.02] group-hover:scale-105 active:scale-95 sm:h-32 sm:w-32"
+          className="h-24 w-24 shrink-0 overflow-hidden rounded-2xl transition-transform duration-300 hover:scale-[1.02] group-hover:scale-105 active:scale-95 sm:h-32 sm:w-32"
         >
           {product.image_url ? (
             <img

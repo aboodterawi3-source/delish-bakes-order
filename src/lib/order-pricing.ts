@@ -7,6 +7,7 @@ import {
   DELIVERY_FEE,
   type Option,
 } from "@/lib/menu";
+import { feeForArea } from "@/lib/delivery-zones";
 
 /**
  * A cart line is described by a *spec* (which catalogue item / builder choices were
@@ -101,6 +102,16 @@ export function priceLine(spec: LineSpec, quantity: number, notes: string | null
   };
 }
 
-export function deliveryFeeFor(method: "delivery" | "pickup", lineCount: number) {
-  return method === "delivery" && lineCount > 0 ? DELIVERY_FEE : 0;
+/**
+ * Delivery is priced by zone: the area name is looked up in the trusted table.
+ * Unknown areas fall back to the base fee so an order is never under-charged
+ * silently below the cheapest zone.
+ */
+export function deliveryFeeFor(
+  method: "delivery" | "pickup",
+  lineCount: number,
+  area?: string | null,
+) {
+  if (method !== "delivery" || lineCount === 0) return 0;
+  return feeForArea(area) ?? DELIVERY_FEE;
 }

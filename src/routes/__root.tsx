@@ -12,6 +12,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { Toaster } from "@/components/ui/sonner";
 import { LangProvider } from "../lib/i18n";
+import { CartProvider } from "../lib/cart";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 
 function NotFoundComponent() {
@@ -129,9 +130,12 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       {/* Arabic + RTL is the default; the AR|EN toggle switches it app-wide. */}
       <LangProvider>
-        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-        <Outlet />
-        <Toaster />
+        {/* One cart for the whole app: it survives navigation between pages. */}
+        <CartProvider>
+          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+          <Outlet />
+          <Toaster />
+        </CartProvider>
       </LangProvider>
     </QueryClientProvider>
   );

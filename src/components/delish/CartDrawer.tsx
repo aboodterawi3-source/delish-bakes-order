@@ -1,6 +1,7 @@
 import { useId, useRef, useState } from "react";
 import { CheckCircle2, Minus, Plus, Trash2, X } from "lucide-react";
-import { DELIVERY_FEE, WHATSAPP } from "@/lib/menu";
+import { WHATSAPP } from "@/lib/menu";
+import { DELIVERY_ZONES, feeForArea } from "@/lib/delivery-zones";
 import { useCart } from "@/lib/cart";
 import { useLang } from "@/lib/i18n";
 import { useDismissable } from "@/lib/a11y";
@@ -47,7 +48,8 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
 
   useDismissable(open, onClose);
 
-  const deliveryFee = form.method === "delivery" && count > 0 ? DELIVERY_FEE : 0;
+  const areaFee = feeForArea(form.area);
+  const deliveryFee = form.method === "delivery" && count > 0 ? (areaFee ?? 0) : 0;
   const total = subtotal + deliveryFee;
 
   const set = (k: keyof Form, v: string) => setForm((f) => ({ ...f, [k]: v }));
@@ -348,8 +350,33 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
               {form.method === "delivery" && (
                 <>
                   <Field label={t("area")} error={errors["area"]} errText={t("required")}>
-                    {(p) => <input className={inputCls} value={form.area} onChange={(e) => set("area", e.target.value)} {...p} />}
+                    {(p) => (
+                      <select
+                        className={inputCls}
+                        value={form.area}
+                        onChange={(e) => set("area", e.target.value)}
+                        {...p}
+                      >
+                        <option value="">{lang === "ar" ? "اختر المنطقة" : "Select your area"}</option>
+                        {DELIVERY_ZONES.map((zone) => (
+                          <optgroup key={zone.labelEn} label={lang === "ar" ? zone.labelAr : zone.labelEn}>
+                            {zone.areas.map((area) => (
+                              <option key={`${zone.labelEn}-${area}`} value={area}>
+                                {area} — {zone.fee.toFixed(2)} {t("jod")}
+                              </option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
+                    )}
                   </Field>
+                  {areaFee !== null && (
+                    <p className="-mt-2 text-xs font-semibold text-muted-foreground">
+                      {lang === "ar"
+                        ? `أجرة التوصيل لهذه المنطقة: ${areaFee.toFixed(2)} د.أ`
+                        : `Delivery fee for this area: ${areaFee.toFixed(2)} JOD`}
+                    </p>
+                  )}
                   <Field label={t("address")} error={errors["address"]} errText={t("required")}>
                     {(p) => (
                       <textarea
