@@ -9,6 +9,13 @@ import {
   getSocialAccess,
   type SocialOrderInput,
 } from "@/lib/social.functions";
+import {
+  CakeCustomizationPanel,
+  customizationSummary,
+  emptyCustomization,
+  type Customization,
+} from "@/components/delish/CakeCustomizationPanel";
+
 
 
 const emptyForm = {
@@ -36,6 +43,7 @@ export function SocialPanel() {
   const createFn = useServerFn(createSocialOrder);
 
   const [form, setForm] = useState(emptyForm);
+  const [customization, setCustomization] = useState<Customization>(emptyCustomization);
   const [copied, setCopied] = useState(false);
   const [done, setDone] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -46,6 +54,8 @@ export function SocialPanel() {
     setForm((current) => ({ ...current, [key]: value }));
     setCopied(false);
   }, []);
+
+  const extras = useMemo(() => customizationSummary(customization), [customization]);
 
   /** Customer-facing summary — internal staff notes are deliberately excluded. */
   const summary = useMemo(() => {
@@ -60,9 +70,12 @@ export function SocialPanel() {
     ];
     if (form.event_date) lines.push(`تاريخ المناسبة: ${form.event_date}`);
     if (form.is_urgent) lines.push("🚨 طلب مستعجل");
+    if (extras.ar.length) lines.push(...extras.ar.map((line) => `• ${line}`));
+    const extraNotes = customization.notes.trim();
+    if (extraNotes) lines.push(`ملاحظات إضافية: ${extraNotes}`);
     if (form.design_notes.trim()) lines.push(`ملاحظات التصميم: ${form.design_notes.trim()}`);
     return lines.join("\n");
-  }, [form]);
+  }, [form, extras, customization.notes]);
 
   const submit = useMutation({
     mutationFn: (input: SocialOrderInput) => createFn({ data: input }),
@@ -70,7 +83,9 @@ export function SocialPanel() {
       setDone(order.order_number);
       setError(null);
       setForm(emptyForm);
+      setCustomization(emptyCustomization);
     },
+
     onError: (mutationError: Error) => setError(mutationError.message),
   });
 
@@ -155,9 +170,13 @@ export function SocialPanel() {
       requested_time: form.requested_time,
       event_date: form.event_date || null,
       is_urgent: form.is_urgent,
-      design_notes: form.design_notes,
+      design_notes: [form.design_notes.trim(), customization.notes.trim()].filter(Boolean).join(" — "),
       staff_notes: form.staff_notes,
+      extras_ar: extras.ar,
+      extras_en: extras.en,
+      design_image_url: customization.designImageUrl,
     });
+
   };
 
   return (
@@ -323,6 +342,19 @@ export function SocialPanel() {
               className="mt-1 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
             />
           </label>
+
+          <div className="min-w-0 rounded-2xl border border-[#FDE2CF] bg-[#FDE2CF]/20 p-3 sm:p-4">
+            <CakeCustomizationPanel value={customization} onChange={setCustomization} />
+            {extras.ar.length ? (
+              <ul className="mt-3 space-y-1 rounded-xl bg-white/80 p-3 text-xs font-bold text-[#5D2E17]">
+                {extras.ar.map((line) => (
+                  <li key={line}>• {line}</li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+
+
 
           <label className="block text-sm font-bold text-[#3E2723]">
             ملاحظات داخلية للموظفين · Internal staff notes

@@ -17,7 +17,29 @@ export type SocialOrderInput = {
   is_urgent: boolean;
   design_notes?: string | null;
   staff_notes?: string | null;
+  /** Chosen extras (candles, balloons, acrylic topper, gift phones…) — labels only. */
+  extras_ar?: string[] | null;
+  extras_en?: string[] | null;
+  /** Signed link of the customer's reference photo. */
+  design_image_url?: string | null;
 };
+
+const MAX_EXTRAS = 20;
+const MAX_EXTRA_LENGTH = 160;
+/** Signed link returned by uploadDesignImage for photos kept in Cloud storage. */
+const STORAGE_URL = /^https:\/\/[a-z0-9.-]+\/storage\/v1\/object\/sign\/order-designs\/[\w./-]+\?[\w=%&.-]+$/i;
+
+
+/** Extras are plain labels; keep them short, single-line and bounded. */
+const extraList = (value: unknown): string[] => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entry) => (typeof entry === "string" ? entry.replace(/[\r\n]+/g, " ").trim() : ""))
+    .filter((entry) => entry.length > 0)
+    .slice(0, MAX_EXTRAS)
+    .map((entry) => entry.slice(0, MAX_EXTRA_LENGTH));
+};
+
 
 /** Confirms the signed-in user may use the social media portal. */
 export const getSocialAccess = createServerFn({ method: "GET" })
@@ -59,6 +81,12 @@ export const createSocialOrder = createServerFn({ method: "POST" })
     await assertRole(context, SOCIAL_ROLES);
     const orderDetails = data.order_details.trim();
     const subtotal = 0;
+    const extrasAr = extraList(data.extras_ar);
+    const extrasEn = extraList(data.extras_en);
+    const designImage =
+      typeof data.design_image_url === "string" && STORAGE_URL.test(data.design_image_url.trim())
+        ? data.design_image_url.trim()
+        : null;
 
     const { data: order, error: orderError } = await context.supabase
       .from("orders")
@@ -72,6 +100,7 @@ export const createSocialOrder = createServerFn({ method: "POST" })
         is_urgent: data.is_urgent,
         inscription: data.design_notes?.trim() || null,
         staff_notes: data.staff_notes?.trim() || null,
+        design_image_url: designImage,
         subtotal,
         delivery_fee: 0,
         total: subtotal,
@@ -89,10 +118,11 @@ export const createSocialOrder = createServerFn({ method: "POST" })
       name_en: orderDetails,
       unit_price: 0,
       quantity: data.quantity,
-      options_ar: data.is_urgent ? ["مستعجل"] : [],
-      options_en: data.is_urgent ? ["Urgent"] : [],
+      options_ar: [...(data.is_urgent ? ["مستعجل"] : []), ...extrasAr],
+      options_en: [...(data.is_urgent ? ["Urgent"] : []), ...extrasEn],
       notes: data.design_notes?.trim() || null,
     });
+
     if (itemError) throw new Error(itemError.message);
 
     return { id: order.id, order_number: order.order_number, total: Number(order.total ?? 0) };

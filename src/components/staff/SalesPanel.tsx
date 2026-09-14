@@ -7,7 +7,9 @@ import {
   BadgeDollarSign,
   Bike,
   CalendarClock,
+  Download,
   Link2,
+
   Loader2,
   Lock,
   LogOut,
@@ -43,8 +45,29 @@ import {
 } from "@/lib/authorization.functions";
 import { CmsPanel } from "@/components/delish/CmsPanel";
 
+/** Saves the customer's original reference photo so sales can print or forward it. */
+async function downloadDesignImage(url: string, orderNumber: string) {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error("download failed");
+    const blob = await response.blob();
+    const extension = (blob.type.split("/")[1] ?? "jpg").replace("jpeg", "jpg");
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = objectUrl;
+    link.download = `delish-${orderNumber}.${extension}`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(objectUrl);
+  } catch {
+    // Signed URL expired or blocked: open it so staff can still save manually.
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+}
 
 const flow: SalesStatus[] = ["new", "baking", "ready", "out_for_delivery", "completed"];
+
 
 const statusMeta: Record<SalesStatus, { ar: string; en: string; chip: string }> = {
   new: { ar: "قيد الانتظار", en: "Pending", chip: "bg-[#FDE2CF] text-[#7B3F00]" },
@@ -914,7 +937,14 @@ function OrderPanel({
                       </span>
                     )}
                   </div>
-                  {item.options_ar.length ? <p className="text-xs text-primary">{item.options_ar.join(" · ")}</p> : null}
+                  {item.options_ar.length ? (
+                    <ul className="space-y-0.5 text-xs font-semibold text-primary">
+                      {item.options_ar.map((option) => (
+                        <li key={option}>• {option}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+
                   {item.notes ? <p className="text-xs text-foreground">ملاحظة: {item.notes}</p> : null}
 
                   {/* Price modifier inline control */}
@@ -957,8 +987,35 @@ function OrderPanel({
             <p className="mt-2 rounded-xl bg-primary/10 p-3 text-sm text-foreground">ملاحظات داخلية: {order.staff_notes}</p>
           ) : null}
           {order.design_image_url ? (
-            <img src={order.design_image_url} alt={`صورة التصميم المطلوب للطلب ${order.order_number}`} loading="lazy" className="mt-3 w-full rounded-xl" />
+            <div className="mt-3 space-y-2">
+              <img
+                src={order.design_image_url}
+                alt={`صورة التصميم المطلوب للطلب ${order.order_number}`}
+                loading="lazy"
+                className="w-full rounded-xl"
+              />
+              <div className="flex flex-wrap gap-2">
+                <a
+                  href={order.design_image_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full border border-primary px-4 text-xs font-bold text-primary"
+                >
+                  فتح الصورة · View
+                </a>
+                <button
+                  type="button"
+                  onClick={() =>
+                    void downloadDesignImage(order.design_image_url as string, order.order_number)
+                  }
+                  className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full bg-primary px-4 text-xs font-bold text-primary-foreground"
+                >
+                  <Download className="h-4 w-4" aria-hidden="true" /> تحميل الصورة · Download
+                </button>
+              </div>
+            </div>
           ) : null}
+
         </section>
 
         <button
