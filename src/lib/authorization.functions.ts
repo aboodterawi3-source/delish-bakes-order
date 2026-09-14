@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { publicError } from "@/lib/public-error";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertRole, getRoles, type StaffRoleName } from "@/lib/role-guard";
 import { emailToUsername } from "@/lib/username";
@@ -311,7 +312,7 @@ async function loadToken(token: string): Promise<TokenRow> {
     .select("id, order_id, expires_at, used_at")
     .eq("token_hash", await hashToken(token))
     .maybeSingle();
-  if (error) throw new Error(error.message);
+  if (error) throw publicError("order-edit.loadToken", error, "رابط غير صالح · Invalid link");
   if (!data) throw new Error("رابط غير صالح · Invalid link");
   if (data.used_at) throw new Error("تم استخدام هذا الرابط · This link has already been used");
   if (new Date(data.expires_at).getTime() < Date.now()) {
@@ -330,7 +331,7 @@ export const getOrderByEditToken = createServerFn({ method: "POST" })
       .select("order_number, customer_name, customer_phone, requested_date, requested_time, notes, inscription, area, address, method, total")
       .eq("id", row.order_id)
       .single();
-    if (error) throw new Error(error.message);
+    if (error) throw publicError("order-edit.getOrder", error);
     return { order, expires_at: row.expires_at };
   });
 
@@ -393,14 +394,14 @@ export const submitOrderEdit = createServerFn({ method: "POST" })
         ...(scheduleChanged ? { schedule_updated_at: new Date().toISOString() } : {}),
       } as never)
       .eq("id", row.order_id);
-    if (error) throw new Error(error.message);
+    if (error) throw publicError("order-edit.update", error);
 
     // Single use: the link is locked the instant it is submitted.
     const { error: lockError } = await supabaseAdmin
       .from("order_edit_tokens")
       .update({ used_at: new Date().toISOString() } as never)
       .eq("id", row.id);
-    if (lockError) throw new Error(lockError.message);
+    if (lockError) throw publicError("order-edit.lockToken", lockError);
 
     return { ok: true };
   });
