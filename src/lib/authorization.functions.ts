@@ -299,8 +299,23 @@ export const createOrderEditLink = createServerFn({ method: "POST" })
       reason: "One-time customer edit link, valid 1 hour",
     });
 
-    return { token, expires_at: expiresAt, order_number: order.order_number };
+    return {
+      token,
+      expires_at: expiresAt,
+      order_number: order.order_number,
+      url: `${publicSiteOrigin()}/edit-order?token=${token}`,
+    };
   });
+
+/**
+ * Customer links must point at the public site, never at the editor preview
+ * host (which sits behind the Lovable interface and would ask for a login).
+ */
+function publicSiteOrigin(): string {
+  const configured = process.env['PUBLIC_SITE_URL'];
+  if (configured) return configured.replace(/\/+$/, "");
+  return "https://unknowncake.lovable.app";
+}
 
 type TokenRow = { id: string; order_id: string; expires_at: string; used_at: string | null };
 
