@@ -133,7 +133,7 @@ function AuthPage() {
       setError("بيانات الدخول غير صحيحة · Invalid name or password");
       return;
     }
-    void navigate({ to: await landingPath(data.user.id), replace: true });
+    void navigate({ to: landingPath(), replace: true });
   };
 
   return (
