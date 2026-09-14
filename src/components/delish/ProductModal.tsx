@@ -6,6 +6,12 @@ import { Pic } from "@/components/delish/Pic";
 import { useLang } from "@/lib/i18n";
 import { useCart } from "@/lib/cart";
 import { useDismissable } from "@/lib/a11y";
+import {
+  CakeCustomizationPanel,
+  customizationSummary,
+  emptyCustomization,
+  type Customization,
+} from "./CakeCustomizationPanel";
 
 
 export function ProductModal({ product, onClose }: { product: Product | null; onClose: () => void }) {
@@ -15,6 +21,7 @@ export function ProductModal({ product, onClose }: { product: Product | null; on
   const [flavorId, setFlavorId] = useState<string | null>(null);
   const [qty, setQty] = useState(1);
   const [notes, setNotes] = useState("");
+  const [customization, setCustomization] = useState<Customization>(emptyCustomization);
   const titleId = useId();
   const notesId = useId();
 
