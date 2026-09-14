@@ -624,17 +624,21 @@ function ProductsEditor({
         ))}
       </ul>
 
-      {draft && (
-        <form
-          className="space-y-4 rounded-3xl border border-border bg-card p-5"
-          onSubmit={(event) => {
-            event.preventDefault();
-            save.mutate(draft);
-          }}
-        >
-          <h3 className="font-display text-lg font-bold text-foreground">
-            {draft.id ? "تعديل منتج · Edit product" : "منتج جديد · New product"}
-          </h3>
+      <Dialog open={draft !== null} onOpenChange={(open) => !open && setDraft(null)}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto rounded-3xl sm:max-w-2xl">
+          {draft && (
+            <form
+              className="space-y-4"
+              onSubmit={(event) => {
+                event.preventDefault();
+                save.mutate(draft);
+              }}
+            >
+              <DialogHeader>
+                <DialogTitle className="font-display text-lg font-bold text-foreground">
+                  {draft.id ? "تعديل منتج · Edit product" : "منتج جديد · New product"}
+                </DialogTitle>
+              </DialogHeader>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="space-y-1.5">
@@ -762,17 +766,19 @@ function ProductsEditor({
             </label>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <button type="submit" disabled={save.isPending} className={primaryBtn}>
-              {save.isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />} حفظ ونشر · Save
-            </button>
-            <button type="button" onClick={() => setDraft(null)} className={ghostBtn}>
-              إلغاء
-            </button>
-            {save.isError && <span className="text-xs font-bold text-destructive">{(save.error as Error).message}</span>}
-          </div>
-        </form>
-      )}
+              <div className="flex flex-wrap items-center gap-3">
+                <button type="submit" disabled={save.isPending} className={primaryBtn}>
+                  {save.isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />} حفظ ونشر · Save
+                </button>
+                <button type="button" onClick={() => setDraft(null)} className={ghostBtn}>
+                  إلغاء
+                </button>
+                {save.isError && <span className="text-xs font-bold text-destructive">{(save.error as Error).message}</span>}
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
