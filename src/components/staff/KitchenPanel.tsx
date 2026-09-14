@@ -22,6 +22,7 @@ import {
   type KdsOrder,
   type PriorityColor,
 } from "@/lib/kds.functions";
+import bellAsset from "@/assets/Bell.mp3.asset.json";
 
 
 /**
@@ -162,7 +163,7 @@ export function KitchenPanel() {
   const [shiftOn, setShiftOn] = useState(false);
   const [zoom, setZoom] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
-  const audioRef = useRef<AudioContext | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const knownIds = useRef<Set<string> | null>(null);
 
   const access = useQuery({
@@ -180,30 +181,38 @@ export function KitchenPanel() {
     enabled: allowed,
   });
 
-  const chime = useCallback(() => {
-    const context = audioRef.current;
-    if (!context) return;
-    void context.resume();
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
-    oscillator.frequency.setValueAtTime(920, context.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(640, context.currentTime + 0.35);
-    gain.gain.setValueAtTime(0.2, context.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.5);
-    oscillator.connect(gain).connect(context.destination);
-    oscillator.start();
-    oscillator.stop(context.currentTime + 0.5);
+  const chime = useCallback(async () => {
+    const audio = audioRef.current;
+    if (!audio) return false;
+    try {
+      audio.currentTime = 0;
+      await audio.play();
+      return true;
+    } catch {
+      // Browsers can revoke autoplay permission after a reload/background tab.
+      // Requiring Start Shift again provides the user gesture needed to unlock it.
+      setShiftOn(false);
+      return false;
+    }
   }, []);
 
   const startShift = useCallback(() => {
-    const AudioContextClass =
-      window.AudioContext ?? (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AudioContextClass) return;
-    if (!audioRef.current) audioRef.current = new AudioContextClass();
-    void audioRef.current.resume();
-    setShiftOn(true);
-    chime();
+    if (!audioRef.current) {
+      const audio = new Audio(bellAsset.url);
+      audio.preload = "auto";
+      audio.volume = 1;
+      audioRef.current = audio;
+    }
+    void chime().then((played) => setShiftOn(played));
   }, [chime]);
+
+  useEffect(
+    () => () => {
+      audioRef.current?.pause();
+      audioRef.current = null;
+    },
+    [],
+  );
 
   // New arrivals ring the bell once the shift has started.
   useEffect(() => {
@@ -216,7 +225,7 @@ export function KitchenPanel() {
     }
     const fresh = list.some((order) => !knownIds.current?.has(order.id));
     knownIds.current = ids;
-    if (fresh && shiftOn) chime();
+    if (fresh && shiftOn) void chime();
   }, [orders.data, shiftOn, chime]);
 
   useOrdersRealtime(ORDERS_KEY, allowed, "kds-orders-live");
