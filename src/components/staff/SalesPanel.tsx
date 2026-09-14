@@ -316,11 +316,11 @@ export function SalesPanel() {
   }
 
   return (
-    <main dir="rtl" className="min-h-dvh bg-background pb-16">
+    <main dir="rtl" className="min-h-dvh w-full max-w-full overflow-x-hidden bg-background pb-16">
       <header className="sticky top-0 z-20 border-b border-border bg-card/95 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-3">
-          <div className="me-auto">
-            <h1 className="font-display text-xl font-bold text-foreground">
+        <div className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 px-4 py-3 sm:flex sm:flex-wrap sm:gap-3">
+          <div className="min-w-0 sm:me-auto">
+            <h1 className="truncate font-display text-lg font-bold text-foreground sm:text-xl">
               واجهة المبيعات <span className="delish-wordmark">Delish</span>
             </h1>
             <p className="text-xs text-muted-foreground">Sales Desk · إدارة الطلبات والدفعات</p>
@@ -328,7 +328,7 @@ export function SalesPanel() {
           <button
             type="button"
             onClick={() => setShiftOpen(true)}
-            className="inline-flex min-h-12 items-center gap-2 rounded-full bg-primary px-5 text-sm font-bold text-primary-foreground"
+            className="col-span-3 row-start-2 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-primary px-4 text-sm font-bold text-primary-foreground sm:order-none sm:w-auto sm:px-5"
           >
             <BadgeDollarSign className="h-4 w-4" aria-hidden="true" /> إغلاق الشيفت المالي
           </button>
@@ -364,8 +364,8 @@ export function SalesPanel() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-6xl px-4 py-5">
-        <nav className="mb-5 flex flex-wrap gap-2" aria-label="أقسام واجهة المبيعات">
+      <div className="mx-auto w-full max-w-6xl min-w-0 px-4 py-5">
+        <nav className="no-scrollbar mb-5 flex max-w-full gap-2 overflow-x-auto" aria-label="أقسام واجهة المبيعات">
           {([
             { value: "orders" as const, ar: "الطلبات", en: "Orders" },
             { value: "site" as const, ar: "إدارة الموقع", en: "Website" },
@@ -375,7 +375,7 @@ export function SalesPanel() {
               type="button"
               aria-current={view === item.value}
               onClick={() => setView(item.value)}
-              className={`min-h-12 rounded-full px-6 text-sm font-bold transition ${
+               className={`min-h-12 shrink-0 whitespace-nowrap rounded-full px-6 text-sm font-bold transition ${
                 view === item.value
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "border border-border bg-card text-foreground hover:bg-secondary/40"
@@ -429,8 +429,8 @@ export function SalesPanel() {
       ) : null}
 
       {cancelFor ? (
-        <div className="fixed inset-0 z-40 grid place-items-center bg-foreground/50 p-4" role="dialog" aria-modal="true" aria-label="إلغاء الطلب">
-          <div className="w-full max-w-sm rounded-2xl bg-card p-5">
+         <div className="fixed inset-0 z-40 grid place-items-center overflow-x-hidden bg-foreground/50 p-4" role="dialog" aria-modal="true" aria-label="إلغاء الطلب">
+           <div className="max-h-[calc(100dvh-2rem)] w-full max-w-sm overflow-y-auto rounded-2xl bg-card p-4 sm:p-5">
             <h2 className="font-display text-lg font-bold text-foreground">إلغاء الطلب {cancelFor.order_number}</h2>
             <label className="mt-4 block text-sm font-bold text-foreground">
               سبب الإلغاء (مطلوب) · Reason
@@ -464,8 +464,8 @@ export function SalesPanel() {
       ) : null}
 
       {shiftOpen ? (
-        <div className="fixed inset-0 z-40 grid place-items-center bg-foreground/50 p-4" role="dialog" aria-modal="true" aria-label="إغلاق الشيفت المالي">
-          <div className="w-full max-w-md rounded-2xl bg-card p-5">
+         <div className="fixed inset-0 z-40 grid place-items-center overflow-x-hidden bg-foreground/50 p-4" role="dialog" aria-modal="true" aria-label="إغلاق الشيفت المالي">
+           <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-2xl bg-card p-4 sm:p-5">
             <div className="flex items-center gap-2">
               <h2 className="me-auto font-display text-lg font-bold text-foreground">إغلاق الشيفت المالي</h2>
               <button type="button" onClick={() => setShiftOpen(false)} aria-label="إغلاق" className="grid h-12 w-12 place-items-center rounded-full border border-border">
@@ -533,7 +533,7 @@ const OrderCard = memo(function OrderCard({
 }) {
   const remaining = Math.max(order.total - order.deposit_paid, 0);
   return (
-    <li className="rounded-2xl border border-border bg-card p-4">
+    <li className="min-w-0 overflow-hidden rounded-2xl border border-border bg-card p-4">
       <div className="flex flex-wrap items-center gap-2">
         <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusMeta[order.status].chip}`}>
           {statusMeta[order.status].ar}
@@ -541,7 +541,7 @@ const OrderCard = memo(function OrderCard({
         <span className="font-display text-base font-bold text-foreground">{order.order_number}</span>
         <span className="text-sm text-foreground">{order.customer_name}</span>
         <span dir="ltr" className="text-sm text-muted-foreground">{order.customer_phone}</span>
-        <span className="ms-auto inline-flex items-center gap-1 text-xs text-muted-foreground">
+        <span className="inline-flex min-w-0 items-center gap-1 break-words text-xs text-muted-foreground sm:ms-auto">
           <CalendarClock className="h-4 w-4" aria-hidden="true" />
           {order.requested_date} · {order.requested_time.slice(0, 5)}
         </span>
@@ -584,7 +584,7 @@ const OrderCard = memo(function OrderCard({
           <button
             type="button"
             onClick={() => sendScheduleConfirmation(order)}
-            className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[#166534] px-5 text-sm font-bold text-white transition-transform hover:scale-[1.02] active:scale-95"
+           className="inline-flex min-h-12 max-w-full items-center justify-center gap-2 rounded-full bg-[#166534] px-4 text-center text-sm font-bold text-white transition-transform hover:scale-[1.02] active:scale-95"
           >
             <MessageCircle className="h-4 w-4" aria-hidden="true" /> إرسال تأكيد التعديل للواتساب
           </button>
@@ -651,8 +651,8 @@ function OrderPanel({
   const next = stageIndex >= 0 && stageIndex < flow.length - 1 ? flow[stageIndex + 1] : null;
 
   return (
-    <div className="fixed inset-0 z-30 flex justify-start bg-foreground/50" role="dialog" aria-modal="true" aria-label={`إدارة الطلب ${order.order_number}`}>
-      <div className="ms-auto h-full w-full max-w-md overflow-y-auto bg-card p-5">
+    <div className="fixed inset-0 z-30 flex max-w-full justify-start overflow-x-hidden bg-foreground/50" role="dialog" aria-modal="true" aria-label={`إدارة الطلب ${order.order_number}`}>
+      <div className="ms-auto h-full w-full max-w-md min-w-0 overflow-x-hidden overflow-y-auto bg-card p-4 sm:p-5">
         <div className="flex items-center gap-2">
           <h2 className="me-auto font-display text-lg font-bold text-foreground">{order.order_number}</h2>
           <button type="button" onClick={onClose} aria-label="إغلاق" className="grid h-12 w-12 place-items-center rounded-full border border-border">

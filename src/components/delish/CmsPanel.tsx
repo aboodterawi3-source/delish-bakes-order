@@ -80,8 +80,8 @@ export function CmsPanel() {
   }
 
   return (
-    <section className="space-y-5">
-      <div className="flex flex-wrap gap-2" role="tablist" aria-label="إدارة الموقع">
+    <section className="min-w-0 space-y-5 overflow-x-hidden">
+      <div className="no-scrollbar flex max-w-full gap-2 overflow-x-auto" role="tablist" aria-label="إدارة الموقع">
         {tabs.map((item) => (
           <button
             key={item.value}
@@ -89,7 +89,7 @@ export function CmsPanel() {
             role="tab"
             aria-selected={tab === item.value}
             onClick={() => setTab(item.value)}
-            className={`min-h-11 rounded-full px-5 text-xs font-bold transition ${
+            className={`min-h-11 shrink-0 whitespace-nowrap rounded-full px-5 text-xs font-bold transition ${
               tab === item.value
                 ? "bg-primary text-primary-foreground shadow-sm"
                 : "border border-border bg-card text-foreground hover:bg-secondary/40"
@@ -392,7 +392,7 @@ function CategoriesEditor({ categories }: { categories: StorefrontCategory[] }) 
       </ul>
 
       <Dialog open={draft !== null} onOpenChange={(open: boolean) => !open && setDraft(null)}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto rounded-3xl sm:max-w-xl">
+        <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-x-hidden overflow-y-auto rounded-3xl sm:max-w-xl">
           {draft && (
             <form
               className="space-y-4"
@@ -427,7 +427,7 @@ function CategoriesEditor({ categories }: { categories: StorefrontCategory[] }) 
                 />
                 ظاهر عند العميل · Visible
               </label>
-              <div className="flex flex-wrap items-center gap-3">
+       <div className="grid grid-cols-1 gap-3 sm:flex sm:flex-wrap sm:items-center">
                 <button type="submit" disabled={save.isPending} className={primaryBtn}>
                   {save.isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />} حفظ · Save
                 </button>
@@ -582,7 +582,7 @@ function ProductsEditor({
         {list.map((product) => (
           <li
             key={product.id}
-            className={`flex flex-wrap items-center gap-3 rounded-3xl border border-border p-4 ${tintFill(product.tint)}`}
+           className={`grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-3xl border border-border p-4 sm:flex sm:flex-wrap ${tintFill(product.tint)}`}
           >
             <div className="h-14 w-14 overflow-hidden rounded-2xl bg-card/80">
               {product.image_url ? (
@@ -591,11 +591,11 @@ function ProductsEditor({
                 <span className="grid h-full w-full place-items-center text-[10px] text-muted-foreground">لا صورة</span>
               )}
             </div>
-            <div className="me-auto min-w-40">
-              <p className="text-sm font-bold text-foreground">
+             <div className="min-w-0 sm:me-auto">
+               <p className="break-words text-sm font-bold text-foreground">
                 {product.name_ar} · {product.name_en}
               </p>
-              <p className="flex items-center gap-2 text-[11px] text-muted-foreground">
+               <p className="flex min-w-0 flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
                 <span>{product.price.toFixed(2)} د.أ</span>
                 {product.sizes.length > 0 && <span>{product.sizes.map((s) => s.label).join(" · ")}</span>}
                 <span className="inline-flex items-center gap-0.5">
@@ -604,7 +604,7 @@ function ProductsEditor({
               </p>
             </div>
 
-            <label className="inline-flex items-center gap-2 text-xs font-bold text-foreground">
+             <label className="col-span-2 inline-flex min-w-0 items-center gap-2 text-xs font-bold text-foreground sm:col-auto">
               <input
                 type="checkbox"
                 checked={product.is_available}
@@ -614,7 +614,7 @@ function ProductsEditor({
               {product.is_available ? "متوفر · Active" : "غير متوفر · Out of stock"}
             </label>
 
-            <label className="inline-flex items-center gap-2 text-xs font-bold text-foreground">
+             <label className="col-span-2 inline-flex min-w-0 items-center gap-2 text-xs font-bold text-foreground sm:col-auto">
               <input
                 type="checkbox"
                 checked={product.is_popular}
@@ -624,10 +624,10 @@ function ProductsEditor({
               في الأشهر · Popular
             </label>
 
-            <button type="button" onClick={() => setDraft(toDraft(product))} className={ghostBtn}>
+             <button type="button" onClick={() => setDraft(toDraft(product))} className={`${ghostBtn} col-span-1`}>
               <Pencil className="h-4 w-4" aria-hidden /> تعديل · Edit
             </button>
-            <button type="button" onClick={() => remove.mutate(product.id)} className={`${ghostBtn} text-destructive`}>
+             <button type="button" onClick={() => remove.mutate(product.id)} className={`${ghostBtn} col-span-1 text-destructive`}>
               <Trash2 className="h-4 w-4" aria-hidden /> حذف
             </button>
           </li>
@@ -635,7 +635,7 @@ function ProductsEditor({
       </ul>
 
       <Dialog open={draft !== null} onOpenChange={(open) => !open && setDraft(null)}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto rounded-3xl sm:max-w-2xl">
+        <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-x-hidden overflow-y-auto rounded-3xl sm:max-w-2xl">
           {draft && (
             <form
               className="space-y-4"
@@ -700,7 +700,7 @@ function ProductsEditor({
               <span className={label}>السعر الأساسي · Base price</span>
               <input type="number" min="0" step="0.01" value={draft.price} onChange={(e) => setDraft({ ...draft, price: e.target.value })} className={field} required />
             </label>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-3 min-[360px]:grid-cols-2">
               <label className="space-y-1.5">
                 <span className={label}>التقييم · Rating</span>
                 <input type="number" min="0" max="5" step="0.1" value={draft.rating} onChange={(e) => setDraft({ ...draft, rating: e.target.value })} className={field} />
@@ -716,7 +716,7 @@ function ProductsEditor({
             <legend className={label}>الأحجام والأسعار · Sizes &amp; prices</legend>
             <div className="grid gap-2 sm:grid-cols-3">
               {draft.sizes.map((size, index) => (
-                <div key={index} className="flex items-center gap-2">
+                 <div key={index} className="grid min-w-0 grid-cols-2 gap-2">
                   <input
                     value={size.label}
                     onChange={(e) => {
