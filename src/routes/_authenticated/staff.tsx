@@ -141,14 +141,14 @@ function StaffPortalPage() {
   }
 
   return (
-    <div dir="rtl" className="min-h-dvh bg-[#F9FBFC] text-[#3E2723]">
+    <div dir="rtl" className="min-h-dvh w-full max-w-full overflow-x-hidden bg-[#F9FBFC] text-[#3E2723]">
       <div className="sticky top-0 z-30 border-b border-[#F1F5F9] bg-white/95 backdrop-blur-md shadow-xs">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-2 px-4 py-2.5">
-          <div className="me-auto flex items-center gap-2">
+        <div className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-4 py-2.5 sm:flex sm:flex-wrap">
+          <div className="flex min-w-0 items-center gap-2 sm:me-auto">
             <span className="font-serif text-xl font-bold uppercase tracking-widest text-[#B8860B]">DELISH</span>
             <span className="-mt-1 font-script text-xl italic text-[#8B4513]">Bakes</span>
           </div>
-          <nav className="flex flex-wrap gap-2" aria-label="أقسام بوابة الموظفين">
+          <nav className="no-scrollbar col-span-2 row-start-2 flex w-full max-w-full gap-2 overflow-x-auto overscroll-x-contain sm:order-none sm:w-auto sm:flex-wrap sm:overflow-visible" aria-label="أقسام بوابة الموظفين">
             {allowed.map((tab) => {
               const Icon = tab.icon;
               const on = tab.value === active;
@@ -158,7 +158,7 @@ function StaffPortalPage() {
                   type="button"
                   aria-current={on}
                   onClick={() => void navigate({ to: "/staff", search: { tab: tab.value } })}
-                  className={`inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-xs font-bold transition-transform hover:scale-[1.02] active:scale-[0.98] ${
+                  className={`inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 text-xs font-bold transition-transform hover:scale-[1.02] active:scale-[0.98] ${
                     on
                       ? "bg-[#8B4513] text-white shadow-sm"
                       : "border border-slate-200 bg-white text-[#5D2E17] hover:bg-slate-50"

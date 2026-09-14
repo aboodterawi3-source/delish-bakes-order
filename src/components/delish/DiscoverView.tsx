@@ -53,7 +53,7 @@ export function DiscoverView({
   return (
     <div
       dir={dir}
-      className={`relative flex min-h-dvh w-full flex-col overflow-y-auto bg-background text-foreground ${
+      className={`relative flex min-h-dvh w-full max-w-full flex-col overflow-x-hidden overflow-y-auto bg-background text-foreground ${
         isEmbedded ? "min-h-[740px] max-h-[820px] rounded-[38px] shadow-2xl border-4 border-cocoa" : ""
       }`}
     >
@@ -117,8 +117,8 @@ export function DiscoverView({
               <path d="M180 -20 C240 60, 260 140, 420 180" stroke="currentColor" strokeWidth="24" strokeOpacity="0.2" />
             </svg>
 
-            <div className="relative z-10 flex items-center justify-between">
-              <div className="max-w-[170px] space-y-1.5">
+            <div className="relative z-10 grid grid-cols-[minmax(0,1fr)_6rem] items-center gap-2 sm:grid-cols-[minmax(0,1fr)_9rem]">
+              <div className="min-w-0 space-y-1.5">
                 <p className="text-xs font-semibold tracking-wide">{banner.subtitle}</p>
                 <h2 className="text-3xl font-black uppercase leading-none tracking-tight">
                   {banner.discount_text}
@@ -134,7 +134,7 @@ export function DiscoverView({
               </div>
 
               {banner.image_url && (
-                <div className="relative -mr-2 -my-2 flex h-28 w-32 items-center justify-center sm:w-36">
+                <div className="relative -my-2 flex h-24 w-24 items-center justify-center sm:h-28 sm:w-36">
                   <img
                     src={banner.image_url}
                     alt={`${banner.subtitle} ${banner.discount_text}`}
@@ -162,7 +162,7 @@ export function DiscoverView({
               )}
             </div>
 
-            <div className="no-scrollbar flex gap-3 overflow-x-auto pb-1">
+            <div className="no-scrollbar flex w-full max-w-full gap-3 overflow-x-auto overscroll-x-contain pb-1">
               {categories.map((category) => {
                 const active = selectedCategory === category.id;
                 return (
@@ -283,7 +283,7 @@ const ProductCard = memo(function ProductCard({
         </button>
       </div>
 
-      <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+      <div className="mt-3 grid grid-cols-[minmax(0,1fr)_5.5rem] items-center gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
         <div className="min-w-0 space-y-3">
           {product.sizes.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
@@ -338,7 +338,7 @@ const ProductCard = memo(function ProductCard({
           type="button"
           onClick={() => onSelect?.(product.id)}
           aria-label={name}
-          className="h-24 w-24 shrink-0 overflow-hidden rounded-2xl transition-transform duration-300 hover:scale-[1.02] group-hover:scale-105 active:scale-95 sm:h-32 sm:w-32"
+          className="h-22 w-22 shrink-0 overflow-hidden rounded-2xl transition-transform duration-300 hover:scale-[1.02] group-hover:scale-105 active:scale-95 sm:h-32 sm:w-32"
         >
           {product.image_url ? (
             <img

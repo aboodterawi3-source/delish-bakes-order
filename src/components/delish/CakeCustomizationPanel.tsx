@@ -239,7 +239,7 @@ export function CakeCustomizationPanel({
         subtitle="Standard candles or number candles"
         active={value.candleMode !== "none"}
       >
-        <div className="flex flex-wrap gap-2">
+        <div className="flex min-w-0 flex-wrap gap-2">
           {(
             [
               ["none", "None · بدون"],

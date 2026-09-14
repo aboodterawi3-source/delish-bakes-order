@@ -58,14 +58,14 @@ export function WelcomeView({ onExplore, isEmbedded = false }: WelcomeViewProps)
       </header>
 
       {/* Center Content Block */}
-      <main className="relative z-10 mx-auto flex max-w-xl flex-col items-center px-8 py-8 text-center">
+      <main className="relative z-10 mx-auto flex w-full max-w-xl min-w-0 flex-col items-center px-4 py-8 text-center sm:px-8">
         {/* Subtitle: SMALL JOYS, BAKED DAILY */}
         <p className="text-[11px] sm:text-xs font-bold uppercase tracking-[0.28em] text-[#B8860B] drop-shadow-sm">
           Small Joys, Baked Daily
         </p>
 
         {/* Main Headline: CLOSER TO LOVE WITH every bite */}
-        <h1 className="mt-5 font-sans text-3xl sm:text-5xl font-extrabold uppercase text-foreground leading-[1.14]">
+        <h1 className="mt-5 max-w-full break-words font-sans text-3xl sm:text-5xl font-extrabold uppercase text-foreground leading-[1.14]">
           Closer to Love <br />
           With{" "}
           <span className="font-script lowercase font-normal italic text-primary text-5xl sm:text-7xl normal-case inline-block -translate-y-1">

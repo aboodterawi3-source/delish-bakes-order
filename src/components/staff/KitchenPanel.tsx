@@ -297,8 +297,8 @@ export function KitchenPanel() {
   }
 
   return (
-    <div dir="rtl" className="min-h-dvh bg-[#F9FBFC] text-[#3E2723] bg-delish-pattern pb-16">
-      <header className="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-3 border-b border-[#F1F5F9] bg-white/95 px-4 py-3.5 backdrop-blur-md shadow-xs">
+    <div dir="rtl" className="min-h-dvh w-full max-w-full overflow-x-hidden bg-[#F9FBFC] text-[#3E2723] bg-delish-pattern pb-16">
+      <header className="sticky top-0 z-20 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-[#F1F5F9] bg-white/95 px-4 py-3.5 backdrop-blur-md shadow-xs sm:flex sm:flex-wrap sm:justify-between">
         <div className="flex min-w-0 items-center gap-3">
           <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#FDE2CF] text-[#7B3F00] shadow-sm">
             <ChefHat className="h-6 w-6" />
@@ -311,12 +311,12 @@ export function KitchenPanel() {
             <p className="text-xs text-[#7A6458] font-medium">{visible.length} طلب للتجهيز · Kitchen Display</p>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="col-span-2 flex w-full flex-wrap gap-2 sm:col-auto sm:w-auto">
           <button
             type="button"
             onClick={startShift}
             disabled={shiftOn}
-            className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[#FDE2CF] px-5 text-sm font-bold text-[#7B3F00] shadow-xs hover:bg-[#fed6bc] disabled:opacity-70"
+            className="inline-flex min-h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-full bg-[#FDE2CF] px-3 text-center text-xs font-bold text-[#7B3F00] shadow-xs hover:bg-[#fed6bc] disabled:opacity-70 sm:flex-none sm:px-5 sm:text-sm"
           >
             <Bell className="h-4 w-4 text-[#B8860B]" />
             {shiftOn ? "الوردية جارية 🔔" : "بدء وردية المطبخ 🔔"}
@@ -340,7 +340,7 @@ export function KitchenPanel() {
         </div>
       </header>
 
-      <div className="flex gap-2 overflow-x-auto px-4 py-3.5 no-scrollbar">
+      <div className="no-scrollbar flex w-full max-w-full gap-2 overflow-x-auto overscroll-x-contain px-4 py-3.5">
             {(Object.keys(filterMeta) as Filter[]).map((key) => (
               <button
                 key={key}
@@ -358,7 +358,7 @@ export function KitchenPanel() {
             ))}
           </div>
 
-          <main className="grid gap-4 px-4 pb-8 sm:grid-cols-2 xl:grid-cols-3">
+          <main className="grid w-full min-w-0 grid-cols-1 gap-4 px-4 pb-8 sm:grid-cols-2 xl:grid-cols-3">
             {orders.isLoading && <p className="p-6 text-sm text-[#7A6458]">جارٍ تحميل الطلبات…</p>}
             {!orders.isLoading && visible.length === 0 && (
               <div className="p-12 text-center text-sm text-[#7A6458] sm:col-span-2 xl:col-span-3 rounded-3xl bg-white/70 border border-slate-100">
@@ -409,15 +409,15 @@ const KdsCard = memo(function KdsCard({
   const isReady = order.status === "ready";
   return (
     <article
-      className="relative overflow-hidden rounded-3xl border border-card/40 p-5 transition-transform hover:-translate-y-0.5"
+       className="relative min-w-0 overflow-hidden rounded-3xl border border-card/40 p-4 transition-transform hover:-translate-y-0.5 sm:p-5"
       style={{ backgroundColor: meta.bg, color: meta.fg, boxShadow: meta.glow }}
     >
-      <div className="flex items-start justify-between gap-2">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
         <div className="min-w-0">
           <h2 className="truncate font-sans text-base font-extrabold">
             {order.order_number} · {order.customer_name}
           </h2>
-          <p className="mt-1 flex items-center gap-1 text-xs" style={{ color: meta.fgMuted }}>
+           <p className="mt-1 flex min-w-0 flex-wrap items-center gap-1 break-words text-xs" style={{ color: meta.fgMuted }}>
             <Clock3 className="h-3.5 w-3.5 text-[#B8860B]" />
             {order.requested_date} · {order.requested_time.slice(0, 5)} · {order.method === "delivery" ? "توصيل" : "استلام"}
           </p>

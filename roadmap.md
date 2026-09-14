@@ -1,16 +1,6 @@
-# Roadmap
+# Mobile responsiveness audit
 
-- [x] Rebuild storefront as the exact split-card reference layout
-- [x] Add gold outlined Delish wordmarks only
-- [x] Connect Browse, Order, and Visit Our Shop to ordering flows
-- [x] Extend custom cake flow with design image upload
-- [x] Add admin analytics, customer directory, Excel export, and thermal print
-- [x] Rebuild `/kds` on the live database: staff login, price-free view, date filters, priority colors, image zoom, Mark as Ready, shift chime
-- [ ] Create the kitchen staff accounts (needs email + password from the owner)
-- [x] Replace the public demo showcase with the clean three-screen Delish storefront
-- [x] Apply the cream, gold, bronze, peach identity across storefront and staff portals
-- [x] Add clean `/login` and `/kitchen` compatibility routes
-- [x] Add the customization accordion and smart WebP uploader on product details
-- [x] Make the sales desk the only place that edits the customer app (banner, categories, products)
-- [x] Remove catalog management from kitchen and admin
-- [x] Merge the four staff dashboards into one role-aware portal at /staff
+- [x] Audit storefront, cart, checkout, and product detail screens at mobile widths
+- [x] Audit staff, sales, kitchen, social, and admin screens at mobile widths
+- [x] Fix horizontal overflow, clipped content, grids, spacing, and modal sizing
+- [x] Verify representative routes at narrow mobile widths

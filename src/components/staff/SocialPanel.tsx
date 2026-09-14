@@ -161,18 +161,18 @@ export function SocialPanel() {
   };
 
   return (
-    <main dir="rtl" className="min-h-dvh bg-[#F9FBFC] text-[#3E2723] bg-delish-pattern pb-16">
+    <main dir="rtl" className="min-h-dvh w-full max-w-full overflow-x-hidden bg-[#F9FBFC] text-[#3E2723] bg-delish-pattern pb-16">
       <header className="border-b border-[#F1F5F9] bg-white/95 backdrop-blur-md shadow-xs">
-        <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-4">
-          <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#FDE2CF] text-[#7B3F00] shadow-sm">
+        <div className="mx-auto grid max-w-3xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-4">
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#FDE2CF] text-[#7B3F00] shadow-sm">
             <Sparkles className="h-6 w-6" aria-hidden="true" />
           </span>
-          <div className="me-auto">
+          <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h1 className="font-serif text-xl font-bold text-[#3E2723]">بوابة السوشال ميديا</h1>
-              <span className="font-script text-2xl italic text-[#8B4513] -mt-1">Delish</span>
+              <h1 className="truncate font-serif text-lg font-bold text-[#3E2723] sm:text-xl">بوابة السوشال ميديا</h1>
+              <span className="-mt-1 hidden font-script text-2xl italic text-[#8B4513] sm:inline">Delish</span>
             </div>
-            <p className="text-xs font-bold text-[#7A6458]">
+            <p className="truncate text-xs font-bold text-[#7A6458]">
               إدخال الطلبات فوراً للمبيعات والمطبخ · Social Order Entry
             </p>
           </div>
@@ -199,7 +199,7 @@ export function SocialPanel() {
           </p>
         ) : null}
 
-        <form onSubmit={onSubmit} className="grid gap-4 rounded-3xl border border-slate-100 bg-white p-6 shadow-[0_8px_24px_-8px_rgba(62,39,35,0.06)]">
+        <form onSubmit={onSubmit} className="grid min-w-0 gap-4 rounded-3xl border border-slate-100 bg-white p-4 shadow-[0_8px_24px_-8px_rgba(62,39,35,0.06)] sm:p-6">
           <h2 className="font-serif text-lg font-bold text-[#3E2723]">طلب جديد · New order</h2>
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -251,7 +251,7 @@ export function SocialPanel() {
 
             <fieldset className="text-sm font-bold text-[#3E2723]">
               <legend>طريقة التسليم · Fulfilment</legend>
-              <div className="mt-1 flex gap-2">
+              <div className="mt-1 flex flex-wrap gap-2">
                 {(["pickup", "delivery"] as const).map((method) => (
                   <button
                     key={method}
@@ -341,7 +341,7 @@ export function SocialPanel() {
             <button
               type="submit"
               disabled={submit.isPending}
-              className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-full bg-[#8B4513] px-6 text-sm font-bold text-white shadow-sm hover:bg-[#5D2E17] disabled:opacity-60 transition"
+              className="inline-flex min-h-12 min-w-0 flex-[1_1_12rem] items-center justify-center gap-2 rounded-full bg-[#8B4513] px-4 text-center text-sm font-bold text-white shadow-sm hover:bg-[#5D2E17] disabled:opacity-60 transition sm:px-6"
             >
               {submit.isPending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Send className="h-4 w-4" aria-hidden="true" />}
               إرسال فوري للطلب
@@ -349,7 +349,7 @@ export function SocialPanel() {
             <button
               type="button"
               onClick={() => void copy()}
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-[#B8860B] bg-white px-5 text-sm font-bold text-[#8B4513] hover:bg-[#FDE2CF]/30 shadow-xs transition"
+              className="inline-flex min-h-12 min-w-0 flex-[1_1_12rem] items-center justify-center gap-2 rounded-full border border-[#B8860B] bg-white px-4 text-center text-sm font-bold text-[#8B4513] hover:bg-[#FDE2CF]/30 shadow-xs transition sm:px-5"
             >
               {copied ? <Check className="h-4 w-4" aria-hidden="true" /> : <ClipboardCopy className="h-4 w-4" aria-hidden="true" />}
               {copied ? "تم النسخ" : "نسخ رسالة واتساب"}
@@ -359,7 +359,7 @@ export function SocialPanel() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="فتح واتساب المحل مع نص الطلب"
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#25D366] px-5 text-sm font-bold text-white shadow-sm hover:brightness-95 transition"
+              className="inline-flex min-h-12 min-w-0 flex-[1_1_12rem] items-center justify-center gap-2 rounded-full bg-[#25D366] px-4 text-center text-sm font-bold text-white shadow-sm hover:brightness-95 transition sm:px-5"
             >
               <MessageCircle className="h-4 w-4" aria-hidden="true" />
               فتح واتساب · +962 77 917 9995

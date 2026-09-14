@@ -162,7 +162,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-primary/75">
+    <div className="fixed inset-0 z-50 flex max-w-full justify-end overflow-x-hidden bg-primary/75">
       <button
         type="button"
         aria-label={lang === "ar" ? "إغلاق السلة" : "Close cart"}
@@ -174,10 +174,10 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative flex h-full w-full max-w-md flex-col bg-background shadow-[var(--shadow-soft)]"
+        className="relative flex h-full w-full max-w-md min-w-0 flex-col overflow-x-hidden bg-background shadow-[var(--shadow-soft)]"
       >
-        <div className="flex items-center justify-between border-b border-border px-5 py-4">
-          <h2 id={titleId} className="font-display text-lg font-semibold">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-b border-border px-4 py-4 sm:px-5">
+          <h2 id={titleId} className="min-w-0 break-words font-display text-lg font-semibold">
             {stage === "done"
               ? lang === "ar"
                 ? "تم إرسال الطلب"
@@ -201,7 +201,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
           </button>
         </div>
 
-        <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
+        <div className="flex-1 space-y-4 overflow-x-hidden overflow-y-auto px-4 py-4 sm:px-5">
           {stage === "done" && (
             <div className="flex flex-col items-center gap-4 py-12 text-center">
               <CheckCircle2 className="h-14 w-14 text-whatsapp" aria-hidden="true" />
@@ -250,7 +250,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
 
           {stage === "cart" &&
             lines.map((l) => (
-              <div key={l.key} className="flex gap-3 rounded-2xl border border-border p-3">
+              <div key={l.key} className="grid grid-cols-[auto_minmax(0,1fr)] gap-3 rounded-2xl border border-border p-3">
                 {l.image && (
                   <img
                     src={l.image}
@@ -258,7 +258,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                     loading="lazy"
                     width={80}
                     height={80}
-                    className="h-20 w-20 shrink-0 rounded-xl object-cover"
+                    className="h-16 w-16 shrink-0 rounded-xl object-cover sm:h-20 sm:w-20"
                   />
                 )}
                 <div className="min-w-0 flex-1">
@@ -278,7 +278,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                     ))}
                     {l.notes && <li>{l.notes}</li>}
                   </ul>
-                  <div className="mt-2 flex items-center justify-between">
+                   <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-1 rounded-full border border-border px-1">
                       <button
                         onClick={() => setQty(l.key, l.qty - 1)}
@@ -330,7 +330,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                 <legend className="mb-2 text-xs font-bold tracking-wide text-muted-foreground uppercase">
                   {t("method")}
                 </legend>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid gap-2 min-[360px]:grid-cols-2">
                   {(["delivery", "pickup"] as const).map((m) => (
                     <button
                       key={m}
@@ -403,7 +403,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                 </>
               )}
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-3 min-[360px]:grid-cols-2">
                 <Field label={t("date")} error={errors["date"]} errText={t("required")}>
                   {(p) => (
                     <input type="date" className={inputCls} value={form.date} onChange={(e) => set("date", e.target.value)} {...p} />
@@ -433,7 +433,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
         </div>
 
         {lines.length > 0 && (
-          <div className="space-y-3 border-t border-border bg-card px-5 py-4">
+          <div className="space-y-3 border-t border-border bg-card px-4 py-4 sm:px-5">
             <Row label={t("subtotal")} value={`${subtotal.toFixed(2)} ${t("jod")}`} />
             <Row label={t("delivery")} value={`${deliveryFee.toFixed(2)} ${t("jod")}`} />
             <Row label={t("total")} value={`${total.toFixed(2)} ${t("jod")}`} strong />
