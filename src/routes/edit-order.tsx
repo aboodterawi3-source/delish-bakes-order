@@ -153,7 +153,8 @@ function EditOrderPage() {
               </button>
 
               <p className="text-center text-[11px] text-[#7A6458]">
-                هذا الرابط يعمل لمرة واحدة وتنتهي صلاحيته بعد ساعة.
+                هذا الرابط يعمل لمرة واحدة وتنتهي صلاحيته بعد ساعة
+                {minutesLeft > 0 ? ` — يتبقّى ${minutesLeft} دقيقة` : ""}.
               </p>
             </div>
           )}
