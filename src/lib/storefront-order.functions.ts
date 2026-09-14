@@ -12,7 +12,27 @@ export type StorefrontOrderRequest = {
   requested_time: string;
   notes?: string | null;
   design_image?: string | null;
-  lines: { spec: LineSpec; quantity: number; notes?: string | null }[];
+  lines: {
+    spec: LineSpec;
+    quantity: number;
+    notes?: string | null;
+    /** Chosen extras (candles, balloons, acrylic topper, gift…) — labels only, never prices. */
+    extras_ar?: string[] | null;
+    extras_en?: string[] | null;
+  }[];
+};
+
+const MAX_EXTRAS = 14;
+const MAX_EXTRA_LENGTH = 160;
+
+/** Extras are free-text labels; keep them short, plain and bounded. */
+const extraList = (value: unknown): string[] => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entry) => (typeof entry === "string" ? entry.replace(/[\r\n]+/g, " ").trim() : ""))
+    .filter((entry) => entry.length > 0)
+    .slice(0, MAX_EXTRAS)
+    .map((entry) => entry.slice(0, MAX_EXTRA_LENGTH));
 };
 
 const MAX_LINES = 40;
