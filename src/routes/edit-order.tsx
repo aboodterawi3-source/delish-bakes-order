@@ -88,6 +88,11 @@ function EditOrderPage() {
             <p className="rounded-2xl bg-[#FDE2CF]/60 p-4 text-sm font-bold text-[#7B3F00]">
               {(order.error as Error).message.split("·")[0]?.trim() || "رابط غير صالح"}
             </p>
+          ) : expired && !save.isSuccess ? (
+            <p className="rounded-2xl bg-[#FDE2CF]/60 p-4 text-sm font-bold text-[#7B3F00]">
+              انتهت صلاحية هذا الرابط (صالح لمدة ساعة واحدة فقط). تواصل مع فريق ديليش للحصول على
+              رابط جديد.
+            </p>
           ) : save.isSuccess ? (
             <div className="space-y-3 text-center">
               <CheckCircle2 className="mx-auto h-10 w-10 text-[#B8860B]" aria-hidden="true" />
