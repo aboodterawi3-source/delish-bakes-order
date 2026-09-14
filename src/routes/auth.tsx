@@ -100,13 +100,9 @@ function portalMeta(roleHint?: string): PortalMeta {
   }
 }
 
-/** Sends each signed-in staff member to the screen their role uses. */
-async function landingPath(userId: string): Promise<"/kds" | "/sales" | "/admin"> {
-  const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId);
-  const roles = (data ?? []).map((row) => row.role as string);
-  if (roles.includes("kitchen")) return "/kds";
-  if (roles.includes("sales")) return "/sales";
-  return "/admin";
+/** Every staff member lands on the unified portal; tabs follow their roles. */
+function landingPath(): "/staff" {
+  return "/staff";
 }
 
 function AuthPage() {
