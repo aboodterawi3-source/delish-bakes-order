@@ -100,13 +100,9 @@ function portalMeta(roleHint?: string): PortalMeta {
   }
 }
 
-/** Sends each signed-in staff member to the screen their role uses. */
-async function landingPath(userId: string): Promise<"/kds" | "/sales" | "/admin"> {
-  const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId);
-  const roles = (data ?? []).map((row) => row.role as string);
-  if (roles.includes("kitchen")) return "/kds";
-  if (roles.includes("sales")) return "/sales";
-  return "/admin";
+/** Every staff member lands on the unified portal; tabs follow their roles. */
+function landingPath(): "/staff" {
+  return "/staff";
 }
 
 function AuthPage() {
@@ -121,9 +117,9 @@ function AuthPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    void supabase.auth.getUser().then(async ({ data }) => {
+    void supabase.auth.getUser().then(({ data }) => {
       if (!data.user) return;
-      void navigate({ to: await landingPath(data.user.id), replace: true });
+      void navigate({ to: landingPath(), replace: true });
     });
   }, [navigate]);
 
@@ -137,7 +133,7 @@ function AuthPage() {
       setError("بيانات الدخول غير صحيحة · Invalid name or password");
       return;
     }
-    void navigate({ to: await landingPath(data.user.id), replace: true });
+    void navigate({ to: landingPath(), replace: true });
   };
 
   return (

@@ -13,3 +13,4 @@
 - [x] Add the customization accordion and smart WebP uploader on product details
 - [x] Make the sales desk the only place that edits the customer app (banner, categories, products)
 - [x] Remove catalog management from kitchen and admin
+- [x] Merge the four staff dashboards into one role-aware portal at /staff

@@ -44,7 +44,7 @@ function AdminSetupPage() {
     try {
       await create({ data: { username, password } });
       await supabase.auth.signInWithPassword({ email: usernameToEmail(username), password });
-      void navigate({ to: "/admin", replace: true });
+      void navigate({ to: "/staff", search: { tab: "admin" as const }, replace: true });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "تعذّر إنشاء الحساب · Could not create the account");
     } finally {
