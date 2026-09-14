@@ -7,7 +7,9 @@ import {
   BadgeDollarSign,
   Bike,
   CalendarClock,
+  Download,
   Link2,
+
   Loader2,
   Lock,
   LogOut,
