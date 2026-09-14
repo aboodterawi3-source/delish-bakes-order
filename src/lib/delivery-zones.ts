@@ -12,6 +12,15 @@ export type DeliveryZone = {
   areas: string[];
 };
 
+/**
+ * "Other governorates" is a single catch-all option. Its fee is a range
+ * (5–8 JD) that staff confirm per order; orders are stored at the range max
+ * and staff adjust the final fee after confirming the address.
+ */
+export const OTHER_GOVERNORATES_AREA = "محافظات أخرى";
+export const OTHER_FEE_MIN = 5;
+export const OTHER_FEE_MAX = 8;
+
 export const DELIVERY_ZONES: DeliveryZone[] = [
   {
     fee: 3,
@@ -70,28 +79,10 @@ export const DELIVERY_ZONES: DeliveryZone[] = [
     ],
   },
   {
-    fee: 5,
-    labelAr: "محافظات أخرى · ٥ د.أ",
-    labelEn: "Other governorates · 5 JD",
-    areas: ["الزرقاء", "مادبا", "السلط"],
-  },
-  {
-    fee: 6,
-    labelAr: "محافظات أخرى · ٦ د.أ",
-    labelEn: "Other governorates · 6 JD",
-    areas: ["جرش", "عجلون", "المفرق"],
-  },
-  {
-    fee: 7,
-    labelAr: "محافظات أخرى · ٧ د.أ",
-    labelEn: "Other governorates · 7 JD",
-    areas: ["إربد", "الكرك"],
-  },
-  {
-    fee: 8,
-    labelAr: "محافظات أخرى · ٨ د.أ",
-    labelEn: "Other governorates · 8 JD",
-    areas: ["الطفيلة", "معان", "العقبة", "البحر الميت"],
+    fee: OTHER_FEE_MAX,
+    labelAr: "محافظات أخرى · ٥–٨ د.أ",
+    labelEn: "Other governorates · 5–8 JD",
+    areas: [OTHER_GOVERNORATES_AREA],
   },
 ];
 
