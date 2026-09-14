@@ -263,7 +263,7 @@ export function SalesPanel() {
     mutationFn: (orderId: string) => editLinkFn({ data: { orderId } }),
     onSuccess: (result) => {
       setMoneyError(null);
-      setEditLink(`${window.location.origin}/edit-order?token=${result.token}`);
+      setEditLink(result.url ?? `${window.location.origin}/edit-order?token=${result.token}`);
     },
     onError: (error: Error) => setMoneyError(error.message),
   });

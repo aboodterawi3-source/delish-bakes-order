@@ -57,6 +57,16 @@ function EditOrderPage() {
   /** The link is still being read from the URL — show nothing but the brand, never an error. */
   const booting = token === null || (Boolean(token) && order.isPending);
 
+  /** The link dies exactly one hour after the sales team created it. */
+  const expiresAt = order.data?.expires_at ? new Date(order.data.expires_at).getTime() : null;
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const expired = expiresAt !== null && expiresAt <= now;
+  const minutesLeft = expiresAt === null ? 0 : Math.max(0, Math.ceil((expiresAt - now) / 60_000));
+
   return (
     <main dir="rtl" lang="ar" className="min-h-dvh w-full bg-[#F9FBFC] px-4 py-10 text-[#3E2723]">
       <div className="mx-auto w-full max-w-md">
@@ -77,6 +87,11 @@ function EditOrderPage() {
           ) : order.isError ? (
             <p className="rounded-2xl bg-[#FDE2CF]/60 p-4 text-sm font-bold text-[#7B3F00]">
               {(order.error as Error).message.split("·")[0]?.trim() || "رابط غير صالح"}
+            </p>
+          ) : expired && !save.isSuccess ? (
+            <p className="rounded-2xl bg-[#FDE2CF]/60 p-4 text-sm font-bold text-[#7B3F00]">
+              انتهت صلاحية هذا الرابط (صالح لمدة ساعة واحدة فقط). تواصل مع فريق ديليش للحصول على
+              رابط جديد.
             </p>
           ) : save.isSuccess ? (
             <div className="space-y-3 text-center">
@@ -130,7 +145,7 @@ function EditOrderPage() {
 
               <button
                 type="button"
-                disabled={save.isPending || !date || !time}
+                disabled={save.isPending || expired || !date || !time}
                 onClick={() => save.mutate()}
                 className="min-h-12 w-full rounded-full bg-[#8B4513] px-6 text-sm font-bold text-white shadow-sm transition-transform hover:scale-[1.02] active:scale-95 disabled:opacity-60"
               >
@@ -138,7 +153,8 @@ function EditOrderPage() {
               </button>
 
               <p className="text-center text-[11px] text-[#7A6458]">
-                هذا الرابط يعمل لمرة واحدة وتنتهي صلاحيته بعد ساعة.
+                هذا الرابط يعمل لمرة واحدة وتنتهي صلاحيته بعد ساعة
+                {minutesLeft > 0 ? ` — يتبقّى ${minutesLeft} دقيقة` : ""}.
               </p>
             </div>
           )}
