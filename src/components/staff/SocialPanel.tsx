@@ -170,9 +170,13 @@ export function SocialPanel() {
       requested_time: form.requested_time,
       event_date: form.event_date || null,
       is_urgent: form.is_urgent,
-      design_notes: form.design_notes,
+      design_notes: [form.design_notes.trim(), customization.notes.trim()].filter(Boolean).join(" — "),
       staff_notes: form.staff_notes,
+      extras_ar: extras.ar,
+      extras_en: extras.en,
+      design_image_url: customization.designImageUrl,
     });
+
   };
 
   return (
