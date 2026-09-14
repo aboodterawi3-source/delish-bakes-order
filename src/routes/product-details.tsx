@@ -45,6 +45,8 @@ function ProductDetailsPage() {
             notes: notes || undefined,
             detailsAr: [item.size, ...extras.ar],
             detailsEn: [item.size, ...extras.en],
+            extrasAr: extras.ar,
+            extrasEn: extras.en,
             spec: { kind: "catalog", productId: "p1" },
           });
           setCartOpen(true);
