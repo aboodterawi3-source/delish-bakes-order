@@ -74,14 +74,14 @@ export function ProductDetailsView({
   return (
     <div
       dir={dir}
-      className={`relative flex min-h-dvh w-full flex-col justify-between overflow-y-auto bg-background text-foreground ${
+      className={`relative flex min-h-dvh w-full max-w-full flex-col justify-between overflow-x-hidden overflow-y-auto bg-background text-foreground ${
         isEmbedded ? "min-h-[740px] max-h-[820px] rounded-[38px] border-4 border-cocoa shadow-2xl" : ""
       }`}
     >
       <BackgroundCurves />
 
       {/* Top Header Bar */}
-      <header className="sticky top-0 z-20 flex items-center justify-between gap-2 border-b border-border/80 bg-background/80 px-4 py-3.5 backdrop-blur-md sm:px-5">
+      <header className="sticky top-0 z-20 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 border-b border-border/80 bg-background/80 px-3 py-3.5 backdrop-blur-md sm:px-5">
         {onBack ? (
           <button
             type="button"
@@ -162,7 +162,7 @@ export function ProductDetailsView({
         </div>
 
         <div className="space-y-4 pt-1">
-          <div className="flex items-start justify-between gap-2">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
             <h1 className="min-w-0 break-words font-sans text-xl font-bold leading-tight tracking-tight text-foreground sm:text-3xl">
               {ar ? (
                 <>
@@ -259,7 +259,7 @@ export function ProductDetailsView({
       </main>
 
       {/* Sticky Bottom Action Bar */}
-      <footer className="sticky bottom-0 z-20 flex flex-wrap items-center justify-between gap-3 border-t border-border bg-background/95 px-4 py-4 backdrop-blur-md sm:px-6">
+      <footer className="sticky bottom-0 z-20 grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] items-center gap-3 border-t border-border bg-background/95 px-4 py-4 backdrop-blur-md sm:flex sm:flex-wrap sm:justify-between sm:px-6">
         <div className="flex min-w-0 flex-col">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-primary">
             {t("from")}
@@ -272,7 +272,7 @@ export function ProductDetailsView({
         <button
           type="button"
           onClick={handleAdd}
-          className="inline-flex min-h-[50px] flex-1 items-center justify-center gap-2 rounded-full bg-primary px-5 py-3.5 text-xs font-bold uppercase text-primary-foreground shadow-sm transition-all hover:scale-[1.02] hover:bg-cocoa-deep active:scale-[0.98] sm:flex-none sm:px-7 sm:text-sm"
+          className="inline-flex min-h-[50px] min-w-0 items-center justify-center gap-2 rounded-full bg-primary px-4 py-3.5 text-center text-xs font-bold uppercase text-primary-foreground shadow-sm transition-all hover:scale-[1.02] hover:bg-cocoa-deep active:scale-[0.98] sm:flex-none sm:px-7 sm:text-sm"
         >
           {addedAnimation ? (
             <>
