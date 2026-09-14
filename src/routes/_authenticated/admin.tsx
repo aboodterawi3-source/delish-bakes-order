@@ -59,7 +59,34 @@ export const Route = createFileRoute("/_authenticated/admin")({
     ],
   }),
   component: AdminPage,
+  errorComponent: AdminErrorScreen,
 });
+
+/** Keeps an authorisation failure from blanking the screen. */
+function AdminErrorScreen({ error }: { error: Error }) {
+  const navigate = useNavigate();
+  const leave = async () => {
+    await supabase.auth.signOut();
+    void navigate({ to: "/auth", search: { role: "admin" }, replace: true });
+  };
+  return (
+    <main dir="rtl" className="grid min-h-dvh place-items-center bg-[#F9FBFC] px-4">
+      <div className="max-w-sm rounded-3xl border border-slate-200 bg-white p-6 text-center shadow-lg">
+        <h1 className="font-display text-lg font-bold text-[#3E2723]">هذه اللوحة للمديرين فقط</h1>
+        <p className="mt-2 text-sm text-[#7A6458]">This dashboard is limited to admin accounts.</p>
+        <p className="mt-3 rounded-xl bg-slate-50 p-2 text-xs text-[#7A6458]">{error.message}</p>
+        <button
+          type="button"
+          onClick={() => void leave()}
+          className="mt-4 inline-flex min-h-12 items-center justify-center rounded-full bg-[#8B4513] px-5 text-sm font-bold text-white shadow-sm hover:bg-[#5D2E17]"
+        >
+          تسجيل الدخول بحساب مدير · Sign in as admin
+        </button>
+      </div>
+    </main>
+  );
+}
+
 
 const jod = (n: number) => `${n.toFixed(2)} د.أ`;
 
@@ -110,8 +137,10 @@ function AdminPage() {
   const access = useQuery({
     queryKey: ["admin", "access"],
     queryFn: useServerFn(getAdminAccess),
-    staleTime: 5 * 60_000,
+    staleTime: 0,
+    retry: false,
   });
+
   const analyticsFn = useServerFn(getAdminAnalytics);
   const analytics = useQuery({
     queryKey: ["admin", "analytics"],
