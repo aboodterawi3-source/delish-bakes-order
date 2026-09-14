@@ -89,7 +89,7 @@ export const submitStorefrontOrder = createServerFn({ method: "POST" })
   .inputValidator((input: StorefrontOrderRequest) => validate(input))
   .handler(async ({ data }) => {
     const subtotal = data.priced.reduce((sum, line) => sum + line.unit_price * line.quantity, 0);
-    const deliveryFee = deliveryFeeFor(data.method, data.priced.length);
+    const deliveryFee = deliveryFeeFor(data.method, data.priced.length, data.area);
     const inscription = data.priced
       .map((line) => line.message)
       .filter(Boolean)

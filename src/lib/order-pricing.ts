@@ -7,6 +7,7 @@ import {
   DELIVERY_FEE,
   type Option,
 } from "@/lib/menu";
+import { feeForArea } from "@/lib/delivery-zones";
 
 /**
  * A cart line is described by a *spec* (which catalogue item / builder choices were
