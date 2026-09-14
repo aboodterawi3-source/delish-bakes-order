@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { decodeValidatedImage } from "@/lib/image-validation";
+import { publicError } from "@/lib/public-error";
 
 const BUCKET = "order-designs";
 /** Five years: staff must still be able to open old reference photos. */
@@ -21,13 +22,17 @@ export const uploadDesignImage = createServerFn({ method: "POST" })
     const { error } = await supabaseAdmin.storage
       .from(BUCKET)
       .upload(path, data.binary, { contentType: data.contentType, upsert: false });
-    if (error) throw new Error(error.message);
+    if (error) throw publicError("design-upload.store", error, "تعذّر رفع الصورة · Could not upload the photo");
 
     const { data: signed, error: signError } = await supabaseAdmin.storage
       .from(BUCKET)
       .createSignedUrl(path, SIGNED_URL_TTL);
     if (signError || !signed?.signedUrl) {
-      throw new Error(signError?.message ?? "تعذّر إنشاء رابط الصورة · Could not create the image link");
+      throw publicError(
+        "design-upload.sign",
+        signError,
+        "تعذّر إنشاء رابط الصورة · Could not create the image link",
+      );
     }
 
     return { url: signed.signedUrl, path };

@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { deliveryFeeFor, priceLine, type LineSpec } from "@/lib/order-pricing";
 import { decodeValidatedImage } from "@/lib/image-validation";
+import { publicError } from "@/lib/public-error";
 
 export type StorefrontOrderRequest = {
   customer_name: string;
@@ -140,7 +141,13 @@ export const submitStorefrontOrder = createServerFn({ method: "POST" })
       })
       .select("id, order_number, subtotal, delivery_fee, total")
       .single();
-    if (error || !order) throw new Error(error?.message ?? "تعذّر حفظ الطلب · Could not save the order");
+    if (error || !order) {
+      throw publicError(
+        "checkout.insertOrder",
+        error,
+        "تعذّر حفظ الطلب · Could not save the order",
+      );
+    }
 
     const { error: itemError } = await supabaseAdmin.from("order_items").insert(
       data.priced.map((line) => ({
@@ -154,7 +161,13 @@ export const submitStorefrontOrder = createServerFn({ method: "POST" })
         notes: line.notes,
       })),
     );
-    if (itemError) throw new Error(itemError.message);
+    if (itemError) {
+      throw publicError(
+        "checkout.insertItems",
+        itemError,
+        "تعذّر حفظ الطلب · Could not save the order",
+      );
+    }
 
     return {
       id: order.id,
