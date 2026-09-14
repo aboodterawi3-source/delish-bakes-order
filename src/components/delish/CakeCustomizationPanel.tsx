@@ -5,13 +5,20 @@ import { convertToWebp, formatBytes } from "@/lib/image-webp";
 import { IMAGE_ACCEPT } from "@/lib/image-validation";
 import { uploadDesignImage } from "@/lib/design-upload.functions";
 
+/** One balloon colour with its own count; several may be combined. */
+export type BalloonPick = { id: string; label: string; qty: number };
+
 export type Customization = {
-  candleMode: "none" | "standard" | "number";
+  /** Both candle kinds may be chosen at the same time, each with its own input. */
+  standardCandles: boolean;
   candleQty: number;
+  numberCandles: boolean;
   candleDigits: string;
+  numberCandleQty: number;
   balloons: boolean;
-  balloonColor: string;
-  balloonQty: number;
+  /** Multi-colour selection: any number of colours, each with a count. */
+  balloonPicks: BalloonPick[];
+  balloonNotes: string;
   topper: boolean;
   topperText: string;
   gift: boolean;
@@ -22,12 +29,14 @@ export type Customization = {
 };
 
 export const emptyCustomization: Customization = {
-  candleMode: "none",
+  standardCandles: false,
   candleQty: 1,
+  numberCandles: false,
   candleDigits: "",
+  numberCandleQty: 1,
   balloons: false,
-  balloonColor: "",
-  balloonQty: 1,
+  balloonPicks: [],
+  balloonNotes: "",
   topper: false,
   topperText: "",
   gift: false,
@@ -51,17 +60,29 @@ export function customizationSummary(c: Customization) {
   const ar: string[] = [];
   const en: string[] = [];
 
-  if (c.candleMode === "standard") {
+  if (c.standardCandles) {
     ar.push(`شموع عادية: ${c.candleQty}`);
     en.push(`Standard candles: ${c.candleQty}`);
-  } else if (c.candleMode === "number" && c.candleDigits.trim()) {
-    ar.push(`شموع أرقام: ${c.candleDigits.trim()}`);
-    en.push(`Number candles: ${c.candleDigits.trim()}`);
+  }
+  if (c.numberCandles && c.candleDigits.trim()) {
+    ar.push(`شموع أرقام: ${c.candleDigits.trim()} × ${c.numberCandleQty}`);
+    en.push(`Number candles: ${c.candleDigits.trim()} × ${c.numberCandleQty}`);
   }
   if (c.balloons) {
-    const color = c.balloonColor.trim() || "—";
-    ar.push(`بالونات: ${color} × ${c.balloonQty}`);
-    en.push(`Balloons: ${color} × ${c.balloonQty}`);
+    const picks = c.balloonPicks.filter((p) => p.qty > 0);
+    if (picks.length > 0) {
+      const list = picks.map((p) => `${p.label} × ${p.qty}`).join(" + ");
+      ar.push(`بالونات: ${list}`);
+      en.push(`Balloons: ${list}`);
+    }
+    if (c.balloonNotes.trim()) {
+      ar.push(`بالونات إضافية: ${c.balloonNotes.trim()}`);
+      en.push(`Extra balloons: ${c.balloonNotes.trim()}`);
+    }
+    if (picks.length === 0 && !c.balloonNotes.trim()) {
+      ar.push("بالونات: مطلوبة");
+      en.push("Balloons: requested");
+    }
   }
   if (c.topper && c.topperText.trim()) {
     ar.push(`توبر أكريليك: ${c.topperText.trim()}`);
