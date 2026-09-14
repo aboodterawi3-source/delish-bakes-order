@@ -362,7 +362,11 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                           <optgroup key={zone.labelEn} label={lang === "ar" ? zone.labelAr : zone.labelEn}>
                             {zone.areas.map((area) => (
                               <option key={`${zone.labelEn}-${area}`} value={area}>
-                                {area} — {zone.fee.toFixed(2)} {t("jod")}
+                                {area === OTHER_GOVERNORATES_AREA
+                                  ? lang === "ar"
+                                    ? `${area} (٥–٨ د.أ)`
+                                    : `Other governorates (5–8 JOD)`
+                                  : `${area} — ${zone.fee.toFixed(2)} ${t("jod")}`}
                               </option>
                             ))}
                           </optgroup>
@@ -370,12 +374,20 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                       </select>
                     )}
                   </Field>
-                  {areaFee !== null && (
+                  {form.area.trim() === OTHER_GOVERNORATES_AREA ? (
                     <p className="-mt-2 text-xs font-semibold text-muted-foreground">
                       {lang === "ar"
-                        ? `أجرة التوصيل لهذه المنطقة: ${areaFee.toFixed(2)} د.أ`
-                        : `Delivery fee for this area: ${areaFee.toFixed(2)} JOD`}
+                        ? "أجرة التوصيل للمحافظات الأخرى من ٥ إلى ٨ د.أ — يحددها فريقنا عند تأكيد الطلب حسب العنوان."
+                        : "Delivery to other governorates is 5–8 JOD — our team confirms the exact fee based on your address."}
                     </p>
+                  ) : (
+                    areaFee !== null && (
+                      <p className="-mt-2 text-xs font-semibold text-muted-foreground">
+                        {lang === "ar"
+                          ? `أجرة التوصيل لهذه المنطقة: ${areaFee.toFixed(2)} د.أ`
+                          : `Delivery fee for this area: ${areaFee.toFixed(2)} JOD`}
+                      </p>
+                    )
                   )}
                   <Field label={t("address")} error={errors["address"]} errText={t("required")}>
                     {(p) => (
