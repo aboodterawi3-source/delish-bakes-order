@@ -73,8 +73,8 @@ export function priceLine(
       name_en: product.en,
       unit_price: product.price + (size?.price ?? 0) + (flavor?.price ?? 0),
       quantity,
-      options_ar: [size ? `الحجم: ${size.ar}` : "", flavor ? `النكهة: ${flavor.ar}` : ""].filter(Boolean),
-      options_en: [size ? `Size: ${size.en}` : "", flavor ? `Flavor: ${flavor.en}` : ""].filter(Boolean),
+      options_ar: [size ? `الحجم: ${size.ar}` : "", flavor ? `النكهة: ${flavor.ar}` : "", ...extras.ar].filter(Boolean),
+      options_en: [size ? `Size: ${size.en}` : "", flavor ? `Flavor: ${flavor.en}` : "", ...extras.en].filter(Boolean),
       notes,
       message: null,
     };
@@ -97,6 +97,7 @@ export function priceLine(
       `الحشوة: ${filling.ar}`,
       `التغليف: ${frosting.ar}`,
       ...(message ? [`الكتابة: ${message}`] : []),
+      ...extras.ar,
     ],
     options_en: [
       `Size: ${size.en}`,
@@ -104,6 +105,7 @@ export function priceLine(
       `Filling: ${filling.en}`,
       `Frosting: ${frosting.en}`,
       ...(message ? [`Message: ${message}`] : []),
+      ...extras.en,
     ],
     notes,
     message,
