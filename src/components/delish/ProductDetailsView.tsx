@@ -81,7 +81,7 @@ export function ProductDetailsView({
       <BackgroundCurves />
 
       {/* Top Header Bar */}
-      <header className="sticky top-0 z-20 flex items-center justify-between border-b border-border/80 bg-background/80 px-5 py-3.5 backdrop-blur-md">
+      <header className="sticky top-0 z-20 flex items-center justify-between gap-2 border-b border-border/80 bg-background/80 px-4 py-3.5 backdrop-blur-md sm:px-5">
         {onBack ? (
           <button
             type="button"
@@ -101,14 +101,14 @@ export function ProductDetailsView({
           </Link>
         )}
 
-        <div className="flex flex-col items-center">
+        <div className="flex min-w-0 flex-col items-center">
           <DelishLogo size="sm" />
-          <span className="-mt-0.5 text-[9px] font-bold uppercase tracking-[0.24em] text-gold">
+          <span className="-mt-0.5 truncate text-[9px] font-bold uppercase tracking-[0.24em] text-gold">
             {t("celebrationCakes")}
           </span>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <LangToggle />
           <button
             type="button"
@@ -163,7 +163,7 @@ export function ProductDetailsView({
 
         <div className="space-y-4 pt-1">
           <div className="flex items-start justify-between gap-2">
-            <h1 className="font-sans text-2xl font-bold leading-tight tracking-tight text-foreground sm:text-3xl">
+            <h1 className="min-w-0 break-words font-sans text-xl font-bold leading-tight tracking-tight text-foreground sm:text-3xl">
               {ar ? (
                 <>
                   كيكة أومبري <br />
@@ -259,12 +259,12 @@ export function ProductDetailsView({
       </main>
 
       {/* Sticky Bottom Action Bar */}
-      <footer className="sticky bottom-0 z-20 flex items-center justify-between border-t border-border bg-background/95 px-6 py-4 backdrop-blur-md">
-        <div className="flex flex-col">
+      <footer className="sticky bottom-0 z-20 flex flex-wrap items-center justify-between gap-3 border-t border-border bg-background/95 px-4 py-4 backdrop-blur-md sm:px-6">
+        <div className="flex min-w-0 flex-col">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-primary">
             {t("from")}
           </span>
-          <span className="font-sans text-2xl font-extrabold text-foreground sm:text-3xl">
+          <span className="font-sans text-xl font-extrabold text-foreground sm:text-3xl">
             {formatJod(currentPrice, lang)}
           </span>
         </div>
@@ -272,7 +272,7 @@ export function ProductDetailsView({
         <button
           type="button"
           onClick={handleAdd}
-          className="inline-flex min-h-[50px] items-center justify-center gap-2 rounded-full bg-primary px-7 py-3.5 text-xs font-bold uppercase text-primary-foreground shadow-sm transition-all hover:scale-[1.02] hover:bg-cocoa-deep active:scale-[0.98] sm:text-sm"
+          className="inline-flex min-h-[50px] flex-1 items-center justify-center gap-2 rounded-full bg-primary px-5 py-3.5 text-xs font-bold uppercase text-primary-foreground shadow-sm transition-all hover:scale-[1.02] hover:bg-cocoa-deep active:scale-[0.98] sm:flex-none sm:px-7 sm:text-sm"
         >
           {addedAnimation ? (
             <>
