@@ -3,7 +3,7 @@ import { useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChefHat, Crown, Loader2, LogOut, MessageSquareHeart, ShoppingBag } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { AdminPanel, AdminErrorScreen } from "@/components/staff/AdminPanel";
+import { AdminPanel } from "@/components/staff/AdminPanel";
 import { SalesPanel } from "@/components/staff/SalesPanel";
 import { KitchenPanel } from "@/components/staff/KitchenPanel";
 import { SocialPanel } from "@/components/staff/SocialPanel";
@@ -38,8 +38,42 @@ export const Route = createFileRoute("/_authenticated/staff")({
     return tab ? { tab } : {};
   },
   component: StaffPortalPage,
-  errorComponent: AdminErrorScreen,
+  errorComponent: StaffErrorScreen,
 });
+
+/** Any panel failure shows a readable message instead of a blank screen. */
+function StaffErrorScreen({ error }: { error: Error }) {
+  const navigate = useNavigate();
+  const leave = async () => {
+    await supabase.auth.signOut();
+    void navigate({ to: "/auth", replace: true });
+  };
+  return (
+    <main dir="rtl" className="grid min-h-dvh place-items-center bg-[#F9FBFC] px-4">
+      <div className="max-w-sm rounded-3xl border border-slate-200 bg-white p-6 text-center shadow-lg">
+        <h1 className="font-display text-lg font-bold text-[#3E2723]">تعذّر تحميل هذا القسم</h1>
+        <p className="mt-2 text-sm text-[#7A6458]">This section could not be loaded.</p>
+        <p className="mt-3 rounded-xl bg-slate-50 p-2 text-xs text-[#7A6458]">{error.message}</p>
+        <div className="mt-4 flex flex-wrap justify-center gap-2">
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="inline-flex min-h-12 items-center justify-center rounded-full border border-slate-200 bg-white px-5 text-sm font-bold text-[#5D2E17] hover:bg-slate-50"
+          >
+            إعادة المحاولة · Retry
+          </button>
+          <button
+            type="button"
+            onClick={() => void leave()}
+            className="inline-flex min-h-12 items-center justify-center rounded-full bg-[#8B4513] px-5 text-sm font-bold text-white shadow-sm hover:bg-[#5D2E17]"
+          >
+            تسجيل الخروج · Sign out
+          </button>
+        </div>
+      </div>
+    </main>
+  );
+}
 
 function StaffPortalPage() {
   const navigate = useNavigate();
