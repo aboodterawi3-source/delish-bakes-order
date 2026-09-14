@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { ProductDetailsView } from "@/components/delish/ProductDetailsView";
 import { CartDrawer } from "@/components/delish/CartDrawer";
-import { CartProvider, useCart } from "@/lib/cart";
+import { useCart } from "@/lib/cart";
 import { customizationSummary } from "@/components/delish/CakeCustomizationPanel";
 
 export const Route = createFileRoute("/product-details")({
@@ -16,16 +16,8 @@ export const Route = createFileRoute("/product-details")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: ProductDetailsPageWrapper,
+  component: ProductDetailsPage,
 });
-
-function ProductDetailsPageWrapper() {
-  return (
-    <CartProvider>
-      <ProductDetailsPage />
-    </CartProvider>
-  );
-}
 
 function ProductDetailsPage() {
   const navigate = useNavigate();

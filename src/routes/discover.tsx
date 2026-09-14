@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { DiscoverView } from "@/components/delish/DiscoverView";
 import { CartDrawer } from "@/components/delish/CartDrawer";
-import { CartProvider, useCart } from "@/lib/cart";
+import { useCart } from "@/lib/cart";
 
 export const Route = createFileRoute("/discover")({
   head: () => ({
@@ -15,16 +15,8 @@ export const Route = createFileRoute("/discover")({
       { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
-  component: DiscoverPageWrapper,
+  component: DiscoverPage,
 });
-
-function DiscoverPageWrapper() {
-  return (
-    <CartProvider>
-      <DiscoverPage />
-    </CartProvider>
-  );
-}
 
 function DiscoverPage() {
   const navigate = useNavigate();
