@@ -5,13 +5,20 @@ import { convertToWebp, formatBytes } from "@/lib/image-webp";
 import { IMAGE_ACCEPT } from "@/lib/image-validation";
 import { uploadDesignImage } from "@/lib/design-upload.functions";
 
+/** One balloon colour with its own count; several may be combined. */
+export type BalloonPick = { id: string; label: string; qty: number };
+
 export type Customization = {
-  candleMode: "none" | "standard" | "number";
+  /** Both candle kinds may be chosen at the same time, each with its own input. */
+  standardCandles: boolean;
   candleQty: number;
+  numberCandles: boolean;
   candleDigits: string;
+  numberCandleQty: number;
   balloons: boolean;
-  balloonColor: string;
-  balloonQty: number;
+  /** Multi-colour selection: any number of colours, each with a count. */
+  balloonPicks: BalloonPick[];
+  balloonNotes: string;
   topper: boolean;
   topperText: string;
   gift: boolean;
@@ -22,12 +29,14 @@ export type Customization = {
 };
 
 export const emptyCustomization: Customization = {
-  candleMode: "none",
+  standardCandles: false,
   candleQty: 1,
+  numberCandles: false,
   candleDigits: "",
+  numberCandleQty: 1,
   balloons: false,
-  balloonColor: "",
-  balloonQty: 1,
+  balloonPicks: [],
+  balloonNotes: "",
   topper: false,
   topperText: "",
   gift: false,
@@ -51,17 +60,29 @@ export function customizationSummary(c: Customization) {
   const ar: string[] = [];
   const en: string[] = [];
 
-  if (c.candleMode === "standard") {
+  if (c.standardCandles) {
     ar.push(`شموع عادية: ${c.candleQty}`);
     en.push(`Standard candles: ${c.candleQty}`);
-  } else if (c.candleMode === "number" && c.candleDigits.trim()) {
-    ar.push(`شموع أرقام: ${c.candleDigits.trim()}`);
-    en.push(`Number candles: ${c.candleDigits.trim()}`);
+  }
+  if (c.numberCandles && c.candleDigits.trim()) {
+    ar.push(`شموع أرقام: ${c.candleDigits.trim()} × ${c.numberCandleQty}`);
+    en.push(`Number candles: ${c.candleDigits.trim()} × ${c.numberCandleQty}`);
   }
   if (c.balloons) {
-    const color = c.balloonColor.trim() || "—";
-    ar.push(`بالونات: ${color} × ${c.balloonQty}`);
-    en.push(`Balloons: ${color} × ${c.balloonQty}`);
+    const picks = c.balloonPicks.filter((p) => p.qty > 0);
+    if (picks.length > 0) {
+      const list = picks.map((p) => `${p.label} × ${p.qty}`).join(" + ");
+      ar.push(`بالونات: ${list}`);
+      en.push(`Balloons: ${list}`);
+    }
+    if (c.balloonNotes.trim()) {
+      ar.push(`بالونات إضافية: ${c.balloonNotes.trim()}`);
+      en.push(`Extra balloons: ${c.balloonNotes.trim()}`);
+    }
+    if (picks.length === 0 && !c.balloonNotes.trim()) {
+      ar.push("بالونات: مطلوبة");
+      en.push("Balloons: requested");
+    }
   }
   if (c.topper && c.topperText.trim()) {
     ar.push(`توبر أكريليك: ${c.topperText.trim()}`);
@@ -236,56 +257,58 @@ export function CakeCustomizationPanel({
 
       <Section
         title="Candles · الشموع"
-        subtitle="Standard candles or number candles"
-        active={value.candleMode !== "none"}
+        subtitle="Combine standard and number candles"
+        active={value.standardCandles || value.numberCandles}
       >
-        <div className="flex min-w-0 flex-wrap gap-2">
-          {(
-            [
-              ["none", "None · بدون"],
-              ["standard", "Standard candle · شمعة عادية"],
-              ["number", "Number candles · شموع أرقام"],
-            ] as const
-          ).map(([mode, label]) => (
-            <button
-              key={mode}
-              type="button"
-              onClick={() => set("candleMode", mode)}
-              aria-pressed={value.candleMode === mode}
-              className={`rounded-full px-3.5 py-2 text-[11px] font-bold transition ${
-                value.candleMode === mode
-                  ? "bg-[#8B4513] text-white shadow-sm"
-                  : "bg-[#FDE2CF]/60 text-[#7B3F00] hover:bg-[#FDE2CF]"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-
-        {value.candleMode === "standard" && (
+        <Toggle
+          checked={value.standardCandles}
+          onChange={(next) => set("standardCandles", next)}
+          label="Standard candles · شموع عادية"
+        />
+        {value.standardCandles && (
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-[#3E2723]">Quantity · العدد</span>
             <Counter value={value.candleQty} onChange={(n) => set("candleQty", n)} label="Candles" />
           </div>
         )}
 
-        {value.candleMode === "number" && (
-          <label className="block space-y-1.5">
-            <span className="text-xs font-semibold text-[#3E2723]">Digits · الأرقام</span>
-            <input
-              inputMode="numeric"
-              maxLength={4}
-              value={value.candleDigits}
-              onChange={(e) => set("candleDigits", e.target.value.replace(/[^0-9]/g, ""))}
-              placeholder="18"
-              className={inputClass}
-            />
-          </label>
+        <div className="h-px bg-slate-100" />
+
+        <Toggle
+          checked={value.numberCandles}
+          onChange={(next) => set("numberCandles", next)}
+          label="Number candles · شموع أرقام"
+        />
+        {value.numberCandles && (
+          <>
+            <label className="block space-y-1.5">
+              <span className="text-xs font-semibold text-[#3E2723]">Digits · الأرقام</span>
+              <input
+                inputMode="numeric"
+                maxLength={4}
+                value={value.candleDigits}
+                onChange={(e) => set("candleDigits", e.target.value.replace(/[^0-9]/g, ""))}
+                placeholder="18"
+                className={inputClass}
+              />
+            </label>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-[#3E2723]">Sets · عدد الأطقم</span>
+              <Counter
+                value={value.numberCandleQty}
+                onChange={(n) => set("numberCandleQty", n)}
+                label="Number candles"
+              />
+            </div>
+          </>
         )}
       </Section>
 
-      <Section title="Balloons · البالونات" subtitle="Pick a colour and quantity" active={value.balloons}>
+      <Section
+        title="Balloons · البالونات"
+        subtitle="Choose several colours with counts"
+        active={value.balloons}
+      >
         <Toggle
           checked={value.balloons}
           onChange={(next) => set("balloons", next)}
@@ -295,12 +318,20 @@ export function CakeCustomizationPanel({
           <>
             <div className="flex flex-wrap gap-2">
               {BALLOON_COLORS.map((color) => {
-                const selected = value.balloonColor === `${color.en} / ${color.ar}`;
+                const label = `${color.en} / ${color.ar}`;
+                const selected = value.balloonPicks.some((p) => p.id === color.id);
                 return (
                   <button
                     key={color.id}
                     type="button"
-                    onClick={() => set("balloonColor", `${color.en} / ${color.ar}`)}
+                    onClick={() =>
+                      set(
+                        "balloonPicks",
+                        selected
+                          ? value.balloonPicks.filter((p) => p.id !== color.id)
+                          : [...value.balloonPicks, { id: color.id, label, qty: 1 }],
+                      )
+                    }
                     aria-pressed={selected}
                     className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-bold transition ${
                       selected ? "border-[#8B4513] bg-[#FDE2CF] text-[#7B3F00]" : "border-slate-200 bg-white text-[#5A4A42]"
@@ -316,20 +347,49 @@ export function CakeCustomizationPanel({
                 );
               })}
             </div>
+
+            {value.balloonPicks.length > 0 && (
+              <ul className="space-y-2">
+                {value.balloonPicks.map((pick) => (
+                  <li key={pick.id} className="flex min-w-0 items-center justify-between gap-2">
+                    <span className="min-w-0 break-words text-xs font-semibold text-[#3E2723]">{pick.label}</span>
+                    <span className="flex shrink-0 items-center gap-1.5">
+                      <Counter
+                        value={pick.qty}
+                        onChange={(n) =>
+                          set(
+                            "balloonPicks",
+                            value.balloonPicks.map((p) => (p.id === pick.id ? { ...p, qty: n } : p)),
+                          )
+                        }
+                        label={pick.label}
+                      />
+                      <button
+                        type="button"
+                        aria-label={`Remove ${pick.label}`}
+                        onClick={() => set("balloonPicks", value.balloonPicks.filter((p) => p.id !== pick.id))}
+                        className="rounded-full border border-slate-200 p-1.5 text-[#8B4513] transition hover:bg-slate-50"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+
             <label className="block space-y-1.5">
-              <span className="text-xs font-semibold text-[#3E2723]">Other colour · لون آخر</span>
+              <span className="text-xs font-semibold text-[#3E2723]">
+                Other colours &amp; counts · ألوان وأعداد أخرى
+              </span>
               <input
-                value={value.balloonColor}
-                onChange={(e) => set("balloonColor", e.target.value)}
-                maxLength={60}
-                placeholder="Pastel lilac"
+                value={value.balloonNotes}
+                onChange={(e) => set("balloonNotes", e.target.value)}
+                maxLength={160}
+                placeholder="Pastel lilac × 5, chrome silver × 3"
                 className={inputClass}
               />
             </label>
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-[#3E2723]">Quantity · العدد</span>
-              <Counter value={value.balloonQty} onChange={(n) => set("balloonQty", n)} label="Balloons" />
-            </div>
           </>
         )}
       </Section>
