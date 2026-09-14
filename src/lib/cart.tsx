@@ -11,6 +11,9 @@ export type CartLine = {
   designImage?: string | undefined;
   detailsAr: string[];
   detailsEn: string[];
+  /** Customer-picked extras saved with the order and shown to kitchen/sales. */
+  extrasAr?: string[] | undefined;
+  extrasEn?: string[] | undefined;
   notes?: string | undefined;
   /** Trusted description of the choice; the server re-prices from this. */
   spec?: LineSpec | undefined;

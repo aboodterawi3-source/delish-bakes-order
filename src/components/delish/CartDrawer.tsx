@@ -142,7 +142,17 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
           design_image: lines.find((l) => l.designImage)?.designImage ?? null,
           // Prices are never sent: the server re-prices each line from the catalogue.
           lines: lines.flatMap((l) =>
-            l.spec ? [{ spec: l.spec, quantity: l.qty, notes: l.notes ?? null }] : [],
+            l.spec
+              ? [
+                  {
+                    spec: l.spec,
+                    quantity: l.qty,
+                    notes: l.notes ?? null,
+                    extras_ar: l.extrasAr ?? null,
+                    extras_en: l.extrasEn ?? null,
+                  },
+                ]
+              : [],
           ),
         },
       });

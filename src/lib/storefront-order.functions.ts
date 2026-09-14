@@ -95,7 +95,10 @@ function validate(input: StorefrontOrderRequest) {
     if (spec.kind === "builder" && spec.message) {
       text(spec.message, 120, "الكتابة");
     }
-    return priceLine(spec, quantity, text(line?.notes, 400, "الملاحظات"));
+    return priceLine(spec, quantity, text(line?.notes, 400, "الملاحظات"), {
+      ar: extraList(line?.extras_ar),
+      en: extraList(line?.extras_en),
+    });
   });
 
   return { name, phone, method, area, address, date, time, notes, designImage, priced } as const;
