@@ -343,6 +343,19 @@ export function SocialPanel() {
             />
           </label>
 
+          <div className="min-w-0 rounded-2xl border border-[#FDE2CF] bg-[#FDE2CF]/20 p-3 sm:p-4">
+            <CakeCustomizationPanel value={customization} onChange={setCustomization} />
+            {extras.ar.length ? (
+              <ul className="mt-3 space-y-1 rounded-xl bg-white/80 p-3 text-xs font-bold text-[#5D2E17]">
+                {extras.ar.map((line) => (
+                  <li key={line}>• {line}</li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+
+
+
           <label className="block text-sm font-bold text-[#3E2723]">
             ملاحظات داخلية للموظفين · Internal staff notes
             <textarea
