@@ -23,6 +23,7 @@ import {
   setProductVisibility,
   uploadSiteImage,
 } from "@/lib/cms.functions";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { convertToWebp, formatBytes } from "@/lib/image-webp";
 import { IMAGE_ACCEPT } from "@/lib/image-validation";
 import {
