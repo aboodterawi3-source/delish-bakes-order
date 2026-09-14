@@ -28,8 +28,8 @@ function DiscoverPage() {
       <DiscoverView
         cartCount={count}
         onOpenCart={() => setCartOpen(true)}
-        onSelectProduct={(_id) => {
-          void navigate({ to: "/product-details" });
+        onSelectProduct={(id) => {
+          void navigate({ to: "/product-details", search: { id } });
         }}
       />
       <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />

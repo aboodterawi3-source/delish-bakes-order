@@ -126,6 +126,7 @@ export function DiscoverView({
                 <div className="pt-2">
                   <Link
                     to="/product-details"
+                    search={{ id: undefined }}
                     className="inline-flex items-center justify-center rounded-full bg-card px-4 py-1.5 text-xs font-bold text-primary shadow-sm transition hover:bg-secondary active:scale-95"
                   >
                     {banner.button_text}
@@ -206,6 +207,7 @@ export function DiscoverView({
             </h3>
             <Link
               to="/product-details"
+              search={{ id: undefined }}
               aria-label={t("showAll")}
               className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
             >
@@ -257,6 +259,7 @@ const ProductCard = memo(function ProductCard({
         <div className="min-w-0">
           <Link
             to="/product-details"
+            search={{ id: product.id }}
             className="block break-words font-sans text-base font-extrabold text-foreground transition-transform hover:text-primary sm:text-lg"
           >
             {name}
