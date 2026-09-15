@@ -571,7 +571,7 @@ export function SalesPanel() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => window.print()}
+                  onClick={() => printShiftReport(report, shiftDate)}
                   className="mt-2 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-primary px-5 text-sm font-bold text-primary-foreground"
                 >
                   <Printer className="h-4 w-4" aria-hidden="true" /> طباعة التقرير اليومي
