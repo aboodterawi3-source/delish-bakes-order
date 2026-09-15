@@ -969,8 +969,78 @@ function OrderPanel({
               />
             </label>
           ) : null}
-          <p className={`mt-2 text-sm font-bold ${remaining > 0 ? "text-destructive" : "text-foreground"}`}>المتبقي: {jd(remaining)}</p>
+          <div className="mt-2 space-y-1 rounded-xl bg-secondary/60 p-3 text-sm">
+            <div className="flex justify-between"><span>الحساب كامل</span><span className="font-bold">{jd(liveTotal)}</span></div>
+            <div className="flex justify-between"><span>المبلغ المدفوع</span><span className="font-bold">{jd(Number(deposit) || 0)}</span></div>
+            <div className={`flex justify-between border-t border-border pt-1 font-bold ${remaining > 0 ? "text-destructive" : "text-foreground"}`}>
+              <span>المبلغ المتبقي</span><span>{jd(remaining)}</span>
+            </div>
+          </div>
         </section>
+
+        {/* Card writing, final-photo request and the official confirmation message. */}
+        <section className="mt-6 rounded-2xl border border-border p-3.5">
+          <h3 className="text-sm font-bold text-foreground">👑 رسالة تأكيد الطلب</h3>
+          <label className="mt-3 block text-sm font-bold text-foreground">
+            الكتابة على الكرت
+            <input
+              type="text"
+              maxLength={1000}
+              value={cardNote}
+              onChange={(event) => setCardNote(event.target.value)}
+              onBlur={() => onPatch({ card_note: cardNote.trim() || null })}
+              className="mt-1 min-h-12 w-full rounded-xl border border-input bg-background px-3 text-sm"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={() => {
+              const value = !finalPhoto;
+              setFinalPhoto(value);
+              onPatch({ final_photo_requested: value });
+            }}
+            aria-pressed={finalPhoto}
+            className={`mt-3 min-h-11 rounded-full px-4 text-xs font-bold ${finalPhoto ? "bg-primary text-primary-foreground" : "border border-border text-foreground"}`}
+          >
+            📸 بس بدي الصوره النهائيه لو سمحت
+          </button>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => onPatch({ confirmation_message: confirmationMessage })}
+              className="min-h-12 flex-1 rounded-full bg-primary px-4 text-sm font-bold text-primary-foreground"
+            >
+              توليد وحفظ الرسالة
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(confirmationMessage);
+                  setMessageCopied(true);
+                  window.setTimeout(() => setMessageCopied(false), 2500);
+                } catch {
+                  toast.error("تعذّر النسخ — حدّد النص وانسخه يدوياً");
+                }
+              }}
+              className="min-h-12 flex-1 rounded-full border border-border px-4 text-sm font-bold text-foreground"
+            >
+              {messageCopied ? "تم النسخ" : "نسخ الرسالة"}
+            </button>
+            <a
+              href={`https://wa.me/${waNumber(order.customer_phone)}?text=${encodeURIComponent(confirmationMessage)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-full bg-[#25D366] px-4 text-sm font-bold text-white"
+            >
+              <MessageCircle className="h-4 w-4" aria-hidden="true" /> إرسال للعميل
+            </a>
+          </div>
+          <pre className="mt-3 max-h-80 overflow-y-auto whitespace-pre-wrap break-words rounded-xl bg-secondary/60 p-3 text-xs text-foreground">
+            {confirmationMessage}
+          </pre>
+        </section>
+
 
         <section className="mt-6">
           <h3 className="text-sm font-bold text-foreground">تفاصيل الطلب</h3>
