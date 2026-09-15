@@ -26,6 +26,7 @@ import {
   type KitchenStage,
 } from "@/lib/kds.functions";
 import { PRIORITY_META } from "@/lib/priority";
+import { esc, printDocument } from "@/lib/print";
 import bellAsset from "@/assets/Bell.mp3.asset.json";
 
 
@@ -59,35 +60,31 @@ async function downloadDesignImage(url: string, orderNumber: string) {
  * and can be sent to the kitchen printer on its own.
  */
 function printKitchenTicket(order: KdsOrder) {
-  const lines = order.items
-    .map(
-      (item) =>
-        `<div class="item"><b>${item.quantity} × ${item.name_ar}</b>` +
-        (item.options_ar.length ? `<div class="opt">${item.options_ar.map((o) => `• ${o}`).join("<br>")}</div>` : "") +
-        (item.notes ? `<div class="note">ملاحظة: ${item.notes}</div>` : "") +
-        `</div>`,
-    )
-    .join("");
-  const html = `<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8">
-<title>تذكرة مطبخ ${order.order_number}</title>
-<style>@page{size:80mm auto;margin:4mm}body{font-family:system-ui,sans-serif;width:72mm;font-size:13px;color:#000}
-h1{font-size:16px;margin:0 0 2px;text-align:center}.line{border-top:1px dashed #000;margin:6px 0}
-.item{margin:6px 0}.opt{font-size:12px}.note{font-size:12px;font-weight:700}
-.row{display:flex;justify-content:space-between}</style></head>
-<body><h1>تذكرة مطبخ · KITCHEN</h1>
-<div class="row"><b>${order.order_number}</b><span>${order.method === "delivery" ? "توصيل" : "استلام"}</span></div>
-<div class="row"><span>${order.requested_date}</span><span>${order.requested_time.slice(0, 5)}</span></div>
-<div>${order.customer_name}</div>
+  const lines = order.items.length
+    ? order.items
+        .map(
+          (item) =>
+            `<div class="item"><b>${item.quantity} × ${esc(item.name_ar)}</b>` +
+            (item.options_ar.length
+              ? `<div class="opt">${item.options_ar.map((o) => `• ${esc(o)}`).join("<br>")}</div>`
+              : "") +
+            (item.notes ? `<div class="note">ملاحظة: ${esc(item.notes)}</div>` : "") +
+            `</div>`,
+        )
+        .join("")
+    : `<div class="item">لا توجد أصناف مسجلة على هذا الطلب</div>`;
+
+  const body = `<h1>تذكرة مطبخ · KITCHEN</h1>
+<div class="row"><b>${esc(order.order_number)}</b><span>${order.method === "delivery" ? "توصيل" : "استلام"}</span></div>
+<div class="row"><span>${esc(order.requested_date)}</span><span>${esc(order.requested_time.slice(0, 5))}</span></div>
+<div>${esc(order.customer_name)}</div>
 ${order.schedule_updated_at ? `<div><b>تم تعديل الموعد 🔄</b></div>` : ""}
 <div class="line"></div>${lines}<div class="line"></div>
-${order.inscription ? `<div><b>الكتابة على الكيك:</b> ${order.inscription}</div>` : ""}
-${order.notes ? `<div><b>ملاحظات:</b> ${order.notes}</div>` : ""}
-<div class="line"></div><div style="text-align:center">للمطبخ فقط — لا يحتوي أسعار</div>
-<script>window.onload=function(){window.print();}</script></body></html>`;
-  const win = window.open("", "_blank", "width=380,height=640");
-  if (!win) return;
-  win.document.write(html);
-  win.document.close();
+${order.inscription ? `<div><b>الكتابة على الكيك:</b> ${esc(order.inscription)}</div>` : ""}
+${order.notes ? `<div><b>ملاحظات:</b> ${esc(order.notes)}</div>` : ""}
+<div class="line"></div><div style="text-align:center">للمطبخ فقط — لا يحتوي أسعار</div>`;
+
+  printDocument(`تذكرة مطبخ ${order.order_number}`, body, "body{font-size:13px}h1{text-align:center}");
 }
 
 const isoDate = (offsetDays: number) => {

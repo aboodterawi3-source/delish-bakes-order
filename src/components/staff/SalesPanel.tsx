@@ -38,6 +38,7 @@ import {
 } from "@/lib/sales.functions";
 import { getMyPermissions } from "@/lib/permissions.functions";
 import { buildConfirmationMessage } from "@/lib/confirmation-message";
+import { esc, printDocument } from "@/lib/print";
 import {
   applyOrderDiscount,
   createOrderEditLink,
@@ -99,36 +100,65 @@ const todayIso = () => {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 };
 
+/** Customer thermal receipt: itemised lines plus the full billing block. */
 function printReceipt(order: SalesOrder) {
   const remaining = Math.max(order.total - order.deposit_paid, 0);
-  const rows = order.items
-    .map(
-      (item) =>
-        `<tr><td>${item.quantity} × ${item.name_ar}${item.options_ar.length ? `<br><small>${item.options_ar.join(" · ")}</small>` : ""}</td><td style="text-align:left">${(item.unit_price * item.quantity).toFixed(2)}</td></tr>`,
-    )
-    .join("");
-  const html = `<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>${order.order_number}</title>
-<style>@page{size:80mm auto;margin:4mm}body{font-family:system-ui,sans-serif;width:72mm;font-size:12px;color:#000}
-h1{font-size:16px;margin:0 0 2px}table{width:100%;border-collapse:collapse}td{padding:2px 0;vertical-align:top}
-.line{border-top:1px dashed #000;margin:6px 0}.row{display:flex;justify-content:space-between}b{font-size:13px}</style></head>
-<body><h1>Delish Cake &amp; Bake</h1><div>ديليش – الأردن · 0779179995</div><div class="line"></div>
-<div class="row"><span>${order.order_number}</span><span>${order.requested_date} ${order.requested_time.slice(0, 5)}</span></div>
-<div>${order.customer_name} · ${order.customer_phone}</div>
-<div>${order.method === "delivery" ? `توصيل: ${order.area ?? ""} ${order.address ?? ""}` : "استلام من المحل"}</div>
-${order.inscription ? `<div>الكتابة: ${order.inscription}</div>` : ""}
+  const rows = order.items.length
+    ? order.items
+        .map(
+          (item) =>
+            `<tr><td><b>${item.quantity} × ${esc(item.name_ar)}</b>` +
+            (item.options_ar.length ? `<br><small>${esc(item.options_ar.join(" · "))}</small>` : "") +
+            (item.notes ? `<br><small>ملاحظة: ${esc(item.notes)}</small>` : "") +
+            `<br><small>${item.unit_price.toFixed(2)} د.أ / حبة</small></td>` +
+            `<td style="text-align:left">${(item.unit_price * item.quantity).toFixed(2)}</td></tr>`,
+        )
+        .join("")
+    : `<tr><td colspan="2">لا توجد أصناف مسجلة على هذا الطلب</td></tr>`;
+
+  const body = `<h1>Delish Cake &amp; Bake</h1><div>ديليش – الأردن · 0779179995</div>
+<div style="text-align:center;font-weight:700">إيصال العميل · CUSTOMER RECEIPT</div><div class="line"></div>
+<div class="row"><span>${esc(order.order_number)}</span><span>${esc(order.requested_date)} ${esc(order.requested_time.slice(0, 5))}</span></div>
+<div>${esc(order.customer_name)} · ${esc(order.customer_phone)}</div>
+<div>${order.method === "delivery" ? `توصيل: ${esc(order.area ?? "")} ${esc(order.address ?? "")}` : "استلام من المحل"}</div>
+${order.inscription ? `<div>الكتابة على الكيك: ${esc(order.inscription)}</div>` : ""}
+${order.card_note ? `<div>الكتابة على الكرت: ${esc(order.card_note)}</div>` : ""}
 <div class="line"></div><table>${rows}</table><div class="line"></div>
 <div class="row"><span>المجموع</span><span>${order.subtotal.toFixed(2)}</span></div>
+${order.discount_amount ? `<div class="row"><span>الخصم</span><span>-${order.discount_amount.toFixed(2)}</span></div>` : ""}
 <div class="row"><span>التوصيل</span><span>${order.delivery_fee.toFixed(2)}</span></div>
 <div class="row"><b>الإجمالي</b><b>${order.total.toFixed(2)}</b></div>
-<div class="row"><span>العربون المدفوع</span><span>${order.deposit_paid.toFixed(2)}</span></div>
+<div class="row"><span>المدفوع</span><span>${order.deposit_paid.toFixed(2)}</span></div>
 <div class="row"><b>المتبقي</b><b>${remaining.toFixed(2)}</b></div>
 <div>طريقة الدفع: ${order.payment_method ? payMeta[order.payment_method].ar : "—"}</div>
-<div class="line"></div><div style="text-align:center">شكراً لاختياركم ديليش 🤍</div>
-<script>window.onload=function(){window.print();}</script></body></html>`;
-  const win = window.open("", "_blank", "width=380,height=640");
-  if (!win) return;
-  win.document.write(html);
-  win.document.close();
+${order.notes ? `<div class="line"></div><div>ملاحظات: ${esc(order.notes)}</div>` : ""}
+<div class="line"></div><div style="text-align:center">شكراً لاختياركم ديليش 🤍</div>`;
+
+  if (!printDocument(`إيصال ${order.order_number}`, body, "b{font-size:13px}")) {
+    toast.error("تعذر فتح نافذة الطباعة");
+  }
+}
+
+/** Daily shift report on the thermal printer (never prints the screen itself). */
+function printShiftReport(report: ShiftReport, date: string) {
+  const rows = report.byMethod
+    .map(
+      (row) =>
+        `<div class="row"><span>${row.method === "unpaid" ? "بدون طريقة دفع" : payMeta[row.method].ar} (${row.orders})</span><span>${row.collected.toFixed(2)}</span></div>`,
+    )
+    .join("");
+  const body = `<h1>Delish Cake &amp; Bake</h1>
+<div style="text-align:center;font-weight:700">تقرير إغلاق الشيفت</div>
+<div style="text-align:center">${esc(date)}</div><div class="line"></div>
+${rows || "<div>لا توجد مدفوعات</div>"}<div class="line"></div>
+<div class="row"><b>إجمالي المحصل</b><b>${report.collected.toFixed(2)}</b></div>
+<div class="row"><span>المتبقي على العملاء</span><span>${report.outstanding.toFixed(2)}</span></div>
+<div class="row"><span>عدد الطلبات</span><span>${report.orders}</span></div>
+<div class="row"><span>الطلبات الملغاة</span><span>${report.cancelled}</span></div>
+<div class="line"></div><div style="text-align:center">توقيع الكاشير: ____________</div>`;
+  if (!printDocument(`تقرير ${date}`, body, "b{font-size:13px}")) {
+    toast.error("تعذر فتح نافذة الطباعة");
+  }
 }
 
 /** Jordanian numbers arrive as 07…; WhatsApp needs the international form. */
@@ -541,7 +571,7 @@ export function SalesPanel() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => window.print()}
+                  onClick={() => printShiftReport(report, shiftDate)}
                   className="mt-2 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-primary px-5 text-sm font-bold text-primary-foreground"
                 >
                   <Printer className="h-4 w-4" aria-hidden="true" /> طباعة التقرير اليومي
