@@ -1024,18 +1024,6 @@ function OrderPanel({
               className="mt-1 min-h-12 w-full rounded-xl border border-input bg-background px-3 text-sm"
             />
           </label>
-          <button
-            type="button"
-            onClick={() => {
-              const value = !finalPhoto;
-              setFinalPhoto(value);
-              onPatch({ final_photo_requested: value });
-            }}
-            aria-pressed={finalPhoto}
-            className={`mt-3 min-h-11 rounded-full px-4 text-xs font-bold ${finalPhoto ? "bg-primary text-primary-foreground" : "border border-border text-foreground"}`}
-          >
-            📸 بس بدي الصوره النهائيه لو سمحت
-          </button>
           <div className="mt-3 flex flex-wrap gap-2">
             <button
               type="button"
