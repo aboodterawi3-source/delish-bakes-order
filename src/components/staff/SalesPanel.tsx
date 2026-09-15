@@ -805,7 +805,7 @@ function OrderPanel({
           <h3 className="text-sm font-bold text-foreground">المالية</h3>
           <div className="mt-2 space-y-1 text-sm">
             <div className="flex justify-between text-foreground"><span>المجموع الفرعي</span><span>{jd(order.subtotal)}</span></div>
-            <div className="flex justify-between text-foreground"><span>التوصيل</span><span>{jd(order.method === "delivery" ? Number(fee) || 0 : 0)}</span></div>
+            <div className="flex justify-between text-foreground"><span>التوصيل</span><span>{jd(order.method === "delivery" ? order.delivery_fee : 0)}</span></div>
             {order.discount_amount > 0 ? (
               <div className="flex justify-between text-destructive">
                 <span>الخصم ({order.discount_percent}%)</span>
