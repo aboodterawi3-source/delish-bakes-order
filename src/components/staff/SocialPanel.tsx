@@ -64,7 +64,7 @@ export function SocialPanel() {
 
   const set = useCallback(<K extends keyof typeof emptyForm>(key: K, value: (typeof emptyForm)[K]) => {
     setForm((current) => ({ ...current, [key]: value }));
-    setCopied(false);
+    setCopied(null);
   }, []);
 
   const extras = useMemo(() => customizationSummary(customization), [customization]);
