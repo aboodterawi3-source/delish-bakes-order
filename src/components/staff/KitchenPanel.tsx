@@ -26,6 +26,7 @@ import {
   type KitchenStage,
 } from "@/lib/kds.functions";
 import { PRIORITY_META } from "@/lib/priority";
+import { esc, printDocument } from "@/lib/print";
 import bellAsset from "@/assets/Bell.mp3.asset.json";
 
 
