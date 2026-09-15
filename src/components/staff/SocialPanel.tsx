@@ -28,7 +28,7 @@ const emptyForm = {
   /** Original agreed price per unit (السعر الأصلي). */
   unit_price: "",
   card_note: "",
-  final_photo_requested: false,
+  
   method: "pickup" as "pickup" | "delivery",
   area: "",
   address: "",
@@ -132,7 +132,7 @@ export function SocialPanel() {
         cardWriting: form.card_note,
         extraNote: form.is_urgent ? "طلب مستعجل · Urgent" : "",
         notes: customization.notes,
-        finalPhoto: form.final_photo_requested,
+        
         price: originalPrice,
         deliveryFee,
         total: grandTotal,
@@ -241,7 +241,7 @@ export function SocialPanel() {
       quantity: form.quantity,
       unit_price: Number(form.unit_price) || 0,
       card_note: form.card_note,
-      final_photo_requested: form.final_photo_requested,
+      
       confirmation_message: confirmationTemplate,
       method: form.method,
       area: form.method === "delivery" ? form.area : null,
@@ -548,18 +548,6 @@ export function SocialPanel() {
             />
           </label>
 
-          <button
-            type="button"
-            onClick={() => set("final_photo_requested", !form.final_photo_requested)}
-            aria-pressed={form.final_photo_requested}
-            className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 text-xs font-bold transition-all ${
-              form.final_photo_requested
-                ? "bg-[#8B4513] text-white shadow-sm"
-                : "border border-[#B8860B] bg-white text-[#8B4513] hover:bg-[#FDE2CF]/30"
-            }`}
-          >
-            📸 بس بدي الصوره النهائيه لو سمحت
-          </button>
 
           {/* Financial calculator — updates live as staff type. */}
           <div className="rounded-2xl border border-[#B8860B]/40 bg-[#FFF8EE] p-4">
