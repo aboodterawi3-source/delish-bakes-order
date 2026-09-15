@@ -164,6 +164,8 @@ export type Database = {
           address: string | null
           area: string | null
           cancel_reason: string | null
+          card_note: string | null
+          confirmation_message: string | null
           created_at: string
           created_by: string | null
           customer_name: string
@@ -176,6 +178,7 @@ export type Database = {
           driver_name: string | null
           driver_phone: string | null
           event_date: string | null
+          final_photo_requested: boolean
           id: string
           inscription: string | null
           is_urgent: boolean
@@ -196,6 +199,8 @@ export type Database = {
           address?: string | null
           area?: string | null
           cancel_reason?: string | null
+          card_note?: string | null
+          confirmation_message?: string | null
           created_at?: string
           created_by?: string | null
           customer_name: string
@@ -208,6 +213,7 @@ export type Database = {
           driver_name?: string | null
           driver_phone?: string | null
           event_date?: string | null
+          final_photo_requested?: boolean
           id?: string
           inscription?: string | null
           is_urgent?: boolean
@@ -228,6 +234,8 @@ export type Database = {
           address?: string | null
           area?: string | null
           cancel_reason?: string | null
+          card_note?: string | null
+          confirmation_message?: string | null
           created_at?: string
           created_by?: string | null
           customer_name?: string
@@ -240,6 +248,7 @@ export type Database = {
           driver_name?: string | null
           driver_phone?: string | null
           event_date?: string | null
+          final_photo_requested?: boolean
           id?: string
           inscription?: string | null
           is_urgent?: boolean
