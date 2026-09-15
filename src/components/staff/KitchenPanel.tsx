@@ -82,9 +82,9 @@ ${order.schedule_updated_at ? `<div><b>تم تعديل الموعد 🔄</b></di
 <div class="line"></div>${lines}<div class="line"></div>
 ${order.inscription ? `<div><b>الكتابة على الكيك:</b> ${esc(order.inscription)}</div>` : ""}
 ${order.notes ? `<div><b>ملاحظات:</b> ${esc(order.notes)}</div>` : ""}
-<div class="line"></div><div style="text-align:center">للمطبخ فقط — لا يحتوي أسعار</div>`;
+<div class="line"></div>`;
 
-  printDocument(`تذكرة مطبخ ${order.order_number}`, body, "body{font-size:13px}h1{text-align:center}");
+  printDocument(`تذكرة مطبخ ${order.order_number}`, body, "body{font-size:13px}");
 }
 
 const isoDate = (offsetDays: number) => {
