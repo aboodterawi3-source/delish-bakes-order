@@ -24,6 +24,10 @@ const emptyForm = {
   customer_phone: "",
   order_details: "",
   quantity: 1,
+  /** Original agreed price per unit (السعر الأصلي). */
+  unit_price: "",
+  card_note: "",
+  final_photo_requested: false,
   method: "pickup" as "pickup" | "delivery",
   area: "",
   address: "",
