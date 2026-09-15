@@ -116,6 +116,40 @@ export function SocialPanel() {
     return lines.join("\n");
   }, [form, extras, customization.notes, paymentLabel, deliveryFee]);
 
+  /** Official confirmation message. The order number is filled in on the server. */
+  const confirmationTemplate = useMemo(
+    () =>
+      buildConfirmationMessage({
+        orderNumber: "{{ORDER_NUMBER}}",
+        customerName: form.customer_name,
+        when: `${form.requested_date} ${form.requested_time}`.trim(),
+        fulfilment:
+          form.method === "delivery"
+            ? `توصيل · ${form.area || "—"}${form.address.trim() ? ` — ${form.address.trim()}` : ""}`
+            : "استلام من المحل",
+        items: [`${form.quantity} × ${form.order_details.trim() || "—"}`, ...extras.ar],
+        cakeWriting: customization.topperText || form.design_notes,
+        cardWriting: form.card_note,
+        extraNote: customization.notes,
+        notes: form.staff_notes ? "" : "",
+        finalPhoto: form.final_photo_requested,
+        price: originalPrice,
+        deliveryFee,
+        total: grandTotal,
+        paid: paidAmount,
+        paymentMethod: paymentLabel,
+        recipientPhone: customization.recipientPhone || form.customer_phone,
+        senderPhone: customization.senderPhone,
+      }),
+    [form, extras.ar, customization, originalPrice, deliveryFee, grandTotal, paidAmount, paymentLabel],
+  );
+
+  /** What staff see and copy: the placeholder is only meaningful after saving. */
+  const confirmationPreview = savedMessage
+    ? savedMessage
+    : confirmationTemplate.replace("{{ORDER_NUMBER}}", "(يُضاف تلقائياً عند الإرسال)");
+
+
   const submit = useMutation({
     mutationFn: (input: SocialOrderInput) => createFn({ data: input }),
     onSuccess: (order) => {
