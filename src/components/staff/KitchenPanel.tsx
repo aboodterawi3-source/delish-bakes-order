@@ -10,7 +10,10 @@ import {
   Download,
   Loader2,
   LogOut,
+  Play,
+  Printer,
   RefreshCw,
+  Undo2,
   X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,8 +21,9 @@ import { useOrdersRealtime } from "@/hooks/use-orders-realtime";
 import {
   getKitchenAccess,
   getKitchenOrders,
-  markOrderReady,
+  setKitchenStage,
   type KdsOrder,
+  type KitchenStage,
 } from "@/lib/kds.functions";
 import { PRIORITY_META } from "@/lib/priority";
 import bellAsset from "@/assets/Bell.mp3.asset.json";
