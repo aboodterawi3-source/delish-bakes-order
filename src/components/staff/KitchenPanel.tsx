@@ -106,6 +106,17 @@ const filterMeta: Record<Filter, { ar: string; en: string }> = {
   all: { ar: "كل الطلبات النشطة", en: "All active" },
 };
 
+/** The kitchen board is split into three visible stages. */
+const STAGES: { key: KitchenStage; ar: string; en: string; chip: string }[] = [
+  { key: "new", ar: "طلبات جديدة", en: "New", chip: "bg-[#EFA781] text-white" },
+  { key: "baking", ar: "قيد التجهيز", en: "In preparation", chip: "bg-[#8B4513] text-white" },
+  { key: "ready", ar: "جاهز", en: "Ready", chip: "bg-[#B8860B] text-white" },
+];
+
+/** Anything not yet started counts as new; confirmed rows sit with new arrivals. */
+const stageOf = (status: string): KitchenStage =>
+  status === "ready" ? "ready" : status === "baking" ? "baking" : "new";
+
 export function KitchenPanel() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
