@@ -507,19 +507,58 @@ const KdsCard = memo(function KdsCard({
         </div>
       )}
 
+      {/* Kitchen ticket only: items and preparation notes, no prices. */}
       <button
         type="button"
-        onClick={() => void onReady(order.id)}
-        disabled={busy || isReady}
-        className={`mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl px-4 text-sm font-bold transition-all shadow-sm ${
-          isReady
-            ? "bg-amber-100 text-amber-900 border border-amber-300 opacity-90 cursor-default"
-            : "bg-[#8B4513] text-white hover:bg-[#5D2E17] hover:shadow-md active:scale-98"
-        }`}
+        onClick={() => printKitchenTicket(order)}
+        className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-card/90 px-4 text-xs font-bold text-primary shadow-sm hover:scale-[1.02] active:scale-95"
       >
-        <CheckCircle2 className="h-4 w-4" />
-        {isReady ? "تم التجهيز وهو جاهز ✓" : "تم التجهيز · Mark as Ready"}
+        <Printer className="h-4 w-4" />
+        طباعة تذكرة المطبخ · Kitchen ticket
       </button>
+
+      {stage === "new" && (
+        <button
+          type="button"
+          onClick={() => void onStage(order.id, "baking")}
+          disabled={busy}
+          className="mt-2 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#8B4513] px-4 text-sm font-bold text-white shadow-sm transition-all hover:bg-[#5D2E17] active:scale-98 disabled:opacity-60"
+        >
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+          بدء التجهيز · Start preparing
+        </button>
+      )}
+
+      {stage === "baking" && (
+        <button
+          type="button"
+          onClick={() => void onStage(order.id, "ready")}
+          disabled={busy}
+          className="mt-2 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#B8860B] px-4 text-sm font-bold text-white shadow-sm transition-all hover:brightness-95 active:scale-98 disabled:opacity-60"
+        >
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+          تم التجهيز · Mark as Ready
+        </button>
+      )}
+
+      {isReady && (
+        <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+          <span className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-amber-300 bg-amber-100 px-4 text-sm font-bold text-amber-900">
+            <CheckCircle2 className="h-4 w-4" />
+            جاهز للتسليم ✓
+          </span>
+          <button
+            type="button"
+            onClick={() => void onStage(order.id, "baking")}
+            disabled={busy}
+            aria-label="تراجع · Undo"
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-4 text-xs font-bold text-[#5D2E17] shadow-sm hover:bg-slate-50 disabled:opacity-60"
+          >
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Undo2 className="h-4 w-4" />}
+            تراجع
+          </button>
+        </div>
+      )}
     </article>
   );
 });
