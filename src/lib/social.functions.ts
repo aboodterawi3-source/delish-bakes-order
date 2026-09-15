@@ -102,7 +102,9 @@ export const createSocialOrder = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertRole(context, SOCIAL_ROLES);
     const orderDetails = data.order_details.trim();
-    const subtotal = 0;
+    // Original price agreed with the customer; the row total is recomputed in the DB.
+    const unitPrice = Math.min(Math.max(Number(data.unit_price) || 0, 0), 100000);
+    const subtotal = unitPrice * data.quantity;
     const area = data.method === "delivery" ? data.area?.trim() || null : null;
     // The browser never sets the fee: it is resolved from the trusted zone table.
     const deliveryFee = area ? feeForArea(area) ?? 0 : 0;
