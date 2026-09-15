@@ -177,6 +177,27 @@ export const markOrderReady = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/** Kitchen stages the cook may set: start preparing, mark ready, or undo back. */
+export type KitchenStage = "new" | "baking" | "ready";
+const KITCHEN_STAGES: KitchenStage[] = ["new", "baking", "ready"];
+
+export const setKitchenStage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { orderId: string; stage: KitchenStage }) => {
+    if (!input?.orderId) throw new Error("orderId is required");
+    if (!KITCHEN_STAGES.includes(input.stage)) throw new Error("مرحلة غير صالحة · Invalid stage");
+    return { orderId: String(input.orderId), stage: input.stage };
+  })
+  .handler(async ({ data, context }) => {
+    await assertRole(context, KITCHEN_ROLES);
+    const { error } = await context.supabase
+      .from("orders")
+      .update({ status: data.stage })
+      .eq("id", data.orderId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 /* --------------------------- kitchen priority tiers -------------------------- */
 
 export { PRIORITY_COLORS } from "@/lib/priority";
