@@ -908,36 +908,35 @@ function OrderPanel({
                 { value: "cliq_full", label: "كليك دفع كامل" },
                 { value: "cliq_deposit", label: "عربون عبر كليك" },
               ] as const
-            ).map((option) => {
-              const selected =
-                option.value === "cash"
-                  ? order.payment_method !== "cliq"
-                  : order.payment_method === "cliq" &&
-                    (option.value === "cliq_full"
-                      ? order.total > 0 && order.deposit_paid >= order.total
-                      : !(order.total > 0 && order.deposit_paid >= order.total));
-              return (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() =>
-                    onPatch(
-                      option.value === "cash"
-                        ? { payment_method: "cash", deposit_paid: 0 }
-                        : { payment_method: "cliq" },
-                    )
+            ).map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => {
+                  setPayChoice(option.value);
+                  if (option.value === "cash") {
+                    setDeposit("0");
+                    onPatch({ payment_method: "cash", deposit_paid: 0 });
+                    return;
                   }
-                  aria-pressed={selected}
-                  className={`min-h-12 min-w-20 flex-1 rounded-full px-2 text-sm font-bold ${selected ? "bg-primary text-primary-foreground" : "border border-border text-foreground"}`}
-                >
-                  {option.label}
-                </button>
-              );
-            })}
+                  if (option.value === "cliq_full") {
+                    // Paying in full pre-fills the order total; staff can still edit it.
+                    setDeposit(liveTotal.toFixed(2));
+                    onPatch({ payment_method: "cliq", deposit_paid: liveTotal });
+                    return;
+                  }
+                  onPatch({ payment_method: "cliq" });
+                }}
+                aria-pressed={payChoice === option.value}
+                className={`min-h-12 min-w-20 flex-1 rounded-full px-2 text-sm font-bold ${payChoice === option.value ? "bg-primary text-primary-foreground" : "border border-border text-foreground"}`}
+              >
+                {option.label}
+              </button>
+            ))}
           </div>
-          {order.payment_method === "cliq" ? (
+          {payChoice !== "cash" ? (
             <label className="mt-3 block text-sm font-bold text-foreground">
-              {order.total > 0 && order.deposit_paid >= order.total
+              {payChoice === "cliq_full"
                 ? "المبلغ الكامل المدفوع عبر كليك · CliQ full amount"
                 : "قيمة العربون المدفوع عبر كليك · CliQ deposit"}
               <input
