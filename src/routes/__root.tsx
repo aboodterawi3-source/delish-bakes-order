@@ -14,6 +14,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { LangProvider } from "../lib/i18n";
 import { CartProvider } from "../lib/cart";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { supabase } from "@/integrations/supabase/client";
 
 function NotFoundComponent() {
   return (
@@ -123,6 +124,24 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+function AuthSync({ queryClient }: { queryClient: QueryClient }) {
+  const router = useRouter();
+  useEffect(() => {
+    const { data } = supabase.auth.onAuthStateChange((event) => {
+      if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
+      if (event === "SIGNED_OUT") {
+        // Drop every cached staff query so nothing refetches without a token.
+        queryClient.cancelQueries();
+        queryClient.clear();
+      }
+      router.invalidate();
+      if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
+    });
+    return () => data.subscription.unsubscribe();
+  }, [queryClient, router]);
+  return null;
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
@@ -132,6 +151,7 @@ function RootComponent() {
       <LangProvider>
         {/* One cart for the whole app: it survives navigation between pages. */}
         <CartProvider>
+          <AuthSync queryClient={queryClient} />
           {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
           <Outlet />
           <Toaster />
