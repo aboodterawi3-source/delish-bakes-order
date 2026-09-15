@@ -10,6 +10,7 @@ import {
   type SocialOrderInput,
 } from "@/lib/social.functions";
 import { DELIVERY_ZONES, OTHER_GOVERNORATES_AREA, feeForArea } from "@/lib/delivery-zones";
+import { buildConfirmationMessage, remainingBalance } from "@/lib/confirmation-message";
 import {
   CakeCustomizationPanel,
   customizationSummary,
