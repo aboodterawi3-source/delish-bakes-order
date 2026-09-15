@@ -435,14 +435,8 @@ const KdsCard = memo(function KdsCard({
         </div>
         <div className="flex flex-col items-end gap-1.5 shrink-0">
           {/* Gold / Amber status chip */}
-          <span
-            className={`rounded-full px-3.5 py-1 text-xs font-extrabold shadow-xs ${
-              isReady
-                ? "bg-[#B8860B] text-white"
-                : "bg-[#FDE2CF] text-[#7B3F00]"
-            }`}
-          >
-            {isReady ? "جاهز · Ready" : "قيد التجهيز · Preparing"}
+          <span className={`rounded-full px-3.5 py-1 text-xs font-extrabold shadow-xs ${stageMeta.chip}`}>
+            {stageMeta.ar} · {stageMeta.en}
           </span>
            <span className="rounded-full bg-card/85 px-2.5 py-0.5 text-[10px] font-bold text-foreground">
             {meta.ar}
