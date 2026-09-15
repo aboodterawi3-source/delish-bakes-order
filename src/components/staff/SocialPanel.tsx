@@ -9,6 +9,7 @@ import {
   getSocialAccess,
   type SocialOrderInput,
 } from "@/lib/social.functions";
+import { DELIVERY_ZONES, OTHER_GOVERNORATES_AREA, feeForArea } from "@/lib/delivery-zones";
 import {
   CakeCustomizationPanel,
   customizationSummary,
@@ -24,6 +25,10 @@ const emptyForm = {
   order_details: "",
   quantity: 1,
   method: "pickup" as "pickup" | "delivery",
+  area: "",
+  address: "",
+  payment_option: "cash" as "cash" | "deposit" | "cliq",
+  deposit_paid: "",
   requested_date: "",
   requested_time: "",
   event_date: "",
@@ -57,6 +62,15 @@ export function SocialPanel() {
 
   const extras = useMemo(() => customizationSummary(customization), [customization]);
 
+  const areaFee = feeForArea(form.area);
+  const deliveryFee = form.method === "delivery" ? areaFee ?? 0 : 0;
+  const paymentLabel =
+    form.payment_option === "cliq"
+      ? "مدفوع عبر كليك"
+      : form.payment_option === "deposit"
+        ? `عربون مدفوع: ${(Number(form.deposit_paid) || 0).toFixed(2)} د.أ`
+        : "نقداً عند التسليم";
+
   /** Customer-facing summary — internal staff notes are deliberately excluded. */
   const summary = useMemo(() => {
     const lines = [
@@ -66,8 +80,18 @@ export function SocialPanel() {
       `تفاصيل الطلب: ${form.order_details.trim() || "—"}`,
       `الكمية: ${form.quantity}`,
       `الاستلام: ${form.method === "delivery" ? "توصيل" : "استلام من المحل"}`,
+      `طريقة الدفع: ${paymentLabel}`,
       `تاريخ ووقت التسليم: ${form.requested_date || "—"} ${form.requested_time || ""}`.trim(),
     ];
+    if (form.method === "delivery" && form.area) {
+      lines.push(`المنطقة: ${form.area}`);
+      lines.push(
+        form.area === OTHER_GOVERNORATES_AREA
+          ? "أجرة التوصيل: ٥–٨ د.أ يحددها الفريق حسب العنوان"
+          : `أجرة التوصيل: ${deliveryFee.toFixed(2)} د.أ`,
+      );
+    }
+    if (form.method === "delivery" && form.address.trim()) lines.push(`العنوان: ${form.address.trim()}`);
     if (form.event_date) lines.push(`تاريخ المناسبة: ${form.event_date}`);
     if (form.is_urgent) lines.push("🚨 طلب مستعجل");
     if (extras.ar.length) lines.push(...extras.ar.map((line) => `• ${line}`));
@@ -75,7 +99,7 @@ export function SocialPanel() {
     if (extraNotes) lines.push(`ملاحظات إضافية: ${extraNotes}`);
     if (form.design_notes.trim()) lines.push(`ملاحظات التصميم: ${form.design_notes.trim()}`);
     return lines.join("\n");
-  }, [form, extras, customization.notes]);
+  }, [form, extras, customization.notes, paymentLabel, deliveryFee]);
 
   const submit = useMutation({
     mutationFn: (input: SocialOrderInput) => createFn({ data: input }),
@@ -166,6 +190,10 @@ export function SocialPanel() {
       order_details: form.order_details,
       quantity: form.quantity,
       method: form.method,
+      area: form.method === "delivery" ? form.area : null,
+      address: form.method === "delivery" ? form.address : null,
+      payment_option: form.payment_option,
+      deposit_paid: form.payment_option === "deposit" ? Number(form.deposit_paid) || 0 : 0,
       requested_date: form.requested_date,
       requested_time: form.requested_time,
       event_date: form.event_date || null,
