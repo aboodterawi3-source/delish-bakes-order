@@ -696,6 +696,38 @@ function OrderPanel({
     0,
   );
   const remaining = Math.max(liveTotal - (Number(deposit) || 0), 0);
+
+  /** Built live from the order so staff always send current figures. */
+  const confirmationMessage = useMemo(
+    () =>
+      buildConfirmationMessage({
+        orderNumber: order.order_number,
+        customerName: order.customer_name,
+        when: `${order.requested_date} ${order.requested_time}`.trim(),
+        fulfilment:
+          order.method === "delivery"
+            ? `توصيل · ${order.area || "—"}${order.address ? ` — ${order.address}` : ""}`
+            : "استلام من المحل",
+        items: order.items.flatMap((item) => [
+          `${item.quantity} × ${item.name_ar}`,
+          ...item.options_ar.map((option) => `— ${option}`),
+        ]),
+        cakeWriting: order.inscription ?? "",
+        cardWriting: cardNote,
+        extraNote: "",
+        notes: order.notes ?? "",
+        finalPhoto: finalPhoto,
+        price: order.subtotal,
+        deliveryFee: order.method === "delivery" ? order.delivery_fee : 0,
+        total: liveTotal,
+        paid: Number(deposit) || 0,
+        paymentMethod: payMeta[order.payment_method ?? "cash"].label,
+        recipientPhone: order.customer_phone,
+        senderPhone: "",
+      }),
+    [order, cardNote, finalPhoto, deposit, liveTotal],
+  );
+
   const stageIndex = flow.indexOf(order.status);
   const next = stageIndex >= 0 && stageIndex < flow.length - 1 ? flow[stageIndex + 1] : null;
 
