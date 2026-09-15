@@ -134,6 +134,8 @@ export const createSocialOrder = createServerFn({ method: "POST" })
         is_urgent: data.is_urgent,
         inscription: data.design_notes?.trim() || null,
         staff_notes: data.staff_notes?.trim() || null,
+        card_note: data.card_note?.trim() || null,
+        final_photo_requested: Boolean(data.final_photo_requested),
         design_image_url: designImage,
         subtotal,
         delivery_fee: deliveryFee,
