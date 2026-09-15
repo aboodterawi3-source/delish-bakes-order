@@ -15,9 +15,9 @@ export type SocialOrderInput = {
   /** Amman / other-governorate zone name; the fee is resolved server-side. */
   area?: string | null;
   address?: string | null;
-  /** Cash on delivery, a deposit, or fully paid via CliQ. */
-  payment_option: "cash" | "deposit" | "cliq";
-  /** Amount already collected when payment_option is "deposit". */
+  /** Cash on delivery, fully paid via CliQ, or a deposit via CliQ. */
+  payment_option: "cash" | "cliq_full" | "cliq_deposit";
+  /** Amount already collected via CliQ (full payment or deposit). */
   deposit_paid?: number | null;
   requested_date: string;
   requested_time: string;
@@ -83,7 +83,7 @@ export const createSocialOrder = createServerFn({ method: "POST" })
     }
     if (!input?.requested_date || !input?.requested_time) throw new Error("تاريخ ووقت التسليم مطلوب");
     if (!Number.isFinite(input.quantity) || input.quantity < 1) throw new Error("الكمية غير صحيحة");
-    if (!["cash", "deposit", "cliq"].includes(input?.payment_option as string)) {
+    if (!["cash", "cliq_full", "cliq_deposit"].includes(input?.payment_option as string)) {
       throw new Error("طريقة الدفع مطلوبة · Payment method is required");
     }
     if (input.method === "delivery" && !input.area?.trim()) {
@@ -100,7 +100,7 @@ export const createSocialOrder = createServerFn({ method: "POST" })
     const deliveryFee = area ? feeForArea(area) ?? 0 : 0;
     // A paid amount is stored for deposits and for CliQ payments alike.
     const deposit = data.payment_option === "cash" ? 0 : Math.max(0, Number(data.deposit_paid) || 0);
-    const paymentMethod = data.payment_option === "cliq" ? "cliq" : "cash";
+    const paymentMethod = data.payment_option === "cash" ? "cash" : "cliq";
     const extrasAr = extraList(data.extras_ar);
     const extrasEn = extraList(data.extras_en);
     const designImage =
