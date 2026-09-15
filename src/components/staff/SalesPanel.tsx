@@ -878,32 +878,57 @@ function OrderPanel({
           {moneyError ? (
             <p className="mt-3 rounded-xl bg-destructive/10 p-3 text-xs font-bold text-destructive">{moneyError}</p>
           ) : null}
-          <label className="mt-3 block text-sm font-bold text-foreground">
-            {order.payment_method === "cliq" ? "المبلغ المدفوع عبر كليك · CliQ amount" : "العربون المدفوع · Deposit paid"}
-            <input
-              type="number"
-              min="0"
-              step="0.25"
-              value={deposit}
-              onChange={(event) => setDeposit(event.target.value)}
-              onBlur={() => onPatch({ deposit_paid: Number(deposit) || 0 })}
-              className="mt-1 min-h-12 w-full rounded-xl border border-input bg-background px-3 text-sm"
-            />
-          </label>
-          <p className={`mt-2 text-sm font-bold ${remaining > 0 ? "text-destructive" : "text-foreground"}`}>المتبقي: {jd(remaining)}</p>
           <div className="mt-3 flex flex-wrap gap-2">
-            {(["cash", "cliq", "visa"] as PaymentMethod[]).map((method) => (
-              <button
-                key={method}
-                type="button"
-                onClick={() => onPatch({ payment_method: method })}
-                aria-pressed={order.payment_method === method}
-                className={`min-h-12 min-w-20 flex-1 rounded-full px-2 text-sm font-bold ${order.payment_method === method ? "bg-primary text-primary-foreground" : "border border-border text-foreground"}`}
-              >
-                {payMeta[method].ar}
-              </button>
-            ))}
+            {(
+              [
+                { value: "cash", label: "كاش عند الاستلام" },
+                { value: "cliq_full", label: "كليك دفع كامل" },
+                { value: "cliq_deposit", label: "عربون عبر كليك" },
+              ] as const
+            ).map((option) => {
+              const selected =
+                option.value === "cash"
+                  ? order.payment_method !== "cliq"
+                  : order.payment_method === "cliq" &&
+                    (option.value === "cliq_full"
+                      ? order.total > 0 && order.deposit_paid >= order.total
+                      : !(order.total > 0 && order.deposit_paid >= order.total));
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() =>
+                    onPatch(
+                      option.value === "cash"
+                        ? { payment_method: "cash", deposit_paid: 0 }
+                        : { payment_method: "cliq" },
+                    )
+                  }
+                  aria-pressed={selected}
+                  className={`min-h-12 min-w-20 flex-1 rounded-full px-2 text-sm font-bold ${selected ? "bg-primary text-primary-foreground" : "border border-border text-foreground"}`}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
           </div>
+          {order.payment_method === "cliq" ? (
+            <label className="mt-3 block text-sm font-bold text-foreground">
+              {order.total > 0 && order.deposit_paid >= order.total
+                ? "المبلغ الكامل المدفوع عبر كليك · CliQ full amount"
+                : "قيمة العربون المدفوع عبر كليك · CliQ deposit"}
+              <input
+                type="number"
+                min="0"
+                step="0.25"
+                value={deposit}
+                onChange={(event) => setDeposit(event.target.value)}
+                onBlur={() => onPatch({ deposit_paid: Number(deposit) || 0 })}
+                className="mt-1 min-h-12 w-full rounded-xl border border-input bg-background px-3 text-sm"
+              />
+            </label>
+          ) : null}
+          <p className={`mt-2 text-sm font-bold ${remaining > 0 ? "text-destructive" : "text-foreground"}`}>المتبقي: {jd(remaining)}</p>
         </section>
 
         <section className="mt-6">
