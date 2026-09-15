@@ -349,6 +349,18 @@ export function SocialPanel() {
                 className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
               />
             </label>
+            <label className="block text-sm font-bold text-[#3E2723]">
+              السعر الأصلي للحبة (د.أ) · Original price
+              <input
+                type="number"
+                min="0"
+                step="0.25"
+                value={form.unit_price}
+                onChange={(event) => set("unit_price", event.target.value)}
+                placeholder="0.00"
+                className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+              />
+            </label>
 
             <fieldset className="text-sm font-bold text-[#3E2723]">
               <legend>طريقة التسليم · Fulfilment</legend>
