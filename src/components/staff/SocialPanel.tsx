@@ -155,6 +155,7 @@ export function SocialPanel() {
     onSuccess: (order) => {
       setDone(order.order_number);
       setError(null);
+      setSavedMessage(order.confirmation_message ?? null);
       setForm(emptyForm);
       setCustomization(emptyCustomization);
     },
@@ -238,6 +239,10 @@ export function SocialPanel() {
       customer_phone: form.customer_phone,
       order_details: form.order_details,
       quantity: form.quantity,
+      unit_price: Number(form.unit_price) || 0,
+      card_note: form.card_note,
+      final_photo_requested: form.final_photo_requested,
+      confirmation_message: confirmationTemplate,
       method: form.method,
       area: form.method === "delivery" ? form.area : null,
       address: form.method === "delivery" ? form.address : null,
