@@ -54,7 +54,7 @@ export function printDocument(title: string, bodyHtml: string, extraStyle = ""):
 
   const html = `<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8">
 <title>${esc(title)}</title><style>${BASE_STYLE}
-${extraStyle}</style></head><body>${bodyHtml}</body></html>`;
+${extraStyle}</style></head><body><div class="receipt">${bodyHtml}</div></body></html>`;
 
   const frame = document.createElement("iframe");
   frame.setAttribute("aria-hidden", "true");
