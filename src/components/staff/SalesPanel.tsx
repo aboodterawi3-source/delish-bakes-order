@@ -741,16 +741,32 @@ function OrderPanel({
           {order.method === "delivery" ? (
             <div className="mt-3 space-y-3">
               <label className="block text-sm font-bold text-foreground">
-                أجرة التوصيل · Delivery fee
-                <input
-                  type="number"
-                  min="0"
-                  step="0.25"
-                  value={fee}
-                  onChange={(event) => setFee(event.target.value)}
-                  onBlur={() => onPatch({ delivery_fee: Number(fee) || 0 })}
+                منطقة التوصيل · Delivery zone
+                <select
+                  value={order.area ?? ""}
+                  onChange={(event) => {
+                    const area = event.target.value;
+                    onPatch(area ? { area } : { area: null, delivery_fee: 0 });
+                  }}
                   className="mt-1 min-h-12 w-full rounded-xl border border-input bg-background px-3 text-sm"
-                />
+                >
+                  <option value="">— اختر المنطقة —</option>
+                  {DELIVERY_ZONES.map((zone) => (
+                    <optgroup key={zone.labelAr} label={zone.labelAr}>
+                      {zone.areas.map((area) => (
+                        <option key={area} value={area}>
+                          {area}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+                <span className="mt-1 block text-xs font-medium text-muted-foreground">
+                  أجرة التوصيل المحسوبة: {jd(order.method === "delivery" ? order.delivery_fee : 0)}
+                  {order.area === OTHER_GOVERNORATES_AREA
+                    ? ` · محافظات أخرى ${OTHER_FEE_MIN}–${OTHER_FEE_MAX} د.أ، يعدّلها الفريق`
+                    : ""}
+                </span>
               </label>
               <label className="block text-sm font-bold text-foreground">
                 اسم السائق · Driver name
