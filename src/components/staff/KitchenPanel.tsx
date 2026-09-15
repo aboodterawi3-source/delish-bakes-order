@@ -208,23 +208,23 @@ export function KitchenPanel() {
       });
   }, [orders.data, filter]);
 
-  /** Flips the card to Ready instantly, then confirms with the server. */
-  const onReady = useCallback(
-    async (id: string) => {
+  /** Moves the card between stages instantly, then confirms with the server. */
+  const onStage = useCallback(
+    async (id: string, stage: KitchenStage) => {
       const previous = queryClient.getQueryData<KdsOrder[]>(ORDERS_KEY);
       queryClient.setQueryData<KdsOrder[]>(ORDERS_KEY, (rows) =>
-        (rows ?? []).map((order) => (order.id === id ? { ...order, status: "ready" } : order)),
+        (rows ?? []).map((order) => (order.id === id ? { ...order, status: stage } : order)),
       );
       setPending(id);
       try {
-        await markReady({ data: { orderId: id } });
+        await applyStage({ data: { orderId: id, stage } });
       } catch {
         if (previous) queryClient.setQueryData(ORDERS_KEY, previous);
       } finally {
         setPending(null);
       }
     },
-    [markReady, queryClient],
+    [applyStage, queryClient],
   );
 
   const signOut = useCallback(async () => {
