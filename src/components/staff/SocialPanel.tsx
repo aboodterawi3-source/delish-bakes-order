@@ -120,12 +120,12 @@ export function SocialPanel() {
     onError: (mutationError: Error) => setError(mutationError.message),
   });
 
-  const copy = useCallback(async () => {
+  const copy = useCallback(async (text: string, which: "summary" | "confirmation") => {
     // Primary: async Clipboard API. Fallback: hidden textarea + execCommand
     // for browsers/contexts where clipboard.writeText is blocked.
     const legacyCopy = () => {
       const area = document.createElement("textarea");
-      area.value = summary;
+      area.value = text;
       area.setAttribute("readonly", "");
       area.style.position = "fixed";
       area.style.insetInlineStart = "-9999px";
@@ -137,24 +137,24 @@ export function SocialPanel() {
     };
     try {
       if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(summary);
+        await navigator.clipboard.writeText(text);
       } else {
         legacyCopy();
       }
-      setCopied(true);
+      setCopied(which);
       setError(null);
-      window.setTimeout(() => setCopied(false), 2500);
+      window.setTimeout(() => setCopied(null), 2500);
     } catch {
       try {
         legacyCopy();
-        setCopied(true);
+        setCopied(which);
         setError(null);
-        window.setTimeout(() => setCopied(false), 2500);
+        window.setTimeout(() => setCopied(null), 2500);
       } catch {
         setError("تعذّر النسخ · Copy failed — حدّد النص من المعاينة وانسخه يدوياً");
       }
     }
-  }, [summary]);
+  }, []);
 
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
