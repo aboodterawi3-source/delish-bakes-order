@@ -615,8 +615,8 @@ export function SocialPanel() {
               onClick={() => void copy(summary, "summary")}
               className="inline-flex min-h-12 min-w-0 flex-[1_1_12rem] items-center justify-center gap-2 rounded-full border border-[#B8860B] bg-white px-4 text-center text-sm font-bold text-[#8B4513] hover:bg-[#FDE2CF]/30 shadow-xs transition sm:px-5"
             >
-              {copied ? <Check className="h-4 w-4" aria-hidden="true" /> : <ClipboardCopy className="h-4 w-4" aria-hidden="true" />}
-              {copied ? "تم النسخ" : "نسخ رسالة واتساب"}
+              {copied === "summary" ? <Check className="h-4 w-4" aria-hidden="true" /> : <ClipboardCopy className="h-4 w-4" aria-hidden="true" />}
+              {copied === "summary" ? "تم النسخ" : "نسخ رسالة واتساب"}
             </button>
             <a
               href={whatsappUrl(summary)}
@@ -634,6 +634,31 @@ export function SocialPanel() {
         <section className="mt-5 rounded-3xl border border-border bg-card p-5">
           <h2 className="font-display text-base font-bold text-foreground">معاينة رسالة واتساب</h2>
           <pre className="mt-2 whitespace-pre-wrap break-words rounded-xl bg-secondary/60 p-3 text-sm text-foreground">{summary}</pre>
+        </section>
+
+        {/* Official confirmation message, saved with the order on submit. */}
+        <section className="mt-5 rounded-3xl border border-[#B8860B]/40 bg-card p-5">
+          <h2 className="font-display text-base font-bold text-foreground">👑 رسالة تأكيد الطلب (Delish Cake)</h2>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => void copy(confirmationPreview, "confirmation")}
+              className="inline-flex min-h-12 min-w-0 flex-[1_1_12rem] items-center justify-center gap-2 rounded-full border border-[#B8860B] bg-white px-4 text-sm font-bold text-[#8B4513] hover:bg-[#FDE2CF]/30 transition"
+            >
+              {copied === "confirmation" ? <Check className="h-4 w-4" aria-hidden="true" /> : <ClipboardCopy className="h-4 w-4" aria-hidden="true" />}
+              {copied === "confirmation" ? "تم النسخ" : "نسخ رسالة التأكيد"}
+            </button>
+            <a
+              href={whatsappUrl(confirmationPreview)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-12 min-w-0 flex-[1_1_12rem] items-center justify-center gap-2 rounded-full bg-[#25D366] px-4 text-sm font-bold text-white shadow-sm hover:brightness-95 transition"
+            >
+              <MessageCircle className="h-4 w-4" aria-hidden="true" />
+              إرسال رسالة التأكيد
+            </a>
+          </div>
+          <pre className="mt-3 max-h-96 overflow-y-auto whitespace-pre-wrap break-words rounded-xl bg-secondary/60 p-3 text-sm text-foreground">{confirmationPreview}</pre>
         </section>
       </div>
     </main>
