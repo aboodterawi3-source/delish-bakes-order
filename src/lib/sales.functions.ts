@@ -117,6 +117,8 @@ export type OrderPatch = {
   status?: SalesStatus;
   cancel_reason?: string | null;
   method?: "delivery" | "pickup";
+  /** Delivery zone name; the fee is resolved from the trusted zone table. */
+  area?: string | null;
   delivery_fee?: number;
   driver_name?: string | null;
   driver_phone?: string | null;
