@@ -164,6 +164,18 @@ const buildOrderPatch = (input: OrderPatch): Record<string, unknown> => {
     }
     patch['delivery_fee'] = fee;
   }
+  // Selecting a zone sets the fee from the trusted table, overriding any sent fee.
+  if (input.area !== undefined) {
+    if (input.area === null || input.area === "") {
+      patch['area'] = null;
+    } else {
+      const area = String(input.area).trim().replace(/\s+/g, " ");
+      const zoneFee = feeForArea(area);
+      if (zoneFee === null) throw new Error("منطقة غير صالحة · Invalid delivery area");
+      patch['area'] = area;
+      patch['delivery_fee'] = zoneFee;
+    }
+  }
   if (input.deposit_paid !== undefined) {
     const deposit = Number(input.deposit_paid);
     if (!Number.isFinite(deposit) || deposit < 0 || deposit > 100000) {
