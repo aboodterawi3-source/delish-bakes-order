@@ -612,7 +612,7 @@ export function SocialPanel() {
             </button>
             <button
               type="button"
-              onClick={() => void copy()}
+              onClick={() => void copy(summary, "summary")}
               className="inline-flex min-h-12 min-w-0 flex-[1_1_12rem] items-center justify-center gap-2 rounded-full border border-[#B8860B] bg-white px-4 text-center text-sm font-bold text-[#8B4513] hover:bg-[#FDE2CF]/30 shadow-xs transition sm:px-5"
             >
               {copied ? <Check className="h-4 w-4" aria-hidden="true" /> : <ClipboardCopy className="h-4 w-4" aria-hidden="true" />}
