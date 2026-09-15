@@ -21,6 +21,7 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useOrdersRealtime } from "@/hooks/use-orders-realtime";
 import {
   createStaff,
   getAdminAccess,
@@ -130,6 +131,9 @@ export function AdminPanel() {
     enabled: access.data?.allowed === true,
     staleTime: 30_000,
   });
+
+  // KPIs follow order activity live, like the sales and kitchen boards.
+  useOrdersRealtime(["admin", "analytics"], access.data?.allowed === true, "admin-analytics-live");
 
   const signOut = async () => {
     await queryClient.cancelQueries();
