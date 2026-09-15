@@ -803,6 +803,12 @@ function ProductsEditor({
 
           <ImageField value={draft.image_url} folder="products" onChange={(url) => setDraft({ ...draft, image_url: url })} />
           <TintPicker value={draft.tint} onChange={(tint) => setDraft({ ...draft, tint })} />
+          <PriorityPicker
+            value={draft.priority_color}
+            onChange={(priority_color) => setDraft({ ...draft, priority_color })}
+            hint="اتركها فارغة ليأخذ المنتج أولوية قسمه أو الأولوية الأساسية تلقائياً."
+          />
+
 
           <div className="flex flex-wrap gap-5">
             <label className="flex items-center gap-3 text-sm font-bold text-foreground">
