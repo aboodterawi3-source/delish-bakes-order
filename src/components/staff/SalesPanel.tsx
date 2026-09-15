@@ -148,6 +148,7 @@ function applyPatch(order: SalesOrder, input: OrderPatch): SalesOrder {
   if (input.status !== undefined) next.status = input.status;
   if (input.cancel_reason !== undefined) next.cancel_reason = input.cancel_reason;
   if (input.method !== undefined) next.method = input.method;
+  if (input.area !== undefined) next.area = input.area;
   if (input.delivery_fee !== undefined) next.delivery_fee = input.delivery_fee;
   if (input.driver_name !== undefined) next.driver_name = input.driver_name;
   if (input.driver_phone !== undefined) next.driver_phone = input.driver_phone;
