@@ -458,11 +458,6 @@ function CategoriesEditor({ categories }: { categories: StorefrontCategory[] }) 
               </div>
               <ImageField value={draft.image_url} folder="categories" onChange={(url) => setDraft({ ...draft, image_url: url })} />
               <TintPicker value={draft.tint} onChange={(tint) => setDraft({ ...draft, tint })} />
-          <PriorityPicker
-            value={draft.priority_color}
-            onChange={(priority_color) => setDraft({ ...draft, priority_color })}
-            hint="اتركها فارغة ليأخذ المنتج أولوية قسمه أو الأولوية الأساسية تلقائياً."
-          />
               <PriorityPicker
                 value={draft.priority_color}
                 onChange={(priority_color) => setDraft({ ...draft, priority_color })}
