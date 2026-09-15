@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertRole, type StaffRoleName } from "@/lib/role-guard";
+import { highestPriority, type PriorityColor } from "@/lib/priority";
 
 const KITCHEN_ROLES: StaffRoleName[] = ["kitchen", "admin"];
 
@@ -14,6 +15,8 @@ export type KdsItem = {
   options_en: string[];
   notes: string | null;
   category: string | null;
+  /** Product priority, else its category priority, else null (base tier). */
+  priority_color: PriorityColor | null;
 };
 
 export type KdsOrder = {
@@ -32,6 +35,8 @@ export type KdsOrder = {
   schedule_updated_at: string | null;
   created_at: string;
   items: KdsItem[];
+  /** Most urgent priority across the order's lines; drives the card colour. */
+  priority_color: PriorityColor;
 };
 
 /** Confirms the signed-in user may use the kitchen display. */
@@ -82,11 +87,40 @@ export const getKitchenOrders = createServerFn({ method: "GET" })
           .filter((id: string | null): id is string => Boolean(id)),
       ),
     ];
+    type ProductRow = {
+      id: string;
+      category: string;
+      category_id: string | null;
+      priority_color: PriorityColor | null;
+    };
     const { data: productsData } = productIds.length
-      ? await context.supabase.from("products").select("id, category").in("id", productIds)
-      : { data: [] as { id: string; category: string }[] };
-    const categoryByProduct = new Map(
-      (productsData ?? []).map((p: { id: string; category: string }) => [p.id, p.category]),
+      ? await context.supabase
+          .from("products")
+          .select("id, category, category_id, priority_color")
+          .in("id", productIds)
+      : { data: [] as ProductRow[] };
+    const productRows = (productsData ?? []) as ProductRow[];
+    const categoryByProduct = new Map(productRows.map((p) => [p.id, p.category]));
+
+    // Category priority is the fallback whenever a product has none of its own.
+    const categoryIds = [...new Set(productRows.map((p) => p.category_id).filter((id): id is string => Boolean(id)))];
+    const { data: categoryRows } = categoryIds.length
+      ? await context.supabase
+          .from("storefront_categories")
+          .select("id, priority_color")
+          .in("id", categoryIds)
+      : { data: [] as { id: string; priority_color: PriorityColor | null }[] };
+    const priorityByCategory = new Map(
+      ((categoryRows ?? []) as { id: string; priority_color: PriorityColor | null }[]).map((row) => [
+        row.id,
+        row.priority_color,
+      ]),
+    );
+    const priorityByProduct = new Map(
+      productRows.map((p) => [
+        p.id,
+        p.priority_color ?? (p.category_id ? priorityByCategory.get(p.category_id) ?? null : null),
+      ]),
     );
 
     const itemsByOrder = new Map<string, KdsItem[]>();
@@ -101,6 +135,7 @@ export const getKitchenOrders = createServerFn({ method: "GET" })
         options_en: item.options_en ?? [],
         notes: item.notes,
         category: categoryByProduct.get(item.product_id) ?? null,
+        priority_color: priorityByProduct.get(item.product_id) ?? null,
       });
       itemsByOrder.set(item.order_id, list);
     }
@@ -119,6 +154,9 @@ export const getKitchenOrders = createServerFn({ method: "GET" })
       schedule_updated_at: order.schedule_updated_at,
       created_at: order.created_at,
       items: itemsByOrder.get(order.id) ?? [],
+      priority_color: highestPriority(
+        (itemsByOrder.get(order.id) ?? []).map((item) => item.priority_color),
+      ),
     }));
   });
 
@@ -141,13 +179,5 @@ export const markOrderReady = createServerFn({ method: "POST" })
 
 /* --------------------------- kitchen priority tiers -------------------------- */
 
-/** Colour tiers that drive kitchen priority for featured items. */
-export const PRIORITY_COLORS = [
-  "dark_red",
-  "warm_orange",
-  "golden_yellow",
-  "sky_blue",
-  "soft_green",
-] as const;
-
-export type PriorityColor = (typeof PRIORITY_COLORS)[number];
+export { PRIORITY_COLORS } from "@/lib/priority";
+export type { PriorityColor } from "@/lib/priority";

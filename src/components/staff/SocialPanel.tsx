@@ -9,6 +9,7 @@ import {
   getSocialAccess,
   type SocialOrderInput,
 } from "@/lib/social.functions";
+import { DELIVERY_ZONES, OTHER_GOVERNORATES_AREA, feeForArea } from "@/lib/delivery-zones";
 import {
   CakeCustomizationPanel,
   customizationSummary,
@@ -24,6 +25,10 @@ const emptyForm = {
   order_details: "",
   quantity: 1,
   method: "pickup" as "pickup" | "delivery",
+  area: "",
+  address: "",
+  payment_option: "cash" as "cash" | "deposit" | "cliq",
+  deposit_paid: "",
   requested_date: "",
   requested_time: "",
   event_date: "",
@@ -57,6 +62,15 @@ export function SocialPanel() {
 
   const extras = useMemo(() => customizationSummary(customization), [customization]);
 
+  const areaFee = feeForArea(form.area);
+  const deliveryFee = form.method === "delivery" ? areaFee ?? 0 : 0;
+  const paymentLabel =
+    form.payment_option === "cliq"
+      ? "مدفوع عبر كليك"
+      : form.payment_option === "deposit"
+        ? `عربون مدفوع: ${(Number(form.deposit_paid) || 0).toFixed(2)} د.أ`
+        : "نقداً عند التسليم";
+
   /** Customer-facing summary — internal staff notes are deliberately excluded. */
   const summary = useMemo(() => {
     const lines = [
@@ -66,8 +80,18 @@ export function SocialPanel() {
       `تفاصيل الطلب: ${form.order_details.trim() || "—"}`,
       `الكمية: ${form.quantity}`,
       `الاستلام: ${form.method === "delivery" ? "توصيل" : "استلام من المحل"}`,
+      `طريقة الدفع: ${paymentLabel}`,
       `تاريخ ووقت التسليم: ${form.requested_date || "—"} ${form.requested_time || ""}`.trim(),
     ];
+    if (form.method === "delivery" && form.area) {
+      lines.push(`المنطقة: ${form.area}`);
+      lines.push(
+        form.area === OTHER_GOVERNORATES_AREA
+          ? "أجرة التوصيل: ٥–٨ د.أ يحددها الفريق حسب العنوان"
+          : `أجرة التوصيل: ${deliveryFee.toFixed(2)} د.أ`,
+      );
+    }
+    if (form.method === "delivery" && form.address.trim()) lines.push(`العنوان: ${form.address.trim()}`);
     if (form.event_date) lines.push(`تاريخ المناسبة: ${form.event_date}`);
     if (form.is_urgent) lines.push("🚨 طلب مستعجل");
     if (extras.ar.length) lines.push(...extras.ar.map((line) => `• ${line}`));
@@ -75,7 +99,7 @@ export function SocialPanel() {
     if (extraNotes) lines.push(`ملاحظات إضافية: ${extraNotes}`);
     if (form.design_notes.trim()) lines.push(`ملاحظات التصميم: ${form.design_notes.trim()}`);
     return lines.join("\n");
-  }, [form, extras, customization.notes]);
+  }, [form, extras, customization.notes, paymentLabel, deliveryFee]);
 
   const submit = useMutation({
     mutationFn: (input: SocialOrderInput) => createFn({ data: input }),
@@ -166,6 +190,10 @@ export function SocialPanel() {
       order_details: form.order_details,
       quantity: form.quantity,
       method: form.method,
+      area: form.method === "delivery" ? form.area : null,
+      address: form.method === "delivery" ? form.address : null,
+      payment_option: form.payment_option,
+      deposit_paid: form.payment_option === "deposit" ? Number(form.deposit_paid) || 0 : 0,
       requested_date: form.requested_date,
       requested_time: form.requested_time,
       event_date: form.event_date || null,
@@ -288,6 +316,91 @@ export function SocialPanel() {
                 ))}
               </div>
             </fieldset>
+
+            <fieldset className="text-sm font-bold text-[#3E2723] sm:col-span-2">
+              <legend>طريقة الدفع · Payment method</legend>
+              <div className="mt-1 flex flex-wrap gap-2">
+                {(
+                  [
+                    { value: "cash", label: "نقداً عند التسليم" },
+                    { value: "deposit", label: "عربون" },
+                    { value: "cliq", label: "مدفوع عبر كليك" },
+                  ] as const
+                ).map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => set("payment_option", option.value)}
+                    aria-pressed={form.payment_option === option.value}
+                    className={`min-h-11 flex-[1_1_9rem] rounded-xl px-4 text-xs font-bold transition-all ${
+                      form.payment_option === option.value
+                        ? "bg-[#8B4513] text-white shadow-sm"
+                        : "border border-slate-200 bg-white text-[#5D2E17] hover:bg-slate-50"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+              {form.payment_option === "deposit" ? (
+                <label className="mt-2 block text-xs font-bold text-[#3E2723]">
+                  قيمة العربون المدفوع (د.أ)
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    dir="ltr"
+                    value={form.deposit_paid}
+                    onChange={(event) => set("deposit_paid", event.target.value)}
+                    className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                  />
+                </label>
+              ) : null}
+            </fieldset>
+
+            {form.method === "delivery" ? (
+              <>
+                <label className="block text-sm font-bold text-[#3E2723]">
+                  منطقة التوصيل · Delivery area
+                  <select
+                    required
+                    value={form.area}
+                    onChange={(event) => set("area", event.target.value)}
+                    className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                  >
+                    <option value="">اختر المنطقة</option>
+                    {DELIVERY_ZONES.map((zone) => (
+                      <optgroup key={zone.labelEn} label={`${zone.labelAr} · ${zone.labelEn}`}>
+                        {zone.areas.map((area) => (
+                          <option key={`${zone.labelEn}-${area}`} value={area}>
+                            {area === OTHER_GOVERNORATES_AREA
+                              ? `${area} (٥–٨ د.أ)`
+                              : `${area} — ${zone.fee.toFixed(2)} د.أ`}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                  <span className="mt-1 block text-xs font-normal text-[#7A6458]">
+                    {form.area === OTHER_GOVERNORATES_AREA
+                      ? "أجرة التوصيل للمحافظات الأخرى من ٥ إلى ٨ د.أ — يحددها الفريق عند تأكيد العنوان."
+                      : areaFee !== null
+                        ? `أجرة التوصيل لهذه المنطقة: ${areaFee.toFixed(2)} د.أ`
+                        : "تُحسب الأجرة تلقائياً بعد اختيار المنطقة."}
+                  </span>
+                </label>
+
+                <label className="block text-sm font-bold text-[#3E2723]">
+                  العنوان التفصيلي (اختياري)
+                  <input
+                    value={form.address}
+                    onChange={(event) => set("address", event.target.value)}
+                    className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                  />
+                </label>
+              </>
+            ) : null}
+
 
             <label className="block text-sm font-bold text-[#3E2723]">
               تاريخ التسليم · Date

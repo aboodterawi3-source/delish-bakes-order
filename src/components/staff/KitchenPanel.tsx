@@ -20,8 +20,8 @@ import {
   getKitchenOrders,
   markOrderReady,
   type KdsOrder,
-  type PriorityColor,
 } from "@/lib/kds.functions";
+import { PRIORITY_META } from "@/lib/priority";
 import bellAsset from "@/assets/Bell.mp3.asset.json";
 
 
@@ -47,92 +47,6 @@ async function downloadDesignImage(url: string, orderNumber: string) {
     // Signed URL expired or blocked: open it so the cook can still save manually.
     window.open(url, "_blank", "noopener,noreferrer");
   }
-}
-
-type Tier = "multi" | "buffet" | "special" | "mini" | "box" | "standard";
-
-const tierMeta: Record<
-  Tier,
-  {
-    ar: string;
-    en: string;
-    rank: number;
-    bg: string;
-    fg: string;
-    fgMuted: string;
-    glow: string;
-  }
-> = {
-  multi: {
-    ar: "متعدد الطوابق",
-    en: "Multi-tier",
-    rank: 0,
-    bg: "oklch(0.52 0.17 25)",
-    fg: "#ffffff",
-    fgMuted: "rgba(255,255,255,0.82)",
-    glow: "0 0 28px -6px oklch(0.52 0.17 25 / 0.65)",
-  },
-  buffet: {
-    ar: "بوفيه",
-    en: "Buffet",
-    rank: 1,
-    bg: "oklch(0.66 0.17 52)",
-    fg: "#ffffff",
-    fgMuted: "rgba(255,255,255,0.85)",
-    glow: "0 0 26px -6px oklch(0.66 0.17 52 / 0.6)",
-  },
-  special: {
-    ar: "تصميم خاص",
-    en: "Special custom",
-    rank: 2,
-    bg: "oklch(0.82 0.16 88)",
-    fg: "#2a220f",
-    fgMuted: "rgba(42,34,15,0.82)",
-    glow: "0 0 26px -6px oklch(0.82 0.16 88 / 0.55)",
-  },
-  mini: {
-    ar: "كيك ميني",
-    en: "Mini cakes",
-    rank: 3,
-    bg: "oklch(0.7 0.11 230)",
-    fg: "#ffffff",
-    fgMuted: "rgba(255,255,255,0.85)",
-    glow: "0 0 24px -6px oklch(0.7 0.11 230 / 0.55)",
-  },
-  box: {
-    ar: "علب حلويات",
-    en: "Boxes",
-    rank: 4,
-    bg: "oklch(0.75 0.11 150)",
-    fg: "#122a1a",
-    fgMuted: "rgba(18,42,26,0.82)",
-    glow: "0 0 24px -6px oklch(0.75 0.11 150 / 0.5)",
-  },
-  standard: {
-    ar: "طلب عادي",
-    en: "Standard",
-    rank: 5,
-    bg: "oklch(0.62 0.06 250)",
-    fg: "#ffffff",
-    fgMuted: "rgba(255,255,255,0.85)",
-    glow: "0 0 22px -6px oklch(0.62 0.06 250 / 0.45)",
-  },
-};
-
-const has = (haystack: string, needles: string[]) => needles.some((needle) => haystack.includes(needle));
-
-function orderTier(order: KdsOrder): Tier {
-  const text = order.items
-    .flatMap((item) => [item.name_ar, item.name_en, item.category ?? "", ...item.options_ar, ...item.options_en])
-    .join(" ")
-    .toLowerCase();
-
-  if (has(text, ["multi", "tier", "طوابق", "طابقين", "دورين"])) return "multi";
-  if (has(text, ["buffet", "بوفيه", "ضيافة"])) return "buffet";
-  if (order.design_image_url || order.inscription || has(text, ["custom", "خاص", "تصميم"])) return "special";
-  if (has(text, ["mini", "ميني", "cupcake", "كب كيك"])) return "mini";
-  if (has(text, ["box", "علبة", "علب", "بوكس", "tray", "صينية"])) return "box";
-  return "standard";
 }
 
 const isoDate = (offsetDays: number) => {
@@ -249,7 +163,7 @@ export function KitchenPanel() {
         if (byDate !== 0) return byDate;
         const byTime = a.requested_time.localeCompare(b.requested_time);
         if (byTime !== 0) return byTime;
-        return tierMeta[orderTier(a)].rank - tierMeta[orderTier(b)].rank;
+        return PRIORITY_META[a.priority_color].rank - PRIORITY_META[b.priority_color].rank;
       });
   }, [orders.data, filter]);
 
@@ -414,7 +328,7 @@ const KdsCard = memo(function KdsCard({
   onReady: (id: string) => void;
   onZoom: (url: string) => void;
 }) {
-  const meta = tierMeta[orderTier(order)];
+  const meta = PRIORITY_META[order.priority_color];
   const isReady = order.status === "ready";
   return (
     <article

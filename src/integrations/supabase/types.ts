@@ -447,6 +447,7 @@ export type Database = {
           is_active: boolean
           name_ar: string
           name_en: string
+          priority_color: Database["public"]["Enums"]["priority_color"] | null
           sort_order: number
           tint: string
           updated_at: string
@@ -458,6 +459,7 @@ export type Database = {
           is_active?: boolean
           name_ar: string
           name_en: string
+          priority_color?: Database["public"]["Enums"]["priority_color"] | null
           sort_order?: number
           tint?: string
           updated_at?: string
@@ -469,6 +471,7 @@ export type Database = {
           is_active?: boolean
           name_ar?: string
           name_en?: string
+          priority_color?: Database["public"]["Enums"]["priority_color"] | null
           sort_order?: number
           tint?: string
           updated_at?: string

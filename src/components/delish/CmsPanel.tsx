@@ -33,6 +33,7 @@ import {
   type StorefrontCategory,
   type StorefrontProduct,
 } from "@/lib/storefront-content";
+import { PRIORITY_OPTIONS, type PriorityColor } from "@/lib/priority";
 
 const CMS_KEY = ["cms-content"] as const;
 
@@ -191,6 +192,41 @@ function ImageField({
   );
 }
 
+/* ------------------------------ priority picker ----------------------------- */
+
+/**
+ * Optional kitchen priority. Left empty, the kitchen falls back to the
+ * category's priority and finally to the base (soft green) tier.
+ */
+function PriorityPicker({
+  value,
+  onChange,
+  hint,
+}: {
+  value: PriorityColor | null;
+  onChange: (value: PriorityColor | null) => void;
+  hint: string;
+}) {
+  return (
+    <label className="space-y-1.5">
+      <span className={label}>أولوية المطبخ (اختياري) · Kitchen priority</span>
+      <select
+        value={value ?? ""}
+        onChange={(event) => onChange((event.target.value || null) as PriorityColor | null)}
+        className={field}
+      >
+        <option value="">الأولوية الأساسية (تلقائي) · Base priority (default)</option>
+        {PRIORITY_OPTIONS.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.ar} · {option.en}
+          </option>
+        ))}
+      </select>
+      <span className="block text-[11px] font-medium text-muted-foreground">{hint}</span>
+    </label>
+  );
+}
+
 /* -------------------------------- tint picker ------------------------------- */
 
 function TintPicker({ value, onChange }: { value: string | null; onChange: (tint: string) => void }) {
@@ -279,6 +315,7 @@ type CategoryDraft = {
   image_url: string | null;
   tint: string;
   is_active: boolean;
+  priority_color: PriorityColor | null;
 };
 
 const emptyCategory: CategoryDraft = {
@@ -287,6 +324,7 @@ const emptyCategory: CategoryDraft = {
   image_url: null,
   tint: "blush",
   is_active: true,
+  priority_color: null,
 };
 
 function CategoriesEditor({ categories }: { categories: StorefrontCategory[] }) {
@@ -307,6 +345,7 @@ function CategoriesEditor({ categories }: { categories: StorefrontCategory[] }) 
           image_url: input.image_url,
           tint: input.tint,
           is_active: input.is_active,
+          priority_color: input.priority_color,
           sort_order: categories.length + 1,
         },
       }),
@@ -374,6 +413,7 @@ function CategoriesEditor({ categories }: { categories: StorefrontCategory[] }) 
                   image_url: category.image_url,
                   tint: category.tint,
                   is_active: category.is_active,
+                  priority_color: category.priority_color ?? null,
                 })
               }
               className={ghostBtn}
@@ -418,6 +458,11 @@ function CategoriesEditor({ categories }: { categories: StorefrontCategory[] }) 
               </div>
               <ImageField value={draft.image_url} folder="categories" onChange={(url) => setDraft({ ...draft, image_url: url })} />
               <TintPicker value={draft.tint} onChange={(tint) => setDraft({ ...draft, tint })} />
+              <PriorityPicker
+                value={draft.priority_color}
+                onChange={(priority_color) => setDraft({ ...draft, priority_color })}
+                hint="تُطبَّق على كل منتجات القسم إن لم يكن للمنتج أولوية خاصة."
+              />
               <label className="flex items-center gap-3 text-sm font-bold text-foreground">
                 <input
                   type="checkbox"
@@ -462,6 +507,7 @@ type ProductDraft = {
   rating_count: string;
   is_available: boolean;
   is_popular: boolean;
+  priority_color: PriorityColor | null;
 };
 
 const emptyProduct: ProductDraft = {
@@ -479,6 +525,7 @@ const emptyProduct: ProductDraft = {
   rating_count: "0",
   is_available: true,
   is_popular: true,
+  priority_color: null,
 };
 
 const toDraft = (product: StorefrontProduct): ProductDraft => ({
@@ -500,6 +547,7 @@ const toDraft = (product: StorefrontProduct): ProductDraft => ({
   rating_count: String(product.rating_count),
   is_available: product.is_available,
   is_popular: product.is_popular,
+  priority_color: product.priority_color ?? null,
 });
 
 function ProductsEditor({
@@ -539,6 +587,7 @@ function ProductsEditor({
           rating_count: Number(input.rating_count) || 0,
           is_available: input.is_available,
           is_popular: input.is_popular,
+          priority_color: input.priority_color,
         },
       }),
     onSuccess: () => {
@@ -754,6 +803,12 @@ function ProductsEditor({
 
           <ImageField value={draft.image_url} folder="products" onChange={(url) => setDraft({ ...draft, image_url: url })} />
           <TintPicker value={draft.tint} onChange={(tint) => setDraft({ ...draft, tint })} />
+          <PriorityPicker
+            value={draft.priority_color}
+            onChange={(priority_color) => setDraft({ ...draft, priority_color })}
+            hint="اتركها فارغة ليأخذ المنتج أولوية قسمه أو الأولوية الأساسية تلقائياً."
+          />
+
 
           <div className="flex flex-wrap gap-5">
             <label className="flex items-center gap-3 text-sm font-bold text-foreground">
