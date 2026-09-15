@@ -76,7 +76,7 @@ export const getKitchenOrders = createServerFn({ method: "GET" })
     if (itemsError) throw new Error(itemsError.message);
 
     const productIds = [
-      ...new Set(
+      ...new Set<string>(
         (itemsData ?? [])
           .map((item: { product_id: string | null }) => item.product_id)
           .filter((id: string | null): id is string => Boolean(id)),
