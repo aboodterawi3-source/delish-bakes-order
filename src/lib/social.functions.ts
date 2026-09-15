@@ -11,6 +11,14 @@ export type SocialOrderInput = {
   customer_phone: string;
   order_details: string;
   quantity: number;
+  /** Original price per unit agreed with the customer (السعر الأصلي). */
+  unit_price?: number | null;
+  /** Text written on the accompanying card. */
+  card_note?: string | null;
+  /** Customer asked for a final photo before delivery. */
+  final_photo_requested?: boolean;
+  /** Ready-to-send confirmation message stored with the order. */
+  confirmation_message?: string | null;
   method: "pickup" | "delivery";
   /** Amman / other-governorate zone name; the fee is resolved server-side. */
   area?: string | null;
