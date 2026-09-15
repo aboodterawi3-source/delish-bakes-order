@@ -19,8 +19,8 @@ export type ConfirmationInput = {
   /** Optional dynamic note line (extras, urgency…). */
   extraNote?: string;
   notes: string;
-  /** Whether the customer asked for the final photo before delivery. */
-  finalPhoto: boolean;
+  /** Legacy: final-photo line, no longer set from the social portal. */
+  finalPhoto?: boolean;
   price: number;
   deliveryFee: number;
   total: number;
