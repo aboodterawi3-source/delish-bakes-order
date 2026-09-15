@@ -401,16 +401,18 @@ export function KitchenPanel() {
 const KdsCard = memo(function KdsCard({
   order,
   busy,
-  onReady,
+  onStage,
   onZoom,
 }: {
   order: KdsOrder;
   busy: boolean;
-  onReady: (id: string) => void;
+  onStage: (id: string, stage: KitchenStage) => void;
   onZoom: (url: string) => void;
 }) {
   const meta = PRIORITY_META[order.priority_color];
-  const isReady = order.status === "ready";
+  const stage = stageOf(order.status);
+  const isReady = stage === "ready";
+  const stageMeta = STAGES.find((item) => item.key === stage)!;
   return (
     <article
        className="relative min-w-0 overflow-hidden rounded-3xl border border-card/40 p-4 transition-transform hover:-translate-y-0.5 sm:p-5"
