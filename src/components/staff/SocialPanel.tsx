@@ -27,7 +27,7 @@ const emptyForm = {
   method: "pickup" as "pickup" | "delivery",
   area: "",
   address: "",
-  payment_option: "cash" as "cash" | "deposit" | "cliq",
+  payment_option: "cash" as "cash" | "cliq_full" | "cliq_deposit",
   deposit_paid: "",
   requested_date: "",
   requested_time: "",
@@ -65,11 +65,11 @@ export function SocialPanel() {
   const areaFee = feeForArea(form.area);
   const deliveryFee = form.method === "delivery" ? areaFee ?? 0 : 0;
   const paymentLabel =
-    form.payment_option === "cliq"
-      ? `مدفوع عبر كليك: ${(Number(form.deposit_paid) || 0).toFixed(2)} د.أ`
-      : form.payment_option === "deposit"
-        ? `عربون مدفوع: ${(Number(form.deposit_paid) || 0).toFixed(2)} د.أ`
-        : "نقداً عند التسليم";
+    form.payment_option === "cliq_full"
+      ? `كليك دفع كامل: ${(Number(form.deposit_paid) || 0).toFixed(2)} د.أ`
+      : form.payment_option === "cliq_deposit"
+        ? `عربون عبر كليك: ${(Number(form.deposit_paid) || 0).toFixed(2)} د.أ`
+        : "كاش عند الاستلام";
 
   /** Customer-facing summary — internal staff notes are deliberately excluded. */
   const summary = useMemo(() => {
@@ -322,9 +322,9 @@ export function SocialPanel() {
               <div className="mt-1 flex flex-wrap gap-2">
                 {(
                   [
-                    { value: "cash", label: "نقداً عند التسليم" },
-                    { value: "deposit", label: "عربون" },
-                    { value: "cliq", label: "مدفوع عبر كليك" },
+                    { value: "cash", label: "كاش عند الاستلام" },
+                    { value: "cliq_full", label: "كليك دفع كامل" },
+                    { value: "cliq_deposit", label: "عربون عبر كليك" },
                   ] as const
                 ).map((option) => (
                   <button
@@ -342,9 +342,11 @@ export function SocialPanel() {
                   </button>
                 ))}
               </div>
-              {form.payment_option === "deposit" || form.payment_option === "cliq" ? (
+              {form.payment_option !== "cash" ? (
                 <label className="mt-2 block text-xs font-bold text-[#3E2723]">
-                  {form.payment_option === "cliq" ? "المبلغ المدفوع عبر كليك (د.أ)" : "قيمة العربون المدفوع (د.أ)"}
+                  {form.payment_option === "cliq_full"
+                    ? "المبلغ الكامل المدفوع عبر كليك (د.أ)"
+                    : "قيمة العربون المدفوع عبر كليك (د.أ)"}
                   <input
                     type="number"
                     min="0"
