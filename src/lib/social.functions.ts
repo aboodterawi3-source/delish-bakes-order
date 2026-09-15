@@ -152,7 +152,7 @@ export const createSocialOrder = createServerFn({ method: "POST" })
       product_id: null,
       name_ar: orderDetails,
       name_en: orderDetails,
-      unit_price: 0,
+      unit_price: unitPrice,
       quantity: data.quantity,
       options_ar: [...(data.is_urgent ? ["مستعجل"] : []), ...extrasAr],
       options_en: [...(data.is_urgent ? ["Urgent"] : []), ...extrasEn],
@@ -161,5 +161,25 @@ export const createSocialOrder = createServerFn({ method: "POST" })
 
     if (itemError) throw new Error(itemError.message);
 
-    return { id: order.id, order_number: order.order_number, total: Number(order.total ?? 0) };
+    // The message is written by the portal with a placeholder, because the order
+    // number only exists after the insert. Store the final text with the order.
+    const message =
+      typeof data.confirmation_message === "string" && data.confirmation_message.trim()
+        ? data.confirmation_message
+            .replace(/\{\{ORDER_NUMBER\}\}/g, order.order_number)
+            .slice(0, 8000)
+        : null;
+    if (message) {
+      await context.supabase
+        .from("orders")
+        .update({ confirmation_message: message })
+        .eq("id", order.id);
+    }
+
+    return {
+      id: order.id,
+      order_number: order.order_number,
+      total: Number(order.total ?? 0),
+      confirmation_message: message,
+    };
   });
