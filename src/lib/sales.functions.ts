@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertRole, type StaffRoleName } from "@/lib/role-guard";
+import { feeForArea } from "@/lib/delivery-zones";
 
 const SALES_ROLES: StaffRoleName[] = ["sales", "admin"];
 
