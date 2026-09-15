@@ -206,6 +206,17 @@ const buildOrderPatch = (input: OrderPatch): Record<string, unknown> => {
   if (input.driver_phone !== undefined) {
     patch['driver_phone'] = input.driver_phone ? String(input.driver_phone).slice(0, 40) : null;
   }
+  if (input.card_note !== undefined) {
+    patch['card_note'] = input.card_note ? String(input.card_note).slice(0, 1000) : null;
+  }
+  if (input.final_photo_requested !== undefined) {
+    patch['final_photo_requested'] = Boolean(input.final_photo_requested);
+  }
+  if (input.confirmation_message !== undefined) {
+    patch['confirmation_message'] = input.confirmation_message
+      ? String(input.confirmation_message).slice(0, 8000)
+      : null;
+  }
 
   return patch;
 };
