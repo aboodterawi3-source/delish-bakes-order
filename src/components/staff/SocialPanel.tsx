@@ -78,6 +78,14 @@ export function SocialPanel() {
         ? `عربون عبر كليك: ${(Number(form.deposit_paid) || 0).toFixed(2)} د.أ`
         : "كاش عند الاستلام";
 
+  /** Live financial calculator: original price → delivery → total → paid → remaining. */
+  const unitPrice = Math.max(Number(form.unit_price) || 0, 0);
+  const originalPrice = unitPrice * form.quantity;
+  const paidAmount = form.payment_option === "cash" ? 0 : Math.max(Number(form.deposit_paid) || 0, 0);
+  const grandTotal = originalPrice + deliveryFee;
+  const remaining = remainingBalance(grandTotal, paidAmount);
+
+
   /** Customer-facing summary — internal staff notes are deliberately excluded. */
   const summary = useMemo(() => {
     const lines = [
