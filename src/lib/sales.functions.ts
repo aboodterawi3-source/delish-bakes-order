@@ -53,6 +53,12 @@ export type SalesOrder = {
   driver_name: string | null;
   driver_phone: string | null;
   cancel_reason: string | null;
+  /** Text written on the accompanying card. */
+  card_note: string | null;
+  /** Customer asked for the final photo before delivery. */
+  final_photo_requested: boolean;
+  /** Last generated customer confirmation message, stored with the order. */
+  confirmation_message: string | null;
   status: SalesStatus;
   /** Set when a customer moved the pickup/delivery slot through their edit link. */
   schedule_updated_at: string | null;
@@ -62,7 +68,7 @@ export type SalesOrder = {
 };
 
 const SELECT =
-  "id, order_number, customer_name, customer_phone, method, area, address, requested_date, requested_time, notes, staff_notes, inscription, design_image_url, subtotal, delivery_fee, discount_amount, discount_percent, total, deposit_paid, payment_method, driver_name, driver_phone, cancel_reason, status, schedule_updated_at, created_at, updated_at, order_items(id, name_ar, name_en, quantity, unit_price, options_ar, notes, product_id)";
+  "id, order_number, customer_name, customer_phone, method, area, address, requested_date, requested_time, notes, staff_notes, inscription, card_note, final_photo_requested, confirmation_message, design_image_url, subtotal, delivery_fee, discount_amount, discount_percent, total, deposit_paid, payment_method, driver_name, driver_phone, cancel_reason, status, schedule_updated_at, created_at, updated_at, order_items(id, name_ar, name_en, quantity, unit_price, options_ar, notes, product_id)";
 
 type Row = Record<string, unknown> & { order_items?: unknown[] };
 
@@ -125,6 +131,10 @@ export type OrderPatch = {
   driver_phone?: string | null;
   deposit_paid?: number;
   payment_method?: PaymentMethod | null;
+  /** Card writing, final-photo request and the generated confirmation message. */
+  card_note?: string | null;
+  final_photo_requested?: boolean;
+  confirmation_message?: string | null;
 };
 
 const STATUSES: SalesStatus[] = [
@@ -195,6 +205,17 @@ const buildOrderPatch = (input: OrderPatch): Record<string, unknown> => {
   }
   if (input.driver_phone !== undefined) {
     patch['driver_phone'] = input.driver_phone ? String(input.driver_phone).slice(0, 40) : null;
+  }
+  if (input.card_note !== undefined) {
+    patch['card_note'] = input.card_note ? String(input.card_note).slice(0, 1000) : null;
+  }
+  if (input.final_photo_requested !== undefined) {
+    patch['final_photo_requested'] = Boolean(input.final_photo_requested);
+  }
+  if (input.confirmation_message !== undefined) {
+    patch['confirmation_message'] = input.confirmation_message
+      ? String(input.confirmation_message).slice(0, 8000)
+      : null;
   }
 
   return patch;

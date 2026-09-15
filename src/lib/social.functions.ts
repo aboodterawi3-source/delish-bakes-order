@@ -11,6 +11,14 @@ export type SocialOrderInput = {
   customer_phone: string;
   order_details: string;
   quantity: number;
+  /** Original price per unit agreed with the customer (السعر الأصلي). */
+  unit_price?: number | null;
+  /** Text written on the accompanying card. */
+  card_note?: string | null;
+  /** Customer asked for a final photo before delivery. */
+  final_photo_requested?: boolean;
+  /** Ready-to-send confirmation message stored with the order. */
+  confirmation_message?: string | null;
   method: "pickup" | "delivery";
   /** Amman / other-governorate zone name; the fee is resolved server-side. */
   area?: string | null;
@@ -94,7 +102,9 @@ export const createSocialOrder = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertRole(context, SOCIAL_ROLES);
     const orderDetails = data.order_details.trim();
-    const subtotal = 0;
+    // Original price agreed with the customer; the row total is recomputed in the DB.
+    const unitPrice = Math.min(Math.max(Number(data.unit_price) || 0, 0), 100000);
+    const subtotal = unitPrice * data.quantity;
     const area = data.method === "delivery" ? data.area?.trim() || null : null;
     // The browser never sets the fee: it is resolved from the trusted zone table.
     const deliveryFee = area ? feeForArea(area) ?? 0 : 0;
@@ -108,9 +118,19 @@ export const createSocialOrder = createServerFn({ method: "POST" })
         ? data.design_image_url.trim()
         : null;
 
+    /** Assigned here (not by the column default) so the confirmation message can
+     * carry the real order number in the very same insert. */
+    const orderNumber = `DL-${String(Date.now()).slice(-5)}`;
+    const message =
+      typeof data.confirmation_message === "string" && data.confirmation_message.trim()
+        ? data.confirmation_message.replace(/\{\{ORDER_NUMBER\}\}/g, orderNumber).slice(0, 8000)
+        : null;
+
     const { data: order, error: orderError } = await context.supabase
       .from("orders")
       .insert({
+        order_number: orderNumber,
+        confirmation_message: message,
         customer_name: data.customer_name.trim(),
         customer_phone: data.customer_phone.trim(),
         method: data.method,
@@ -124,6 +144,8 @@ export const createSocialOrder = createServerFn({ method: "POST" })
         is_urgent: data.is_urgent,
         inscription: data.design_notes?.trim() || null,
         staff_notes: data.staff_notes?.trim() || null,
+        card_note: data.card_note?.trim() || null,
+        final_photo_requested: Boolean(data.final_photo_requested),
         design_image_url: designImage,
         subtotal,
         delivery_fee: deliveryFee,
@@ -140,7 +162,7 @@ export const createSocialOrder = createServerFn({ method: "POST" })
       product_id: null,
       name_ar: orderDetails,
       name_en: orderDetails,
-      unit_price: 0,
+      unit_price: unitPrice,
       quantity: data.quantity,
       options_ar: [...(data.is_urgent ? ["مستعجل"] : []), ...extrasAr],
       options_en: [...(data.is_urgent ? ["Urgent"] : []), ...extrasEn],
@@ -149,5 +171,10 @@ export const createSocialOrder = createServerFn({ method: "POST" })
 
     if (itemError) throw new Error(itemError.message);
 
-    return { id: order.id, order_number: order.order_number, total: Number(order.total ?? 0) };
+    return {
+      id: order.id,
+      order_number: order.order_number,
+      total: Number(order.total ?? 0),
+      confirmation_message: message,
+    };
   });

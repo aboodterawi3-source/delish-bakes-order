@@ -10,6 +10,7 @@ import {
   type SocialOrderInput,
 } from "@/lib/social.functions";
 import { DELIVERY_ZONES, OTHER_GOVERNORATES_AREA, feeForArea } from "@/lib/delivery-zones";
+import { buildConfirmationMessage, remainingBalance } from "@/lib/confirmation-message";
 import {
   CakeCustomizationPanel,
   customizationSummary,
@@ -24,6 +25,10 @@ const emptyForm = {
   customer_phone: "",
   order_details: "",
   quantity: 1,
+  /** Original agreed price per unit (السعر الأصلي). */
+  unit_price: "",
+  card_note: "",
+  final_photo_requested: false,
   method: "pickup" as "pickup" | "delivery",
   area: "",
   address: "",
@@ -49,15 +54,17 @@ export function SocialPanel() {
 
   const [form, setForm] = useState(emptyForm);
   const [customization, setCustomization] = useState<Customization>(emptyCustomization);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<"summary" | "confirmation" | null>(null);
   const [done, setDone] = useState<string | null>(null);
+  /** Confirmation message returned with the created order (real order number). */
+  const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const access = useQuery({ queryKey: ["social-access"], queryFn: () => accessFn({}) });
 
   const set = useCallback(<K extends keyof typeof emptyForm>(key: K, value: (typeof emptyForm)[K]) => {
     setForm((current) => ({ ...current, [key]: value }));
-    setCopied(false);
+    setCopied(null);
   }, []);
 
   const extras = useMemo(() => customizationSummary(customization), [customization]);
@@ -70,6 +77,14 @@ export function SocialPanel() {
       : form.payment_option === "cliq_deposit"
         ? `عربون عبر كليك: ${(Number(form.deposit_paid) || 0).toFixed(2)} د.أ`
         : "كاش عند الاستلام";
+
+  /** Live financial calculator: original price → delivery → total → paid → remaining. */
+  const unitPrice = Math.max(Number(form.unit_price) || 0, 0);
+  const originalPrice = unitPrice * form.quantity;
+  const paidAmount = form.payment_option === "cash" ? 0 : Math.max(Number(form.deposit_paid) || 0, 0);
+  const grandTotal = originalPrice + deliveryFee;
+  const remaining = remainingBalance(grandTotal, paidAmount);
+
 
   /** Customer-facing summary — internal staff notes are deliberately excluded. */
   const summary = useMemo(() => {
@@ -101,11 +116,46 @@ export function SocialPanel() {
     return lines.join("\n");
   }, [form, extras, customization.notes, paymentLabel, deliveryFee]);
 
+  /** Official confirmation message. The order number is filled in on the server. */
+  const confirmationTemplate = useMemo(
+    () =>
+      buildConfirmationMessage({
+        orderNumber: "{{ORDER_NUMBER}}",
+        customerName: form.customer_name,
+        when: `${form.requested_date} ${form.requested_time}`.trim(),
+        fulfilment:
+          form.method === "delivery"
+            ? `توصيل · ${form.area || "—"}${form.address.trim() ? ` — ${form.address.trim()}` : ""}`
+            : "استلام من المحل",
+        items: [`${form.quantity} × ${form.order_details.trim() || "—"}`, ...extras.ar],
+        cakeWriting: form.design_notes || customization.topperText,
+        cardWriting: form.card_note,
+        extraNote: form.is_urgent ? "طلب مستعجل · Urgent" : "",
+        notes: customization.notes,
+        finalPhoto: form.final_photo_requested,
+        price: originalPrice,
+        deliveryFee,
+        total: grandTotal,
+        paid: paidAmount,
+        paymentMethod: paymentLabel,
+        recipientPhone: customization.recipientPhone || form.customer_phone,
+        senderPhone: customization.senderPhone,
+      }),
+    [form, extras.ar, customization, originalPrice, deliveryFee, grandTotal, paidAmount, paymentLabel],
+  );
+
+  /** What staff see and copy: the placeholder is only meaningful after saving. */
+  const confirmationPreview = savedMessage
+    ? savedMessage
+    : confirmationTemplate.replace("{{ORDER_NUMBER}}", "(يُضاف تلقائياً عند الإرسال)");
+
+
   const submit = useMutation({
     mutationFn: (input: SocialOrderInput) => createFn({ data: input }),
     onSuccess: (order) => {
       setDone(order.order_number);
       setError(null);
+      setSavedMessage(order.confirmation_message ?? null);
       setForm(emptyForm);
       setCustomization(emptyCustomization);
     },
@@ -113,12 +163,12 @@ export function SocialPanel() {
     onError: (mutationError: Error) => setError(mutationError.message),
   });
 
-  const copy = useCallback(async () => {
+  const copy = useCallback(async (text: string, which: "summary" | "confirmation") => {
     // Primary: async Clipboard API. Fallback: hidden textarea + execCommand
     // for browsers/contexts where clipboard.writeText is blocked.
     const legacyCopy = () => {
       const area = document.createElement("textarea");
-      area.value = summary;
+      area.value = text;
       area.setAttribute("readonly", "");
       area.style.position = "fixed";
       area.style.insetInlineStart = "-9999px";
@@ -130,24 +180,24 @@ export function SocialPanel() {
     };
     try {
       if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(summary);
+        await navigator.clipboard.writeText(text);
       } else {
         legacyCopy();
       }
-      setCopied(true);
+      setCopied(which);
       setError(null);
-      window.setTimeout(() => setCopied(false), 2500);
+      window.setTimeout(() => setCopied(null), 2500);
     } catch {
       try {
         legacyCopy();
-        setCopied(true);
+        setCopied(which);
         setError(null);
-        window.setTimeout(() => setCopied(false), 2500);
+        window.setTimeout(() => setCopied(null), 2500);
       } catch {
         setError("تعذّر النسخ · Copy failed — حدّد النص من المعاينة وانسخه يدوياً");
       }
     }
-  }, [summary]);
+  }, []);
 
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
@@ -189,6 +239,10 @@ export function SocialPanel() {
       customer_phone: form.customer_phone,
       order_details: form.order_details,
       quantity: form.quantity,
+      unit_price: Number(form.unit_price) || 0,
+      card_note: form.card_note,
+      final_photo_requested: form.final_photo_requested,
+      confirmation_message: confirmationTemplate,
       method: form.method,
       area: form.method === "delivery" ? form.area : null,
       address: form.method === "delivery" ? form.address : null,
@@ -292,6 +346,18 @@ export function SocialPanel() {
                 required
                 value={form.quantity}
                 onChange={(event) => set("quantity", Math.max(1, Number(event.target.value) || 1))}
+                className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+              />
+            </label>
+            <label className="block text-sm font-bold text-[#3E2723]">
+              السعر الأصلي للحبة (د.أ) · Original price
+              <input
+                type="number"
+                min="0"
+                step="0.25"
+                value={form.unit_price}
+                onChange={(event) => set("unit_price", event.target.value)}
+                placeholder="0.00"
                 className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
               />
             </label>
@@ -472,6 +538,57 @@ export function SocialPanel() {
 
 
           <label className="block text-sm font-bold text-[#3E2723]">
+            الكتابة على الكرت · Card note
+            <input
+              type="text"
+              maxLength={1000}
+              value={form.card_note}
+              onChange={(event) => set("card_note", event.target.value)}
+              className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+            />
+          </label>
+
+          <button
+            type="button"
+            onClick={() => set("final_photo_requested", !form.final_photo_requested)}
+            aria-pressed={form.final_photo_requested}
+            className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 text-xs font-bold transition-all ${
+              form.final_photo_requested
+                ? "bg-[#8B4513] text-white shadow-sm"
+                : "border border-[#B8860B] bg-white text-[#8B4513] hover:bg-[#FDE2CF]/30"
+            }`}
+          >
+            📸 بس بدي الصوره النهائيه لو سمحت
+          </button>
+
+          {/* Financial calculator — updates live as staff type. */}
+          <div className="rounded-2xl border border-[#B8860B]/40 bg-[#FFF8EE] p-4">
+            <h3 className="text-sm font-bold text-[#5D2E17]">الحساب · السعر، العربون، المتبقي</h3>
+            <dl className="mt-2 space-y-1 text-sm text-[#3E2723]">
+              <div className="flex justify-between gap-2">
+                <dt>المبلغ ({form.quantity} × {(Number(form.unit_price) || 0).toFixed(2)})</dt>
+                <dd className="font-bold">{originalPrice.toFixed(2)} د.أ</dd>
+              </div>
+              <div className="flex justify-between gap-2">
+                <dt>التوصيل</dt>
+                <dd className="font-bold">{deliveryFee.toFixed(2)} د.أ</dd>
+              </div>
+              <div className="flex justify-between gap-2">
+                <dt>الحساب كامل</dt>
+                <dd className="font-bold">{grandTotal.toFixed(2)} د.أ</dd>
+              </div>
+              <div className="flex justify-between gap-2">
+                <dt>المبلغ المدفوع</dt>
+                <dd className="font-bold">{paidAmount.toFixed(2)} د.أ</dd>
+              </div>
+              <div className="flex justify-between gap-2 border-t border-[#B8860B]/30 pt-1 text-[#8B4513]">
+                <dt className="font-bold">المبلغ المتبقي</dt>
+                <dd className="font-bold">{remaining.toFixed(2)} د.أ</dd>
+              </div>
+            </dl>
+          </div>
+
+          <label className="block text-sm font-bold text-[#3E2723]">
             ملاحظات داخلية للموظفين · Internal staff notes
             <textarea
               rows={3}
@@ -495,11 +612,11 @@ export function SocialPanel() {
             </button>
             <button
               type="button"
-              onClick={() => void copy()}
+              onClick={() => void copy(summary, "summary")}
               className="inline-flex min-h-12 min-w-0 flex-[1_1_12rem] items-center justify-center gap-2 rounded-full border border-[#B8860B] bg-white px-4 text-center text-sm font-bold text-[#8B4513] hover:bg-[#FDE2CF]/30 shadow-xs transition sm:px-5"
             >
-              {copied ? <Check className="h-4 w-4" aria-hidden="true" /> : <ClipboardCopy className="h-4 w-4" aria-hidden="true" />}
-              {copied ? "تم النسخ" : "نسخ رسالة واتساب"}
+              {copied === "summary" ? <Check className="h-4 w-4" aria-hidden="true" /> : <ClipboardCopy className="h-4 w-4" aria-hidden="true" />}
+              {copied === "summary" ? "تم النسخ" : "نسخ رسالة واتساب"}
             </button>
             <a
               href={whatsappUrl(summary)}
@@ -517,6 +634,31 @@ export function SocialPanel() {
         <section className="mt-5 rounded-3xl border border-border bg-card p-5">
           <h2 className="font-display text-base font-bold text-foreground">معاينة رسالة واتساب</h2>
           <pre className="mt-2 whitespace-pre-wrap break-words rounded-xl bg-secondary/60 p-3 text-sm text-foreground">{summary}</pre>
+        </section>
+
+        {/* Official confirmation message, saved with the order on submit. */}
+        <section className="mt-5 rounded-3xl border border-[#B8860B]/40 bg-card p-5">
+          <h2 className="font-display text-base font-bold text-foreground">👑 رسالة تأكيد الطلب (Delish Cake)</h2>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => void copy(confirmationPreview, "confirmation")}
+              className="inline-flex min-h-12 min-w-0 flex-[1_1_12rem] items-center justify-center gap-2 rounded-full border border-[#B8860B] bg-white px-4 text-sm font-bold text-[#8B4513] hover:bg-[#FDE2CF]/30 transition"
+            >
+              {copied === "confirmation" ? <Check className="h-4 w-4" aria-hidden="true" /> : <ClipboardCopy className="h-4 w-4" aria-hidden="true" />}
+              {copied === "confirmation" ? "تم النسخ" : "نسخ رسالة التأكيد"}
+            </button>
+            <a
+              href={whatsappUrl(confirmationPreview)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-12 min-w-0 flex-[1_1_12rem] items-center justify-center gap-2 rounded-full bg-[#25D366] px-4 text-sm font-bold text-white shadow-sm hover:brightness-95 transition"
+            >
+              <MessageCircle className="h-4 w-4" aria-hidden="true" />
+              إرسال رسالة التأكيد
+            </a>
+          </div>
+          <pre className="mt-3 max-h-96 overflow-y-auto whitespace-pre-wrap break-words rounded-xl bg-secondary/60 p-3 text-sm text-foreground">{confirmationPreview}</pre>
         </section>
       </div>
     </main>

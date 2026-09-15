@@ -37,6 +37,7 @@ import {
   type ShiftReport,
 } from "@/lib/sales.functions";
 import { getMyPermissions } from "@/lib/permissions.functions";
+import { buildConfirmationMessage } from "@/lib/confirmation-message";
 import {
   applyOrderDiscount,
   createOrderEditLink,
@@ -160,6 +161,9 @@ function applyPatch(order: SalesOrder, input: OrderPatch): SalesOrder {
   if (input.driver_phone !== undefined) next.driver_phone = input.driver_phone;
   if (input.deposit_paid !== undefined) next.deposit_paid = input.deposit_paid;
   if (input.payment_method !== undefined) next.payment_method = input.payment_method;
+  if (input.card_note !== undefined) next.card_note = input.card_note;
+  if (input.final_photo_requested !== undefined) next.final_photo_requested = input.final_photo_requested;
+  if (input.confirmation_message !== undefined) next.confirmation_message = input.confirmation_message;
   next.total = next.subtotal + (next.method === "delivery" ? next.delivery_fee : 0);
   return next;
 }
@@ -664,6 +668,9 @@ function OrderPanel({
   const [driverPhone, setDriverPhone] = useState(order.driver_phone ?? "");
   const [discountPercent, setDiscountPercent] = useState(String(order.discount_percent || ""));
   const [discountReason, setDiscountReason] = useState("");
+  const [cardNote, setCardNote] = useState(order.card_note ?? "");
+  const [finalPhoto, setFinalPhoto] = useState(order.final_photo_requested);
+  const [messageCopied, setMessageCopied] = useState(false);
 
   const mayOverridePrice = Boolean(authorization?.allow_price_override);
   const mayDiscount = Boolean(authorization?.allow_custom_discount);
@@ -677,6 +684,9 @@ function OrderPanel({
     setDriverPhone(order.driver_phone ?? "");
     setDiscountPercent(String(order.discount_percent || ""));
     setDiscountReason("");
+    setCardNote(order.card_note ?? "");
+    setFinalPhoto(order.final_photo_requested);
+    setMessageCopied(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order.id]);
 
@@ -686,6 +696,38 @@ function OrderPanel({
     0,
   );
   const remaining = Math.max(liveTotal - (Number(deposit) || 0), 0);
+
+  /** Built live from the order so staff always send current figures. */
+  const confirmationMessage = useMemo(
+    () =>
+      buildConfirmationMessage({
+        orderNumber: order.order_number,
+        customerName: order.customer_name,
+        when: `${order.requested_date} ${order.requested_time}`.trim(),
+        fulfilment:
+          order.method === "delivery"
+            ? `توصيل · ${order.area || "—"}${order.address ? ` — ${order.address}` : ""}`
+            : "استلام من المحل",
+        items: order.items.flatMap((item) => [
+          `${item.quantity} × ${item.name_ar}`,
+          ...item.options_ar.map((option) => `— ${option}`),
+        ]),
+        cakeWriting: order.inscription ?? "",
+        cardWriting: cardNote,
+        extraNote: "",
+        notes: order.notes ?? "",
+        finalPhoto: finalPhoto,
+        price: order.subtotal,
+        deliveryFee: order.method === "delivery" ? order.delivery_fee : 0,
+        total: liveTotal,
+        paid: Number(deposit) || 0,
+        paymentMethod: payMeta[order.payment_method ?? "cash"].ar,
+        recipientPhone: order.customer_phone,
+        senderPhone: "",
+      }),
+    [order, cardNote, finalPhoto, deposit, liveTotal],
+  );
+
   const stageIndex = flow.indexOf(order.status);
   const next = stageIndex >= 0 && stageIndex < flow.length - 1 ? flow[stageIndex + 1] : null;
 
@@ -959,8 +1001,78 @@ function OrderPanel({
               />
             </label>
           ) : null}
-          <p className={`mt-2 text-sm font-bold ${remaining > 0 ? "text-destructive" : "text-foreground"}`}>المتبقي: {jd(remaining)}</p>
+          <div className="mt-2 space-y-1 rounded-xl bg-secondary/60 p-3 text-sm">
+            <div className="flex justify-between"><span>الحساب كامل</span><span className="font-bold">{jd(liveTotal)}</span></div>
+            <div className="flex justify-between"><span>المبلغ المدفوع</span><span className="font-bold">{jd(Number(deposit) || 0)}</span></div>
+            <div className={`flex justify-between border-t border-border pt-1 font-bold ${remaining > 0 ? "text-destructive" : "text-foreground"}`}>
+              <span>المبلغ المتبقي</span><span>{jd(remaining)}</span>
+            </div>
+          </div>
         </section>
+
+        {/* Card writing, final-photo request and the official confirmation message. */}
+        <section className="mt-6 rounded-2xl border border-border p-3.5">
+          <h3 className="text-sm font-bold text-foreground">👑 رسالة تأكيد الطلب</h3>
+          <label className="mt-3 block text-sm font-bold text-foreground">
+            الكتابة على الكرت
+            <input
+              type="text"
+              maxLength={1000}
+              value={cardNote}
+              onChange={(event) => setCardNote(event.target.value)}
+              onBlur={() => onPatch({ card_note: cardNote.trim() || null })}
+              className="mt-1 min-h-12 w-full rounded-xl border border-input bg-background px-3 text-sm"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={() => {
+              const value = !finalPhoto;
+              setFinalPhoto(value);
+              onPatch({ final_photo_requested: value });
+            }}
+            aria-pressed={finalPhoto}
+            className={`mt-3 min-h-11 rounded-full px-4 text-xs font-bold ${finalPhoto ? "bg-primary text-primary-foreground" : "border border-border text-foreground"}`}
+          >
+            📸 بس بدي الصوره النهائيه لو سمحت
+          </button>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => onPatch({ confirmation_message: confirmationMessage })}
+              className="min-h-12 flex-1 rounded-full bg-primary px-4 text-sm font-bold text-primary-foreground"
+            >
+              توليد وحفظ الرسالة
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(confirmationMessage);
+                  setMessageCopied(true);
+                  window.setTimeout(() => setMessageCopied(false), 2500);
+                } catch {
+                  toast.error("تعذّر النسخ — حدّد النص وانسخه يدوياً");
+                }
+              }}
+              className="min-h-12 flex-1 rounded-full border border-border px-4 text-sm font-bold text-foreground"
+            >
+              {messageCopied ? "تم النسخ" : "نسخ الرسالة"}
+            </button>
+            <a
+              href={`https://wa.me/${waNumber(order.customer_phone)}?text=${encodeURIComponent(confirmationMessage)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-full bg-[#25D366] px-4 text-sm font-bold text-white"
+            >
+              <MessageCircle className="h-4 w-4" aria-hidden="true" /> إرسال للعميل
+            </a>
+          </div>
+          <pre className="mt-3 max-h-80 overflow-y-auto whitespace-pre-wrap break-words rounded-xl bg-secondary/60 p-3 text-xs text-foreground">
+            {confirmationMessage}
+          </pre>
+        </section>
+
 
         <section className="mt-6">
           <h3 className="text-sm font-bold text-foreground">تفاصيل الطلب</h3>
