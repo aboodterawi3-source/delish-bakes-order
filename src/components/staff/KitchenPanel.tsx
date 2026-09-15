@@ -111,7 +111,7 @@ export function KitchenPanel() {
   const queryClient = useQueryClient();
   const fetchOrders = useServerFn(getKitchenOrders);
   const fetchAccess = useServerFn(getKitchenAccess);
-  const markReady = useServerFn(markOrderReady);
+  const applyStage = useServerFn(setKitchenStage);
 
   const [filter, setFilter] = useState<Filter>("today");
   const [view, setView] = useState<"board" | "menu">("board");
