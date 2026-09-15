@@ -37,6 +37,7 @@ import {
   type ShiftReport,
 } from "@/lib/sales.functions";
 import { getMyPermissions } from "@/lib/permissions.functions";
+import { buildConfirmationMessage } from "@/lib/confirmation-message";
 import {
   applyOrderDiscount,
   createOrderEditLink,
@@ -160,6 +161,9 @@ function applyPatch(order: SalesOrder, input: OrderPatch): SalesOrder {
   if (input.driver_phone !== undefined) next.driver_phone = input.driver_phone;
   if (input.deposit_paid !== undefined) next.deposit_paid = input.deposit_paid;
   if (input.payment_method !== undefined) next.payment_method = input.payment_method;
+  if (input.card_note !== undefined) next.card_note = input.card_note;
+  if (input.final_photo_requested !== undefined) next.final_photo_requested = input.final_photo_requested;
+  if (input.confirmation_message !== undefined) next.confirmation_message = input.confirmation_message;
   next.total = next.subtotal + (next.method === "delivery" ? next.delivery_fee : 0);
   return next;
 }
@@ -664,6 +668,9 @@ function OrderPanel({
   const [driverPhone, setDriverPhone] = useState(order.driver_phone ?? "");
   const [discountPercent, setDiscountPercent] = useState(String(order.discount_percent || ""));
   const [discountReason, setDiscountReason] = useState("");
+  const [cardNote, setCardNote] = useState(order.card_note ?? "");
+  const [finalPhoto, setFinalPhoto] = useState(order.final_photo_requested);
+  const [messageCopied, setMessageCopied] = useState(false);
 
   const mayOverridePrice = Boolean(authorization?.allow_price_override);
   const mayDiscount = Boolean(authorization?.allow_custom_discount);
@@ -677,6 +684,9 @@ function OrderPanel({
     setDriverPhone(order.driver_phone ?? "");
     setDiscountPercent(String(order.discount_percent || ""));
     setDiscountReason("");
+    setCardNote(order.card_note ?? "");
+    setFinalPhoto(order.final_photo_requested);
+    setMessageCopied(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order.id]);
 
