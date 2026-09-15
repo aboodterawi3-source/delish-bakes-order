@@ -317,6 +317,91 @@ export function SocialPanel() {
               </div>
             </fieldset>
 
+            <fieldset className="text-sm font-bold text-[#3E2723] sm:col-span-2">
+              <legend>طريقة الدفع · Payment method</legend>
+              <div className="mt-1 flex flex-wrap gap-2">
+                {(
+                  [
+                    { value: "cash", label: "نقداً عند التسليم" },
+                    { value: "deposit", label: "عربون" },
+                    { value: "cliq", label: "مدفوع عبر كليك" },
+                  ] as const
+                ).map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => set("payment_option", option.value)}
+                    aria-pressed={form.payment_option === option.value}
+                    className={`min-h-11 flex-[1_1_9rem] rounded-xl px-4 text-xs font-bold transition-all ${
+                      form.payment_option === option.value
+                        ? "bg-[#8B4513] text-white shadow-sm"
+                        : "border border-slate-200 bg-white text-[#5D2E17] hover:bg-slate-50"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+              {form.payment_option === "deposit" ? (
+                <label className="mt-2 block text-xs font-bold text-[#3E2723]">
+                  قيمة العربون المدفوع (د.أ)
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    dir="ltr"
+                    value={form.deposit_paid}
+                    onChange={(event) => set("deposit_paid", event.target.value)}
+                    className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                  />
+                </label>
+              ) : null}
+            </fieldset>
+
+            {form.method === "delivery" ? (
+              <>
+                <label className="block text-sm font-bold text-[#3E2723]">
+                  منطقة التوصيل · Delivery area
+                  <select
+                    required
+                    value={form.area}
+                    onChange={(event) => set("area", event.target.value)}
+                    className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                  >
+                    <option value="">اختر المنطقة</option>
+                    {DELIVERY_ZONES.map((zone) => (
+                      <optgroup key={zone.labelEn} label={`${zone.labelAr} · ${zone.labelEn}`}>
+                        {zone.areas.map((area) => (
+                          <option key={`${zone.labelEn}-${area}`} value={area}>
+                            {area === OTHER_GOVERNORATES_AREA
+                              ? `${area} (٥–٨ د.أ)`
+                              : `${area} — ${zone.fee.toFixed(2)} د.أ`}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                  <span className="mt-1 block text-xs font-normal text-[#7A6458]">
+                    {form.area === OTHER_GOVERNORATES_AREA
+                      ? "أجرة التوصيل للمحافظات الأخرى من ٥ إلى ٨ د.أ — يحددها الفريق عند تأكيد العنوان."
+                      : areaFee !== null
+                        ? `أجرة التوصيل لهذه المنطقة: ${areaFee.toFixed(2)} د.أ`
+                        : "تُحسب الأجرة تلقائياً بعد اختيار المنطقة."}
+                  </span>
+                </label>
+
+                <label className="block text-sm font-bold text-[#3E2723]">
+                  العنوان التفصيلي (اختياري)
+                  <input
+                    value={form.address}
+                    onChange={(event) => set("address", event.target.value)}
+                    className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                  />
+                </label>
+              </>
+            ) : null}
+
+
             <label className="block text-sm font-bold text-[#3E2723]">
               تاريخ التسليم · Date
               <input
