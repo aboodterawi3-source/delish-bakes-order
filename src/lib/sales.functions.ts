@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertRole, type StaffRoleName } from "@/lib/role-guard";
+import { feeForArea } from "@/lib/delivery-zones";
 
 const SALES_ROLES: StaffRoleName[] = ["sales", "admin"];
 
@@ -117,6 +118,8 @@ export type OrderPatch = {
   status?: SalesStatus;
   cancel_reason?: string | null;
   method?: "delivery" | "pickup";
+  /** Delivery zone name; the fee is resolved from the trusted zone table. */
+  area?: string | null;
   delivery_fee?: number;
   driver_name?: string | null;
   driver_phone?: string | null;
@@ -161,6 +164,18 @@ const buildOrderPatch = (input: OrderPatch): Record<string, unknown> => {
       throw new Error("أجرة توصيل غير صالحة · Invalid delivery fee");
     }
     patch['delivery_fee'] = fee;
+  }
+  // Selecting a zone sets the fee from the trusted table, overriding any sent fee.
+  if (input.area !== undefined) {
+    if (input.area === null || input.area === "") {
+      patch['area'] = null;
+    } else {
+      const area = String(input.area).trim().replace(/\s+/g, " ");
+      const zoneFee = feeForArea(area);
+      if (zoneFee === null) throw new Error("منطقة غير صالحة · Invalid delivery area");
+      patch['area'] = area;
+      patch['delivery_fee'] = zoneFee;
+    }
   }
   if (input.deposit_paid !== undefined) {
     const deposit = Number(input.deposit_paid);

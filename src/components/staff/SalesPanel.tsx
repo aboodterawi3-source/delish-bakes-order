@@ -44,6 +44,12 @@ import {
   type StaffAuthorization,
 } from "@/lib/authorization.functions";
 import { CmsPanel } from "@/components/delish/CmsPanel";
+import {
+  DELIVERY_ZONES,
+  OTHER_FEE_MAX,
+  OTHER_FEE_MIN,
+  OTHER_GOVERNORATES_AREA,
+} from "@/lib/delivery-zones";
 
 /** Saves the customer's original reference photo so sales can print or forward it. */
 async function downloadDesignImage(url: string, orderNumber: string) {
@@ -148,6 +154,7 @@ function applyPatch(order: SalesOrder, input: OrderPatch): SalesOrder {
   if (input.status !== undefined) next.status = input.status;
   if (input.cancel_reason !== undefined) next.cancel_reason = input.cancel_reason;
   if (input.method !== undefined) next.method = input.method;
+  if (input.area !== undefined) next.area = input.area;
   if (input.delivery_fee !== undefined) next.delivery_fee = input.delivery_fee;
   if (input.driver_name !== undefined) next.driver_name = input.driver_name;
   if (input.driver_phone !== undefined) next.driver_phone = input.driver_phone;
@@ -642,8 +649,17 @@ function OrderPanel({
   onPatch: (input: Omit<OrderPatch, "orderId">) => void;
   onCancel: () => void;
 }) {
-  const [fee, setFee] = useState(String(order.delivery_fee));
   const [deposit, setDeposit] = useState(String(order.deposit_paid));
+  /** Which payment option the staff member picked; kept locally so the choice sticks. */
+  const initialPayChoice = (order: SalesOrder) =>
+    order.payment_method !== "cliq"
+      ? "cash"
+      : order.total > 0 && order.deposit_paid >= order.total
+        ? "cliq_full"
+        : "cliq_deposit";
+  const [payChoice, setPayChoice] = useState<"cash" | "cliq_full" | "cliq_deposit">(() =>
+    initialPayChoice(order),
+  );
   const [driverName, setDriverName] = useState(order.driver_name ?? "");
   const [driverPhone, setDriverPhone] = useState(order.driver_phone ?? "");
   const [discountPercent, setDiscountPercent] = useState(String(order.discount_percent || ""));
@@ -655,8 +671,8 @@ function OrderPanel({
 
   // Reset the local fields only when a different order opens, never while typing.
   useEffect(() => {
-    setFee(String(order.delivery_fee));
     setDeposit(String(order.deposit_paid));
+    setPayChoice(initialPayChoice(order));
     setDriverName(order.driver_name ?? "");
     setDriverPhone(order.driver_phone ?? "");
     setDiscountPercent(String(order.discount_percent || ""));
@@ -666,7 +682,7 @@ function OrderPanel({
 
 
   const liveTotal = Math.max(
-    order.subtotal + (order.method === "delivery" ? Number(fee) || 0 : 0) - order.discount_amount,
+    order.subtotal + (order.method === "delivery" ? order.delivery_fee : 0) - order.discount_amount,
     0,
   );
   const remaining = Math.max(liveTotal - (Number(deposit) || 0), 0);
@@ -740,16 +756,32 @@ function OrderPanel({
           {order.method === "delivery" ? (
             <div className="mt-3 space-y-3">
               <label className="block text-sm font-bold text-foreground">
-                أجرة التوصيل · Delivery fee
-                <input
-                  type="number"
-                  min="0"
-                  step="0.25"
-                  value={fee}
-                  onChange={(event) => setFee(event.target.value)}
-                  onBlur={() => onPatch({ delivery_fee: Number(fee) || 0 })}
+                منطقة التوصيل · Delivery zone
+                <select
+                  value={order.area ?? ""}
+                  onChange={(event) => {
+                    const area = event.target.value;
+                    onPatch(area ? { area } : { area: null, delivery_fee: 0 });
+                  }}
                   className="mt-1 min-h-12 w-full rounded-xl border border-input bg-background px-3 text-sm"
-                />
+                >
+                  <option value="">— اختر المنطقة —</option>
+                  {DELIVERY_ZONES.map((zone) => (
+                    <optgroup key={zone.labelAr} label={zone.labelAr}>
+                      {zone.areas.map((area) => (
+                        <option key={area} value={area}>
+                          {area}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+                <span className="mt-1 block text-xs font-medium text-muted-foreground">
+                  أجرة التوصيل المحسوبة: {jd(order.method === "delivery" ? order.delivery_fee : 0)}
+                  {order.area === OTHER_GOVERNORATES_AREA
+                    ? ` · محافظات أخرى ${OTHER_FEE_MIN}–${OTHER_FEE_MAX} د.أ، يعدّلها الفريق`
+                    : ""}
+                </span>
               </label>
               <label className="block text-sm font-bold text-foreground">
                 اسم السائق · Driver name
@@ -782,7 +814,7 @@ function OrderPanel({
           <h3 className="text-sm font-bold text-foreground">المالية</h3>
           <div className="mt-2 space-y-1 text-sm">
             <div className="flex justify-between text-foreground"><span>المجموع الفرعي</span><span>{jd(order.subtotal)}</span></div>
-            <div className="flex justify-between text-foreground"><span>التوصيل</span><span>{jd(order.method === "delivery" ? Number(fee) || 0 : 0)}</span></div>
+            <div className="flex justify-between text-foreground"><span>التوصيل</span><span>{jd(order.method === "delivery" ? order.delivery_fee : 0)}</span></div>
             {order.discount_amount > 0 ? (
               <div className="flex justify-between text-destructive">
                 <span>الخصم ({order.discount_percent}%)</span>
@@ -885,36 +917,35 @@ function OrderPanel({
                 { value: "cliq_full", label: "كليك دفع كامل" },
                 { value: "cliq_deposit", label: "عربون عبر كليك" },
               ] as const
-            ).map((option) => {
-              const selected =
-                option.value === "cash"
-                  ? order.payment_method !== "cliq"
-                  : order.payment_method === "cliq" &&
-                    (option.value === "cliq_full"
-                      ? order.total > 0 && order.deposit_paid >= order.total
-                      : !(order.total > 0 && order.deposit_paid >= order.total));
-              return (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() =>
-                    onPatch(
-                      option.value === "cash"
-                        ? { payment_method: "cash", deposit_paid: 0 }
-                        : { payment_method: "cliq" },
-                    )
+            ).map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => {
+                  setPayChoice(option.value);
+                  if (option.value === "cash") {
+                    setDeposit("0");
+                    onPatch({ payment_method: "cash", deposit_paid: 0 });
+                    return;
                   }
-                  aria-pressed={selected}
-                  className={`min-h-12 min-w-20 flex-1 rounded-full px-2 text-sm font-bold ${selected ? "bg-primary text-primary-foreground" : "border border-border text-foreground"}`}
-                >
-                  {option.label}
-                </button>
-              );
-            })}
+                  if (option.value === "cliq_full") {
+                    // Paying in full pre-fills the order total; staff can still edit it.
+                    setDeposit(liveTotal.toFixed(2));
+                    onPatch({ payment_method: "cliq", deposit_paid: liveTotal });
+                    return;
+                  }
+                  onPatch({ payment_method: "cliq" });
+                }}
+                aria-pressed={payChoice === option.value}
+                className={`min-h-12 min-w-20 flex-1 rounded-full px-2 text-sm font-bold ${payChoice === option.value ? "bg-primary text-primary-foreground" : "border border-border text-foreground"}`}
+              >
+                {option.label}
+              </button>
+            ))}
           </div>
-          {order.payment_method === "cliq" ? (
+          {payChoice !== "cash" ? (
             <label className="mt-3 block text-sm font-bold text-foreground">
-              {order.total > 0 && order.deposit_paid >= order.total
+              {payChoice === "cliq_full"
                 ? "المبلغ الكامل المدفوع عبر كليك · CliQ full amount"
                 : "قيمة العربون المدفوع عبر كليك · CliQ deposit"}
               <input
