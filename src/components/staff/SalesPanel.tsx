@@ -38,6 +38,7 @@ import {
 } from "@/lib/sales.functions";
 import { getMyPermissions } from "@/lib/permissions.functions";
 import { buildConfirmationMessage } from "@/lib/confirmation-message";
+import { esc, printDocument } from "@/lib/print";
 import {
   applyOrderDiscount,
   createOrderEditLink,
