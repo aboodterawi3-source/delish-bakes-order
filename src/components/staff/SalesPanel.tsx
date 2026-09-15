@@ -649,8 +649,17 @@ function OrderPanel({
   onPatch: (input: Omit<OrderPatch, "orderId">) => void;
   onCancel: () => void;
 }) {
-  const [fee, setFee] = useState(String(order.delivery_fee));
   const [deposit, setDeposit] = useState(String(order.deposit_paid));
+  /** Which payment option the staff member picked; kept locally so the choice sticks. */
+  const initialPayChoice = (order: SalesOrder) =>
+    order.payment_method !== "cliq"
+      ? "cash"
+      : order.total > 0 && order.deposit_paid >= order.total
+        ? "cliq_full"
+        : "cliq_deposit";
+  const [payChoice, setPayChoice] = useState<"cash" | "cliq_full" | "cliq_deposit">(() =>
+    initialPayChoice(order),
+  );
   const [driverName, setDriverName] = useState(order.driver_name ?? "");
   const [driverPhone, setDriverPhone] = useState(order.driver_phone ?? "");
   const [discountPercent, setDiscountPercent] = useState(String(order.discount_percent || ""));
