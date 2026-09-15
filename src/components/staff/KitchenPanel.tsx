@@ -10,7 +10,10 @@ import {
   Download,
   Loader2,
   LogOut,
+  Play,
+  Printer,
   RefreshCw,
+  Undo2,
   X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,8 +21,9 @@ import { useOrdersRealtime } from "@/hooks/use-orders-realtime";
 import {
   getKitchenAccess,
   getKitchenOrders,
-  markOrderReady,
+  setKitchenStage,
   type KdsOrder,
+  type KitchenStage,
 } from "@/lib/kds.functions";
 import { PRIORITY_META } from "@/lib/priority";
 import bellAsset from "@/assets/Bell.mp3.asset.json";
@@ -49,6 +53,43 @@ async function downloadDesignImage(url: string, orderNumber: string) {
   }
 }
 
+/**
+ * Kitchen ticket: preparation details only. No prices, totals, payment or
+ * customer contact data, so it stays fully separate from the cashier receipt
+ * and can be sent to the kitchen printer on its own.
+ */
+function printKitchenTicket(order: KdsOrder) {
+  const lines = order.items
+    .map(
+      (item) =>
+        `<div class="item"><b>${item.quantity} × ${item.name_ar}</b>` +
+        (item.options_ar.length ? `<div class="opt">${item.options_ar.map((o) => `• ${o}`).join("<br>")}</div>` : "") +
+        (item.notes ? `<div class="note">ملاحظة: ${item.notes}</div>` : "") +
+        `</div>`,
+    )
+    .join("");
+  const html = `<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8">
+<title>تذكرة مطبخ ${order.order_number}</title>
+<style>@page{size:80mm auto;margin:4mm}body{font-family:system-ui,sans-serif;width:72mm;font-size:13px;color:#000}
+h1{font-size:16px;margin:0 0 2px;text-align:center}.line{border-top:1px dashed #000;margin:6px 0}
+.item{margin:6px 0}.opt{font-size:12px}.note{font-size:12px;font-weight:700}
+.row{display:flex;justify-content:space-between}</style></head>
+<body><h1>تذكرة مطبخ · KITCHEN</h1>
+<div class="row"><b>${order.order_number}</b><span>${order.method === "delivery" ? "توصيل" : "استلام"}</span></div>
+<div class="row"><span>${order.requested_date}</span><span>${order.requested_time.slice(0, 5)}</span></div>
+<div>${order.customer_name}</div>
+${order.schedule_updated_at ? `<div><b>تم تعديل الموعد 🔄</b></div>` : ""}
+<div class="line"></div>${lines}<div class="line"></div>
+${order.inscription ? `<div><b>الكتابة على الكيك:</b> ${order.inscription}</div>` : ""}
+${order.notes ? `<div><b>ملاحظات:</b> ${order.notes}</div>` : ""}
+<div class="line"></div><div style="text-align:center">للمطبخ فقط — لا يحتوي أسعار</div>
+<script>window.onload=function(){window.print();}</script></body></html>`;
+  const win = window.open("", "_blank", "width=380,height=640");
+  if (!win) return;
+  win.document.write(html);
+  win.document.close();
+}
+
 const isoDate = (offsetDays: number) => {
   const date = new Date();
   date.setDate(date.getDate() + offsetDays);
@@ -65,12 +106,23 @@ const filterMeta: Record<Filter, { ar: string; en: string }> = {
   all: { ar: "كل الطلبات النشطة", en: "All active" },
 };
 
+/** The kitchen board is split into three visible stages. */
+const STAGES: { key: KitchenStage; ar: string; en: string; chip: string }[] = [
+  { key: "new", ar: "طلبات جديدة", en: "New", chip: "bg-[#EFA781] text-white" },
+  { key: "baking", ar: "قيد التجهيز", en: "In preparation", chip: "bg-[#8B4513] text-white" },
+  { key: "ready", ar: "جاهز", en: "Ready", chip: "bg-[#B8860B] text-white" },
+];
+
+/** Anything not yet started counts as new; confirmed rows sit with new arrivals. */
+const stageOf = (status: string): KitchenStage =>
+  status === "ready" ? "ready" : status === "baking" ? "baking" : "new";
+
 export function KitchenPanel() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const fetchOrders = useServerFn(getKitchenOrders);
   const fetchAccess = useServerFn(getKitchenAccess);
-  const markReady = useServerFn(markOrderReady);
+  const applyStage = useServerFn(setKitchenStage);
 
   const [filter, setFilter] = useState<Filter>("today");
   const [view, setView] = useState<"board" | "menu">("board");
@@ -167,23 +219,23 @@ export function KitchenPanel() {
       });
   }, [orders.data, filter]);
 
-  /** Flips the card to Ready instantly, then confirms with the server. */
-  const onReady = useCallback(
-    async (id: string) => {
+  /** Moves the card between stages instantly, then confirms with the server. */
+  const onStage = useCallback(
+    async (id: string, stage: KitchenStage) => {
       const previous = queryClient.getQueryData<KdsOrder[]>(ORDERS_KEY);
       queryClient.setQueryData<KdsOrder[]>(ORDERS_KEY, (rows) =>
-        (rows ?? []).map((order) => (order.id === id ? { ...order, status: "ready" } : order)),
+        (rows ?? []).map((order) => (order.id === id ? { ...order, status: stage } : order)),
       );
       setPending(id);
       try {
-        await markReady({ data: { orderId: id } });
+        await applyStage({ data: { orderId: id, stage } });
       } catch {
         if (previous) queryClient.setQueryData(ORDERS_KEY, previous);
       } finally {
         setPending(null);
       }
     },
-    [markReady, queryClient],
+    [applyStage, queryClient],
   );
 
   const signOut = useCallback(async () => {
@@ -281,16 +333,45 @@ export function KitchenPanel() {
             ))}
           </div>
 
-          <main className="grid w-full min-w-0 grid-cols-1 gap-4 px-4 pb-8 sm:grid-cols-2 xl:grid-cols-3">
+          <main className="w-full min-w-0 px-4 pb-8">
             {orders.isLoading && <p className="p-6 text-sm text-[#7A6458]">جارٍ تحميل الطلبات…</p>}
             {!orders.isLoading && visible.length === 0 && (
-              <div className="p-12 text-center text-sm text-[#7A6458] sm:col-span-2 xl:col-span-3 rounded-3xl bg-white/70 border border-slate-100">
+              <div className="p-12 text-center text-sm text-[#7A6458] rounded-3xl bg-white/70 border border-slate-100">
                 لا توجد طلبات لهذا اليوم
               </div>
             )}
-            {visible.map((order) => (
-              <KdsCard key={order.id} order={order} busy={pending === order.id} onReady={onReady} onZoom={setZoom} />
-            ))}
+            {!orders.isLoading &&
+              visible.length > 0 &&
+              STAGES.map(({ key, ar, en, chip }) => {
+                const rows = visible.filter((order) => stageOf(order.status) === key);
+                return (
+                  <section key={key} className="mb-8">
+                    <div className="mb-3 flex items-center gap-2">
+                      <span className={`rounded-full px-3.5 py-1 text-xs font-extrabold shadow-xs ${chip}`}>{ar}</span>
+                      <span className="text-xs font-bold text-[#7A6458]">
+                        {en} · {rows.length}
+                      </span>
+                    </div>
+                    {rows.length === 0 ? (
+                      <p className="rounded-3xl border border-slate-100 bg-white/70 p-6 text-center text-xs text-[#7A6458]">
+                        لا يوجد طلبات في هذه المرحلة
+                      </p>
+                    ) : (
+                      <div className="grid w-full min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                        {rows.map((order) => (
+                          <KdsCard
+                            key={order.id}
+                            order={order}
+                            busy={pending === order.id}
+                            onStage={onStage}
+                            onZoom={setZoom}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </section>
+                );
+              })}
           </main>
 
       {zoom && (
@@ -320,16 +401,18 @@ export function KitchenPanel() {
 const KdsCard = memo(function KdsCard({
   order,
   busy,
-  onReady,
+  onStage,
   onZoom,
 }: {
   order: KdsOrder;
   busy: boolean;
-  onReady: (id: string) => void;
+  onStage: (id: string, stage: KitchenStage) => void;
   onZoom: (url: string) => void;
 }) {
   const meta = PRIORITY_META[order.priority_color];
-  const isReady = order.status === "ready";
+  const stage = stageOf(order.status);
+  const isReady = stage === "ready";
+  const stageMeta = STAGES.find((item) => item.key === stage)!;
   return (
     <article
        className="relative min-w-0 overflow-hidden rounded-3xl border border-card/40 p-4 transition-transform hover:-translate-y-0.5 sm:p-5"
@@ -352,14 +435,8 @@ const KdsCard = memo(function KdsCard({
         </div>
         <div className="flex flex-col items-end gap-1.5 shrink-0">
           {/* Gold / Amber status chip */}
-          <span
-            className={`rounded-full px-3.5 py-1 text-xs font-extrabold shadow-xs ${
-              isReady
-                ? "bg-[#B8860B] text-white"
-                : "bg-[#FDE2CF] text-[#7B3F00]"
-            }`}
-          >
-            {isReady ? "جاهز · Ready" : "قيد التجهيز · Preparing"}
+          <span className={`rounded-full px-3.5 py-1 text-xs font-extrabold shadow-xs ${stageMeta.chip}`}>
+            {stageMeta.ar} · {stageMeta.en}
           </span>
            <span className="rounded-full bg-card/85 px-2.5 py-0.5 text-[10px] font-bold text-foreground">
             {meta.ar}
@@ -430,19 +507,58 @@ const KdsCard = memo(function KdsCard({
         </div>
       )}
 
+      {/* Kitchen ticket only: items and preparation notes, no prices. */}
       <button
         type="button"
-        onClick={() => void onReady(order.id)}
-        disabled={busy || isReady}
-        className={`mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl px-4 text-sm font-bold transition-all shadow-sm ${
-          isReady
-            ? "bg-amber-100 text-amber-900 border border-amber-300 opacity-90 cursor-default"
-            : "bg-[#8B4513] text-white hover:bg-[#5D2E17] hover:shadow-md active:scale-98"
-        }`}
+        onClick={() => printKitchenTicket(order)}
+        className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-card/90 px-4 text-xs font-bold text-primary shadow-sm hover:scale-[1.02] active:scale-95"
       >
-        <CheckCircle2 className="h-4 w-4" />
-        {isReady ? "تم التجهيز وهو جاهز ✓" : "تم التجهيز · Mark as Ready"}
+        <Printer className="h-4 w-4" />
+        طباعة تذكرة المطبخ · Kitchen ticket
       </button>
+
+      {stage === "new" && (
+        <button
+          type="button"
+          onClick={() => void onStage(order.id, "baking")}
+          disabled={busy}
+          className="mt-2 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#8B4513] px-4 text-sm font-bold text-white shadow-sm transition-all hover:bg-[#5D2E17] active:scale-98 disabled:opacity-60"
+        >
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+          بدء التجهيز · Start preparing
+        </button>
+      )}
+
+      {stage === "baking" && (
+        <button
+          type="button"
+          onClick={() => void onStage(order.id, "ready")}
+          disabled={busy}
+          className="mt-2 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#B8860B] px-4 text-sm font-bold text-white shadow-sm transition-all hover:brightness-95 active:scale-98 disabled:opacity-60"
+        >
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+          تم التجهيز · Mark as Ready
+        </button>
+      )}
+
+      {isReady && (
+        <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+          <span className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-amber-300 bg-amber-100 px-4 text-sm font-bold text-amber-900">
+            <CheckCircle2 className="h-4 w-4" />
+            جاهز للتسليم ✓
+          </span>
+          <button
+            type="button"
+            onClick={() => void onStage(order.id, "baking")}
+            disabled={busy}
+            aria-label="تراجع · Undo"
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-4 text-xs font-bold text-[#5D2E17] shadow-sm hover:bg-slate-50 disabled:opacity-60"
+          >
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Undo2 className="h-4 w-4" />}
+            تراجع
+          </button>
+        </div>
+      )}
     </article>
   );
 });
