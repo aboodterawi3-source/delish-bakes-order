@@ -671,8 +671,8 @@ function OrderPanel({
 
   // Reset the local fields only when a different order opens, never while typing.
   useEffect(() => {
-    setFee(String(order.delivery_fee));
     setDeposit(String(order.deposit_paid));
+    setPayChoice(initialPayChoice(order));
     setDriverName(order.driver_name ?? "");
     setDriverPhone(order.driver_phone ?? "");
     setDiscountPercent(String(order.discount_percent || ""));
