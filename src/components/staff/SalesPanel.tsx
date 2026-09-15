@@ -879,7 +879,7 @@ function OrderPanel({
             <p className="mt-3 rounded-xl bg-destructive/10 p-3 text-xs font-bold text-destructive">{moneyError}</p>
           ) : null}
           <label className="mt-3 block text-sm font-bold text-foreground">
-            العربون المدفوع · Deposit paid
+            {order.payment_method === "cliq" ? "المبلغ المدفوع عبر كليك · CliQ amount" : "العربون المدفوع · Deposit paid"}
             <input
               type="number"
               min="0"

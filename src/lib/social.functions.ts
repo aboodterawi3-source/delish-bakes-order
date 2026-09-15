@@ -98,7 +98,8 @@ export const createSocialOrder = createServerFn({ method: "POST" })
     const area = data.method === "delivery" ? data.area?.trim() || null : null;
     // The browser never sets the fee: it is resolved from the trusted zone table.
     const deliveryFee = area ? feeForArea(area) ?? 0 : 0;
-    const deposit = data.payment_option === "deposit" ? Math.max(0, Number(data.deposit_paid) || 0) : 0;
+    // A paid amount is stored for deposits and for CliQ payments alike.
+    const deposit = data.payment_option === "cash" ? 0 : Math.max(0, Number(data.deposit_paid) || 0);
     const paymentMethod = data.payment_option === "cliq" ? "cliq" : "cash";
     const extrasAr = extraList(data.extras_ar);
     const extrasEn = extraList(data.extras_en);

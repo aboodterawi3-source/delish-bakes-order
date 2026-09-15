@@ -66,7 +66,7 @@ export function SocialPanel() {
   const deliveryFee = form.method === "delivery" ? areaFee ?? 0 : 0;
   const paymentLabel =
     form.payment_option === "cliq"
-      ? "مدفوع عبر كليك"
+      ? `مدفوع عبر كليك: ${(Number(form.deposit_paid) || 0).toFixed(2)} د.أ`
       : form.payment_option === "deposit"
         ? `عربون مدفوع: ${(Number(form.deposit_paid) || 0).toFixed(2)} د.أ`
         : "نقداً عند التسليم";
@@ -193,7 +193,7 @@ export function SocialPanel() {
       area: form.method === "delivery" ? form.area : null,
       address: form.method === "delivery" ? form.address : null,
       payment_option: form.payment_option,
-      deposit_paid: form.payment_option === "deposit" ? Number(form.deposit_paid) || 0 : 0,
+      deposit_paid: form.payment_option === "cash" ? 0 : Number(form.deposit_paid) || 0,
       requested_date: form.requested_date,
       requested_time: form.requested_time,
       event_date: form.event_date || null,
@@ -342,9 +342,9 @@ export function SocialPanel() {
                   </button>
                 ))}
               </div>
-              {form.payment_option === "deposit" ? (
+              {form.payment_option === "deposit" || form.payment_option === "cliq" ? (
                 <label className="mt-2 block text-xs font-bold text-[#3E2723]">
-                  قيمة العربون المدفوع (د.أ)
+                  {form.payment_option === "cliq" ? "المبلغ المدفوع عبر كليك (د.أ)" : "قيمة العربون المدفوع (د.أ)"}
                   <input
                     type="number"
                     min="0"
