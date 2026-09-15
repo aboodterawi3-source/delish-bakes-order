@@ -131,6 +131,10 @@ export type OrderPatch = {
   driver_phone?: string | null;
   deposit_paid?: number;
   payment_method?: PaymentMethod | null;
+  /** Card writing, final-photo request and the generated confirmation message. */
+  card_note?: string | null;
+  final_photo_requested?: boolean;
+  confirmation_message?: string | null;
 };
 
 const STATUSES: SalesStatus[] = [
