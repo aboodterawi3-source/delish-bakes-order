@@ -721,7 +721,7 @@ function OrderPanel({
         deliveryFee: order.method === "delivery" ? order.delivery_fee : 0,
         total: liveTotal,
         paid: Number(deposit) || 0,
-        paymentMethod: payMeta[order.payment_method ?? "cash"].label,
+        paymentMethod: payMeta[order.payment_method ?? "cash"].ar,
         recipientPhone: order.customer_phone,
         senderPhone: "",
       }),
