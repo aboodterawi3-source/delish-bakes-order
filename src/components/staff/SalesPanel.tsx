@@ -673,7 +673,7 @@ function OrderPanel({
 
 
   const liveTotal = Math.max(
-    order.subtotal + (order.method === "delivery" ? Number(fee) || 0 : 0) - order.discount_amount,
+    order.subtotal + (order.method === "delivery" ? order.delivery_fee : 0) - order.discount_amount,
     0,
   );
   const remaining = Math.max(liveTotal - (Number(deposit) || 0), 0);
