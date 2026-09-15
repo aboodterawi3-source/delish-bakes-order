@@ -27,7 +27,7 @@ const BASE_STYLE = `@page{size:auto;margin:0}
 html,body{margin:0;padding:0;width:100%}
 body{font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;
 direction:rtl;text-align:right;font-size:12px;line-height:1.45;color:#000;background:#fff}
-.receipt{width:100%;max-width:80mm;margin:0 auto;padding:4mm 5mm;
+.receipt{width:auto;max-width:80mm;margin:0 8px;padding:4mm 5mm;
 overflow-wrap:break-word;word-wrap:break-word;word-break:break-word;hyphens:auto}
 h1{font-size:15px;margin:0 0 2px;text-align:center;overflow-wrap:break-word}
 div,td,span,b,small{overflow-wrap:break-word;word-break:break-word;max-width:100%}
