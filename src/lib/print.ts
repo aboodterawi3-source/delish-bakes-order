@@ -15,18 +15,30 @@ export const esc = (value: unknown): string =>
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 
-const BASE_STYLE = `@page{size:80mm auto;margin:4mm}
-*{box-sizing:border-box}
-body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;width:72mm;margin:0;font-size:12px;color:#000;background:#fff}
-h1{font-size:16px;margin:0 0 2px}
-table{width:100%;border-collapse:collapse}
-td{padding:2px 0;vertical-align:top}
+/**
+ * Fluid width: the printer's own printable area defines the page box, so the
+ * body simply fills 100% of it instead of a hard-coded millimetre width that
+ * gets clipped on 58mm rolls or on printers with wider hardware margins.
+ */
+const BASE_STYLE = `@page{size:auto;margin:2mm}
+*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+html,body{margin:0;padding:0}
+body{font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;width:100%;max-width:100%;
+direction:rtl;text-align:right;font-size:12px;line-height:1.45;color:#000;background:#fff;
+overflow-wrap:break-word;word-wrap:break-word;word-break:break-word;hyphens:auto}
+h1{font-size:15px;margin:0 0 2px;text-align:center;overflow-wrap:break-word}
+div,td,span,b,small{overflow-wrap:break-word;word-break:break-word;max-width:100%}
+table{width:100%;max-width:100%;border-collapse:collapse;table-layout:fixed}
+td{padding:2px 0;vertical-align:top;overflow-wrap:break-word}
+td:last-child{width:22%;text-align:left;white-space:nowrap}
 .line{border-top:1px dashed #000;margin:6px 0}
-.row{display:flex;justify-content:space-between;gap:8px}
+.row{display:flex;justify-content:space-between;gap:6px;align-items:baseline}
+.row>span,.row>b{min-width:0}
 .item{margin:6px 0}
 .opt{font-size:11px}
 .note{font-size:11px;font-weight:700}
-small{font-size:11px}`;
+small{font-size:11px}
+@media print{body{width:100%}}`;
 
 /**
  * Prints an HTML fragment (body content only) on the user's selected printer.
