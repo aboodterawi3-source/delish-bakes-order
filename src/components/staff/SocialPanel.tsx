@@ -538,6 +538,57 @@ export function SocialPanel() {
 
 
           <label className="block text-sm font-bold text-[#3E2723]">
+            الكتابة على الكرت · Card note
+            <input
+              type="text"
+              maxLength={1000}
+              value={form.card_note}
+              onChange={(event) => set("card_note", event.target.value)}
+              className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+            />
+          </label>
+
+          <button
+            type="button"
+            onClick={() => set("final_photo_requested", !form.final_photo_requested)}
+            aria-pressed={form.final_photo_requested}
+            className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 text-xs font-bold transition-all ${
+              form.final_photo_requested
+                ? "bg-[#8B4513] text-white shadow-sm"
+                : "border border-[#B8860B] bg-white text-[#8B4513] hover:bg-[#FDE2CF]/30"
+            }`}
+          >
+            📸 بس بدي الصوره النهائيه لو سمحت
+          </button>
+
+          {/* Financial calculator — updates live as staff type. */}
+          <div className="rounded-2xl border border-[#B8860B]/40 bg-[#FFF8EE] p-4">
+            <h3 className="text-sm font-bold text-[#5D2E17]">الحساب · السعر، العربون، المتبقي</h3>
+            <dl className="mt-2 space-y-1 text-sm text-[#3E2723]">
+              <div className="flex justify-between gap-2">
+                <dt>المبلغ ({form.quantity} × {(Number(form.unit_price) || 0).toFixed(2)})</dt>
+                <dd className="font-bold">{originalPrice.toFixed(2)} د.أ</dd>
+              </div>
+              <div className="flex justify-between gap-2">
+                <dt>التوصيل</dt>
+                <dd className="font-bold">{deliveryFee.toFixed(2)} د.أ</dd>
+              </div>
+              <div className="flex justify-between gap-2">
+                <dt>الحساب كامل</dt>
+                <dd className="font-bold">{grandTotal.toFixed(2)} د.أ</dd>
+              </div>
+              <div className="flex justify-between gap-2">
+                <dt>المبلغ المدفوع</dt>
+                <dd className="font-bold">{paidAmount.toFixed(2)} د.أ</dd>
+              </div>
+              <div className="flex justify-between gap-2 border-t border-[#B8860B]/30 pt-1 text-[#8B4513]">
+                <dt className="font-bold">المبلغ المتبقي</dt>
+                <dd className="font-bold">{remaining.toFixed(2)} د.أ</dd>
+              </div>
+            </dl>
+          </div>
+
+          <label className="block text-sm font-bold text-[#3E2723]">
             ملاحظات داخلية للموظفين · Internal staff notes
             <textarea
               rows={3}
