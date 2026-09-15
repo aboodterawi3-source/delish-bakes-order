@@ -120,6 +120,7 @@ export const saveCategory = createServerFn({ method: "POST" })
       tint: clean(input?.tint, 20, "اللون") ?? "blush",
       sort_order: Number.isFinite(Number(input?.sort_order)) ? Number(input?.sort_order) : 0,
       is_active: input?.is_active !== false,
+      priority_color: isPriorityColor(input?.priority_color) ? input.priority_color : null,
     },
   }))
   .handler(async ({ data, context }) => {
