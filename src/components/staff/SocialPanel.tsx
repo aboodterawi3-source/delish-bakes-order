@@ -54,8 +54,10 @@ export function SocialPanel() {
 
   const [form, setForm] = useState(emptyForm);
   const [customization, setCustomization] = useState<Customization>(emptyCustomization);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<"summary" | "confirmation" | null>(null);
   const [done, setDone] = useState<string | null>(null);
+  /** Confirmation message returned with the created order (real order number). */
+  const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const access = useQuery({ queryKey: ["social-access"], queryFn: () => accessFn({}) });
