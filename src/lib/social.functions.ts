@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertRole, type StaffRoleName } from "@/lib/role-guard";
+import { feeForArea } from "@/lib/delivery-zones";
 
 const SOCIAL_ROLES: StaffRoleName[] = ["social", "sales", "admin"];
 
@@ -11,6 +12,13 @@ export type SocialOrderInput = {
   order_details: string;
   quantity: number;
   method: "pickup" | "delivery";
+  /** Amman / other-governorate zone name; the fee is resolved server-side. */
+  area?: string | null;
+  address?: string | null;
+  /** Cash on delivery, a deposit, or fully paid via CliQ. */
+  payment_option: "cash" | "deposit" | "cliq";
+  /** Amount already collected when payment_option is "deposit". */
+  deposit_paid?: number | null;
   requested_date: string;
   requested_time: string;
   event_date?: string | null;
@@ -75,12 +83,23 @@ export const createSocialOrder = createServerFn({ method: "POST" })
     }
     if (!input?.requested_date || !input?.requested_time) throw new Error("تاريخ ووقت التسليم مطلوب");
     if (!Number.isFinite(input.quantity) || input.quantity < 1) throw new Error("الكمية غير صحيحة");
+    if (!["cash", "deposit", "cliq"].includes(input?.payment_option as string)) {
+      throw new Error("طريقة الدفع مطلوبة · Payment method is required");
+    }
+    if (input.method === "delivery" && !input.area?.trim()) {
+      throw new Error("منطقة التوصيل مطلوبة · Delivery area is required");
+    }
     return input;
   })
   .handler(async ({ data, context }) => {
     await assertRole(context, SOCIAL_ROLES);
     const orderDetails = data.order_details.trim();
     const subtotal = 0;
+    const area = data.method === "delivery" ? data.area?.trim() || null : null;
+    // The browser never sets the fee: it is resolved from the trusted zone table.
+    const deliveryFee = area ? feeForArea(area) ?? 0 : 0;
+    const deposit = data.payment_option === "deposit" ? Math.max(0, Number(data.deposit_paid) || 0) : 0;
+    const paymentMethod = data.payment_option === "cliq" ? "cliq" : "cash";
     const extrasAr = extraList(data.extras_ar);
     const extrasEn = extraList(data.extras_en);
     const designImage =
@@ -94,6 +113,10 @@ export const createSocialOrder = createServerFn({ method: "POST" })
         customer_name: data.customer_name.trim(),
         customer_phone: data.customer_phone.trim(),
         method: data.method,
+        area,
+        address: data.method === "delivery" ? data.address?.trim() || null : null,
+        payment_method: paymentMethod,
+        deposit_paid: deposit,
         requested_date: data.requested_date,
         requested_time: data.requested_time,
         event_date: data.event_date?.trim() ? data.event_date : null,
@@ -102,8 +125,8 @@ export const createSocialOrder = createServerFn({ method: "POST" })
         staff_notes: data.staff_notes?.trim() || null,
         design_image_url: designImage,
         subtotal,
-        delivery_fee: 0,
-        total: subtotal,
+        delivery_fee: deliveryFee,
+        total: subtotal + deliveryFee,
         status: "new",
         created_by: context.userId,
       })
