@@ -128,10 +128,10 @@ export function SocialPanel() {
             ? `توصيل · ${form.area || "—"}${form.address.trim() ? ` — ${form.address.trim()}` : ""}`
             : "استلام من المحل",
         items: [`${form.quantity} × ${form.order_details.trim() || "—"}`, ...extras.ar],
-        cakeWriting: customization.topperText || form.design_notes,
+        cakeWriting: form.design_notes || customization.topperText,
         cardWriting: form.card_note,
-        extraNote: customization.notes,
-        notes: form.staff_notes ? "" : "",
+        extraNote: form.is_urgent ? "طلب مستعجل · Urgent" : "",
+        notes: customization.notes,
         finalPhoto: form.final_photo_requested,
         price: originalPrice,
         deliveryFee,
