@@ -27,7 +27,7 @@ export type SocialOrderInput = {
 const MAX_EXTRAS = 20;
 const MAX_EXTRA_LENGTH = 160;
 /** Signed link returned by uploadDesignImage for photos kept in Cloud storage. */
-const STORAGE_URL = /^https:\/\/[a-z0-9.-]+\/storage\/v1\/object\/sign\/order-designs\/[\w./-]+\?[\w=%&.-]+$/i;
+const STORAGE_URL = /^https:\/\/zmeijwtivmniqpwyxezk\.supabase\.co\/storage\/v1\/object\/sign\/order-designs\/[\w./-]+\?[\w=%&.-]+$/i;
 
 
 /** Extras are plain labels; keep them short, single-line and bounded. */

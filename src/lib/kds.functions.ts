@@ -58,18 +58,54 @@ export const getKitchenOrders = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<KdsOrder[]> => {
     await assertRole(context, KITCHEN_ROLES);
-    const { data, error } = await context.supabase
-      .from("orders")
-      .select(
-        "id, order_number, customer_name, method, requested_date, requested_time, status, inscription, design_image_url, notes, schedule_updated_at, created_at, order_items(id, name_ar, name_en, quantity, options_ar, options_en, notes, products(category))",
-      )
+    // Reads go through role-checked, prep-safe database functions so kitchen
+    // accounts can never reach customer phones, payments or discounts.
+    /* eslint-disable @typescript-eslint/no-explicit-any */
+    const db = context.supabase as any;
+    const { data, error } = await db
+      .rpc("get_kitchen_orders")
       .in("status", ["new", "confirmed", "baking", "ready"])
       .order("requested_date", { ascending: true })
       .order("requested_time", { ascending: true });
-
     if (error) throw new Error(error.message);
 
-    return (data ?? []).map((order) => ({
+    const orderIds = (data ?? []).map((order: { id: string }) => order.id);
+    const { data: itemsData, error: itemsError } = orderIds.length
+      ? await db.rpc("get_kitchen_order_items", { _order_ids: orderIds })
+      : { data: [] as any[], error: null };
+    if (itemsError) throw new Error(itemsError.message);
+
+    const productIds = [
+      ...new Set<string>(
+        (itemsData ?? [])
+          .map((item: { product_id: string | null }) => item.product_id)
+          .filter((id: string | null): id is string => Boolean(id)),
+      ),
+    ];
+    const { data: productsData } = productIds.length
+      ? await context.supabase.from("products").select("id, category").in("id", productIds)
+      : { data: [] as { id: string; category: string }[] };
+    const categoryByProduct = new Map(
+      (productsData ?? []).map((p: { id: string; category: string }) => [p.id, p.category]),
+    );
+
+    const itemsByOrder = new Map<string, KdsItem[]>();
+    for (const item of itemsData ?? []) {
+      const list = itemsByOrder.get(item.order_id) ?? [];
+      list.push({
+        id: item.id,
+        name_ar: item.name_ar,
+        name_en: item.name_en,
+        quantity: item.quantity,
+        options_ar: item.options_ar ?? [],
+        options_en: item.options_en ?? [],
+        notes: item.notes,
+        category: categoryByProduct.get(item.product_id) ?? null,
+      });
+      itemsByOrder.set(item.order_id, list);
+    }
+
+    return (data ?? []).map((order: any) => ({
       id: order.id,
       order_number: order.order_number,
       customer_name: order.customer_name,
@@ -82,16 +118,7 @@ export const getKitchenOrders = createServerFn({ method: "GET" })
       notes: order.notes,
       schedule_updated_at: order.schedule_updated_at,
       created_at: order.created_at,
-      items: (order.order_items ?? []).map((item) => ({
-        id: item.id,
-        name_ar: item.name_ar,
-        name_en: item.name_en,
-        quantity: item.quantity,
-        options_ar: item.options_ar ?? [],
-        options_en: item.options_en ?? [],
-        notes: item.notes,
-        category: (item.products as { category: string } | null)?.category ?? null,
-      })),
+      items: itemsByOrder.get(order.id) ?? [],
     }));
   });
 
