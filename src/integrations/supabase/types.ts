@@ -59,6 +59,13 @@ export type Database = {
             foreignKeyName: "audit_logs_order_id_fkey"
             columns: ["order_id"]
             isOneToOne: false
+            referencedRelation: "kitchen_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_logs_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -93,6 +100,13 @@ export type Database = {
           used_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "order_edit_tokens_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "kitchen_orders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "order_edit_tokens_order_id_fkey"
             columns: ["order_id"]
@@ -143,6 +157,13 @@ export type Database = {
           unit_price?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "kitchen_orders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "order_items_order_id_fkey"
             columns: ["order_id"]
@@ -498,7 +519,115 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      kitchen_order_items: {
+        Row: {
+          created_at: string | null
+          id: string | null
+          name_ar: string | null
+          name_en: string | null
+          notes: string | null
+          options_ar: string[] | null
+          options_en: string[] | null
+          order_id: string | null
+          product_id: string | null
+          quantity: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string | null
+          name_ar?: string | null
+          name_en?: string | null
+          notes?: string | null
+          options_ar?: string[] | null
+          options_en?: string[] | null
+          order_id?: string | null
+          product_id?: string | null
+          quantity?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string | null
+          name_ar?: string | null
+          name_en?: string | null
+          notes?: string | null
+          options_ar?: string[] | null
+          options_en?: string[] | null
+          order_id?: string | null
+          product_id?: string | null
+          quantity?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "kitchen_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kitchen_orders: {
+        Row: {
+          created_at: string | null
+          customer_name: string | null
+          design_image_url: string | null
+          id: string | null
+          inscription: string | null
+          is_urgent: boolean | null
+          method: Database["public"]["Enums"]["order_method"] | null
+          notes: string | null
+          order_number: string | null
+          requested_date: string | null
+          requested_time: string | null
+          schedule_updated_at: string | null
+          status: Database["public"]["Enums"]["order_status"] | null
+        }
+        Insert: {
+          created_at?: string | null
+          customer_name?: string | null
+          design_image_url?: string | null
+          id?: string | null
+          inscription?: string | null
+          is_urgent?: boolean | null
+          method?: Database["public"]["Enums"]["order_method"] | null
+          notes?: string | null
+          order_number?: string | null
+          requested_date?: string | null
+          requested_time?: string | null
+          schedule_updated_at?: string | null
+          status?: Database["public"]["Enums"]["order_status"] | null
+        }
+        Update: {
+          created_at?: string | null
+          customer_name?: string | null
+          design_image_url?: string | null
+          id?: string | null
+          inscription?: string | null
+          is_urgent?: boolean | null
+          method?: Database["public"]["Enums"]["order_method"] | null
+          notes?: string | null
+          order_number?: string | null
+          requested_date?: string | null
+          requested_time?: string | null
+          schedule_updated_at?: string | null
+          status?: Database["public"]["Enums"]["order_status"] | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       [_ in never]: never
