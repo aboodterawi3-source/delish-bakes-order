@@ -151,6 +151,7 @@ function RootComponent() {
       <LangProvider>
         {/* One cart for the whole app: it survives navigation between pages. */}
         <CartProvider>
+          <AuthSync queryClient={queryClient} />
           {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
           <Outlet />
           <Toaster />
