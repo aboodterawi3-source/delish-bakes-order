@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertRole, type StaffRoleName } from "@/lib/role-guard";
 import { decodeValidatedImage } from "@/lib/image-validation";
+import { isPriorityColor, type PriorityColor } from "@/lib/priority";
 import {
   BANNER_SELECT,
   CATEGORY_SELECT,
@@ -105,6 +106,7 @@ export type CategoryInput = {
   tint?: string | null;
   sort_order?: number;
   is_active?: boolean;
+  priority_color?: PriorityColor | null;
 };
 
 export const saveCategory = createServerFn({ method: "POST" })
@@ -182,6 +184,7 @@ export type ProductInput = {
   is_available?: boolean;
   is_popular?: boolean;
   sort_order?: number;
+  priority_color?: PriorityColor | null;
 };
 
 export const saveStorefrontProduct = createServerFn({ method: "POST" })
@@ -215,6 +218,7 @@ export const saveStorefrontProduct = createServerFn({ method: "POST" })
         rating_count: ratingCount,
         is_available: input?.is_available !== false,
         is_popular: input?.is_popular === true,
+        priority_color: isPriorityColor(input?.priority_color) ? input.priority_color : null,
         sort_order: Number.isFinite(Number(input?.sort_order)) ? Number(input?.sort_order) : 0,
       },
     };

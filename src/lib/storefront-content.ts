@@ -3,6 +3,7 @@
  * ribbon and product grid rendered on /discover). Client-safe: no server-only
  * imports, so both the public app and the sales CMS can use it.
  */
+import type { PriorityColor } from "@/lib/priority";
 
 export type Tint = "blush" | "butter" | "pistachio" | "sky" | "lilac" | "cream";
 
@@ -37,6 +38,8 @@ export type StorefrontCategory = {
   tint: string;
   sort_order: number;
   is_active: boolean;
+  /** Optional kitchen priority for every product in this category. */
+  priority_color: PriorityColor | null;
 };
 
 export type StorefrontProduct = {
@@ -57,6 +60,8 @@ export type StorefrontProduct = {
   sizes: SizePrice[];
   tint: string | null;
   sort_order: number;
+  /** Optional kitchen priority; falls back to the category, then the base tier. */
+  priority_color: PriorityColor | null;
 };
 
 export type StorefrontContent = {
@@ -66,9 +71,10 @@ export type StorefrontContent = {
 };
 
 export const BANNER_SELECT = "id, is_active, discount_text, subtitle, button_text, image_url";
-export const CATEGORY_SELECT = "id, name_en, name_ar, image_url, tint, sort_order, is_active";
+export const CATEGORY_SELECT =
+  "id, name_en, name_ar, image_url, tint, sort_order, is_active, priority_color";
 export const PRODUCT_SELECT =
-  "id, slug, name_ar, name_en, description_ar, description_en, category, category_id, price, image_url, is_available, is_popular, rating, rating_count, sizes, tint, sort_order";
+  "id, slug, name_ar, name_en, description_ar, description_en, category, category_id, price, image_url, is_available, is_popular, rating, rating_count, sizes, tint, sort_order, priority_color";
 
 /** Normalises a jsonb size list coming back from the database. */
 export function parseSizes(value: unknown): SizePrice[] {
