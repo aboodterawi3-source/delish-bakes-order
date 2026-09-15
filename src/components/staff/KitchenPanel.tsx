@@ -322,16 +322,45 @@ export function KitchenPanel() {
             ))}
           </div>
 
-          <main className="grid w-full min-w-0 grid-cols-1 gap-4 px-4 pb-8 sm:grid-cols-2 xl:grid-cols-3">
+          <main className="w-full min-w-0 px-4 pb-8">
             {orders.isLoading && <p className="p-6 text-sm text-[#7A6458]">جارٍ تحميل الطلبات…</p>}
             {!orders.isLoading && visible.length === 0 && (
-              <div className="p-12 text-center text-sm text-[#7A6458] sm:col-span-2 xl:col-span-3 rounded-3xl bg-white/70 border border-slate-100">
+              <div className="p-12 text-center text-sm text-[#7A6458] rounded-3xl bg-white/70 border border-slate-100">
                 لا توجد طلبات لهذا اليوم
               </div>
             )}
-            {visible.map((order) => (
-              <KdsCard key={order.id} order={order} busy={pending === order.id} onReady={onReady} onZoom={setZoom} />
-            ))}
+            {!orders.isLoading &&
+              visible.length > 0 &&
+              STAGES.map(({ key, ar, en, chip }) => {
+                const rows = visible.filter((order) => stageOf(order.status) === key);
+                return (
+                  <section key={key} className="mb-8">
+                    <div className="mb-3 flex items-center gap-2">
+                      <span className={`rounded-full px-3.5 py-1 text-xs font-extrabold shadow-xs ${chip}`}>{ar}</span>
+                      <span className="text-xs font-bold text-[#7A6458]">
+                        {en} · {rows.length}
+                      </span>
+                    </div>
+                    {rows.length === 0 ? (
+                      <p className="rounded-3xl border border-slate-100 bg-white/70 p-6 text-center text-xs text-[#7A6458]">
+                        لا يوجد طلبات في هذه المرحلة
+                      </p>
+                    ) : (
+                      <div className="grid w-full min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                        {rows.map((order) => (
+                          <KdsCard
+                            key={order.id}
+                            order={order}
+                            busy={pending === order.id}
+                            onStage={onStage}
+                            onZoom={setZoom}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </section>
+                );
+              })}
           </main>
 
       {zoom && (
