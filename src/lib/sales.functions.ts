@@ -53,6 +53,12 @@ export type SalesOrder = {
   driver_name: string | null;
   driver_phone: string | null;
   cancel_reason: string | null;
+  /** Text written on the accompanying card. */
+  card_note: string | null;
+  /** Customer asked for the final photo before delivery. */
+  final_photo_requested: boolean;
+  /** Last generated customer confirmation message, stored with the order. */
+  confirmation_message: string | null;
   status: SalesStatus;
   /** Set when a customer moved the pickup/delivery slot through their edit link. */
   schedule_updated_at: string | null;
