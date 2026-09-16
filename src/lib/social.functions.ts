@@ -158,9 +158,21 @@ export const createSocialOrder = createServerFn({ method: "POST" })
         status: "new",
         created_by: context.userId,
       })
-      .select("id, order_number, total")
+      .select("id, order_number, total, staff_code")
       .single();
     if (orderError) throw new Error(orderError.message);
+
+    // Now the sequence number exists, store the message that quotes it.
+    const message = template
+      ? template.replace(/\{\{ORDER_NUMBER\}\}/g, order.order_number).slice(0, 8000)
+      : null;
+    if (message) {
+      await context.supabase
+        .from("orders")
+        .update({ confirmation_message: message })
+        .eq("id", order.id);
+    }
+
 
     const { error: itemError } = await context.supabase.from("order_items").insert({
       order_id: order.id,
