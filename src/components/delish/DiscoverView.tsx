@@ -12,7 +12,6 @@ import { WHATSAPP } from "@/lib/menu";
 interface DiscoverViewProps {
   onSelectProduct?: (productId: string) => void;
   /** Opens the quick details modal for a product. */
-  onQuickView?: (productId: string) => void;
   onOpenCart?: () => void;
   cartCount?: number;
   isEmbedded?: boolean;
@@ -20,7 +19,6 @@ interface DiscoverViewProps {
 
 export function DiscoverView({
   onSelectProduct,
-  onQuickView,
   onOpenCart,
   cartCount = 0,
   isEmbedded = false,
@@ -234,7 +232,6 @@ export function DiscoverView({
                 product={product}
                 lang={lang}
                 onSelect={onSelectProduct}
-                onQuickView={onQuickView}
               />
             ))
           )}
@@ -248,12 +245,10 @@ const ProductCard = memo(function ProductCard({
   product,
   lang,
   onSelect,
-  onQuickView,
 }: {
   product: StorefrontProduct;
   lang: Lang;
   onSelect?: ((productId: string) => void) | undefined;
-  onQuickView?: ((productId: string) => void) | undefined;
 }) {
   const name = lang === "ar" ? product.name_ar : product.name_en;
   const [size, setSize] = useState<string | null>(product.sizes[0]?.label ?? null);
@@ -273,7 +268,7 @@ const ProductCard = memo(function ProductCard({
       <div className="min-w-0">
         <button
           type="button"
-          onClick={() => (onQuickView ?? onSelect)?.(product.id)}
+          onClick={() => onSelect?.(product.id)}
           className="block w-full break-words text-start font-sans text-base font-extrabold text-foreground transition-colors hover:text-primary sm:text-lg"
         >
           {name}
@@ -354,7 +349,7 @@ const ProductCard = memo(function ProductCard({
 
         <button
           type="button"
-          onClick={() => (onQuickView ?? onSelect)?.(product.id)}
+          onClick={() => onSelect?.(product.id)}
           aria-label={name}
           className="h-22 w-22 shrink-0 overflow-hidden rounded-2xl transition-transform duration-300 hover:scale-[1.02] group-hover:scale-105 active:scale-95 sm:h-32 sm:w-32"
         >
