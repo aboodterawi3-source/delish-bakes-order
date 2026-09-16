@@ -733,7 +733,6 @@ function OrderPanel({
   editLink,
   onApplyDiscount,
   onIssueEditLink,
-  onUpdateItem,
   onZoom,
   onClose,
   onPatch,
