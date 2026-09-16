@@ -63,7 +63,7 @@ function ProductDetailsPage() {
             detailsEn: [...details, ...extras.en],
             extrasAr: extras.ar,
             extrasEn: extras.en,
-            spec: { kind: "catalog", productId: item.productId },
+            spec: { kind: "cms", productId: item.productId, size: item.size ?? null },
           });
           setCartOpen(true);
         }}
