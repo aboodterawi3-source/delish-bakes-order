@@ -467,7 +467,7 @@ export function OrdersWorkspace({ showShiftReport = false }: { showShiftReport?:
       ) : (
         <ul className="mt-4 grid gap-3">
           {list.map((order) => (
-            <OrderCard key={order.id} order={order} onOpen={openOrder} onZoom={setZoomImage} />
+            <OrderCard key={order.id} order={order} onOpen={openOrder} onZoom={setZoomImage} onMove={onMove} />
           ))}
         </ul>
       )}
