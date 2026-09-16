@@ -1,15 +1,18 @@
 import React, { memo, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Search, ShoppingBag, Heart, Star, ArrowRight, Plus, Minus, Loader2 } from "lucide-react";
+import { Search, ShoppingBag, ArrowRight, Plus, Minus, Loader2 } from "lucide-react";
 import { DelishLogo } from "./DelishLogo";
 import { BackgroundCurves } from "./BackgroundCurves";
 import { useStorefrontContent } from "@/hooks/use-storefront-content";
 import { priceForSize, tintFill, type StorefrontProduct } from "@/lib/storefront-content";
 import { LangToggle, useLang, type Lang } from "@/lib/i18n";
 import { formatJod } from "@/lib/currency";
+import { WHATSAPP } from "@/lib/menu";
 
 interface DiscoverViewProps {
   onSelectProduct?: (productId: string) => void;
+  /** Opens the quick details modal for a product. */
+  onQuickView?: (productId: string) => void;
   onOpenCart?: () => void;
   cartCount?: number;
   isEmbedded?: boolean;
@@ -17,6 +20,7 @@ interface DiscoverViewProps {
 
 export function DiscoverView({
   onSelectProduct,
+  onQuickView,
   onOpenCart,
   cartCount = 0,
   isEmbedded = false,
@@ -225,7 +229,13 @@ export function DiscoverView({
             </p>
           ) : (
             visible.map((product) => (
-              <ProductCard key={product.id} product={product} lang={lang} onSelect={onSelectProduct} />
+              <ProductCard
+                key={product.id}
+                product={product}
+                lang={lang}
+                onSelect={onSelectProduct}
+                onQuickView={onQuickView}
+              />
             ))
           )}
         </section>
@@ -238,16 +248,21 @@ const ProductCard = memo(function ProductCard({
   product,
   lang,
   onSelect,
+  onQuickView,
 }: {
   product: StorefrontProduct;
   lang: Lang;
   onSelect?: ((productId: string) => void) | undefined;
+  onQuickView?: ((productId: string) => void) | undefined;
 }) {
   const name = lang === "ar" ? product.name_ar : product.name_en;
   const [size, setSize] = useState<string | null>(product.sizes[0]?.label ?? null);
   const [qty, setQty] = useState(1);
-  const [favourite, setFavourite] = useState(false);
   const unit = priceForSize(product, size);
+  const filling = lang === "ar" ? product.filling_ar : product.filling_en;
+  const askUrl = `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(
+    lang === "ar" ? `مرحباً، أريد معرفة سعر: ${product.name_ar}` : `Hello, I would like the price for: ${product.name_en}`,
+  )}`;
 
   return (
     <div
@@ -255,38 +270,37 @@ const ProductCard = memo(function ProductCard({
         product.tint,
       )}`}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <Link
-            to="/product-details"
-            search={{ id: product.id }}
-            className="block break-words font-sans text-base font-extrabold text-foreground transition-transform hover:text-primary sm:text-lg"
-          >
-            {name}
-          </Link>
-          <div className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-primary">
-            <Star className="h-3.5 w-3.5 fill-gold text-gold" />
-            <span>{product.rating.toFixed(1)}</span>
-            {product.rating_count > 0 && (
-              <span className="text-muted-foreground">({product.rating_count})</span>
-            )}
-          </div>
-        </div>
-
+      <div className="min-w-0">
         <button
           type="button"
-          onClick={() => setFavourite(!favourite)}
-          aria-label={lang === "ar" ? "إضافة إلى المفضلة" : "Add to favorites"}
-          aria-pressed={favourite}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-card/90 shadow-sm transition hover:bg-card active:scale-95"
+          onClick={() => (onQuickView ?? onSelect)?.(product.id)}
+          className="block w-full break-words text-start font-sans text-base font-extrabold text-foreground transition-colors hover:text-primary sm:text-lg"
         >
-          <Heart
-            className={`h-4 w-4 ${favourite ? "fill-destructive text-destructive" : "text-muted-foreground"}`}
-          />
+          {name}
         </button>
+        {filling && (
+          <p className="mt-1 text-[11px] font-bold text-primary">
+            {lang === "ar" ? "حشوة" : "Filling"}: <span className="font-semibold text-foreground">{filling}</span>
+          </p>
+        )}
       </div>
 
       <div className="mt-3 grid grid-cols-[minmax(0,1fr)_5.5rem] items-center gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+        {product.price_on_request ? (
+          <div className="min-w-0 space-y-2">
+            <p className="text-[11px] font-semibold text-muted-foreground">
+              {lang === "ar" ? "السعر حسب الطلب والتصميم" : "Priced per request and design"}
+            </p>
+            <a
+              href={askUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-10 items-center rounded-full bg-whatsapp px-4 text-xs font-extrabold text-whatsapp-foreground shadow-sm"
+            >
+              {lang === "ar" ? "اطلب السعر" : "On request"}
+            </a>
+          </div>
+        ) : (
         <div className="min-w-0 space-y-3">
           {product.sizes.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
@@ -336,10 +350,11 @@ const ProductCard = memo(function ProductCard({
             </span>
           </div>
         </div>
+        )}
 
         <button
           type="button"
-          onClick={() => onSelect?.(product.id)}
+          onClick={() => (onQuickView ?? onSelect)?.(product.id)}
           aria-label={name}
           className="h-22 w-22 shrink-0 overflow-hidden rounded-2xl transition-transform duration-300 hover:scale-[1.02] group-hover:scale-105 active:scale-95 sm:h-32 sm:w-32"
         >

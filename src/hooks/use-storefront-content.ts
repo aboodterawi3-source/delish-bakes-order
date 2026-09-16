@@ -49,8 +49,10 @@ export function useStorefrontContent() {
 
   useEffect(() => {
     const invalidate = () => void queryClient.invalidateQueries({ queryKey: STOREFRONT_CONTENT_KEY });
+    // Unique channel name per hook instance: several components can listen at
+    // once without Supabase rejecting the extra subscription.
     const channel = supabase
-      .channel("storefront-content-live")
+      .channel(`storefront-content-live-${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "products" }, invalidate)
       .on("postgres_changes", { event: "*", schema: "public", table: "storefront_categories" }, invalidate)
       .on("postgres_changes", { event: "*", schema: "public", table: "storefront_banner" }, invalidate)

@@ -10,6 +10,7 @@ import {
 } from "./CakeCustomizationPanel";
 import { LangToggle, useLang } from "@/lib/i18n";
 import { formatJod } from "@/lib/currency";
+import { WHATSAPP } from "@/lib/menu";
 import { priceForSize, type StorefrontProduct } from "@/lib/storefront-content";
 
 export interface ProductDetailsAddPayload {
@@ -248,6 +249,29 @@ export function ProductDetailsView({
 
       {/* Sticky Bottom Action Bar */}
       <footer className="sticky bottom-0 z-20 grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] items-center gap-3 border-t border-border bg-background/95 px-4 py-4 backdrop-blur-md sm:flex sm:flex-wrap sm:justify-between sm:px-6">
+        {product?.price_on_request ? (
+          <>
+            <div className="flex min-w-0 flex-col">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-primary">
+                {ar ? "السعر" : "Price"}
+              </span>
+              <span className="font-sans text-base font-extrabold text-foreground sm:text-xl">
+                {ar ? "حسب الطلب" : "On request"}
+              </span>
+            </div>
+            <a
+              href={`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(
+                ar ? `مرحباً، أريد معرفة سعر: ${product.name_ar}` : `Hello, I would like the price for: ${product.name_en}`,
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-[50px] min-w-0 items-center justify-center gap-2 rounded-full bg-whatsapp px-4 py-3.5 text-center text-xs font-bold uppercase text-whatsapp-foreground shadow-sm sm:flex-none sm:px-7 sm:text-sm"
+            >
+              {ar ? "اطلب السعر" : "On request"}
+            </a>
+          </>
+        ) : (
+          <>
         <div className="flex min-w-0 flex-col">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-primary">
             {t("from")}
@@ -272,6 +296,8 @@ export function ProductDetailsView({
             <span>{t("addToCart")}</span>
           )}
         </button>
+          </>
+        )}
       </footer>
     </div>
   );

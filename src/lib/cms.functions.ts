@@ -180,8 +180,9 @@ export type ProductInput = {
   sizes?: SizePrice[];
   image_url?: string | null;
   tint?: string | null;
-  rating?: number;
-  rating_count?: number;
+  filling_ar?: string | null;
+  filling_en?: string | null;
+  price_on_request?: boolean;
   is_available?: boolean;
   is_popular?: boolean;
   sort_order?: number;
@@ -193,11 +194,6 @@ export const saveStorefrontProduct = createServerFn({ method: "POST" })
   .inputValidator((input: ProductInput) => {
     const price = Number(input?.price);
     if (!Number.isFinite(price) || price < 0) throw new Error("السعر غير صحيح · Invalid price");
-    const rating = Number(input?.rating ?? 4.8);
-    if (!Number.isFinite(rating) || rating < 0 || rating > 5) {
-      throw new Error("التقييم بين 0 و 5 · Rating must be between 0 and 5");
-    }
-    const ratingCount = Math.max(0, Math.floor(Number(input?.rating_count ?? 0) || 0));
     const sizes = parseSizes(input?.sizes).slice(0, 12);
     const nameEn = clean(input?.name_en, 80, "الاسم بالإنجليزية", true)!;
 
@@ -215,8 +211,9 @@ export const saveStorefrontProduct = createServerFn({ method: "POST" })
         sizes,
         image_url: clean(input?.image_url, 2000, "الصورة"),
         tint: clean(input?.tint, 20, "اللون"),
-        rating: Math.round(rating * 10) / 10,
-        rating_count: ratingCount,
+        filling_ar: clean(input?.filling_ar, 120, "الحشوة بالعربية"),
+        filling_en: clean(input?.filling_en, 120, "Filling in English"),
+        price_on_request: input?.price_on_request === true,
         is_available: input?.is_available !== false,
         is_popular: input?.is_popular === true,
         priority_color: isPriorityColor(input?.priority_color) ? input.priority_color : null,

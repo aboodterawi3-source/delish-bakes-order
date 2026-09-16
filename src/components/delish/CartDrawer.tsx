@@ -18,6 +18,8 @@ type Form = {
   date: string;
   time: string;
   notes: string;
+  /** How the customer will pay: cash on delivery or a CliQ transfer. */
+  pay: "cash" | "cliq";
 };
 
 const empty: Form = {
@@ -29,6 +31,7 @@ const empty: Form = {
   date: "",
   time: "",
   notes: "",
+  pay: "cash",
 };
 
 export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -98,6 +101,11 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
     L.push(`${ar ? "المجموع" : "Subtotal"}: ${subtotal.toFixed(2)} ${ar ? "د.أ" : "JOD"}`);
     L.push(`${ar ? "التوصيل" : "Delivery"}: ${deliveryFee.toFixed(2)} ${ar ? "د.أ" : "JOD"}`);
     L.push(`*${ar ? "الإجمالي" : "Total"}: ${total.toFixed(2)} ${ar ? "د.أ" : "JOD"}*`);
+    L.push(
+      `${ar ? "طريقة الدفع" : "Payment"}: ${
+        form.pay === "cash" ? (ar ? "نقداً عند التسليم" : "Cash on delivery") : ar ? "كليك CliQ" : "CliQ transfer"
+      }`,
+    );
     if (form.notes.trim()) {
       L.push("");
       L.push(`${ar ? "ملاحظات إضافية" : "Additional notes"}: ${form.notes.trim()}`);
@@ -139,6 +147,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
           requested_date: form.date,
           requested_time: form.time,
           notes: form.notes.trim() || null,
+          payment_method: form.pay,
           design_image: lines.find((l) => l.designImage)?.designImage ?? null,
           // Prices are never sent: the server re-prices each line from the catalogue.
           lines: lines.flatMap((l) =>
@@ -355,6 +364,40 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                     </button>
                   ))}
                 </div>
+              </fieldset>
+
+              <fieldset>
+                <legend className="mb-2 text-xs font-bold tracking-wide text-muted-foreground uppercase">
+                  {lang === "ar" ? "طريقة الدفع" : "Payment method"}
+                </legend>
+                <div className="grid gap-2 min-[360px]:grid-cols-2">
+                  {(["cash", "cliq"] as const).map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      aria-pressed={form.pay === option}
+                      onClick={() => set("pay", option)}
+                      className={`min-h-12 rounded-2xl border px-3 py-2.5 text-sm ${
+                        form.pay === option ? "border-gold bg-secondary font-semibold" : "border-border text-foreground"
+                      }`}
+                    >
+                      {option === "cash"
+                        ? lang === "ar"
+                          ? "نقداً عند التسليم"
+                          : "Cash on delivery"
+                        : lang === "ar"
+                          ? "كليك CliQ"
+                          : "CliQ transfer"}
+                    </button>
+                  ))}
+                </div>
+                {form.pay === "cliq" && (
+                  <p className="mt-2 rounded-2xl bg-secondary/40 p-3 text-xs text-foreground">
+                    {lang === "ar"
+                      ? "سيرسل لك فريقنا تفاصيل التحويل عبر واتساب لتأكيد الطلب."
+                      : "Our team will send you the CliQ transfer details on WhatsApp to confirm the order."}
+                  </p>
+                )}
               </fieldset>
 
               {form.method === "delivery" && (

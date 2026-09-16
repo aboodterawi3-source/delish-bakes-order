@@ -64,6 +64,42 @@ export type Database = {
           },
         ]
       }
+      customer_messages: {
+        Row: {
+          created_at: string
+          handled_at: string | null
+          handled_by: string | null
+          id: string
+          message: string
+          name: string
+          phone: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          handled_at?: string | null
+          handled_by?: string | null
+          id?: string
+          message: string
+          name: string
+          phone: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          handled_at?: string | null
+          handled_by?: string | null
+          id?: string
+          message?: string
+          name?: string
+          phone?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       order_edit_tokens: {
         Row: {
           created_at: string
@@ -292,6 +328,8 @@ export type Database = {
           created_at: string
           description_ar: string | null
           description_en: string | null
+          filling_ar: string | null
+          filling_en: string | null
           id: string
           image_url: string | null
           is_available: boolean
@@ -300,6 +338,7 @@ export type Database = {
           name_ar: string
           name_en: string
           price: number
+          price_on_request: boolean
           priority_color: Database["public"]["Enums"]["priority_color"] | null
           rating: number
           rating_count: number
@@ -315,6 +354,8 @@ export type Database = {
           created_at?: string
           description_ar?: string | null
           description_en?: string | null
+          filling_ar?: string | null
+          filling_en?: string | null
           id?: string
           image_url?: string | null
           is_available?: boolean
@@ -323,6 +364,7 @@ export type Database = {
           name_ar: string
           name_en: string
           price?: number
+          price_on_request?: boolean
           priority_color?: Database["public"]["Enums"]["priority_color"] | null
           rating?: number
           rating_count?: number
@@ -338,6 +380,8 @@ export type Database = {
           created_at?: string
           description_ar?: string | null
           description_en?: string | null
+          filling_ar?: string | null
+          filling_en?: string | null
           id?: string
           image_url?: string | null
           is_available?: boolean
@@ -346,6 +390,7 @@ export type Database = {
           name_ar?: string
           name_en?: string
           price?: number
+          price_on_request?: boolean
           priority_color?: Database["public"]["Enums"]["priority_color"] | null
           rating?: number
           rating_count?: number

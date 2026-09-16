@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { deliveryFeeFor, priceLine, type LineSpec } from "@/lib/order-pricing";
+import { deliveryFeeFor, priceLine, type CmsSpec, type LineSpec, type PricedLine } from "@/lib/order-pricing";
 import { decodeValidatedImage } from "@/lib/image-validation";
 import { publicError } from "@/lib/public-error";
 
@@ -12,6 +12,8 @@ export type StorefrontOrderRequest = {
   requested_date: string;
   requested_time: string;
   notes?: string | null;
+  /** How the customer wants to pay: cash on delivery or CliQ transfer. */
+  payment_method?: "cash" | "cliq" | null;
   design_image?: string | null;
   lines: {
     spec: LineSpec;
@@ -84,25 +86,43 @@ function validate(input: StorefrontOrderRequest) {
   if (rawLines.length === 0) throw new Error("السلة فارغة · The cart is empty");
   if (rawLines.length > MAX_LINES) throw new Error("عدد الأصناف كبير جداً · Too many items");
 
-  const priced = rawLines.map((line) => {
+  const priced: PricedLine[] = [];
+  const cmsLines: { spec: CmsSpec; quantity: number; notes: string | null; extras: { ar: string[]; en: string[] } }[] = [];
+
+  for (const line of rawLines) {
     const quantity = Math.floor(Number(line?.quantity));
     if (!Number.isFinite(quantity) || quantity < 1 || quantity > MAX_QTY) {
       throw new Error("الكمية غير صحيحة · Invalid quantity");
     }
     const spec = line?.spec;
-    if (!spec || (spec.kind !== "catalog" && spec.kind !== "builder")) {
+    const lineNotes = text(line?.notes, 400, "الملاحظات");
+    const extras = { ar: extraList(line?.extras_ar), en: extraList(line?.extras_en) };
+    if (!spec) throw new Error("صنف غير صحيح · Invalid item");
+
+    if (spec.kind === "cms") {
+      const productId = text(spec.productId, 40, "المنتج", true)!;
+      cmsLines.push({
+        spec: { kind: "cms", productId, size: text(spec.size, 60, "الحجم") },
+        quantity,
+        notes: lineNotes,
+        extras,
+      });
+      continue;
+    }
+
+    if (spec.kind !== "catalog" && spec.kind !== "builder") {
       throw new Error("صنف غير صحيح · Invalid item");
     }
     if (spec.kind === "builder" && spec.message) {
       text(spec.message, 120, "الكتابة");
     }
-    return priceLine(spec, quantity, text(line?.notes, 400, "الملاحظات"), {
-      ar: extraList(line?.extras_ar),
-      en: extraList(line?.extras_en),
-    });
-  });
+    priced.push(priceLine(spec, quantity, lineNotes, extras));
+  }
 
-  return { name, phone, method, area, address, date, time, notes, designImage, priced } as const;
+  const payment: "cash" | "cliq" | null =
+    input?.payment_method === "cash" || input?.payment_method === "cliq" ? input.payment_method : null;
+
+  return { name, phone, method, area, address, date, time, notes, payment, designImage, priced, cmsLines } as const;
 }
 
 /**
@@ -112,14 +132,49 @@ function validate(input: StorefrontOrderRequest) {
 export const submitStorefrontOrder = createServerFn({ method: "POST" })
   .inputValidator((input: StorefrontOrderRequest) => validate(input))
   .handler(async ({ data }) => {
-    const subtotal = data.priced.reduce((sum, line) => sum + line.unit_price * line.quantity, 0);
-    const deliveryFee = deliveryFeeFor(data.method, data.priced.length, data.area);
-    const inscription = data.priced
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // CMS products live in the database, so their prices are read there — never
+    // taken from the browser.
+    const lines: PricedLine[] = [...data.priced];
+    if (data.cmsLines.length > 0) {
+      const ids = [...new Set(data.cmsLines.map((line) => line.spec.productId))];
+      const { data: rows, error: productError } = await supabaseAdmin
+        .from("products")
+        .select("id, name_ar, name_en, price, sizes, is_available")
+        .in("id", ids);
+      if (productError) {
+        throw publicError("checkout.loadProducts", productError, "تعذّر حفظ الطلب · Could not save the order");
+      }
+      for (const line of data.cmsLines) {
+        const product = (rows ?? []).find((row) => row.id === line.spec.productId);
+        if (!product || product.is_available === false) {
+          throw new Error(
+            "أحد المنتجات في السلة غير متوفر، يرجى تحديث الصفحة · An item in your cart is no longer available, please refresh the page",
+          );
+        }
+        const sizes = Array.isArray(product.sizes) ? (product.sizes as { label?: string; price?: number }[]) : [];
+        const size = line.spec.size ? sizes.find((entry) => entry?.label === line.spec.size) : undefined;
+        const unit = Number(size?.price ?? product.price ?? 0);
+        lines.push({
+          name_ar: product.name_ar,
+          name_en: product.name_en,
+          unit_price: Number.isFinite(unit) ? unit : 0,
+          quantity: line.quantity,
+          options_ar: [size?.label ? `الحجم: ${size.label}` : "", ...line.extras.ar].filter(Boolean),
+          options_en: [size?.label ? `Size: ${size.label}` : "", ...line.extras.en].filter(Boolean),
+          notes: line.notes,
+          message: null,
+        });
+      }
+    }
+
+    const subtotal = lines.reduce((sum, line) => sum + line.unit_price * line.quantity, 0);
+    const deliveryFee = deliveryFeeFor(data.method, lines.length, data.area);
+    const inscription = lines
       .map((line) => line.message)
       .filter(Boolean)
       .join(" / ");
-
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data: order, error } = await supabaseAdmin
       .from("orders")
@@ -134,6 +189,7 @@ export const submitStorefrontOrder = createServerFn({ method: "POST" })
         notes: data.notes,
         inscription: inscription || null,
         design_image_url: data.designImage,
+        payment_method: data.payment,
         subtotal,
         delivery_fee: deliveryFee,
         total: subtotal + deliveryFee,
@@ -150,7 +206,7 @@ export const submitStorefrontOrder = createServerFn({ method: "POST" })
     }
 
     const { error: itemError } = await supabaseAdmin.from("order_items").insert(
-      data.priced.map((line) => ({
+      lines.map((line) => ({
         order_id: order.id,
         name_ar: line.name_ar,
         name_en: line.name_en,
