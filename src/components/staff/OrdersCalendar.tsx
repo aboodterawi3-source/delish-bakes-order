@@ -155,7 +155,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({ orders, onOpen }: P
                           title={`${order.order_number} · ${order.customer_name}`}
                           className={`w-full truncate rounded-md border px-1.5 py-1 text-start text-[11px] font-bold ${TONE[order.status]}`}
                         >
-                          {order.requested_time.slice(0, 5)} · {productTag(order)} · {codeTag(order)}
+                          {order.requested_time.slice(0, 5)} · {productTag(order)} · {order.last_edited_at ? "\u270F\uFE0F " : ""}{codeTag(order)}
                         </button>
                       </li>
                     ))}
