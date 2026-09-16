@@ -445,6 +445,115 @@ export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
     return order;
   });
 
+/** One rebuilt order line coming from the website-style modification screen. */
+export type RebuildLine = {
+  productId?: string | null;
+  name: string;
+  quantity: number;
+  unitPrice: number;
+  options?: string[];
+  notes?: string | null;
+};
+
+/**
+ * Rebuilds the whole order from the website-style builder: the old lines are
+ * cleared and replaced with the freshly configured ones, then totals recalc.
+ */
+export const replaceSalesOrderItems = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { orderId: string; lines: RebuildLine[] }) => {
+    if (!input?.orderId) throw new Error("orderId is required");
+    if (!Array.isArray(input.lines) || input.lines.length === 0) {
+      throw new Error("أضف صنفاً واحداً على الأقل · Add at least one item");
+    }
+    if (input.lines.length > 40) throw new Error("عدد الأصناف كبير · Too many items");
+    const lines: RebuildLine[] = input.lines.map((line) => {
+      const name = String(line?.name ?? "").trim().slice(0, 2000);
+      if (!name) throw new Error("وصف الصنف مطلوب · Item description is required");
+      const quantity = Math.trunc(Number(line?.quantity ?? 1));
+      if (!Number.isFinite(quantity) || quantity < 1 || quantity > 1000) {
+        throw new Error("كمية غير صالحة · Invalid quantity");
+      }
+      const unitPrice = Number(line?.unitPrice ?? 0);
+      if (!Number.isFinite(unitPrice) || unitPrice < 0 || unitPrice > 100000) {
+        throw new Error("سعر غير صالح · Invalid price");
+      }
+      const options = Array.isArray(line?.options)
+        ? line.options
+            .map((option) => String(option ?? "").replace(/[\r\n]+/g, " ").trim().slice(0, 200))
+            .filter(Boolean)
+            .slice(0, 30)
+        : [];
+      const productId = line?.productId ? String(line.productId) : null;
+      const notes = line?.notes ? String(line.notes).trim().slice(0, 2000) || null : null;
+      return { productId, name, quantity, unitPrice, options, notes };
+    });
+    return { orderId: String(input.orderId), lines };
+  })
+  .handler(async ({ data, context }): Promise<SalesOrder> => {
+    await assertRole(context, SALES_ROLES);
+    const { writeAudit, staffName } = await import("@/lib/authorization.functions");
+
+    const { data: existing, error: readError } = await context.supabase
+      .from("orders")
+      .select("id, order_number, method, delivery_fee, discount_amount, subtotal")
+      .eq("id", data.orderId)
+      .single();
+    if (readError || !existing) throw new Error("طلب غير موجود · Order not found");
+
+    const { error: deleteError } = await context.supabase
+      .from("order_items")
+      .delete()
+      .eq("order_id", data.orderId);
+    if (deleteError) throw new Error(deleteError.message);
+
+    const { error: insertError } = await context.supabase.from("order_items").insert(
+      data.lines.map((line) => ({
+        order_id: data.orderId,
+        product_id: line.productId,
+        name_ar: line.name,
+        name_en: line.name,
+        unit_price: line.unitPrice,
+        quantity: line.quantity,
+        options_ar: line.options ?? [],
+        options_en: line.options ?? [],
+        notes: line.notes,
+      })) as never,
+    );
+    if (insertError) throw new Error(insertError.message);
+
+    const subtotal = data.lines.reduce((acc, line) => acc + line.unitPrice * line.quantity, 0);
+    const deliveryFee = existing.method === "delivery" ? Number(existing.delivery_fee ?? 0) : 0;
+    const total = Math.max(subtotal + deliveryFee - Number(existing.discount_amount ?? 0), 0);
+
+    const { data: row, error: orderError } = await context.supabase
+      .from("orders")
+      .update({
+        subtotal,
+        total,
+        last_edited_at: new Date().toISOString(),
+        last_edited_by: context.userId,
+      } as never)
+      .eq("id", data.orderId)
+      .select(SELECT)
+      .single();
+    if (orderError) throw new Error(orderError.message);
+
+    const order = toOrder(row as Row);
+    await writeAudit({
+      order_id: order.id,
+      order_number: order.order_number,
+      staff_user_id: context.userId,
+      staff_name: staffName(context as never),
+      action: "order_rebuilt",
+      original_amount: Number(existing.subtotal ?? 0),
+      modified_amount: subtotal,
+      discount_percent: null,
+      reason: "Order rebuilt from the website-style modification screen",
+    });
+    return order;
+  });
+
 export type ShiftReport = {
   date: string;
   byMethod: { method: PaymentMethod | "unpaid"; orders: number; collected: number }[];

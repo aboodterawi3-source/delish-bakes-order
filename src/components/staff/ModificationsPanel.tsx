@@ -12,6 +12,8 @@ import {
   getSalesOrders,
   updateSalesOrder,
   updateSalesOrderItemPrice,
+  replaceSalesOrderItems,
+  type RebuildLine,
   type OrderItemPatch,
   type OrderPatch,
   type SalesOrder,
@@ -20,6 +22,7 @@ import { applyOrderDiscount, getMyAuthorization } from "@/lib/authorization.func
 import { DELIVERY_ZONES, OTHER_GOVERNORATES_AREA, feeForArea } from "@/lib/delivery-zones";
 import { useStorefrontContent } from "@/hooks/use-storefront-content";
 import type { StorefrontProduct } from "@/lib/storefront-content";
+import { WebsiteRebuildPanel } from "@/components/staff/WebsiteRebuildPanel";
 import {
   CakeCustomizationPanel,
   customizationSummary,
@@ -47,6 +50,7 @@ export function ModificationsPanel() {
   const ordersFn = useServerFn(getSalesOrders);
   const updateFn = useServerFn(updateSalesOrder);
   const updateItemFn = useServerFn(updateSalesOrderItemPrice);
+  const rebuildFn = useServerFn(replaceSalesOrderItems);
   const discountFn = useServerFn(applyOrderDiscount);
   const authorizationFn = useServerFn(getMyAuthorization);
 
@@ -106,6 +110,18 @@ export function ModificationsPanel() {
         (current ?? []).map((row) => (row.id === order.id ? order : row)),
       );
       toast.success("تم حفظ تعديل الصنف ✅");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  // Rebuilding the order from the website-style builder replaces every line.
+  const rebuild = useMutation({
+    mutationFn: (input: { orderId: string; lines: RebuildLine[] }) => rebuildFn({ data: input }),
+    onSuccess: (order) => {
+      queryClient.setQueryData<SalesOrder[]>(ORDERS_KEY, (current) =>
+        (current ?? []).map((row) => (row.id === order.id ? order : row)),
+      );
+      toast.success("تم استبدال أصناف الطلب ✅ — تم تنبيه المطبخ");
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -184,12 +200,13 @@ export function ModificationsPanel() {
         <OrderEditor
           key={selected.id}
           order={selected}
-          busy={save.isPending || saveItem.isPending}
+          busy={save.isPending || saveItem.isPending || rebuild.isPending}
           mayDiscount={Boolean(authorization.data?.allow_custom_discount)}
           discountCap={authorization.data?.max_discount_percent ?? 0}
           products={storefront.data?.products ?? []}
           onPatch={(patch) => save.mutate({ orderId: selected.id, ...patch })}
           onItemPatch={(patch) => saveItem.mutate({ orderId: selected.id, ...patch })}
+          onReplaceItems={(lines) => rebuild.mutate({ orderId: selected.id, lines })}
           onDiscount={(percent, reason) =>
             discount.mutate({ orderId: selected.id, percent, reason })
           }
@@ -207,6 +224,7 @@ function OrderEditor({
   products,
   onPatch,
   onItemPatch,
+  onReplaceItems,
   onDiscount,
 }: {
   order: SalesOrder;
@@ -216,8 +234,11 @@ function OrderEditor({
   discountCap: number;
   onPatch: (patch: Omit<OrderPatch, "orderId">) => void;
   onItemPatch: (patch: Omit<OrderItemPatch, "orderId">) => void;
+  onReplaceItems: (lines: RebuildLine[]) => void;
   onDiscount: (percent: number, reason: string) => void;
 }) {
+  // Editing always opens on a fresh website-style builder, nothing carried over.
+  const [itemsMode, setItemsMode] = useState<"builder" | "lines">("builder");
   const [orderName, setOrderName] = useState(order.order_name ?? "");
   const [customerName, setCustomerName] = useState(order.customer_name);
   const [customerPhone, setCustomerPhone] = useState(order.customer_phone);
@@ -385,12 +406,46 @@ function OrderEditor({
         ) : null}
       </div>
 
-      {/* Items: description, price, quantity and every customer extra */}
+      {/* Items: rebuild through the website interface, or fine-tune line by line */}
       <div className="space-y-3">
-        <h4 className="text-sm font-bold text-foreground">الأصناف والطلبات الخاصة · Items &amp; extras</h4>
-        {order.items.map((item) => (
-          <ItemEditor key={item.id} item={item} products={products} onItemPatch={onItemPatch} />
-        ))}
+        <div className="flex flex-wrap items-center gap-2">
+          <h4 className="min-w-0 flex-1 text-sm font-bold text-foreground">
+            الأصناف والطلبات الخاصة · Items &amp; extras
+          </h4>
+          <div className="inline-flex rounded-lg bg-secondary p-1">
+            {(
+              [
+                { key: "builder", ar: "واجهة الموقع" },
+                { key: "lines", ar: "تعديل سطري" },
+              ] as const
+            ).map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setItemsMode(tab.key)}
+                aria-pressed={itemsMode === tab.key}
+                className={`min-h-10 rounded-md px-3 text-xs font-bold ${
+                  itemsMode === tab.key ? "bg-primary text-primary-foreground" : "text-foreground"
+                }`}
+              >
+                {tab.ar}
+              </button>
+            ))}
+          </div>
+        </div>
+        {itemsMode === "builder" ? (
+          <WebsiteRebuildPanel
+            key={order.id}
+            order={order}
+            products={products}
+            busy={busy}
+            onReplace={onReplaceItems}
+          />
+        ) : (
+          order.items.map((item) => (
+            <ItemEditor key={item.id} item={item} products={products} onItemPatch={onItemPatch} />
+          ))
+        )}
         {order.items.length === 0 ? (
           <p className="rounded-2xl border border-dashed border-border p-4 text-xs text-muted-foreground">
             لا توجد أصناف مسجلة على هذا الطلب.
