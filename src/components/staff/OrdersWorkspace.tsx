@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { OrdersCalendar } from "@/components/staff/OrdersCalendar";
 import { useOrdersRealtime } from "@/hooks/use-orders-realtime";
 import {
   getSalesOrders,
@@ -247,6 +248,7 @@ export function OrdersWorkspace({ showShiftReport = false }: { showShiftReport?:
   const [shiftOpen, setShiftOpen] = useState(false);
   const [shiftDate, setShiftDate] = useState(todayIso);
   const [report, setReport] = useState<ShiftReport | null>(null);
+  const [mode, setMode] = useState<"list" | "calendar">("list");
 
   const authorization = useQuery({
     queryKey: ["my-authorization"],
@@ -385,6 +387,22 @@ export function OrdersWorkspace({ showShiftReport = false }: { showShiftReport?:
         >
           <RefreshCw className={`h-4 w-4 ${orders.isFetching ? "animate-spin" : ""}`} aria-hidden="true" />
         </button>
+        {/* List / monthly calendar switch. */}
+        <div className="inline-flex min-h-12 items-center rounded-full border border-border p-1">
+          {(["list", "calendar"] as const).map((value) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setMode(value)}
+              aria-pressed={mode === value}
+              className={`min-h-10 rounded-full px-3 text-xs font-bold ${
+                mode === value ? "bg-primary text-primary-foreground" : "text-foreground"
+              }`}
+            >
+              {value === "list" ? "قائمة" : "تقويم"}
+            </button>
+          ))}
+        </div>
         {showShiftReport ? (
           <button
             type="button"
@@ -400,6 +418,8 @@ export function OrdersWorkspace({ showShiftReport = false }: { showShiftReport?:
         <p className="py-10 text-center text-sm text-muted-foreground">جار تحميل الطلبات…</p>
       ) : orders.isError ? (
         <p className="py-10 text-center text-sm text-destructive">تعذّر تحميل الطلبات — حدّث الصفحة</p>
+      ) : mode === "calendar" ? (
+        <OrdersCalendar orders={list} onOpen={openOrder} />
       ) : list.length === 0 ? (
         <p className="py-10 text-center text-sm text-muted-foreground">لا توجد طلبات مطابقة</p>
       ) : (
