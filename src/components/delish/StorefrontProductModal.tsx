@@ -5,6 +5,11 @@ import { useDismissable } from "@/lib/a11y";
 import { formatJod } from "@/lib/currency";
 import { WHATSAPP } from "@/lib/menu";
 import { priceForSize, type StorefrontProduct } from "@/lib/storefront-content";
+import {
+  CakeCustomizationPanel,
+  emptyCustomization,
+  type Customization,
+} from "./CakeCustomizationPanel";
 
 export type ModalAddPayload = {
   product: StorefrontProduct;
@@ -12,6 +17,7 @@ export type ModalAddPayload = {
   quantity: number;
   price: number;
   notes: string;
+  customization: Customization;
 };
 
 /**
