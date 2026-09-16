@@ -17,10 +17,15 @@ import {
   emptyCustomization,
   type Customization,
 } from "@/components/delish/CakeCustomizationPanel";
+import { OrdersWorkspace } from "@/components/staff/OrdersWorkspace";
 
 
 
 const emptyForm = {
+  /** Delivery order: label, sender and recipient. */
+  order_name: "",
+  sender_phone: "",
+  recipient_phone: "",
   customer_name: "",
   customer_phone: "",
   order_details: "",
