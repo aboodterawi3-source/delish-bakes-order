@@ -45,7 +45,7 @@ export function ModificationsPanel() {
     queryKey: ["staff-authorization"],
     queryFn: () => authorizationFn({}),
   });
-  useOrdersRealtime();
+  useOrdersRealtime(ORDERS_KEY, true, "modifications-orders");
 
   const rows = orders.data ?? [];
 
