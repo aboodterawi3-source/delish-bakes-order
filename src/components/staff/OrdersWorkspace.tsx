@@ -1198,149 +1198,44 @@ function OrderPanel({
           </pre>
         </section>
 
-        <section className="mt-6">
-          <h3 className="text-sm font-bold text-foreground">تفاصيل الطلب</h3>
-          <ul className="mt-2 space-y-2 text-sm">
-            {order.items.map((item) => (
-              <li key={item.id} className="space-y-2 rounded-2xl border border-border bg-background p-3.5">
-                <label className="block text-xs font-bold text-foreground">
-                  وصف الصنف · Item
-                  <textarea
-                    rows={2}
-                    defaultValue={item.name_ar}
-                    onBlur={(event) => {
-                      const value = event.target.value.trim();
-                      if (value && value !== item.name_ar) onUpdateItem?.({ itemId: item.id, name: value });
-                    }}
-                    className="mt-1 w-full rounded-xl border border-input bg-card p-2 text-sm"
-                  />
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <label className="block text-xs font-bold text-foreground">
-                    الكمية · Qty
-                    <input
-                      type="number"
-                      min="1"
-                      step="1"
-                      defaultValue={item.quantity}
-                      onBlur={(event) => {
-                        const value = parseInt(event.target.value, 10);
-                        if (Number.isFinite(value) && value >= 1 && value !== item.quantity) {
-                          onUpdateItem?.({ itemId: item.id, quantity: value });
-                        }
-                      }}
-                      className="mt-1 min-h-11 w-full rounded-xl border border-input bg-card px-2 text-center text-sm font-bold"
-                    />
-                  </label>
-                  <label className="block text-xs font-bold text-foreground">
-                    سعر الوحدة · Unit price
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.25"
-                      defaultValue={item.unit_price}
-                      onBlur={(event) => {
-                        const value = parseFloat(event.target.value);
-                        if (!Number.isNaN(value) && value !== item.unit_price) {
-                          onUpdateItem?.({ itemId: item.id, newUnitPrice: value });
-                        }
-                      }}
-                      className="mt-1 min-h-11 w-full rounded-xl border border-input bg-card px-2 text-center text-sm font-bold"
-                    />
-                  </label>
-                </div>
-                <label className="block text-xs font-bold text-foreground">
-                  ملاحظة الصنف · Item note
-                  <input
-                    defaultValue={item.notes ?? ""}
-                    onBlur={(event) => {
-                      const value = event.target.value.trim();
-                      if (value !== (item.notes ?? "")) onUpdateItem?.({ itemId: item.id, notes: value || null });
-                    }}
-                    className="mt-1 min-h-11 w-full rounded-xl border border-input bg-card px-2 text-sm"
-                  />
-                </label>
-                {item.options_ar.length ? (
-                  <ul className="space-y-0.5 text-xs font-semibold text-primary">
-                    {item.options_ar.map((option) => (
-                      <li key={option}>• {option}</li>
-                    ))}
-                  </ul>
-                ) : null}
-                <p className="text-xs font-bold text-muted-foreground">
-                  إجمالي الصنف: {jd(item.unit_price * item.quantity)}
-                </p>
-              </li>
-            ))}
-          </ul>
-
-          <label className="mt-3 block text-sm font-bold text-foreground">
-            الكتابة على الكيك
-            <input
-              value={inscription}
-              onChange={(event) => setInscription(event.target.value)}
-              onBlur={() => onPatch({ inscription: inscription.trim() || null })}
-              className={field}
-            />
-          </label>
-          <label className="mt-3 block text-sm font-bold text-foreground">
-            ملاحظات العميل
-            <textarea
-              rows={2}
-              value={notes}
-              onChange={(event) => setNotes(event.target.value)}
-              onBlur={() => onPatch({ notes: notes.trim() || null })}
-              className="mt-1 w-full rounded-xl border border-input bg-background p-3 text-sm"
-            />
-          </label>
-          <label className="mt-3 block text-sm font-bold text-foreground">
-            ملاحظات داخلية
-            <textarea
-              rows={2}
-              value={staffNotes}
-              onChange={(event) => setStaffNotes(event.target.value)}
-              onBlur={() => onPatch({ staff_notes: staffNotes.trim() || null })}
-              className="mt-1 w-full rounded-xl border border-input bg-background p-3 text-sm"
-            />
-          </label>
-
-          {order.design_image_url ? (
-            <div className="mt-3 space-y-2">
+        {order.design_image_url ? (
+          <section className="mt-6 space-y-2">
+            <h3 className="text-sm font-bold text-foreground">صورة التصميم</h3>
+            <button
+              type="button"
+              onClick={() => onZoom(order.design_image_url as string)}
+              className="block w-full overflow-hidden rounded-xl border border-border"
+              aria-label="تكبير صورة التصميم"
+            >
+              <img
+                src={order.design_image_url}
+                alt={`صورة التصميم المطلوب للطلب ${order.order_number}`}
+                loading="lazy"
+                className="w-full"
+              />
+            </button>
+            <div className="flex flex-wrap gap-2">
+              <a
+                href={order.design_image_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full border border-primary px-4 text-xs font-bold text-primary"
+              >
+                فتح الصورة · View
+              </a>
               <button
                 type="button"
-                onClick={() => onZoom(order.design_image_url as string)}
-                className="block w-full overflow-hidden rounded-xl border border-border"
-                aria-label="تكبير صورة التصميم"
+                onClick={() =>
+                  void downloadDesignImage(order.design_image_url as string, order.order_number)
+                }
+                className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full bg-primary px-4 text-xs font-bold text-primary-foreground"
               >
-                <img
-                  src={order.design_image_url}
-                  alt={`صورة التصميم المطلوب للطلب ${order.order_number}`}
-                  loading="lazy"
-                  className="w-full"
-                />
+                <Download className="h-4 w-4" aria-hidden="true" /> تحميل الصورة · Download
               </button>
-              <div className="flex flex-wrap gap-2">
-                <a
-                  href={order.design_image_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full border border-primary px-4 text-xs font-bold text-primary"
-                >
-                  فتح الصورة · View
-                </a>
-                <button
-                  type="button"
-                  onClick={() =>
-                    void downloadDesignImage(order.design_image_url as string, order.order_number)
-                  }
-                  className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full bg-primary px-4 text-xs font-bold text-primary-foreground"
-                >
-                  <Download className="h-4 w-4" aria-hidden="true" /> تحميل الصورة · Download
-                </button>
-              </div>
             </div>
-          ) : null}
-        </section>
+          </section>
+        ) : null}
+
 
         <button
           type="button"
