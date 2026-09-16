@@ -34,6 +34,7 @@ import {
 } from "@/lib/sales.functions";
 import { buildConfirmationMessage } from "@/lib/confirmation-message";
 import { esc, printDocument } from "@/lib/print";
+import { orderLabel } from "@/lib/order-label";
 import {
   applyOrderDiscount,
   createOrderEditLink,
@@ -121,7 +122,7 @@ export function printReceipt(order: SalesOrder) {
 
   const body = `<h1>Delish Cake &amp; Bake</h1><div>ديليش – الأردن · 0779179995</div>
 <div style="text-align:center;font-weight:700">إيصال العميل · CUSTOMER RECEIPT</div><div class="line"></div>
-<div class="row"><span>${esc(order.order_number)}</span><span>${esc(order.requested_date)} ${esc(order.requested_time.slice(0, 5))}</span></div>
+<div class="row"><span>${esc(orderLabel(order.order_number, order.staff_code))}</span><span>${esc(order.requested_date)} ${esc(order.requested_time.slice(0, 5))}</span></div>
 ${order.order_name ? `<div>اسم الطلب: ${esc(order.order_name)}</div>` : ""}
 <div>${esc(order.customer_name)} · ${esc(order.customer_phone)}</div>
 ${order.sender_phone ? `<div>رقم المرسل: ${esc(order.sender_phone)}</div>` : ""}
@@ -597,7 +598,7 @@ const OrderCard = memo(function OrderCard({
             <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusMeta[order.status].chip}`}>
               {statusMeta[order.status].ar}
             </span>
-            <span className="font-display text-base font-bold text-foreground">{order.order_number}</span>
+            <span className="font-display text-base font-bold text-foreground">{orderLabel(order.order_number, order.staff_code)}</span>
             <span className="min-w-0 break-words text-sm font-bold text-foreground">{listLabel(order)}</span>
             {order.last_edited_at ? (
               <span className="inline-flex items-center gap-1 rounded-full bg-gold px-2 py-0.5 text-[11px] font-bold text-white">
