@@ -289,6 +289,30 @@ export function SocialPanel() {
       </header>
 
       <div className="mx-auto max-w-3xl px-4 py-6">
+        {/* Two work modes: take a new order, or manage every existing order. */}
+        <nav className="no-scrollbar mb-5 flex max-w-full gap-2 overflow-x-auto" aria-label="أقسام بوابة السوشال">
+          {([
+            { value: "new" as const, label: "طلب جديد · New order" },
+            { value: "orders" as const, label: "إدارة الطلبات · Orders" },
+          ]).map((item) => (
+            <button
+              key={item.value}
+              type="button"
+              aria-current={view === item.value}
+              onClick={() => setView(item.value)}
+              className={`min-h-12 shrink-0 whitespace-nowrap rounded-full px-6 text-sm font-bold transition ${
+                view === item.value
+                  ? "bg-[#8B4513] text-white shadow-sm"
+                  : "border border-slate-200 bg-white text-[#5D2E17] hover:bg-slate-50"
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </nav>
+
+        {view === "new" ? (
+        <>
         {done ? (
           <p role="status" className="mb-4 rounded-2xl bg-amber-50 border border-amber-200 p-4 text-sm font-bold text-amber-900 shadow-xs">
             تم إرسال الطلب {done} ويظهر الآن على شاشة المبيعات والمطبخ ✅
