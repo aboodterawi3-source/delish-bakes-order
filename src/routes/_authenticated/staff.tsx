@@ -1,19 +1,27 @@
 import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChefHat, Crown, Loader2, LogOut, MessageSquareHeart, ShoppingBag } from "lucide-react";
+import { ChefHat, Crown, Inbox, Loader2, LogOut, MessageSquareHeart, ShoppingBag } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminPanel } from "@/components/staff/AdminPanel";
 import { SalesPanel } from "@/components/staff/SalesPanel";
 import { KitchenPanel } from "@/components/staff/KitchenPanel";
 import { SocialPanel } from "@/components/staff/SocialPanel";
+import { MessagesPanel } from "@/components/staff/MessagesPanel";
 
-type StaffTab = "sales" | "kitchen" | "social" | "admin";
+type StaffTab = "sales" | "kitchen" | "social" | "messages" | "admin";
 
-const TABS: { value: StaffTab; ar: string; en: string; icon: typeof Crown }[] = [
+const TABS: { value: StaffTab; ar: string; en: string; icon: typeof Crown; roles?: string[] }[] = [
   { value: "sales", ar: "المبيعات", en: "Sales", icon: ShoppingBag },
   { value: "kitchen", ar: "المطبخ", en: "Kitchen", icon: ChefHat },
   { value: "social", ar: "السوشال", en: "Social", icon: MessageSquareHeart },
+  {
+    value: "messages",
+    ar: "الرسائل",
+    en: "Messages",
+    icon: Inbox,
+    roles: ["sales", "social", "admin"],
+  },
   { value: "admin", ar: "الإدارة", en: "Admin", icon: Crown },
 ];
 
@@ -96,7 +104,9 @@ function StaffPortalPage() {
   const allowed = useMemo(() => {
     const list = roles.data ?? [];
     const isAdmin = list.includes("admin");
-    return TABS.filter((tab) => isAdmin || list.includes(tab.value));
+    return TABS.filter((tab) =>
+      isAdmin || (tab.roles ? tab.roles.some((role) => list.includes(role)) : list.includes(tab.value)),
+    );
   }, [roles.data]);
 
   const active = allowed.find((tab) => tab.value === search.tab)?.value ?? allowed[0]?.value;
@@ -184,6 +194,7 @@ function StaffPortalPage() {
       {active === "sales" && <SalesPanel />}
       {active === "kitchen" && <KitchenPanel />}
       {active === "social" && <SocialPanel />}
+      {active === "messages" && <MessagesPanel />}
       {active === "admin" && <AdminPanel />}
     </div>
   );
