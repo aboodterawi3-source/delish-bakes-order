@@ -42,7 +42,8 @@ const productTag = (order: SalesOrder) => {
 };
 
 /** Short order code: the numeric tail of the order number. */
-const codeTag = (order: SalesOrder) => order.order_number.replace(/^DL-/i, "");
+const codeTag = (order: SalesOrder) =>
+  `${order.staff_code ? `${order.staff_code}/` : ""}${order.order_number.replace(/^DL-/i, "")}`;
 
 type Props = {
   orders: SalesOrder[];

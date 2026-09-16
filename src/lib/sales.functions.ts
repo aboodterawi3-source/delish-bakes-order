@@ -33,6 +33,8 @@ export type SalesItem = {
 export type SalesOrder = {
   id: string;
   order_number: string;
+  /** Numeric ID of the employee who created the order (manager-assigned). */
+  staff_code: number | null;
   /** Short label for the order, shown in the list instead of the phone number. */
   order_name: string | null;
   sender_phone: string | null;

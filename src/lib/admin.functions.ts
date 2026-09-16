@@ -19,6 +19,8 @@ export type StaffMember = {
   roles: StaffRole[];
   created_at: string;
   last_sign_in_at: string | null;
+  /** Numeric ID the manager assigns; shown next to order numbers. */
+  staff_code: number | null;
 };
 
 export type OrderLog = {
@@ -160,6 +162,10 @@ export const listStaff = createServerFn({ method: "GET" })
     if (error) throw new Error(error.message);
     const { data: roleRows, error: roleError } = await supabaseAdmin.from("user_roles").select("user_id, role");
     if (roleError) throw new Error(roleError.message);
+    const { data: codeRows } = await supabaseAdmin.from("staff_codes").select("user_id, staff_code");
+    const codes = new Map<string, number>(
+      (codeRows ?? []).map((row) => [row.user_id as string, Number(row.staff_code)]),
+    );
     const byUser = new Map<string, StaffRole[]>();
     for (const row of roleRows ?? []) {
       const list = byUser.get(row.user_id) ?? [];
@@ -173,6 +179,7 @@ export const listStaff = createServerFn({ method: "GET" })
         roles: byUser.get(user.id) ?? [],
         created_at: user.created_at,
         last_sign_in_at: user.last_sign_in_at ?? null,
+        staff_code: codes.get(user.id) ?? null,
       }))
       .filter((member) => member.roles.length > 0)
       .sort((a, b) => a.username.localeCompare(b.username));
@@ -257,6 +264,47 @@ export const setStaffRole = createServerFn({ method: "POST" })
     const { error } = await supabaseAdmin.from("user_roles").insert({ user_id: data.userId, role: data.role });
     if (error) throw new Error(error.message);
     return { ok: true };
+  });
+
+/** Manager assigns (or clears) the numeric staff ID shown beside order numbers. */
+export const setStaffCode = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { userId: string; staffCode: number | null }) => {
+    if (!input?.userId) throw new Error("userId is required");
+    if (input.staffCode === null || (input.staffCode as unknown) === "") {
+      return { userId: String(input.userId), staffCode: null };
+    }
+    const code = Number(input.staffCode);
+    if (!Number.isInteger(code) || code < 1 || code > 9999) {
+      throw new Error("رقم الموظف يجب أن يكون بين 1 و 9999 · Staff ID must be 1–9999");
+    }
+    return { userId: String(input.userId), staffCode: code };
+  })
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    if (data.staffCode === null) {
+      const { error } = await supabaseAdmin.from("staff_codes").delete().eq("user_id", data.userId);
+      if (error) throw new Error(error.message);
+      return { ok: true, staff_code: null };
+    }
+
+    // The code identifies one employee only, so refuse a number already in use.
+    const { data: clash } = await supabaseAdmin
+      .from("staff_codes")
+      .select("user_id")
+      .eq("staff_code", data.staffCode)
+      .maybeSingle();
+    if (clash && clash.user_id !== data.userId) {
+      throw new Error("هذا الرقم مستخدم لموظف آخر · This staff ID is already taken");
+    }
+
+    const { error } = await supabaseAdmin
+      .from("staff_codes")
+      .upsert({ user_id: data.userId, staff_code: data.staffCode }, { onConflict: "user_id" });
+    if (error) throw new Error(error.message);
+    return { ok: true, staff_code: data.staffCode };
   });
 
 export const removeStaff = createServerFn({ method: "POST" })

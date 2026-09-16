@@ -29,6 +29,7 @@ import {
   listStaff,
   removeStaff,
   resetStaffPassword,
+  setStaffCode,
   setStaffRole,
   type OrderLog,
   type StaffRole,
@@ -511,6 +512,7 @@ function StaffPanel() {
   const create = useServerFn(createStaff);
   const reset = useServerFn(resetStaffPassword);
   const role = useServerFn(setStaffRole);
+  const code = useServerFn(setStaffCode);
   const remove = useServerFn(removeStaff);
 
   const [username, setUsername] = useState("");
@@ -562,6 +564,16 @@ function StaffPanel() {
     onSuccess: () => {
       setError(null);
       setNotice("تم تحديث الدور · Role updated");
+      invalidate();
+    },
+    onError: handleError,
+  });
+
+  const codeMutation = useMutation({
+    mutationFn: (input: { userId: string; staffCode: number | null }) => code({ data: input }),
+    onSuccess: () => {
+      setError(null);
+      setNotice("تم تحديث رقم الموظف · Staff ID updated");
       invalidate();
     },
     onError: handleError,
@@ -639,6 +651,7 @@ function StaffPanel() {
             member={member}
             onReset={(pwd) => resetMutation.mutate({ userId: member.id, password: pwd })}
             onRole={(value) => roleMutation.mutate({ userId: member.id, role: value })}
+            onCode={(value) => codeMutation.mutate({ userId: member.id, staffCode: value })}
             onRemove={() => removeMutation.mutate(member.id)}
             isSelf={me.data === member.id}
           />
@@ -652,16 +665,25 @@ function StaffRow({
   member,
   onReset,
   onRole,
+  onCode,
   onRemove,
   isSelf = false,
 }: {
-  member: { id: string; username: string; roles: StaffRole[]; last_sign_in_at: string | null };
+  member: {
+    id: string;
+    username: string;
+    roles: StaffRole[];
+    last_sign_in_at: string | null;
+    staff_code: number | null;
+  };
   onReset: (password: string) => void;
   onRole: (role: StaffRole) => void;
+  onCode: (staffCode: number | null) => void;
   onRemove: () => void;
   isSelf?: boolean;
 }) {
   const [password, setPassword] = useState("");
+  const [staffCode, setStaffCode] = useState(member.staff_code ? String(member.staff_code) : "");
 
   return (
     <article className="grid gap-3 rounded-2xl border border-border bg-card p-4 lg:grid-cols-[1fr_auto_auto]">
@@ -670,6 +692,7 @@ function StaffRow({
         <p className="text-xs text-muted-foreground">
           {member.roles.map((r) => ROLE_LABEL[r]).join(" · ") || "بدون دور"}
           {member.last_sign_in_at ? ` · آخر دخول ${member.last_sign_in_at.slice(0, 10)}` : ""}
+          {member.staff_code ? ` · رقم الموظف ${member.staff_code}` : " · بدون رقم موظف"}
         </p>
       </div>
 
@@ -704,6 +727,25 @@ function StaffRow({
           className="inline-flex min-h-12 items-center gap-2 rounded-full border border-border px-4 text-sm font-bold text-foreground disabled:opacity-50"
         >
           <KeyRound className="h-4 w-4" aria-hidden /> تحديث
+        </button>
+        {/* Numeric staff ID shown beside every order number this employee creates. */}
+        <input
+          type="number"
+          min={1}
+          max={9999}
+          inputMode="numeric"
+          value={staffCode}
+          placeholder="رقم الموظف"
+          onChange={(event) => setStaffCode(event.target.value)}
+          aria-label={`رقم الموظف لحساب ${member.username}`}
+          className="min-h-12 w-28 rounded-xl border border-input bg-background px-3 text-sm"
+        />
+        <button
+          type="button"
+          onClick={() => onCode(staffCode.trim() === "" ? null : Number(staffCode))}
+          className="inline-flex min-h-12 items-center gap-2 rounded-full border border-border px-4 text-sm font-bold text-foreground"
+        >
+          حفظ الرقم
         </button>
       </div>
 
