@@ -19,6 +19,8 @@ export type StaffMember = {
   roles: StaffRole[];
   created_at: string;
   last_sign_in_at: string | null;
+  /** Numeric ID the manager assigns; shown next to order numbers. */
+  staff_code: number | null;
 };
 
 export type OrderLog = {
