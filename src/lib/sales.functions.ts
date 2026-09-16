@@ -315,6 +315,8 @@ export type OrderItemPatch = {
   quantity?: number;
   name?: string;
   notes?: string | null;
+  /** Customer extras: candles, balloons, acrylic topper, filling, any request. */
+  options?: string[];
 };
 
 /** Order-desk staff may correct any line: price, quantity, description, notes. */
