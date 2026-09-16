@@ -808,7 +808,7 @@ function OrderPanel({
           ...item.options_ar.map((option) => `— ${option}`),
         ]),
         cakeWriting: order.inscription ?? "",
-        cardWriting: cardNote,
+        cardWriting: order.card_note ?? "",
         extraNote: "",
         notes: order.notes ?? "",
         price: order.subtotal,
@@ -819,7 +819,7 @@ function OrderPanel({
         recipientPhone: order.recipient_phone || order.customer_phone,
         senderPhone: order.sender_phone ?? "",
       }),
-    [order, cardNote, deposit, liveTotal],
+    [order, deposit, liveTotal],
   );
 
   const stageIndex = flow.indexOf(order.status);
