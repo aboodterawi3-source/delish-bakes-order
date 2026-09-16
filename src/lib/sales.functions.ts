@@ -399,7 +399,12 @@ export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
 
     const { data: updatedOrder, error: orderError } = await context.supabase
       .from("orders")
-      .update({ subtotal, total })
+      .update({
+        subtotal,
+        total,
+        last_edited_at: new Date().toISOString(),
+        last_edited_by: context.userId,
+      } as never)
       .eq("id", data.orderId)
       .select(SELECT)
       .single();
@@ -414,9 +419,9 @@ export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
       staff_name: staffName(context as never),
       action: "price_override",
       original_amount: Number(before?.unit_price ?? 0),
-      modified_amount: data.newUnitPrice,
+      modified_amount: data.newUnitPrice ?? Number(before?.unit_price ?? 0),
       discount_percent: null,
-      reason: "Unit price adjusted on the sales desk",
+      reason: "Order line edited on the order desk",
     });
 
     return order;
