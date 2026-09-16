@@ -863,86 +863,27 @@ function OrderPanel({
           </button>
         </div>
 
-        {/* Delivery order identity — order name, sender, recipient, region. */}
-        <section className="mt-4 space-y-3 rounded-2xl border border-border bg-background p-3.5">
-          <h3 className="text-sm font-bold text-foreground">بيانات الطلب · Delivery order</h3>
-          <label className="block text-sm font-bold text-foreground">
-            اسم الطلب · Order name
-            <input
-              value={orderName}
-              onChange={(event) => setOrderName(event.target.value)}
-              onBlur={() => onPatch({ order_name: orderName.trim() || null })}
-              placeholder="مثال: كيكة عيد ميلاد سارة"
-              className={field}
-            />
-          </label>
-          <label className="block text-sm font-bold text-foreground">
-            اسم العميل · Customer
-            <input
-              value={customerName}
-              onChange={(event) => setCustomerName(event.target.value)}
-              onBlur={() => customerName.trim() && onPatch({ customer_name: customerName.trim() })}
-              className={field}
-            />
-          </label>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block text-sm font-bold text-foreground">
-              رقم المرسل · Sender phone
-              <input
-                dir="ltr"
-                inputMode="tel"
-                value={senderPhone}
-                onChange={(event) => setSenderPhone(event.target.value)}
-                onBlur={() => onPatch({ sender_phone: senderPhone.trim() || null })}
-                className={field}
-              />
-            </label>
-            <label className="block text-sm font-bold text-foreground">
-              رقم المستلم · Recipient phone
-              <input
-                dir="ltr"
-                inputMode="tel"
-                value={recipientPhone}
-                onChange={(event) => setRecipientPhone(event.target.value)}
-                onBlur={() => onPatch({ recipient_phone: recipientPhone.trim() || null })}
-                className={field}
-              />
-            </label>
-          </div>
-          <label className="block text-sm font-bold text-foreground">
-            هاتف التواصل · Contact phone
-            <input
-              dir="ltr"
-              inputMode="tel"
-              value={customerPhone}
-              onChange={(event) => setCustomerPhone(event.target.value)}
-              onBlur={() => customerPhone.trim() && onPatch({ customer_phone: customerPhone.trim() })}
-              className={field}
-            />
-          </label>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block text-sm font-bold text-foreground">
-              التاريخ · Date
-              <input
-                type="date"
-                value={date}
-                onChange={(event) => setDate(event.target.value)}
-                onBlur={() => date && onPatch({ requested_date: date })}
-                className={field}
-              />
-            </label>
-            <label className="block text-sm font-bold text-foreground">
-              الوقت · Time
-              <input
-                type="time"
-                value={time}
-                onChange={(event) => setTime(event.target.value)}
-                onBlur={() => time && onPatch({ requested_time: time })}
-                className={field}
-              />
-            </label>
-          </div>
+        {/* Read-only order summary — every change is made in «تعديلات». */}
+        <section className="mt-4 space-y-1 rounded-2xl border border-border bg-background p-3.5 text-sm">
+          <h3 className="text-sm font-bold text-foreground">بيانات الطلب</h3>
+          <p className="text-foreground">{order.order_name?.trim() || "—"}</p>
+          <p className="text-muted-foreground">
+            {order.customer_name} · <span dir="ltr">{order.customer_phone}</span>
+          </p>
+          {order.sender_phone ? (
+            <p className="text-muted-foreground">المرسل: <span dir="ltr">{order.sender_phone}</span></p>
+          ) : null}
+          {order.recipient_phone ? (
+            <p className="text-muted-foreground">المستلم: <span dir="ltr">{order.recipient_phone}</span></p>
+          ) : null}
+          <p className="text-muted-foreground">
+            الموعد: {order.requested_date} · {order.requested_time.slice(0, 5)}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            لتعديل أي تفصيل استخدم قسم «تعديلات».
+          </p>
         </section>
+
 
         <section className="mt-5">
           <h3 className="text-sm font-bold text-foreground">حالة الطلب</h3>
