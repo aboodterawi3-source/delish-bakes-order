@@ -2,6 +2,8 @@ import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
+  ArrowDown,
+  ArrowUp,
   BadgeDollarSign,
   Bike,
   CalendarClock,
@@ -19,6 +21,9 @@ import {
 import { toast } from "sonner";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { OrdersCalendar } from "@/components/staff/OrdersCalendar";
+import { DateFilterBar } from "@/components/staff/DateFilterBar";
+import { isoDay, matchesDateFilter, type CustomRange, type DateFilterKey } from "@/lib/date-filter";
+import { reorderRanks, setQueueRanks } from "@/lib/queue.functions";
 import { useOrdersRealtime } from "@/hooks/use-orders-realtime";
 import {
   getSalesOrders,
@@ -250,6 +255,9 @@ export function OrdersWorkspace({ showShiftReport = false }: { showShiftReport?:
   const [shiftDate, setShiftDate] = useState(todayIso);
   const [report, setReport] = useState<ShiftReport | null>(null);
   const [mode, setMode] = useState<"list" | "calendar">("list");
+  const [dateKey, setDateKey] = useState<DateFilterKey>("all");
+  const [custom, setCustom] = useState<CustomRange>({ from: isoDay(0), to: isoDay(7) });
+  const reorderFn = useServerFn(setQueueRanks);
 
   const authorization = useQuery({
     queryKey: ["my-authorization"],
@@ -332,23 +340,56 @@ export function OrdersWorkspace({ showShiftReport = false }: { showShiftReport?:
 
   const list = useMemo(() => {
     const needle = search.trim().toLowerCase();
-    const rows = orders.data ?? [];
-    if (!needle) return rows;
-    return rows.filter((order) =>
-      [
-        order.customer_name,
-        order.customer_phone,
-        order.order_name ?? "",
-        order.sender_phone ?? "",
-        order.recipient_phone ?? "",
-        order.order_number,
-        order.area ?? "",
-      ]
-        .join(" ")
-        .toLowerCase()
-        .includes(needle),
+    const rows = (orders.data ?? []).filter((order) =>
+      matchesDateFilter(order.requested_date, dateKey, custom),
     );
-  }, [orders.data, search]);
+    const filtered = !needle
+      ? rows
+      : rows.filter((order) =>
+          [
+            order.customer_name,
+            order.customer_phone,
+            order.order_name ?? "",
+            order.sender_phone ?? "",
+            order.recipient_phone ?? "",
+            order.order_number,
+            order.area ?? "",
+          ]
+            .join(" ")
+            .toLowerCase()
+            .includes(needle),
+        );
+    // A manual queue position always comes first; the rest keep the date order.
+    return [...filtered].sort((a, b) => {
+      const rankA = a.queue_rank ?? Number.MAX_SAFE_INTEGER;
+      const rankB = b.queue_rank ?? Number.MAX_SAFE_INTEGER;
+      if (rankA !== rankB) return rankA - rankB;
+      const byDate = b.requested_date.localeCompare(a.requested_date);
+      if (byDate !== 0) return byDate;
+      return b.requested_time.localeCompare(a.requested_time);
+    });
+  }, [orders.data, search, dateKey, custom]);
+
+  /** Moves one order up or down the manual priority order. */
+  const onMove = useCallback(
+    async (id: string, direction: -1 | 1) => {
+      const items = reorderRanks(list, id, direction);
+      if (items.length === 0) return;
+      const ranks = new Map(items.map((item) => [item.orderId, item.queue_rank]));
+      queryClient.setQueryData<SalesOrder[]>(ORDERS_KEY, (rows) =>
+        (rows ?? []).map((order) =>
+          ranks.has(order.id) ? { ...order, queue_rank: ranks.get(order.id)! } : order,
+        ),
+      );
+      try {
+        await reorderFn({ data: { items } });
+      } catch (error) {
+        setMoneyError((error as Error).message);
+        void queryClient.invalidateQueries({ queryKey: ORDERS_KEY });
+      }
+    },
+    [list, queryClient, reorderFn],
+  );
 
   const selected = useMemo(
     () => (orders.data ?? []).find((order) => order.id === selectedId) ?? null,
@@ -415,6 +456,9 @@ export function OrdersWorkspace({ showShiftReport = false }: { showShiftReport?:
         ) : null}
       </div>
 
+      {/* Universal date filter: today, tomorrow, next 7 days, upcoming, past, custom. */}
+      <DateFilterBar value={dateKey} onChange={setDateKey} custom={custom} onCustom={setCustom} />
+
       {orders.isPending ? (
         <p className="py-10 text-center text-sm text-muted-foreground">جار تحميل الطلبات…</p>
       ) : orders.isError ? (
@@ -426,7 +470,7 @@ export function OrdersWorkspace({ showShiftReport = false }: { showShiftReport?:
       ) : (
         <ul className="mt-4 grid gap-3">
           {list.map((order) => (
-            <OrderCard key={order.id} order={order} onOpen={openOrder} onZoom={setZoomImage} />
+            <OrderCard key={order.id} order={order} onOpen={openOrder} onZoom={setZoomImage} onMove={onMove} />
           ))}
         </ul>
       )}
@@ -568,10 +612,13 @@ const OrderCard = memo(function OrderCard({
   order,
   onOpen,
   onZoom,
+  onMove,
 }: {
   order: SalesOrder;
   onOpen: (id: string) => void;
   onZoom: (url: string) => void;
+  /** Manual priority move: -1 = up, 1 = down. */
+  onMove: (id: string, direction: -1 | 1) => void;
 }) {
   const remaining = Math.max(order.total - order.deposit_paid, 0);
   return (
@@ -648,6 +695,25 @@ const OrderCard = memo(function OrderCard({
             <MessageCircle className="h-4 w-4" aria-hidden="true" /> إرسال تأكيد التعديل للواتساب
           </button>
         ) : null}
+        {/* Manual priority ordering (up / down). */}
+        <div className="ms-auto flex gap-2">
+          <button
+            type="button"
+            onClick={() => onMove(order.id, -1)}
+            aria-label="رفع أولوية الطلب"
+            className="grid min-h-12 min-w-12 place-items-center rounded-full border border-border text-foreground"
+          >
+            <ArrowUp className="h-4 w-4" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            onClick={() => onMove(order.id, 1)}
+            aria-label="تنزيل أولوية الطلب"
+            className="grid min-h-12 min-w-12 place-items-center rounded-full border border-border text-foreground"
+          >
+            <ArrowDown className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </div>
       </div>
     </li>
   );

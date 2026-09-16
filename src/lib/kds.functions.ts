@@ -44,6 +44,8 @@ export type KdsOrder = {
   schedule_updated_at: string | null;
   /** Set whenever sales/social edit the order; drives the kitchen alert. */
   last_edited_at: string | null;
+  /** Manual queue position set with the up/down buttons. */
+  queue_rank: number | null;
   created_at: string;
   items: KdsItem[];
   /** Most urgent priority across the order's lines; drives the card colour. */
@@ -165,6 +167,7 @@ export const getKitchenOrders = createServerFn({ method: "GET" })
       notes: order.notes,
       schedule_updated_at: order.schedule_updated_at,
       last_edited_at: order.last_edited_at ?? null,
+      queue_rank: order.queue_rank ?? null,
       created_at: order.created_at,
       items: itemsByOrder.get(order.id) ?? [],
       priority_color: highestPriority(

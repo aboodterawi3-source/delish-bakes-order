@@ -3,6 +3,8 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
+  ArrowDown,
+  ArrowUp,
   Bell,
   BellRing,
   PencilLine,
@@ -31,6 +33,9 @@ import { PRIORITY_META } from "@/lib/priority";
 import { esc, printDocument } from "@/lib/print";
 import bellAsset from "@/assets/Bell.mp3.asset.json";
 import { orderLabel } from "@/lib/order-label";
+import { DateFilterBar } from "@/components/staff/DateFilterBar";
+import { isoDay, matchesDateFilter, type CustomRange, type DateFilterKey } from "@/lib/date-filter";
+import { reorderRanks, setQueueRanks } from "@/lib/queue.functions";
 
 
 /**
@@ -89,21 +94,7 @@ ${order.notes ? `<div><b>ملاحظات:</b> ${esc(order.notes)}</div>` : ""}`;
   printDocument(`تذكرة مطبخ ${order.order_number}`, body, "body{font-size:13px}");
 }
 
-const isoDate = (offsetDays: number) => {
-  const date = new Date();
-  date.setDate(date.getDate() + offsetDays);
-  return date.toISOString().slice(0, 10);
-};
-
 const ORDERS_KEY = ["kds-orders"] as const;
-
-type Filter = "today" | "tomorrow" | "all";
-
-const filterMeta: Record<Filter, { ar: string; en: string }> = {
-  today: { ar: "طلبات اليوم", en: "Today" },
-  tomorrow: { ar: "طلبات الغد", en: "Tomorrow" },
-  all: { ar: "كل الطلبات النشطة", en: "All active" },
-};
 
 /** The kitchen board is split into three visible stages. */
 const STAGES: { key: KitchenStage; ar: string; en: string; chip: string }[] = [
@@ -123,7 +114,9 @@ export function KitchenPanel() {
   const fetchAccess = useServerFn(getKitchenAccess);
   const applyStage = useServerFn(setKitchenStage);
 
-  const [filter, setFilter] = useState<Filter>("today");
+  const reorderFn = useServerFn(setQueueRanks);
+  const [filter, setFilter] = useState<DateFilterKey>("today");
+  const [custom, setCustom] = useState<CustomRange>({ from: isoDay(0), to: isoDay(7) });
   const [view, setView] = useState<"board" | "menu">("board");
   const [shiftOn, setShiftOn] = useState(false);
   const [zoom, setZoom] = useState<string | null>(null);
@@ -242,17 +235,20 @@ export function KitchenPanel() {
 
   const visible = useMemo(() => {
     const list = orders.data ?? [];
-    const day = filter === "today" ? isoDate(0) : filter === "tomorrow" ? isoDate(1) : null;
     return list
-      .filter((order) => (day ? order.requested_date === day : true))
+      .filter((order) => matchesDateFilter(order.requested_date, filter, custom))
       .sort((a, b) => {
+        // A manual queue position always wins over the automatic ordering.
+        const rankA = a.queue_rank ?? Number.MAX_SAFE_INTEGER;
+        const rankB = b.queue_rank ?? Number.MAX_SAFE_INTEGER;
+        if (rankA !== rankB) return rankA - rankB;
         const byDate = a.requested_date.localeCompare(b.requested_date);
         if (byDate !== 0) return byDate;
         const byTime = a.requested_time.localeCompare(b.requested_time);
         if (byTime !== 0) return byTime;
         return PRIORITY_META[a.priority_color].rank - PRIORITY_META[b.priority_color].rank;
       });
-  }, [orders.data, filter]);
+  }, [orders.data, filter, custom]);
 
   /** Moves the card between stages instantly, then confirms with the server. */
   const onStage = useCallback(
@@ -271,6 +267,28 @@ export function KitchenPanel() {
       }
     },
     [applyStage, queryClient],
+  );
+
+  /** Manual up / down reordering of the preparation queue. */
+  const onMove = useCallback(
+    async (id: string, direction: -1 | 1) => {
+      const stage = visible.find((order) => order.id === id)?.status;
+      const siblings = visible.filter((order) => stageOf(order.status) === stageOf(stage ?? "new"));
+      const items = reorderRanks(siblings, id, direction);
+      if (items.length === 0) return;
+      const ranks = new Map(items.map((item) => [item.orderId, item.queue_rank]));
+      queryClient.setQueryData<KdsOrder[]>(ORDERS_KEY, (rows) =>
+        (rows ?? []).map((order) =>
+          ranks.has(order.id) ? { ...order, queue_rank: ranks.get(order.id)! } : order,
+        ),
+      );
+      try {
+        await reorderFn({ data: { items } });
+      } catch {
+        void queryClient.invalidateQueries({ queryKey: ORDERS_KEY });
+      }
+    },
+    [queryClient, reorderFn, visible],
   );
 
   const acknowledge = useCallback(() => {
@@ -379,23 +397,9 @@ export function KitchenPanel() {
         </div>
       )}
 
-      <div className="no-scrollbar flex w-full max-w-full gap-2 overflow-x-auto overscroll-x-contain px-4 py-3.5">
-            {(Object.keys(filterMeta) as Filter[]).map((key) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setFilter(key)}
-                aria-pressed={filter === key}
-                className={`min-h-11 shrink-0 rounded-full px-4 text-xs font-bold transition-all ${
-                  filter === key
-                    ? "bg-[#8B4513] text-white shadow-sm"
-                    : "border border-slate-200 bg-white text-[#5D2E17] hover:bg-slate-50"
-                }`}
-              >
-                {filterMeta[key].ar}
-              </button>
-            ))}
-          </div>
+      <div className="px-4">
+        <DateFilterBar value={filter} onChange={setFilter} custom={custom} onCustom={setCustom} />
+      </div>
 
           <main className="w-full min-w-0 px-4 pb-8">
             {orders.isLoading && <p className="p-6 text-sm text-[#7A6458]">جارٍ تحميل الطلبات…</p>}
@@ -429,6 +433,7 @@ export function KitchenPanel() {
                             busy={pending === order.id}
                             alerted={alerts.includes(order.id)}
                             onStage={onStage}
+                            onMove={onMove}
                             onZoom={setZoom}
                           />
                         ))}
@@ -468,6 +473,7 @@ const KdsCard = memo(function KdsCard({
   busy,
   alerted = false,
   onStage,
+  onMove,
   onZoom,
 }: {
   order: KdsOrder;
@@ -475,6 +481,8 @@ const KdsCard = memo(function KdsCard({
   /** True while this order still waits for a kitchen acknowledgement. */
   alerted?: boolean;
   onStage: (id: string, stage: KitchenStage) => void;
+  /** Manual priority move: -1 = up (prepare sooner), 1 = down. */
+  onMove: (id: string, direction: -1 | 1) => void;
   onZoom: (url: string) => void;
 }) {
   const meta = PRIORITY_META[order.priority_color];
@@ -517,6 +525,25 @@ const KdsCard = memo(function KdsCard({
            <span className="rounded-full bg-card/85 px-2.5 py-0.5 text-[10px] font-bold text-foreground">
             {meta.ar}
           </span>
+          {/* Manual priority: move this order up or down the queue. */}
+          <div className="flex gap-1">
+            <button
+              type="button"
+              onClick={() => onMove(order.id, -1)}
+              aria-label="رفع الأولوية"
+              className="grid h-9 w-9 place-items-center rounded-xl bg-card/90 text-primary shadow-xs hover:scale-105 active:scale-95"
+            >
+              <ArrowUp className="h-4 w-4" aria-hidden />
+            </button>
+            <button
+              type="button"
+              onClick={() => onMove(order.id, 1)}
+              aria-label="تنزيل الأولوية"
+              className="grid h-9 w-9 place-items-center rounded-xl bg-card/90 text-primary shadow-xs hover:scale-105 active:scale-95"
+            >
+              <ArrowDown className="h-4 w-4" aria-hidden />
+            </button>
+          </div>
         </div>
       </div>
 

@@ -1,20 +1,28 @@
 import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChefHat, Crown, Inbox, Loader2, LogOut, MessageSquareHeart, ShoppingBag } from "lucide-react";
+import { ChefHat, Crown, History, Inbox, Loader2, LogOut, MessageSquareHeart, ShoppingBag } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminPanel } from "@/components/staff/AdminPanel";
 import { SalesPanel } from "@/components/staff/SalesPanel";
 import { KitchenPanel } from "@/components/staff/KitchenPanel";
 import { SocialPanel } from "@/components/staff/SocialPanel";
 import { MessagesPanel } from "@/components/staff/MessagesPanel";
+import { HistoryPanel } from "@/components/staff/HistoryPanel";
 
-type StaffTab = "sales" | "kitchen" | "social" | "messages" | "admin";
+type StaffTab = "sales" | "kitchen" | "social" | "history" | "messages" | "admin";
 
 const TABS: { value: StaffTab; ar: string; en: string; icon: typeof Crown; roles?: string[] }[] = [
   { value: "sales", ar: "المبيعات", en: "Sales", icon: ShoppingBag },
   { value: "kitchen", ar: "المطبخ", en: "Kitchen", icon: ChefHat },
   { value: "social", ar: "السوشال", en: "Social", icon: MessageSquareHeart },
+  {
+    value: "history",
+    ar: "السجل",
+    en: "History",
+    icon: History,
+    roles: ["sales", "social", "admin"],
+  },
   {
     value: "messages",
     ar: "الرسائل",
@@ -194,6 +202,7 @@ function StaffPortalPage() {
       {active === "sales" && <SalesPanel />}
       {active === "kitchen" && <KitchenPanel />}
       {active === "social" && <SocialPanel />}
+      {active === "history" && <HistoryPanel />}
       {active === "messages" && <MessagesPanel />}
       {active === "admin" && <AdminPanel />}
     </div>
