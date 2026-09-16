@@ -8,7 +8,7 @@ import {
   Loader2,
   Pencil,
   Plus,
-  Star,
+
   Trash2,
   X,
 } from "lucide-react";
@@ -503,8 +503,9 @@ type ProductDraft = {
   sizes: { label: string; price: string }[];
   image_url: string | null;
   tint: string;
-  rating: string;
-  rating_count: string;
+  filling_ar: string;
+  filling_en: string;
+  price_on_request: boolean;
   is_available: boolean;
   is_popular: boolean;
   priority_color: PriorityColor | null;
@@ -521,8 +522,9 @@ const emptyProduct: ProductDraft = {
   sizes: DEFAULT_SIZES.map((size) => ({ label: size.label, price: "" })),
   image_url: null,
   tint: "cream",
-  rating: "4.8",
-  rating_count: "0",
+  filling_ar: "",
+  filling_en: "",
+  price_on_request: false,
   is_available: true,
   is_popular: true,
   priority_color: null,
@@ -543,8 +545,9 @@ const toDraft = (product: StorefrontProduct): ProductDraft => ({
   })),
   image_url: product.image_url,
   tint: product.tint ?? "cream",
-  rating: String(product.rating),
-  rating_count: String(product.rating_count),
+  filling_ar: product.filling_ar ?? "",
+  filling_en: product.filling_en ?? "",
+  price_on_request: product.price_on_request,
   is_available: product.is_available,
   is_popular: product.is_popular,
   priority_color: product.priority_color ?? null,
@@ -583,8 +586,9 @@ function ProductsEditor({
             .map((size) => ({ label: size.label.trim(), price: Number(size.price) || 0 })),
           image_url: input.image_url,
           tint: input.tint,
-          rating: Number(input.rating) || 0,
-          rating_count: Number(input.rating_count) || 0,
+          filling_ar: input.filling_ar,
+          filling_en: input.filling_en,
+          price_on_request: input.price_on_request,
           is_available: input.is_available,
           is_popular: input.is_popular,
           priority_color: input.priority_color,
@@ -647,9 +651,8 @@ function ProductsEditor({
                <p className="flex min-w-0 flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
                 <span>{product.price.toFixed(2)} د.أ</span>
                 {product.sizes.length > 0 && <span>{product.sizes.map((s) => s.label).join(" · ")}</span>}
-                <span className="inline-flex items-center gap-0.5">
-                  <Star className="h-3 w-3 fill-gold text-gold" aria-hidden /> {product.rating.toFixed(1)}
-                </span>
+                {product.price_on_request && <span className="font-bold text-primary">السعر عند الطلب</span>}
+                {product.filling_ar && <span>حشوة: {product.filling_ar}</span>}
               </p>
             </div>
 
@@ -749,16 +752,23 @@ function ProductsEditor({
               <span className={label}>السعر الأساسي · Base price</span>
               <input type="number" min="0" step="0.01" value={draft.price} onChange={(e) => setDraft({ ...draft, price: e.target.value })} className={field} required />
             </label>
-            <div className="grid gap-3 min-[360px]:grid-cols-2">
-              <label className="space-y-1.5">
-                <span className={label}>التقييم · Rating</span>
-                <input type="number" min="0" max="5" step="0.1" value={draft.rating} onChange={(e) => setDraft({ ...draft, rating: e.target.value })} className={field} />
-              </label>
-              <label className="space-y-1.5">
-                <span className={label}>عدد التقييمات</span>
-                <input type="number" min="0" step="1" value={draft.rating_count} onChange={(e) => setDraft({ ...draft, rating_count: e.target.value })} className={field} />
-              </label>
-            </div>
+            <label className="space-y-1.5">
+              <span className={label}>نوع الحشوة · Filling (عربي)</span>
+              <input value={draft.filling_ar} onChange={(e) => setDraft({ ...draft, filling_ar: e.target.value })} placeholder="نوتيلا، لوتس، فراولة…" className={field} />
+            </label>
+            <label className="space-y-1.5">
+              <span className={label}>Filling type (English)</span>
+              <input value={draft.filling_en} onChange={(e) => setDraft({ ...draft, filling_en: e.target.value })} placeholder="Nutella, Lotus, Strawberry…" className={field} />
+            </label>
+            <label className="inline-flex items-center gap-2 text-xs font-bold text-foreground sm:col-span-2">
+              <input
+                type="checkbox"
+                checked={draft.price_on_request}
+                onChange={(e) => setDraft({ ...draft, price_on_request: e.target.checked })}
+                className="h-5 w-5 rounded border-input"
+              />
+              السعر عند الطلب · Price on request (يخفي السعر ويظهر زر «اطلب السعر»)
+            </label>
           </div>
 
           <fieldset className="space-y-2">

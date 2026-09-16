@@ -30,7 +30,14 @@ export type BuilderSpec = {
   message?: string | undefined;
 };
 
-export type LineSpec = CatalogSpec | BuilderSpec;
+/** A product managed in the storefront CMS; priced from the database. */
+export type CmsSpec = {
+  kind: "cms";
+  productId: string;
+  size?: string | null;
+};
+
+export type LineSpec = CatalogSpec | BuilderSpec | CmsSpec;
 
 export type PricedLine = {
   name_ar: string;
@@ -50,7 +57,7 @@ const pick = (list: Option[] | undefined, id: string | undefined | null) =>
 export type LineExtras = { ar: string[]; en: string[] };
 
 export function priceLine(
-  spec: LineSpec,
+  spec: CatalogSpec | BuilderSpec,
   quantity: number,
   notes: string | null,
   extras: LineExtras = { ar: [], en: [] },

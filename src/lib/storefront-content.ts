@@ -55,8 +55,11 @@ export type StorefrontProduct = {
   image_url: string | null;
   is_available: boolean;
   is_popular: boolean;
-  rating: number;
-  rating_count: number;
+  /** Optional filling shown to customers (e.g. Nutella, Lotus). */
+  filling_ar: string | null;
+  filling_en: string | null;
+  /** True when the cake has no fixed price and the customer must ask for one. */
+  price_on_request: boolean;
   sizes: SizePrice[];
   tint: string | null;
   sort_order: number;
@@ -74,7 +77,7 @@ export const BANNER_SELECT = "id, is_active, discount_text, subtitle, button_tex
 export const CATEGORY_SELECT =
   "id, name_en, name_ar, image_url, tint, sort_order, is_active, priority_color";
 export const PRODUCT_SELECT =
-  "id, slug, name_ar, name_en, description_ar, description_en, category, category_id, price, image_url, is_available, is_popular, rating, rating_count, sizes, tint, sort_order, priority_color";
+  "id, slug, name_ar, name_en, description_ar, description_en, category, category_id, price, image_url, is_available, is_popular, filling_ar, filling_en, price_on_request, sizes, tint, sort_order, priority_color";
 
 /** Normalises a jsonb size list coming back from the database. */
 export function parseSizes(value: unknown): SizePrice[] {
@@ -93,8 +96,7 @@ export function normaliseProduct(row: Record<string, unknown>): StorefrontProduc
   return {
     ...(row as unknown as StorefrontProduct),
     price: Number(row['price'] ?? 0),
-    rating: Number(row['rating'] ?? 0),
-    rating_count: Number(row['rating_count'] ?? 0),
+    price_on_request: row['price_on_request'] === true,
     sizes: parseSizes(row['sizes']),
   };
 }
