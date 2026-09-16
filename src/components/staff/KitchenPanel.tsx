@@ -397,23 +397,9 @@ export function KitchenPanel() {
         </div>
       )}
 
-      <div className="no-scrollbar flex w-full max-w-full gap-2 overflow-x-auto overscroll-x-contain px-4 py-3.5">
-            {(Object.keys(filterMeta) as Filter[]).map((key) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setFilter(key)}
-                aria-pressed={filter === key}
-                className={`min-h-11 shrink-0 rounded-full px-4 text-xs font-bold transition-all ${
-                  filter === key
-                    ? "bg-[#8B4513] text-white shadow-sm"
-                    : "border border-slate-200 bg-white text-[#5D2E17] hover:bg-slate-50"
-                }`}
-              >
-                {filterMeta[key].ar}
-              </button>
-            ))}
-          </div>
+      <div className="px-4">
+        <DateFilterBar value={filter} onChange={setFilter} custom={custom} onCustom={setCustom} />
+      </div>
 
           <main className="w-full min-w-0 px-4 pb-8">
             {orders.isLoading && <p className="p-6 text-sm text-[#7A6458]">جارٍ تحميل الطلبات…</p>}
