@@ -1158,17 +1158,6 @@ function OrderPanel({
         {/* Card writing and the official confirmation message. */}
         <section className="mt-6 rounded-2xl border border-border p-3.5">
           <h3 className="text-sm font-bold text-foreground">👑 رسالة تأكيد الطلب</h3>
-          <label className="mt-3 block text-sm font-bold text-foreground">
-            الكتابة على الكرت
-            <input
-              type="text"
-              maxLength={1000}
-              value={cardNote}
-              onChange={(event) => setCardNote(event.target.value)}
-              onBlur={() => onPatch({ card_note: cardNote.trim() || null })}
-              className={field}
-            />
-          </label>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <button
               type="button"
