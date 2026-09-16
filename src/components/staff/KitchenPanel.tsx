@@ -114,7 +114,9 @@ export function KitchenPanel() {
   const fetchAccess = useServerFn(getKitchenAccess);
   const applyStage = useServerFn(setKitchenStage);
 
-  const [filter, setFilter] = useState<Filter>("today");
+  const reorderFn = useServerFn(setQueueRanks);
+  const [filter, setFilter] = useState<DateFilterKey>("today");
+  const [custom, setCustom] = useState<CustomRange>({ from: isoDay(0), to: isoDay(7) });
   const [view, setView] = useState<"board" | "menu">("board");
   const [shiftOn, setShiftOn] = useState(false);
   const [zoom, setZoom] = useState<string | null>(null);
@@ -233,17 +235,20 @@ export function KitchenPanel() {
 
   const visible = useMemo(() => {
     const list = orders.data ?? [];
-    const day = filter === "today" ? isoDate(0) : filter === "tomorrow" ? isoDate(1) : null;
     return list
-      .filter((order) => (day ? order.requested_date === day : true))
+      .filter((order) => matchesDateFilter(order.requested_date, filter, custom))
       .sort((a, b) => {
+        // A manual queue position always wins over the automatic ordering.
+        const rankA = a.queue_rank ?? Number.MAX_SAFE_INTEGER;
+        const rankB = b.queue_rank ?? Number.MAX_SAFE_INTEGER;
+        if (rankA !== rankB) return rankA - rankB;
         const byDate = a.requested_date.localeCompare(b.requested_date);
         if (byDate !== 0) return byDate;
         const byTime = a.requested_time.localeCompare(b.requested_time);
         if (byTime !== 0) return byTime;
         return PRIORITY_META[a.priority_color].rank - PRIORITY_META[b.priority_color].rank;
       });
-  }, [orders.data, filter]);
+  }, [orders.data, filter, custom]);
 
   /** Moves the card between stages instantly, then confirms with the server. */
   const onStage = useCallback(
