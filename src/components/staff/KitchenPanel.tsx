@@ -269,6 +269,28 @@ export function KitchenPanel() {
     [applyStage, queryClient],
   );
 
+  /** Manual up / down reordering of the preparation queue. */
+  const onMove = useCallback(
+    async (id: string, direction: -1 | 1) => {
+      const stage = visible.find((order) => order.id === id)?.status;
+      const siblings = visible.filter((order) => stageOf(order.status) === stageOf(stage ?? "new"));
+      const items = reorderRanks(siblings, id, direction);
+      if (items.length === 0) return;
+      const ranks = new Map(items.map((item) => [item.orderId, item.queue_rank]));
+      queryClient.setQueryData<KdsOrder[]>(ORDERS_KEY, (rows) =>
+        (rows ?? []).map((order) =>
+          ranks.has(order.id) ? { ...order, queue_rank: ranks.get(order.id)! } : order,
+        ),
+      );
+      try {
+        await reorderFn({ data: { items } });
+      } catch {
+        void queryClient.invalidateQueries({ queryKey: ORDERS_KEY });
+      }
+    },
+    [queryClient, reorderFn, visible],
+  );
+
   const acknowledge = useCallback(() => {
     setAlerts([]);
     const audio = audioRef.current;
