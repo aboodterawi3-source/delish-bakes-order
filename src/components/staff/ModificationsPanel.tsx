@@ -20,6 +20,7 @@ import { applyOrderDiscount, getMyAuthorization } from "@/lib/authorization.func
 import { DELIVERY_ZONES, OTHER_GOVERNORATES_AREA, feeForArea } from "@/lib/delivery-zones";
 import { useStorefrontContent } from "@/hooks/use-storefront-content";
 import type { StorefrontProduct } from "@/lib/storefront-content";
+import { WebsiteRebuildPanel } from "@/components/staff/WebsiteRebuildPanel";
 import {
   CakeCustomizationPanel,
   customizationSummary,
@@ -184,12 +185,13 @@ export function ModificationsPanel() {
         <OrderEditor
           key={selected.id}
           order={selected}
-          busy={save.isPending || saveItem.isPending}
+          busy={save.isPending || saveItem.isPending || rebuild.isPending}
           mayDiscount={Boolean(authorization.data?.allow_custom_discount)}
           discountCap={authorization.data?.max_discount_percent ?? 0}
           products={storefront.data?.products ?? []}
           onPatch={(patch) => save.mutate({ orderId: selected.id, ...patch })}
           onItemPatch={(patch) => saveItem.mutate({ orderId: selected.id, ...patch })}
+          onReplaceItems={(lines) => rebuild.mutate({ orderId: selected.id, lines })}
           onDiscount={(percent, reason) =>
             discount.mutate({ orderId: selected.id, percent, reason })
           }
@@ -207,6 +209,7 @@ function OrderEditor({
   products,
   onPatch,
   onItemPatch,
+  onReplaceItems,
   onDiscount,
 }: {
   order: SalesOrder;
@@ -216,6 +219,7 @@ function OrderEditor({
   discountCap: number;
   onPatch: (patch: Omit<OrderPatch, "orderId">) => void;
   onItemPatch: (patch: Omit<OrderItemPatch, "orderId">) => void;
+  onReplaceItems: (lines: RebuildLine[]) => void;
   onDiscount: (percent: number, reason: string) => void;
 }) {
   const [orderName, setOrderName] = useState(order.order_name ?? "");
