@@ -293,16 +293,6 @@ export function OrdersWorkspace({ showShiftReport = false }: { showShiftReport?:
     },
   });
 
-  const updateItem = useMutation({
-    mutationFn: (input: OrderItemPatch) => updateItemFn({ data: input }),
-    onSuccess: (updatedOrder) => {
-      setMoneyError(null);
-      queryClient.setQueryData<SalesOrder[]>(ORDERS_KEY, (rows) =>
-        (rows ?? []).map((order) => (order.id === updatedOrder.id ? updatedOrder : order)),
-      );
-    },
-    onError: (error: Error) => setMoneyError(error.message),
-  });
 
   const discount = useMutation({
     mutationFn: (input: { orderId: string; percent: number; reason: string }) =>
