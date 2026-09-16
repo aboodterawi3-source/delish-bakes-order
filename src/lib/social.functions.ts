@@ -193,5 +193,6 @@ export const createSocialOrder = createServerFn({ method: "POST" })
       order_number: order.order_number,
       total: Number(order.total ?? 0),
       confirmation_message: message,
+      staff_code: (order.staff_code as number | null) ?? null,
     };
   });
