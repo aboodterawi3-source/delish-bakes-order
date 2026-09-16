@@ -92,35 +92,6 @@ export function SocialPanel() {
   const remaining = remainingBalance(grandTotal, paidAmount);
 
 
-  /** Customer-facing summary — internal staff notes are deliberately excluded. */
-  const summary = useMemo(() => {
-    const lines = [
-      "طلب جديد · Delish Cake & Bake",
-      `الاسم: ${form.customer_name || "—"}`,
-      `الهاتف: ${form.customer_phone || "—"}`,
-      `تفاصيل الطلب: ${form.order_details.trim() || "—"}`,
-      `الكمية: ${form.quantity}`,
-      `الاستلام: ${form.method === "delivery" ? "توصيل" : "استلام من المحل"}`,
-      `طريقة الدفع: ${paymentLabel}`,
-      `تاريخ ووقت التسليم: ${form.requested_date || "—"} ${form.requested_time || ""}`.trim(),
-    ];
-    if (form.method === "delivery" && form.area) {
-      lines.push(`المنطقة: ${form.area}`);
-      lines.push(
-        form.area === OTHER_GOVERNORATES_AREA
-          ? "أجرة التوصيل: ٥–٨ د.أ يحددها الفريق حسب العنوان"
-          : `أجرة التوصيل: ${deliveryFee.toFixed(2)} د.أ`,
-      );
-    }
-    if (form.method === "delivery" && form.address.trim()) lines.push(`العنوان: ${form.address.trim()}`);
-    if (form.event_date) lines.push(`تاريخ المناسبة: ${form.event_date}`);
-    if (form.is_urgent) lines.push("🚨 طلب مستعجل");
-    if (extras.ar.length) lines.push(...extras.ar.map((line) => `• ${line}`));
-    const extraNotes = customization.notes.trim();
-    if (extraNotes) lines.push(`ملاحظات إضافية: ${extraNotes}`);
-    if (form.design_notes.trim()) lines.push(`ملاحظات التصميم: ${form.design_notes.trim()}`);
-    return lines.join("\n");
-  }, [form, extras, customization.notes, paymentLabel, deliveryFee]);
 
   /** Official confirmation message. The order number is filled in on the server. */
   const confirmationTemplate = useMemo(
@@ -241,6 +212,9 @@ export function SocialPanel() {
   const onSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     submit.mutate({
+      order_name: form.order_name,
+      sender_phone: form.sender_phone || customization.senderPhone,
+      recipient_phone: form.recipient_phone || customization.recipientPhone,
       customer_name: form.customer_name,
       customer_phone: form.customer_phone,
       order_details: form.order_details,
