@@ -255,6 +255,9 @@ export function OrdersWorkspace({ showShiftReport = false }: { showShiftReport?:
   const [shiftDate, setShiftDate] = useState(todayIso);
   const [report, setReport] = useState<ShiftReport | null>(null);
   const [mode, setMode] = useState<"list" | "calendar">("list");
+  const [dateKey, setDateKey] = useState<DateFilterKey>("all");
+  const [custom, setCustom] = useState<CustomRange>({ from: isoDay(0), to: isoDay(7) });
+  const reorderFn = useServerFn(setQueueRanks);
 
   const authorization = useQuery({
     queryKey: ["my-authorization"],
@@ -337,23 +340,56 @@ export function OrdersWorkspace({ showShiftReport = false }: { showShiftReport?:
 
   const list = useMemo(() => {
     const needle = search.trim().toLowerCase();
-    const rows = orders.data ?? [];
-    if (!needle) return rows;
-    return rows.filter((order) =>
-      [
-        order.customer_name,
-        order.customer_phone,
-        order.order_name ?? "",
-        order.sender_phone ?? "",
-        order.recipient_phone ?? "",
-        order.order_number,
-        order.area ?? "",
-      ]
-        .join(" ")
-        .toLowerCase()
-        .includes(needle),
+    const rows = (orders.data ?? []).filter((order) =>
+      matchesDateFilter(order.requested_date, dateKey, custom),
     );
-  }, [orders.data, search]);
+    const filtered = !needle
+      ? rows
+      : rows.filter((order) =>
+          [
+            order.customer_name,
+            order.customer_phone,
+            order.order_name ?? "",
+            order.sender_phone ?? "",
+            order.recipient_phone ?? "",
+            order.order_number,
+            order.area ?? "",
+          ]
+            .join(" ")
+            .toLowerCase()
+            .includes(needle),
+        );
+    // A manual queue position always comes first; the rest keep the date order.
+    return [...filtered].sort((a, b) => {
+      const rankA = a.queue_rank ?? Number.MAX_SAFE_INTEGER;
+      const rankB = b.queue_rank ?? Number.MAX_SAFE_INTEGER;
+      if (rankA !== rankB) return rankA - rankB;
+      const byDate = b.requested_date.localeCompare(a.requested_date);
+      if (byDate !== 0) return byDate;
+      return b.requested_time.localeCompare(a.requested_time);
+    });
+  }, [orders.data, search, dateKey, custom]);
+
+  /** Moves one order up or down the manual priority order. */
+  const onMove = useCallback(
+    async (id: string, direction: -1 | 1) => {
+      const items = reorderRanks(list, id, direction);
+      if (items.length === 0) return;
+      const ranks = new Map(items.map((item) => [item.orderId, item.queue_rank]));
+      queryClient.setQueryData<SalesOrder[]>(ORDERS_KEY, (rows) =>
+        (rows ?? []).map((order) =>
+          ranks.has(order.id) ? { ...order, queue_rank: ranks.get(order.id)! } : order,
+        ),
+      );
+      try {
+        await reorderFn({ data: { items } });
+      } catch (error) {
+        setMoneyError((error as Error).message);
+        void queryClient.invalidateQueries({ queryKey: ORDERS_KEY });
+      }
+    },
+    [list, queryClient, reorderFn],
+  );
 
   const selected = useMemo(
     () => (orders.data ?? []).find((order) => order.id === selectedId) ?? null,
