@@ -3,7 +3,8 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertRole, type StaffRoleName } from "@/lib/role-guard";
 import { feeForArea } from "@/lib/delivery-zones";
 
-const SALES_ROLES: StaffRoleName[] = ["sales", "admin"];
+/** The order desk: sales, social media and admins all manage the same orders. */
+const SALES_ROLES: StaffRoleName[] = ["sales", "admin", "social"];
 
 
 export type SalesStatus =
