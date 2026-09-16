@@ -28,12 +28,10 @@ export function StorefrontProductModal({
   product,
   onClose,
   onAdd,
-  onMoreOptions,
 }: {
   product: StorefrontProduct | null;
   onClose: () => void;
   onAdd: (payload: ModalAddPayload) => void;
-  onMoreOptions?: (productId: string) => void;
 }) {
   const { t, lang } = useLang();
   const ar = lang === "ar";
@@ -42,6 +40,7 @@ export function StorefrontProductModal({
   const [size, setSize] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState("");
+  const [customization, setCustomization] = useState<Customization>(emptyCustomization);
 
   useDismissable(Boolean(product), onClose);
 
@@ -50,6 +49,7 @@ export function StorefrontProductModal({
       setSize(product.sizes[0]?.label ?? null);
       setQuantity(1);
       setNotes("");
+      setCustomization(emptyCustomization);
     }
   }, [product]);
 
@@ -149,6 +149,9 @@ export function StorefrontProductModal({
                   ))}
                 </div>
               )}
+
+              {/* Full customization (candles, balloons, topper, gift, design image). */}
+              <CakeCustomizationPanel value={customization} onChange={setCustomization} />
 
               <div>
                 <label htmlFor={notesId} className="mb-2 block text-xs font-bold uppercase tracking-wide text-muted-foreground">
