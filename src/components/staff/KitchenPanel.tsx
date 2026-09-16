@@ -4,6 +4,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
   Bell,
+  BellRing,
+  PencilLine,
   CheckCircle2,
   ChefHat,
   Clock3,
@@ -28,6 +30,7 @@ import {
 import { PRIORITY_META } from "@/lib/priority";
 import { esc, printDocument } from "@/lib/print";
 import bellAsset from "@/assets/Bell.mp3.asset.json";
+import { orderLabel } from "@/lib/order-label";
 
 
 /**
@@ -127,6 +130,9 @@ export function KitchenPanel() {
   const [pending, setPending] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const knownIds = useRef<Set<string> | null>(null);
+  /** Orders that arrived or were edited and still need a kitchen acknowledgement. */
+  const [alerts, setAlerts] = useState<string[]>([]);
+  const editStamps = useRef<Map<string, string | null> | null>(null);
 
   const access = useQuery({
     queryKey: ["kds-access"],
@@ -185,10 +191,43 @@ export function KitchenPanel() {
       knownIds.current = ids;
       return;
     }
-    const fresh = list.some((order) => !knownIds.current?.has(order.id));
+    const fresh = list.filter((order) => !knownIds.current?.has(order.id)).map((order) => order.id);
     knownIds.current = ids;
-    if (fresh && shiftOn) void chime();
-  }, [orders.data, shiftOn, chime]);
+    if (fresh.length) setAlerts((current) => [...new Set([...current, ...fresh])]);
+  }, [orders.data]);
+
+  // Any edit made from sales/social raises the same alert as a new arrival.
+  useEffect(() => {
+    const list = orders.data;
+    if (!list) return;
+    const stamps = new Map(list.map((order) => [order.id, order.last_edited_at]));
+    if (editStamps.current === null) {
+      editStamps.current = stamps;
+      return;
+    }
+    const changed = list
+      .filter((order) => {
+        const previous = editStamps.current?.get(order.id);
+        return previous !== undefined && order.last_edited_at && order.last_edited_at !== previous;
+      })
+      .map((order) => order.id);
+    editStamps.current = stamps;
+    if (changed.length) setAlerts((current) => [...new Set([...current, ...changed])]);
+  }, [orders.data]);
+
+  // The bell repeats until someone presses Acknowledged.
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (alerts.length > 0 && shiftOn) {
+      audio.loop = true;
+      audio.play().catch(() => setShiftOn(false));
+    } else {
+      audio.loop = false;
+      audio.pause();
+      audio.currentTime = 0;
+    }
+  }, [alerts, shiftOn]);
 
   useOrdersRealtime(ORDERS_KEY, allowed, "kds-orders-live");
 
@@ -233,6 +272,16 @@ export function KitchenPanel() {
     },
     [applyStage, queryClient],
   );
+
+  const acknowledge = useCallback(() => {
+    setAlerts([]);
+    const audio = audioRef.current;
+    if (audio) {
+      audio.loop = false;
+      audio.pause();
+      audio.currentTime = 0;
+    }
+  }, []);
 
   const signOut = useCallback(async () => {
     await queryClient.cancelQueries();
@@ -310,6 +359,25 @@ export function KitchenPanel() {
           </button>
         </div>
       </header>
+
+      {alerts.length > 0 && (
+        <div
+          role="alert"
+          className="sticky top-[76px] z-20 mx-4 mt-3 flex flex-wrap items-center gap-3 rounded-2xl bg-[#8B4513] px-4 py-3 text-white shadow-lg"
+        >
+          <BellRing className="h-5 w-5 animate-pulse" aria-hidden />
+          <p className="min-w-0 flex-1 text-sm font-bold">
+            {alerts.length} طلب جديد أو معدّل يحتاج انتباهك · New / modified orders
+          </p>
+          <button
+            type="button"
+            onClick={acknowledge}
+            className="min-h-11 rounded-full bg-white px-5 text-sm font-extrabold text-[#8B4513] shadow-sm hover:bg-[#FDE2CF]"
+          >
+            تم الاطلاع · Acknowledged
+          </button>
+        </div>
+      )}
 
       <div className="no-scrollbar flex w-full max-w-full gap-2 overflow-x-auto overscroll-x-contain px-4 py-3.5">
             {(Object.keys(filterMeta) as Filter[]).map((key) => (
@@ -397,11 +465,14 @@ export function KitchenPanel() {
 const KdsCard = memo(function KdsCard({
   order,
   busy,
+  alerted = false,
   onStage,
   onZoom,
 }: {
   order: KdsOrder;
   busy: boolean;
+  /** True while this order still waits for a kitchen acknowledgement. */
+  alerted?: boolean;
   onStage: (id: string, stage: KitchenStage) => void;
   onZoom: (url: string) => void;
 }) {
@@ -417,12 +488,17 @@ const KdsCard = memo(function KdsCard({
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
         <div className="min-w-0">
           <h2 className="truncate font-sans text-base font-extrabold">
-            {order.order_number} · {order.customer_name}
+            {orderLabel(order.order_number, order.staff_code)} · {order.customer_name}
           </h2>
            <p className="mt-1 flex min-w-0 flex-wrap items-center gap-1 break-words text-xs" style={{ color: meta.fgMuted }}>
             <Clock3 className="h-3.5 w-3.5 text-[#B8860B]" />
             {order.requested_date} · {order.requested_time.slice(0, 5)} · {order.method === "delivery" ? "توصيل" : "استلام"}
           </p>
+          {alerted && (
+            <p className="mt-2 inline-flex items-center gap-1 rounded-full bg-[#8B4513] px-3 py-1 text-[11px] font-extrabold text-white shadow-sm">
+              <PencilLine className="h-3.5 w-3.5" aria-hidden /> تم تعديل الطلب
+            </p>
+          )}
           {order.schedule_updated_at && (
             <p className="mt-2 inline-flex rounded-full bg-[#B8860B] px-3 py-1 text-[11px] font-extrabold text-white shadow-sm">
               تم تعديل الموعد 🔄
