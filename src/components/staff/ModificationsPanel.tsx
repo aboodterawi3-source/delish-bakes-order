@@ -18,8 +18,22 @@ import {
 } from "@/lib/sales.functions";
 import { applyOrderDiscount, getMyAuthorization } from "@/lib/authorization.functions";
 import { DELIVERY_ZONES, OTHER_GOVERNORATES_AREA, feeForArea } from "@/lib/delivery-zones";
+import { useStorefrontContent } from "@/hooks/use-storefront-content";
+import type { StorefrontProduct } from "@/lib/storefront-content";
+import {
+  CakeCustomizationPanel,
+  customizationSummary,
+  emptyCustomization,
+  type Customization,
+} from "@/components/delish/CakeCustomizationPanel";
 
 const jd = (value: number) => `${value.toFixed(2)} د.أ`;
+
+/** Replaces (or removes) a labelled extra such as «الحشوة: نوتيلا» in the list. */
+const withLabel = (list: string[], label: string, value: string) => {
+  const rest = list.filter((entry) => !entry.startsWith(`${label}:`));
+  return value ? [...rest, `${label}: ${value}`] : rest;
+};
 const field = "mt-1 min-h-12 w-full rounded-xl border border-input bg-background px-3 text-sm";
 const boxed = "mt-1 w-full rounded-xl border border-input bg-background p-3 text-sm";
 
@@ -46,6 +60,8 @@ export function ModificationsPanel() {
     queryFn: () => authorizationFn({}),
   });
   useOrdersRealtime(ORDERS_KEY, true, "modifications-orders");
+  // The very same catalogue the website shows: products, sizes and fillings.
+  const storefront = useStorefrontContent();
 
   const rows = orders.data ?? [];
 
@@ -171,6 +187,7 @@ export function ModificationsPanel() {
           busy={save.isPending || saveItem.isPending}
           mayDiscount={Boolean(authorization.data?.allow_custom_discount)}
           discountCap={authorization.data?.max_discount_percent ?? 0}
+          products={storefront.data?.products ?? []}
           onPatch={(patch) => save.mutate({ orderId: selected.id, ...patch })}
           onItemPatch={(patch) => saveItem.mutate({ orderId: selected.id, ...patch })}
           onDiscount={(percent, reason) =>
@@ -187,12 +204,14 @@ function OrderEditor({
   busy,
   mayDiscount,
   discountCap,
+  products,
   onPatch,
   onItemPatch,
   onDiscount,
 }: {
   order: SalesOrder;
   busy: boolean;
+  products: StorefrontProduct[];
   mayDiscount: boolean;
   discountCap: number;
   onPatch: (patch: Omit<OrderPatch, "orderId">) => void;
@@ -370,7 +389,7 @@ function OrderEditor({
       <div className="space-y-3">
         <h4 className="text-sm font-bold text-foreground">الأصناف والطلبات الخاصة · Items &amp; extras</h4>
         {order.items.map((item) => (
-          <ItemEditor key={item.id} item={item} onItemPatch={onItemPatch} />
+          <ItemEditor key={item.id} item={item} products={products} onItemPatch={onItemPatch} />
         ))}
         {order.items.length === 0 ? (
           <p className="rounded-2xl border border-dashed border-border p-4 text-xs text-muted-foreground">
@@ -491,13 +510,27 @@ function OrderEditor({
 /** One order line: description, quantity, price and the customer's extras list. */
 function ItemEditor({
   item,
+  products,
   onItemPatch,
 }: {
   item: SalesOrder["items"][number];
+  products: StorefrontProduct[];
   onItemPatch: (patch: Omit<OrderItemPatch, "orderId">) => void;
 }) {
   const [options, setOptions] = useState<string[]>(item.options_ar);
   const [draft, setDraft] = useState("");
+  const [showWebsite, setShowWebsite] = useState(false);
+  const [custom, setCustom] = useState<Customization>(emptyCustomization);
+  const [productId, setProductId] = useState(item.product_id ?? "");
+  const [sizeLabel, setSizeLabel] = useState("");
+  const [filling, setFilling] = useState("");
+
+  const product = products.find((row) => row.id === productId) ?? null;
+  const fillings = useMemo(() => {
+    const set = new Set<string>();
+    for (const row of products) if (row.filling_ar?.trim()) set.add(row.filling_ar.trim());
+    return [...set].sort();
+  }, [products]);
 
   useEffect(() => {
     setOptions(item.options_ar);
@@ -567,6 +600,120 @@ function ItemEditor({
           className="mt-1 min-h-11 w-full rounded-xl border border-input bg-card px-2 text-sm"
         />
       </label>
+
+      {/* The website catalogue: product, size, filling and all add-ons */}
+      <div className="space-y-3 rounded-2xl border border-primary/30 bg-secondary/30 p-3">
+        <button
+          type="button"
+          onClick={() => setShowWebsite((open) => !open)}
+          aria-expanded={showWebsite}
+          className="min-h-11 w-full rounded-full bg-primary px-4 text-xs font-bold text-primary-foreground"
+        >
+          {showWebsite ? "إخفاء خيارات الموقع" : "خيارات الموقع · Website options"}
+        </button>
+
+        {showWebsite ? (
+          <>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <label className="block text-xs font-bold text-foreground">
+                المنتج من الموقع · Website product
+                <select
+                  value={productId}
+                  onChange={(event) => {
+                    setProductId(event.target.value);
+                    setSizeLabel("");
+                    const picked = products.find((row) => row.id === event.target.value);
+                    if (picked) {
+                      onItemPatch({ itemId: item.id, name: picked.name_ar });
+                      if (!picked.price_on_request && picked.price > 0) {
+                        onItemPatch({ itemId: item.id, newUnitPrice: picked.price });
+                      }
+                      if (picked.filling_ar?.trim()) setFilling(picked.filling_ar.trim());
+                    }
+                  }}
+                  className={field}
+                >
+                  <option value="">— اختر منتجاً —</option>
+                  {products.map((row) => (
+                    <option key={row.id} value={row.id}>
+                      {row.name_ar} {row.price_on_request ? "(السعر عند الطلب)" : `— ${jd(row.price)}`}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block text-xs font-bold text-foreground">
+                الحجم · Size
+                <select
+                  value={sizeLabel}
+                  onChange={(event) => {
+                    const label = event.target.value;
+                    setSizeLabel(label);
+                    const size = product?.sizes.find((entry) => entry.label === label);
+                    if (!size) return;
+                    onItemPatch({ itemId: item.id, newUnitPrice: size.price });
+                    commitOptions(withLabel(options, "الحجم", size.label));
+                  }}
+                  disabled={!product || product.sizes.length === 0}
+                  className={field}
+                >
+                  <option value="">— اختر الحجم —</option>
+                  {(product?.sizes ?? []).map((size) => (
+                    <option key={size.label} value={size.label}>
+                      {size.label} — {jd(size.price)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block text-xs font-bold text-foreground sm:col-span-2">
+                الحشوة · Filling
+                <input
+                  list={`fillings-${item.id}`}
+                  value={filling}
+                  onChange={(event) => setFilling(event.target.value)}
+                  onBlur={() => commitOptions(withLabel(options, "الحشوة", filling.trim()))}
+                  placeholder="مثال: نوتيلا · لوتس"
+                  className={field}
+                />
+                <datalist id={`fillings-${item.id}`}>
+                  {fillings.map((value) => (
+                    <option key={value} value={value} />
+                  ))}
+                </datalist>
+              </label>
+            </div>
+
+            <div dir="rtl" className="rounded-2xl bg-white p-2">
+              <CakeCustomizationPanel value={custom} onChange={setCustom} />
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const lines = customizationSummary(custom).ar;
+                if (lines.length === 0) {
+                  toast.error("لم يتم اختيار أي إضافة");
+                  return;
+                }
+                let merged = options;
+                for (const line of lines) {
+                  const [key, ...rest] = line.split(":");
+                  merged = rest.length
+                    ? withLabel(merged, key ?? line, rest.join(":").trim())
+                    : merged.includes(line)
+                      ? merged
+                      : [...merged, line];
+                }
+                commitOptions(merged);
+                setCustom(emptyCustomization);
+              }}
+              className="min-h-11 w-full rounded-full border border-primary px-4 text-xs font-bold text-primary"
+            >
+              حفظ الخيارات على الصنف · Apply to item
+            </button>
+          </>
+        ) : null}
+      </div>
 
       {/* Candles, balloons, acrylic topper, filling and any custom request */}
       <div className="space-y-2">
