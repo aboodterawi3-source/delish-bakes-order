@@ -547,8 +547,25 @@ const KdsCard = memo(function KdsCard({
         </div>
       </div>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_10rem]">
-      <ul className="space-y-2 border-y border-card/30 py-3">
+      {order.design_image_url && (
+        <button
+          type="button"
+          onClick={() => onZoom(order.design_image_url as string)}
+          className="mt-4 block w-full overflow-hidden rounded-2xl border border-card/40 bg-card/20 transition-transform hover:scale-[1.01] active:scale-95"
+        >
+          <img
+            src={order.design_image_url}
+            alt={`صورة تصميم الطلب ${order.order_number}`}
+            loading="lazy"
+            className="h-44 w-full object-cover"
+          />
+          <span className="block bg-peach-coral/80 py-2 text-xs font-bold text-primary">
+            تكبير الصورة · Zoom
+          </span>
+        </button>
+      )}
+
+      <ul className="mt-3 space-y-2 border-y border-card/30 py-3">
         {order.items.map((item) => (
           <li key={item.id} className="rounded-2xl border border-card/25 bg-card/15 p-3">
             <p className="text-sm font-bold">
