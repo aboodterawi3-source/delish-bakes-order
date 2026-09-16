@@ -142,6 +142,18 @@ export type OrderPatch = {
   card_note?: string | null;
   final_photo_requested?: boolean;
   confirmation_message?: string | null;
+  /** Delivery-order identity fields, editable from Sales and Social alike. */
+  order_name?: string | null;
+  sender_phone?: string | null;
+  recipient_phone?: string | null;
+  customer_name?: string;
+  customer_phone?: string;
+  address?: string | null;
+  requested_date?: string;
+  requested_time?: string;
+  notes?: string | null;
+  staff_notes?: string | null;
+  inscription?: string | null;
 };
 
 const STATUSES: SalesStatus[] = [
@@ -223,6 +235,41 @@ const buildOrderPatch = (input: OrderPatch): Record<string, unknown> => {
     patch['confirmation_message'] = input.confirmation_message
       ? String(input.confirmation_message).slice(0, 8000)
       : null;
+  }
+
+  // Free-text order identity fields — trimmed and length-capped.
+  const text = (value: unknown, max: number) => {
+    const clean = String(value ?? "").replace(/[\r\n]+/g, " ").trim();
+    return clean ? clean.slice(0, max) : null;
+  };
+  if (input.order_name !== undefined) patch['order_name'] = text(input.order_name, 160);
+  if (input.sender_phone !== undefined) patch['sender_phone'] = text(input.sender_phone, 40);
+  if (input.recipient_phone !== undefined) patch['recipient_phone'] = text(input.recipient_phone, 40);
+  if (input.address !== undefined) patch['address'] = text(input.address, 500);
+  if (input.notes !== undefined) patch['notes'] = text(input.notes, 2000);
+  if (input.staff_notes !== undefined) patch['staff_notes'] = text(input.staff_notes, 2000);
+  if (input.inscription !== undefined) patch['inscription'] = text(input.inscription, 500);
+  if (input.customer_name !== undefined) {
+    const name = text(input.customer_name, 160);
+    if (!name) throw new Error("اسم العميل مطلوب · Customer name is required");
+    patch['customer_name'] = name;
+  }
+  if (input.customer_phone !== undefined) {
+    const phone = text(input.customer_phone, 40);
+    if (!phone) throw new Error("رقم الهاتف مطلوب · Customer phone is required");
+    patch['customer_phone'] = phone;
+  }
+  if (input.requested_date !== undefined) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(input.requested_date))) {
+      throw new Error("تاريخ غير صالح · Invalid date");
+    }
+    patch['requested_date'] = input.requested_date;
+  }
+  if (input.requested_time !== undefined) {
+    if (!/^\d{2}:\d{2}(:\d{2})?$/.test(String(input.requested_time))) {
+      throw new Error("وقت غير صالح · Invalid time");
+    }
+    patch['requested_time'] = input.requested_time;
   }
 
   return patch;
