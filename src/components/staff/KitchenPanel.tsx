@@ -504,7 +504,7 @@ const KdsCard = memo(function KdsCard({
             <Clock3 className="h-4 w-4 text-[#B8860B]" aria-hidden />
             <span>{order.method === "delivery" ? "موعد التوصيل" : "موعد الاستلام"}:</span>
             <span>{order.requested_date}</span>
-            <span className="text-base">{order.requested_time.slice(0, 5)}</span>
+            <span className="text-base">{(order.requested_time ?? "").slice(0, 5)}</span>
           </p>
           {alerted && (
             <p className="mt-2 inline-flex items-center gap-1 rounded-full bg-[#8B4513] px-3 py-1 text-[11px] font-extrabold text-white shadow-sm">
