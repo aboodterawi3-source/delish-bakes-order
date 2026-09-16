@@ -193,21 +193,11 @@ export function StorefrontProductModal({
 
               <button
                 type="button"
-                onClick={() => onAdd({ product, size, quantity, price: unit, notes })}
+                onClick={() => onAdd({ product, size, quantity, price: unit, notes, customization })}
                 className="min-h-12 w-full rounded-full bg-primary text-sm font-bold text-primary-foreground transition-transform hover:scale-[1.01]"
               >
                 {t("addToCart")}
               </button>
-
-              {onMoreOptions && (
-                <button
-                  type="button"
-                  onClick={() => onMoreOptions(product.id)}
-                  className="min-h-11 w-full text-center text-xs text-foreground underline"
-                >
-                  {ar ? "شمعات، بالونات وتخصيص إضافي" : "Candles, balloons & more options"}
-                </button>
-              )}
             </>
           )}
         </div>
