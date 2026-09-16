@@ -123,19 +123,16 @@ export const createSocialOrder = createServerFn({ method: "POST" })
         ? data.design_image_url.trim()
         : null;
 
-    /** Assigned here (not by the column default) so the confirmation message can
-     * carry the real order number in the very same insert. */
-    const orderNumber = `DL-${String(Date.now()).slice(-5)}`;
-    const message =
+    /** The order number comes from the database sequence (DL-1 onwards), so the
+     * confirmation message is filled in right after the row exists. */
+    const template =
       typeof data.confirmation_message === "string" && data.confirmation_message.trim()
-        ? data.confirmation_message.replace(/\{\{ORDER_NUMBER\}\}/g, orderNumber).slice(0, 8000)
+        ? data.confirmation_message
         : null;
 
     const { data: order, error: orderError } = await context.supabase
       .from("orders")
       .insert({
-        order_number: orderNumber,
-        confirmation_message: message,
         customer_name: data.customer_name.trim(),
         customer_phone: data.customer_phone.trim(),
         order_name: data.order_name?.trim().slice(0, 160) || null,
