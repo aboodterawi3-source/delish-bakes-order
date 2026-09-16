@@ -1,17 +1,17 @@
 import { memo, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Clock3 } from "lucide-react";
 import type { SalesOrder, SalesStatus } from "@/lib/sales.functions";
 
 /** Compact card colours, keyed by order status (Google-Calendar style chips). */
 const TONE: Record<SalesStatus, string> = {
-  new: "bg-[#FDE2CF] text-[#7B3F00] border-[#EFA781]",
-  confirmed: "bg-[#FDE2CF] text-[#7B3F00] border-[#EFA781]",
-  baking: "bg-[#EFA781] text-white border-[#D98456]",
-  ready: "bg-[#B8860B] text-white border-[#96700A]",
-  out_for_delivery: "bg-[#8B4513] text-white border-[#6E360F]",
-  completed: "bg-[#166534] text-white border-[#11512A]",
-  delivered: "bg-[#166534] text-white border-[#11512A]",
-  cancelled: "bg-red-600 text-white border-red-700 line-through",
+  new: "border-peach-coral bg-peach text-cocoa-deep",
+  confirmed: "border-peach-coral bg-peach text-cocoa-deep",
+  baking: "border-peach-coral bg-peach-coral text-primary-foreground",
+  ready: "border-gold bg-gold text-primary-foreground",
+  out_for_delivery: "border-primary bg-primary text-primary-foreground",
+  completed: "border-gold bg-tint-pistachio text-cocoa-deep",
+  delivered: "border-gold bg-tint-pistachio text-cocoa-deep",
+  cancelled: "border-destructive bg-destructive text-destructive-foreground line-through",
 };
 
 const WEEKDAYS = ["أحد", "إثنين", "ثلاثاء", "أربعاء", "خميس", "جمعة", "سبت"];
@@ -91,14 +91,14 @@ export const OrdersCalendar = memo(function OrdersCalendar({ orders, onOpen }: P
     });
 
   return (
-    <section className="mt-4 min-w-0">
-      <header className="mb-3 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1">
+    <section className="mt-5 min-w-0" aria-label="تقويم الطلبات الشهري">
+      <header className="mb-3 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1">
           <button
             type="button"
             onClick={() => shift(-1)}
             aria-label="الشهر السابق"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border text-foreground"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-background text-foreground"
           >
             <ChevronRight className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -106,56 +106,63 @@ export const OrdersCalendar = memo(function OrdersCalendar({ orders, onOpen }: P
             type="button"
             onClick={() => shift(1)}
             aria-label="الشهر التالي"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border text-foreground"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-background text-foreground"
           >
             <ChevronLeft className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
-        <h3 className="font-serif text-base font-bold text-foreground">
+        <h3 className="min-w-0 truncate text-center font-display text-base font-bold text-foreground">
           {MONTHS[cursor.month]} {cursor.year}
         </h3>
         <button
           type="button"
           onClick={() => setCursor({ year: now.getFullYear(), month: now.getMonth() })}
-          className="min-h-10 rounded-full border border-border px-3 text-xs font-bold text-foreground"
+          className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-lg border border-border bg-background px-3 text-xs font-bold text-foreground"
         >
-          اليوم
+          <CalendarDays className="h-4 w-4" aria-hidden="true" /> اليوم
         </button>
       </header>
 
-      <div className="overflow-x-auto">
-        <div className="min-w-[640px]">
-          <div className="grid grid-cols-7 gap-1 pb-1 text-center text-[11px] font-bold text-muted-foreground">
+      <div className="max-w-full overflow-x-auto overscroll-x-contain rounded-lg border border-border bg-muted/40 p-1.5">
+        <div className="min-w-[720px]">
+          <div className="grid grid-cols-7 gap-1.5 pb-1.5 text-center text-[11px] font-bold text-muted-foreground">
             {WEEKDAYS.map((label) => (
               <span key={label}>{label}</span>
             ))}
           </div>
-          <div className="grid grid-cols-7 gap-1">
+          <div className="grid grid-cols-7 gap-1.5">
             {cells.map((cell, index) => {
-              if (!cell) return <div key={`empty-${index}`} className="min-h-24 rounded-xl bg-muted/40" />;
+              if (!cell) return <div key={`empty-${index}`} className="h-44 rounded-md bg-muted/60" />;
               const dayOrders = byDate.get(cell.key) ?? [];
               const isToday = cell.key === today;
               return (
                 <div
                   key={cell.key}
-                  className={`min-h-24 rounded-xl border p-1 ${
+                  className={`flex h-44 min-w-0 flex-col overflow-hidden rounded-md border ${
                     isToday ? "border-primary bg-primary/5" : "border-border bg-background"
                   }`}
                 >
-                  <div className="mb-1 flex items-center justify-between px-1 text-[11px] font-bold text-muted-foreground">
-                    <span>{cell.day}</span>
-                    {dayOrders.length ? <span>{dayOrders.length}</span> : null}
+                  <div className="flex h-8 shrink-0 items-center justify-between border-b border-border px-2 text-[11px] font-bold text-muted-foreground">
+                    <span className={isToday ? "grid h-6 w-6 place-items-center rounded-full bg-primary text-primary-foreground" : ""}>{cell.day}</span>
+                    {dayOrders.length ? <span aria-label={`${dayOrders.length} طلب`}>{dayOrders.length}</span> : null}
                   </div>
-                  <ul className="grid gap-1">
+                  <ul className="no-scrollbar grid min-h-0 flex-1 content-start gap-1 overflow-y-auto p-1">
                     {dayOrders.map((order) => (
-                      <li key={order.id}>
+                      <li key={order.id} className="min-w-0">
                         <button
                           type="button"
                           onClick={() => onOpen(order.id)}
                           title={`${order.order_number} · ${order.customer_name}`}
-                          className={`w-full truncate rounded-md border px-1.5 py-1 text-start text-[11px] font-bold ${TONE[order.status]}`}
+                          className={`grid w-full min-w-0 gap-0.5 overflow-hidden rounded-md border px-1.5 py-1 text-start text-[10px] font-bold leading-tight shadow-sm ${TONE[order.status]}`}
                         >
-                          {order.requested_time.slice(0, 5)} · {productTag(order)} · {order.last_edited_at ? "\u270F\uFE0F " : ""}{codeTag(order)}
+                          <span className="flex min-w-0 items-center justify-between gap-1">
+                            <span className="inline-flex min-w-0 items-center gap-1 truncate">
+                              <Clock3 className="h-3 w-3 shrink-0" aria-hidden="true" />
+                              {order.requested_time.slice(0, 5)}
+                            </span>
+                            <span className="shrink-0" dir="ltr">{order.last_edited_at ? "✏️ " : ""}{codeTag(order)}</span>
+                          </span>
+                          <span className="block truncate font-medium">{productTag(order)}</span>
                         </button>
                       </li>
                     ))}
