@@ -764,21 +764,10 @@ function OrderPanel({
   const [driverPhone, setDriverPhone] = useState(order.driver_phone ?? "");
   const [discountPercent, setDiscountPercent] = useState(String(order.discount_percent || ""));
   const [discountReason, setDiscountReason] = useState("");
-  const [cardNote, setCardNote] = useState(order.card_note ?? "");
   const [messageCopied, setMessageCopied] = useState(false);
-
-  // Editable order identity — saved on blur so every screen can fix any detail.
-  const [orderName, setOrderName] = useState(order.order_name ?? "");
-  const [senderPhone, setSenderPhone] = useState(order.sender_phone ?? "");
-  const [recipientPhone, setRecipientPhone] = useState(order.recipient_phone ?? "");
-  const [customerName, setCustomerName] = useState(order.customer_name);
-  const [customerPhone, setCustomerPhone] = useState(order.customer_phone);
+  // Delivery-run fields stay here; all content edits live in «تعديلات».
   const [address, setAddress] = useState(order.address ?? "");
-  const [date, setDate] = useState(order.requested_date);
-  const [time, setTime] = useState(order.requested_time.slice(0, 5));
-  const [inscription, setInscription] = useState(order.inscription ?? "");
-  const [notes, setNotes] = useState(order.notes ?? "");
-  const [staffNotes, setStaffNotes] = useState(order.staff_notes ?? "");
+
 
   const mayDiscount = Boolean(authorization?.allow_custom_discount);
   const discountCap = authorization?.max_discount_percent ?? 0;
