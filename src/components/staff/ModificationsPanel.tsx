@@ -237,6 +237,8 @@ function OrderEditor({
   onReplaceItems: (lines: RebuildLine[]) => void;
   onDiscount: (percent: number, reason: string) => void;
 }) {
+  // Editing always opens on a fresh website-style builder, nothing carried over.
+  const [itemsMode, setItemsMode] = useState<"builder" | "lines">("builder");
   const [orderName, setOrderName] = useState(order.order_name ?? "");
   const [customerName, setCustomerName] = useState(order.customer_name);
   const [customerPhone, setCustomerPhone] = useState(order.customer_phone);
