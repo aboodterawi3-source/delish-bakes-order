@@ -162,6 +162,10 @@ export const listStaff = createServerFn({ method: "GET" })
     if (error) throw new Error(error.message);
     const { data: roleRows, error: roleError } = await supabaseAdmin.from("user_roles").select("user_id, role");
     if (roleError) throw new Error(roleError.message);
+    const { data: codeRows } = await supabaseAdmin.from("staff_codes").select("user_id, staff_code");
+    const codes = new Map<string, number>(
+      (codeRows ?? []).map((row) => [row.user_id as string, Number(row.staff_code)]),
+    );
     const byUser = new Map<string, StaffRole[]>();
     for (const row of roleRows ?? []) {
       const list = byUser.get(row.user_id) ?? [];
@@ -175,6 +179,7 @@ export const listStaff = createServerFn({ method: "GET" })
         roles: byUser.get(user.id) ?? [],
         created_at: user.created_at,
         last_sign_in_at: user.last_sign_in_at ?? null,
+        staff_code: codes.get(user.id) ?? null,
       }))
       .filter((member) => member.roles.length > 0)
       .sort((a, b) => a.username.localeCompare(b.username));
