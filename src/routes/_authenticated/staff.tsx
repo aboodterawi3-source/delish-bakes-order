@@ -58,8 +58,15 @@ export const Route = createFileRoute("/_authenticated/staff")({
 });
 
 /** Any panel failure shows a readable message instead of a blank screen. */
-function StaffErrorScreen({ error }: { error: Error }) {
+function StaffErrorScreen({ error }: { error: unknown }) {
   const navigate = useNavigate();
+  // A thrown non-Error (or undefined) must not crash the boundary itself.
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "string" && error
+        ? error
+        : "خطأ غير معروف · Unknown error";
   const leave = async () => {
     await supabase.auth.signOut();
     void navigate({ to: "/auth", replace: true });
