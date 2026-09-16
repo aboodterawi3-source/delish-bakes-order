@@ -225,6 +225,7 @@ export type Database = {
           order_name: string | null
           order_number: string
           payment_method: Database["public"]["Enums"]["payment_method"] | null
+          queue_rank: number | null
           recipient_phone: string | null
           requested_date: string
           requested_time: string
@@ -266,6 +267,7 @@ export type Database = {
           order_name?: string | null
           order_number?: string
           payment_method?: Database["public"]["Enums"]["payment_method"] | null
+          queue_rank?: number | null
           recipient_phone?: string | null
           requested_date: string
           requested_time: string
@@ -307,6 +309,7 @@ export type Database = {
           order_name?: string | null
           order_number?: string
           payment_method?: Database["public"]["Enums"]["payment_method"] | null
+          queue_rank?: number | null
           recipient_phone?: string | null
           requested_date?: string
           requested_time?: string
@@ -627,6 +630,7 @@ export type Database = {
           method: Database["public"]["Enums"]["order_method"]
           notes: string
           order_number: string
+          queue_rank: number
           requested_date: string
           requested_time: string
           schedule_updated_at: string
