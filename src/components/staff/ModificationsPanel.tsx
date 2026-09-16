@@ -12,6 +12,8 @@ import {
   getSalesOrders,
   updateSalesOrder,
   updateSalesOrderItemPrice,
+  replaceSalesOrderItems,
+  type RebuildLine,
   type OrderItemPatch,
   type OrderPatch,
   type SalesOrder,
@@ -48,6 +50,7 @@ export function ModificationsPanel() {
   const ordersFn = useServerFn(getSalesOrders);
   const updateFn = useServerFn(updateSalesOrder);
   const updateItemFn = useServerFn(updateSalesOrderItemPrice);
+  const rebuildFn = useServerFn(replaceSalesOrderItems);
   const discountFn = useServerFn(applyOrderDiscount);
   const authorizationFn = useServerFn(getMyAuthorization);
 
@@ -107,6 +110,18 @@ export function ModificationsPanel() {
         (current ?? []).map((row) => (row.id === order.id ? order : row)),
       );
       toast.success("تم حفظ تعديل الصنف ✅");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  // Rebuilding the order from the website-style builder replaces every line.
+  const rebuild = useMutation({
+    mutationFn: (input: { orderId: string; lines: RebuildLine[] }) => rebuildFn({ data: input }),
+    onSuccess: (order) => {
+      queryClient.setQueryData<SalesOrder[]>(ORDERS_KEY, (current) =>
+        (current ?? []).map((row) => (row.id === order.id ? order : row)),
+      );
+      toast.success("تم استبدال أصناف الطلب ✅ — تم تنبيه المطبخ");
     },
     onError: (error: Error) => toast.error(error.message),
   });
