@@ -266,6 +266,47 @@ export const setStaffRole = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/** Manager assigns (or clears) the numeric staff ID shown beside order numbers. */
+export const setStaffCode = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { userId: string; staffCode: number | null }) => {
+    if (!input?.userId) throw new Error("userId is required");
+    if (input.staffCode === null || (input.staffCode as unknown) === "") {
+      return { userId: String(input.userId), staffCode: null };
+    }
+    const code = Number(input.staffCode);
+    if (!Number.isInteger(code) || code < 1 || code > 9999) {
+      throw new Error("رقم الموظف يجب أن يكون بين 1 و 9999 · Staff ID must be 1–9999");
+    }
+    return { userId: String(input.userId), staffCode: code };
+  })
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    if (data.staffCode === null) {
+      const { error } = await supabaseAdmin.from("staff_codes").delete().eq("user_id", data.userId);
+      if (error) throw new Error(error.message);
+      return { ok: true, staff_code: null };
+    }
+
+    // The code identifies one employee only, so refuse a number already in use.
+    const { data: clash } = await supabaseAdmin
+      .from("staff_codes")
+      .select("user_id")
+      .eq("staff_code", data.staffCode)
+      .maybeSingle();
+    if (clash && clash.user_id !== data.userId) {
+      throw new Error("هذا الرقم مستخدم لموظف آخر · This staff ID is already taken");
+    }
+
+    const { error } = await supabaseAdmin
+      .from("staff_codes")
+      .upsert({ user_id: data.userId, staff_code: data.staffCode }, { onConflict: "user_id" });
+    if (error) throw new Error(error.message);
+    return { ok: true, staff_code: data.staffCode };
+  });
+
 export const removeStaff = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { userId: string }) => {
