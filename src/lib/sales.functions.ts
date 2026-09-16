@@ -33,6 +33,12 @@ export type SalesItem = {
 export type SalesOrder = {
   id: string;
   order_number: string;
+  /** Short label for the order, shown in the list instead of the phone number. */
+  order_name: string | null;
+  sender_phone: string | null;
+  recipient_phone: string | null;
+  /** Set every time staff edit the order, so the list shows an edit badge. */
+  last_edited_at: string | null;
   customer_name: string;
   customer_phone: string;
   method: "delivery" | "pickup";
