@@ -167,6 +167,7 @@ export const getKitchenOrders = createServerFn({ method: "GET" })
       notes: order.notes,
       schedule_updated_at: order.schedule_updated_at,
       last_edited_at: order.last_edited_at ?? null,
+      queue_rank: order.queue_rank ?? null,
       created_at: order.created_at,
       items: itemsByOrder.get(order.id) ?? [],
       priority_color: highestPriority(
