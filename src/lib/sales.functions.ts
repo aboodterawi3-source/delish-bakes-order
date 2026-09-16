@@ -380,6 +380,10 @@ export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
       itemPatch['name_en'] = data.name;
     }
     if (data.notes !== undefined) itemPatch['notes'] = data.notes;
+    if (data.options !== undefined) {
+      itemPatch['options_ar'] = data.options;
+      itemPatch['options_en'] = data.options;
+    }
     if (Object.keys(itemPatch).length === 0) {
       throw new Error("لا يوجد تغيير · Nothing to update");
     }
