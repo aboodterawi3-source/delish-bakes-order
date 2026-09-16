@@ -58,8 +58,15 @@ export const Route = createFileRoute("/_authenticated/staff")({
 });
 
 /** Any panel failure shows a readable message instead of a blank screen. */
-function StaffErrorScreen({ error }: { error: Error }) {
+function StaffErrorScreen({ error }: { error: unknown }) {
   const navigate = useNavigate();
+  // A thrown non-Error (or undefined) must not crash the boundary itself.
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "string" && error
+        ? error
+        : "خطأ غير معروف · Unknown error";
   const leave = async () => {
     await supabase.auth.signOut();
     void navigate({ to: "/auth", replace: true });
@@ -69,7 +76,7 @@ function StaffErrorScreen({ error }: { error: Error }) {
       <div className="max-w-sm rounded-3xl border border-slate-200 bg-white p-6 text-center shadow-lg">
         <h1 className="font-display text-lg font-bold text-[#3E2723]">تعذّر تحميل هذا القسم</h1>
         <p className="mt-2 text-sm text-[#7A6458]">This section could not be loaded.</p>
-        <p className="mt-3 rounded-xl bg-slate-50 p-2 text-xs text-[#7A6458]">{error.message}</p>
+        <p className="mt-3 rounded-xl bg-slate-50 p-2 text-xs text-[#7A6458]">{message}</p>
         <div className="mt-4 flex flex-wrap justify-center gap-2">
           <button
             type="button"

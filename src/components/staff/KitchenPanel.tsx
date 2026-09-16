@@ -84,7 +84,7 @@ function printKitchenTicket(order: KdsOrder) {
 
   const body = `<h1>تذكرة مطبخ · KITCHEN</h1>
 <div class="row"><b>${esc(orderLabel(order.order_number, order.staff_code))}</b><span>${order.method === "delivery" ? "توصيل" : "استلام"}</span></div>
-<div class="row"><b>${order.method === "delivery" ? "موعد التوصيل" : "موعد الاستلام"}</b><b>${esc(order.requested_date)} ${esc(order.requested_time.slice(0, 5))}</b></div>
+<div class="row"><b>${order.method === "delivery" ? "موعد التوصيل" : "موعد الاستلام"}</b><b>${esc(order.requested_date ?? "")} ${esc((order.requested_time ?? "").slice(0, 5))}</b></div>
 <div>${esc(order.customer_name)}</div>
 ${order.schedule_updated_at ? `<div><b>تم تعديل الموعد 🔄</b></div>` : ""}
 <div class="line"></div>${lines}<div class="line"></div>
@@ -504,7 +504,7 @@ const KdsCard = memo(function KdsCard({
             <Clock3 className="h-4 w-4 text-[#B8860B]" aria-hidden />
             <span>{order.method === "delivery" ? "موعد التوصيل" : "موعد الاستلام"}:</span>
             <span>{order.requested_date}</span>
-            <span className="text-base">{order.requested_time.slice(0, 5)}</span>
+            <span className="text-base">{(order.requested_time ?? "").slice(0, 5)}</span>
           </p>
           {alerted && (
             <p className="mt-2 inline-flex items-center gap-1 rounded-full bg-[#8B4513] px-3 py-1 text-[11px] font-extrabold text-white shadow-sm">

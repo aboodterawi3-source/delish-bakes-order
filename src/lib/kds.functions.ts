@@ -168,8 +168,9 @@ export const getKitchenOrders = createServerFn({ method: "GET" })
       staff_code: order.staff_code ?? null,
       customer_name: stripPhones(order.customer_name) ?? "",
       method: order.method,
-      requested_date: order.requested_date,
-      requested_time: order.requested_time,
+      // Never null: the kitchen card reads these directly.
+      requested_date: order.requested_date ?? "",
+      requested_time: order.requested_time ?? "",
       status: order.status,
       inscription: stripPhones(order.inscription),
       design_image_url: order.design_image_url,
