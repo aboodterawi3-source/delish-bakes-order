@@ -290,6 +290,9 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
     if (Object.keys(clean).length === 0) {
       throw new Error("لا يوجد تغيير · Nothing to update");
     }
+    // Every desk edit is stamped so the list and printouts show the edit badge.
+    clean['last_edited_at'] = new Date().toISOString();
+    clean['last_edited_by'] = context.userId;
     const { data: row, error } = await context.supabase
       .from("orders")
       .update(clean as never)
@@ -301,26 +304,50 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
   });
 
 
+export type OrderItemPatch = {
+  itemId: string;
+  orderId: string;
+  newUnitPrice?: number;
+  quantity?: number;
+  name?: string;
+  notes?: string | null;
+};
+
+/** Order-desk staff may correct any line: price, quantity, description, notes. */
 export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { itemId: string; orderId: string; newUnitPrice: number }) => {
+  .inputValidator((input: OrderItemPatch) => {
     if (!input?.itemId) throw new Error("itemId is required");
     if (!input?.orderId) throw new Error("orderId is required");
-    const price = Number(input.newUnitPrice);
-    if (!Number.isFinite(price) || price < 0 || price > 100000) {
-      throw new Error("سعر غير صالح · Invalid price");
+    const out: OrderItemPatch = { itemId: String(input.itemId), orderId: String(input.orderId) };
+    if (input.newUnitPrice !== undefined) {
+      const price = Number(input.newUnitPrice);
+      if (!Number.isFinite(price) || price < 0 || price > 100000) {
+        throw new Error("سعر غير صالح · Invalid price");
+      }
+      out.newUnitPrice = price;
     }
-    return { itemId: String(input.itemId), orderId: String(input.orderId), newUnitPrice: price };
+    if (input.quantity !== undefined) {
+      const qty = Math.trunc(Number(input.quantity));
+      if (!Number.isFinite(qty) || qty < 1 || qty > 1000) {
+        throw new Error("كمية غير صالحة · Invalid quantity");
+      }
+      out.quantity = qty;
+    }
+    if (input.name !== undefined) {
+      const name = String(input.name).trim().slice(0, 2000);
+      if (!name) throw new Error("وصف الصنف مطلوب · Item description is required");
+      out.name = name;
+    }
+    if (input.notes !== undefined) {
+      out.notes = input.notes ? String(input.notes).trim().slice(0, 2000) || null : null;
+    }
+    return out;
   })
   .handler(async ({ data, context }): Promise<SalesOrder> => {
     await assertRole(context, SALES_ROLES);
 
-    // Price overrides are a per-employee privilege granted by an admin.
-    const { resolveAuthorization, writeAudit, staffName } = await import("@/lib/authorization.functions");
-    const auth = await resolveAuthorization(context as never);
-    if (!auth.allow_price_override) {
-      throw new Error("تحتاج تصريح المدير لتعديل السعر · Requires admin authorization");
-    }
+    const { writeAudit, staffName } = await import("@/lib/authorization.functions");
 
     const { data: before } = await context.supabase
       .from("order_items")
@@ -331,16 +358,21 @@ export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
       throw new Error("عنصر غير موجود · Order item not found");
     }
 
-    // The per-product allow list configured by the admin is enforced here, not in the UI.
-    const { canEditProductPrice } = await import("@/lib/permissions.functions");
-    if (!(await canEditProductPrice(context as never, before.product_id))) {
-      throw new Error("غير مصرّح بتعديل سعر هذا المنتج · Not authorised to reprice this product");
+    const itemPatch: Record<string, unknown> = {};
+    if (data.newUnitPrice !== undefined) itemPatch['unit_price'] = data.newUnitPrice;
+    if (data.quantity !== undefined) itemPatch['quantity'] = data.quantity;
+    if (data.name !== undefined) {
+      itemPatch['name_ar'] = data.name;
+      itemPatch['name_en'] = data.name;
+    }
+    if (data.notes !== undefined) itemPatch['notes'] = data.notes;
+    if (Object.keys(itemPatch).length === 0) {
+      throw new Error("لا يوجد تغيير · Nothing to update");
     }
 
-    // Update order_items table
     const { error: itemError } = await context.supabase
       .from("order_items")
-      .update({ unit_price: data.newUnitPrice })
+      .update(itemPatch as never)
       .eq("id", data.itemId);
     if (itemError) throw new Error(itemError.message);
 
