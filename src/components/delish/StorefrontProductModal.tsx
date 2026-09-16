@@ -5,6 +5,11 @@ import { useDismissable } from "@/lib/a11y";
 import { formatJod } from "@/lib/currency";
 import { WHATSAPP } from "@/lib/menu";
 import { priceForSize, type StorefrontProduct } from "@/lib/storefront-content";
+import {
+  CakeCustomizationPanel,
+  emptyCustomization,
+  type Customization,
+} from "./CakeCustomizationPanel";
 
 export type ModalAddPayload = {
   product: StorefrontProduct;
@@ -12,6 +17,7 @@ export type ModalAddPayload = {
   quantity: number;
   price: number;
   notes: string;
+  customization: Customization;
 };
 
 /**
@@ -22,12 +28,10 @@ export function StorefrontProductModal({
   product,
   onClose,
   onAdd,
-  onMoreOptions,
 }: {
   product: StorefrontProduct | null;
   onClose: () => void;
   onAdd: (payload: ModalAddPayload) => void;
-  onMoreOptions?: (productId: string) => void;
 }) {
   const { t, lang } = useLang();
   const ar = lang === "ar";
@@ -36,6 +40,7 @@ export function StorefrontProductModal({
   const [size, setSize] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState("");
+  const [customization, setCustomization] = useState<Customization>(emptyCustomization);
 
   useDismissable(Boolean(product), onClose);
 
@@ -44,6 +49,7 @@ export function StorefrontProductModal({
       setSize(product.sizes[0]?.label ?? null);
       setQuantity(1);
       setNotes("");
+      setCustomization(emptyCustomization);
     }
   }, [product]);
 
@@ -144,6 +150,9 @@ export function StorefrontProductModal({
                 </div>
               )}
 
+              {/* Full customization (candles, balloons, topper, gift, design image). */}
+              <CakeCustomizationPanel value={customization} onChange={setCustomization} />
+
               <div>
                 <label htmlFor={notesId} className="mb-2 block text-xs font-bold uppercase tracking-wide text-muted-foreground">
                   {t("notes")}
@@ -184,21 +193,11 @@ export function StorefrontProductModal({
 
               <button
                 type="button"
-                onClick={() => onAdd({ product, size, quantity, price: unit, notes })}
+                onClick={() => onAdd({ product, size, quantity, price: unit, notes, customization })}
                 className="min-h-12 w-full rounded-full bg-primary text-sm font-bold text-primary-foreground transition-transform hover:scale-[1.01]"
               >
                 {t("addToCart")}
               </button>
-
-              {onMoreOptions && (
-                <button
-                  type="button"
-                  onClick={() => onMoreOptions(product.id)}
-                  className="min-h-11 w-full text-center text-xs text-foreground underline"
-                >
-                  {ar ? "شمعات، بالونات وتخصيص إضافي" : "Candles, balloons & more options"}
-                </button>
-              )}
             </>
           )}
         </div>

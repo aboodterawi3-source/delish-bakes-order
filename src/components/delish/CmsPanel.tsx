@@ -748,10 +748,17 @@ function ProductsEditor({
               <span className={label}>التصنيف الداخلي · Internal tag</span>
               <input value={draft.category} onChange={(e) => setDraft({ ...draft, category: e.target.value })} className={field} required />
             </label>
-            <label className="space-y-1.5">
-              <span className={label}>السعر الأساسي · Base price</span>
-              <input type="number" min="0" step="0.01" value={draft.price} onChange={(e) => setDraft({ ...draft, price: e.target.value })} className={field} required />
-            </label>
+            {/* Price is optional once the product is priced on request. */}
+            {draft.price_on_request ? (
+              <p className="rounded-xl border border-border bg-secondary/30 p-3 text-xs font-bold text-foreground">
+                لا حاجة لسعر ثابت — سيظهر زر «اطلب السعر» على الموقع.
+              </p>
+            ) : (
+              <label className="space-y-1.5">
+                <span className={label}>السعر الأساسي · Base price</span>
+                <input type="number" min="0" step="0.01" value={draft.price} onChange={(e) => setDraft({ ...draft, price: e.target.value })} className={field} required />
+              </label>
+            )}
             <label className="space-y-1.5">
               <span className={label}>نوع الحشوة · Filling (عربي)</span>
               <input value={draft.filling_ar} onChange={(e) => setDraft({ ...draft, filling_ar: e.target.value })} placeholder="نوتيلا، لوتس، فراولة…" className={field} />

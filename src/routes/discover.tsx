@@ -3,6 +3,7 @@ import { useState } from "react";
 import { DiscoverView } from "@/components/delish/DiscoverView";
 import { CartDrawer } from "@/components/delish/CartDrawer";
 import { StorefrontProductModal } from "@/components/delish/StorefrontProductModal";
+import { customizationSummary } from "@/components/delish/CakeCustomizationPanel";
 import { ContactSection } from "@/components/delish/ContactSection";
 import { SiteFooter } from "@/components/delish/SiteFooter";
 import { useStorefrontContent } from "@/hooks/use-storefront-content";
@@ -50,21 +51,22 @@ function DiscoverPage() {
       <StorefrontProductModal
         product={quickProduct}
         onClose={() => setQuickViewId(null)}
-        onMoreOptions={(id) => {
-          setQuickViewId(null);
-          void navigate({ to: "/product-details", search: { id } });
-        }}
-        onAdd={({ product, size, quantity, price, notes }) => {
+        onAdd={({ product, size, quantity, price, notes, customization }) => {
           const details = size ? [size] : [];
+          const extras = customizationSummary(customization);
+          const allNotes = [notes.trim(), customization.notes.trim()].filter(Boolean).join(" · ");
           add({
             ar: product.name_ar,
             en: product.name_en,
             unit: price,
             qty: quantity,
             image: product.image_url ?? undefined,
-            notes: notes.trim() || undefined,
+            designImage: customization.designImageUrl ?? undefined,
+            notes: allNotes || undefined,
             detailsAr: details,
             detailsEn: details,
+            extrasAr: extras.ar,
+            extrasEn: extras.en,
             spec: { kind: "cms", productId: product.id, size },
           });
           setQuickViewId(null);
