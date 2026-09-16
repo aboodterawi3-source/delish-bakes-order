@@ -237,7 +237,7 @@ export function OrdersWorkspace({ showShiftReport = false }: { showShiftReport?:
   const queryClient = useQueryClient();
   const ordersFn = useServerFn(getSalesOrders);
   const updateFn = useServerFn(updateSalesOrder);
-  const updateItemFn = useServerFn(updateSalesOrderItemPrice);
+  
   const reportFn = useServerFn(getShiftReport);
   const authorizationFn = useServerFn(getMyAuthorization);
   const discountFn = useServerFn(applyOrderDiscount);
