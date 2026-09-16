@@ -78,8 +78,8 @@ function printKitchenTicket(order: KdsOrder) {
     : `<div class="item">لا توجد أصناف مسجلة على هذا الطلب</div>`;
 
   const body = `<h1>تذكرة مطبخ · KITCHEN</h1>
-<div class="row"><b>${esc(order.order_number)}</b><span>${order.method === "delivery" ? "توصيل" : "استلام"}</span></div>
-<div class="row"><span>${esc(order.requested_date)}</span><span>${esc(order.requested_time.slice(0, 5))}</span></div>
+<div class="row"><b>${esc(orderLabel(order.order_number, order.staff_code))}</b><span>${order.method === "delivery" ? "توصيل" : "استلام"}</span></div>
+<div class="row"><b>${order.method === "delivery" ? "موعد التوصيل" : "موعد الاستلام"}</b><b>${esc(order.requested_date)} ${esc(order.requested_time.slice(0, 5))}</b></div>
 <div>${esc(order.customer_name)}</div>
 ${order.schedule_updated_at ? `<div><b>تم تعديل الموعد 🔄</b></div>` : ""}
 <div class="line"></div>${lines}<div class="line"></div>
