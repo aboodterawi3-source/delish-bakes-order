@@ -54,6 +54,8 @@ export function ModificationsPanel() {
     queryFn: () => authorizationFn({}),
   });
   useOrdersRealtime(ORDERS_KEY, true, "modifications-orders");
+  // The very same catalogue the website shows: products, sizes and fillings.
+  const storefront = useStorefrontContent();
 
   const rows = orders.data ?? [];
 
@@ -179,6 +181,7 @@ export function ModificationsPanel() {
           busy={save.isPending || saveItem.isPending}
           mayDiscount={Boolean(authorization.data?.allow_custom_discount)}
           discountCap={authorization.data?.max_discount_percent ?? 0}
+          products={storefront.data?.products ?? []}
           onPatch={(patch) => save.mutate({ orderId: selected.id, ...patch })}
           onItemPatch={(patch) => saveItem.mutate({ orderId: selected.id, ...patch })}
           onDiscount={(percent, reason) =>
@@ -195,12 +198,14 @@ function OrderEditor({
   busy,
   mayDiscount,
   discountCap,
+  products,
   onPatch,
   onItemPatch,
   onDiscount,
 }: {
   order: SalesOrder;
   busy: boolean;
+  products: StorefrontProduct[];
   mayDiscount: boolean;
   discountCap: number;
   onPatch: (patch: Omit<OrderPatch, "orderId">) => void;
@@ -378,7 +383,7 @@ function OrderEditor({
       <div className="space-y-3">
         <h4 className="text-sm font-bold text-foreground">الأصناف والطلبات الخاصة · Items &amp; extras</h4>
         {order.items.map((item) => (
-          <ItemEditor key={item.id} item={item} onItemPatch={onItemPatch} />
+          <ItemEditor key={item.id} item={item} products={products} onItemPatch={onItemPatch} />
         ))}
         {order.items.length === 0 ? (
           <p className="rounded-2xl border border-dashed border-border p-4 text-xs text-muted-foreground">
