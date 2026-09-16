@@ -41,6 +41,8 @@ export type SalesOrder = {
   recipient_phone: string | null;
   /** Set every time staff edit the order, so the list shows an edit badge. */
   last_edited_at: string | null;
+  /** Manual queue position set by staff with the up/down buttons. */
+  queue_rank: number | null;
   customer_name: string;
   customer_phone: string;
   method: "delivery" | "pickup";
@@ -77,7 +79,7 @@ export type SalesOrder = {
 };
 
 const SELECT =
-  "id, order_number, order_name, sender_phone, recipient_phone, last_edited_at, customer_name, customer_phone, method, area, address, requested_date, requested_time, notes, staff_notes, inscription, card_note, final_photo_requested, confirmation_message, design_image_url, subtotal, delivery_fee, discount_amount, discount_percent, total, deposit_paid, payment_method, driver_name, driver_phone, cancel_reason, status, schedule_updated_at, created_at, updated_at, order_items(id, name_ar, name_en, quantity, unit_price, options_ar, notes, product_id)";
+  "id, order_number, staff_code, queue_rank, order_name, sender_phone, recipient_phone, last_edited_at, customer_name, customer_phone, method, area, address, requested_date, requested_time, notes, staff_notes, inscription, card_note, final_photo_requested, confirmation_message, design_image_url, subtotal, delivery_fee, discount_amount, discount_percent, total, deposit_paid, payment_method, driver_name, driver_phone, cancel_reason, status, schedule_updated_at, created_at, updated_at, order_items(id, name_ar, name_en, quantity, unit_price, options_ar, notes, product_id)";
 
 type Row = Record<string, unknown> & { order_items?: unknown[] };
 
