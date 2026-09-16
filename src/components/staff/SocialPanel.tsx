@@ -57,6 +57,7 @@ export function SocialPanel() {
   const accessFn = useServerFn(getSocialAccess);
   const createFn = useServerFn(createSocialOrder);
 
+  const [view, setView] = useState<"new" | "orders">("new");
   const [form, setForm] = useState(emptyForm);
   const [customization, setCustomization] = useState<Customization>(emptyCustomization);
   const [copied, setCopied] = useState<"summary" | "confirmation" | null>(null);
