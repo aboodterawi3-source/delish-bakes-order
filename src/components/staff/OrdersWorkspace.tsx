@@ -744,7 +744,7 @@ function OrderPanel({
   editLink?: string | null;
   onApplyDiscount?: (percent: number, reason: string) => void;
   onIssueEditLink?: () => void;
-  onUpdateItem?: (input: Omit<OrderItemPatch, "orderId">) => void;
+  
   onZoom: (url: string) => void;
   onClose: () => void;
   onPatch: (input: Omit<OrderPatch, "orderId">) => void;
