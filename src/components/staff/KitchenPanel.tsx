@@ -579,21 +579,6 @@ const KdsCard = memo(function KdsCard({
         <div className="mt-3 space-y-2">
           <button
             type="button"
-            onClick={() => onZoom(order.design_image_url as string)}
-            className="block w-full overflow-hidden rounded-2xl border border-card/40 bg-card/20 transition-transform hover:scale-[1.01] active:scale-95"
-          >
-            <img
-              src={order.design_image_url}
-              alt={`صورة تصميم الطلب ${order.order_number}`}
-              loading="lazy"
-              className="h-36 w-full object-cover"
-            />
-            <span className="block bg-peach-coral/80 py-2 text-xs font-bold text-primary">
-              تكبير الصورة · Zoom Design
-            </span>
-          </button>
-          <button
-            type="button"
             onClick={() => void downloadDesignImage(order.design_image_url as string, order.order_number)}
             className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-card/90 px-4 text-xs font-bold text-primary shadow-sm transition-transform hover:scale-[1.02] active:scale-95"
           >
