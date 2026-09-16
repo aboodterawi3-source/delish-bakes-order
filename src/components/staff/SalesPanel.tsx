@@ -75,6 +75,7 @@ export function SalesPanel() {
         <nav className="no-scrollbar mb-5 flex max-w-full gap-2 overflow-x-auto" aria-label="أقسام واجهة المبيعات">
           {([
             { value: "orders" as const, ar: "الطلبات", en: "Orders" },
+            { value: "modifications" as const, ar: "تعديلات", en: "Modifications" },
             { value: "site" as const, ar: "إدارة الموقع", en: "Website" },
           ]).map((item) => (
             <button
