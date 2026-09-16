@@ -12,6 +12,15 @@ const KITCHEN_ROLES: StaffRoleName[] = ["kitchen", "admin"];
 const PREP_ONLY = /هدية|هاتف|رقم|gift|phone|whatsapp|\+?\d[\d\s-]{5,}/i;
 const prepOptions = (options: string[]): string[] => options.filter((option) => !PREP_ONLY.test(option));
 
+/**
+ * Kitchen staff must never see contact numbers, even when a phone number was
+ * typed inside a free-text field (name, notes, inscription). Any phone-shaped
+ * digit run is masked before the data leaves the server.
+ */
+const PHONE_LIKE = /\+?\d[\d\s-]{6,}\d/g;
+const stripPhones = (text: string | null): string | null =>
+  text ? text.replace(PHONE_LIKE, "—") : text;
+
 
 export type KdsItem = {
   id: string;
@@ -146,7 +155,7 @@ export const getKitchenOrders = createServerFn({ method: "GET" })
         quantity: item.quantity,
         options_ar: prepOptions(item.options_ar ?? []),
         options_en: prepOptions(item.options_en ?? []),
-        notes: item.notes,
+        notes: stripPhones(item.notes),
         category: categoryByProduct.get(item.product_id) ?? null,
         priority_color: priorityByProduct.get(item.product_id) ?? null,
       });
@@ -157,14 +166,14 @@ export const getKitchenOrders = createServerFn({ method: "GET" })
       id: order.id,
       order_number: order.order_number,
       staff_code: order.staff_code ?? null,
-      customer_name: order.customer_name,
+      customer_name: stripPhones(order.customer_name) ?? "",
       method: order.method,
       requested_date: order.requested_date,
       requested_time: order.requested_time,
       status: order.status,
-      inscription: order.inscription,
+      inscription: stripPhones(order.inscription),
       design_image_url: order.design_image_url,
-      notes: order.notes,
+      notes: stripPhones(order.notes),
       schedule_updated_at: order.schedule_updated_at,
       last_edited_at: order.last_edited_at ?? null,
       queue_rank: order.queue_rank ?? null,
