@@ -404,12 +404,46 @@ function OrderEditor({
         ) : null}
       </div>
 
-      {/* Items: description, price, quantity and every customer extra */}
+      {/* Items: rebuild through the website interface, or fine-tune line by line */}
       <div className="space-y-3">
-        <h4 className="text-sm font-bold text-foreground">الأصناف والطلبات الخاصة · Items &amp; extras</h4>
-        {order.items.map((item) => (
-          <ItemEditor key={item.id} item={item} products={products} onItemPatch={onItemPatch} />
-        ))}
+        <div className="flex flex-wrap items-center gap-2">
+          <h4 className="min-w-0 flex-1 text-sm font-bold text-foreground">
+            الأصناف والطلبات الخاصة · Items &amp; extras
+          </h4>
+          <div className="inline-flex rounded-lg bg-secondary p-1">
+            {(
+              [
+                { key: "builder", ar: "واجهة الموقع" },
+                { key: "lines", ar: "تعديل سطري" },
+              ] as const
+            ).map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setItemsMode(tab.key)}
+                aria-pressed={itemsMode === tab.key}
+                className={`min-h-10 rounded-md px-3 text-xs font-bold ${
+                  itemsMode === tab.key ? "bg-primary text-primary-foreground" : "text-foreground"
+                }`}
+              >
+                {tab.ar}
+              </button>
+            ))}
+          </div>
+        </div>
+        {itemsMode === "builder" ? (
+          <WebsiteRebuildPanel
+            key={order.id}
+            order={order}
+            products={products}
+            busy={busy}
+            onReplace={onReplaceItems}
+          />
+        ) : (
+          order.items.map((item) => (
+            <ItemEditor key={item.id} item={item} products={products} onItemPatch={onItemPatch} />
+          ))
+        )}
         {order.items.length === 0 ? (
           <p className="rounded-2xl border border-dashed border-border p-4 text-xs text-muted-foreground">
             لا توجد أصناف مسجلة على هذا الطلب.
