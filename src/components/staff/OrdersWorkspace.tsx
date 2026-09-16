@@ -568,10 +568,13 @@ const OrderCard = memo(function OrderCard({
   order,
   onOpen,
   onZoom,
+  onMove,
 }: {
   order: SalesOrder;
   onOpen: (id: string) => void;
   onZoom: (url: string) => void;
+  /** Manual priority move: -1 = up, 1 = down. */
+  onMove: (id: string, direction: -1 | 1) => void;
 }) {
   const remaining = Math.max(order.total - order.deposit_paid, 0);
   return (
@@ -648,6 +651,25 @@ const OrderCard = memo(function OrderCard({
             <MessageCircle className="h-4 w-4" aria-hidden="true" /> إرسال تأكيد التعديل للواتساب
           </button>
         ) : null}
+        {/* Manual priority ordering (up / down). */}
+        <div className="ms-auto flex gap-2">
+          <button
+            type="button"
+            onClick={() => onMove(order.id, -1)}
+            aria-label="رفع أولوية الطلب"
+            className="grid min-h-12 min-w-12 place-items-center rounded-full border border-border text-foreground"
+          >
+            <ArrowUp className="h-4 w-4" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            onClick={() => onMove(order.id, 1)}
+            aria-label="تنزيل أولوية الطلب"
+            className="grid min-h-12 min-w-12 place-items-center rounded-full border border-border text-foreground"
+          >
+            <ArrowDown className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </div>
       </div>
     </li>
   );
