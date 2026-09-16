@@ -456,6 +456,9 @@ export function OrdersWorkspace({ showShiftReport = false }: { showShiftReport?:
         ) : null}
       </div>
 
+      {/* Universal date filter: today, tomorrow, next 7 days, upcoming, past, custom. */}
+      <DateFilterBar value={dateKey} onChange={setDateKey} custom={custom} onCustom={setCustom} />
+
       {orders.isPending ? (
         <p className="py-10 text-center text-sm text-muted-foreground">جار تحميل الطلبات…</p>
       ) : orders.isError ? (
