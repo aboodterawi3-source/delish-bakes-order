@@ -17,10 +17,15 @@ import {
   emptyCustomization,
   type Customization,
 } from "@/components/delish/CakeCustomizationPanel";
+import { OrdersWorkspace } from "@/components/staff/OrdersWorkspace";
 
 
 
 const emptyForm = {
+  /** Delivery order: label, sender and recipient. */
+  order_name: "",
+  sender_phone: "",
+  recipient_phone: "",
   customer_name: "",
   customer_phone: "",
   order_details: "",
@@ -52,6 +57,7 @@ export function SocialPanel() {
   const accessFn = useServerFn(getSocialAccess);
   const createFn = useServerFn(createSocialOrder);
 
+  const [view, setView] = useState<"new" | "orders">("new");
   const [form, setForm] = useState(emptyForm);
   const [customization, setCustomization] = useState<Customization>(emptyCustomization);
   const [copied, setCopied] = useState<"summary" | "confirmation" | null>(null);
@@ -86,35 +92,6 @@ export function SocialPanel() {
   const remaining = remainingBalance(grandTotal, paidAmount);
 
 
-  /** Customer-facing summary — internal staff notes are deliberately excluded. */
-  const summary = useMemo(() => {
-    const lines = [
-      "طلب جديد · Delish Cake & Bake",
-      `الاسم: ${form.customer_name || "—"}`,
-      `الهاتف: ${form.customer_phone || "—"}`,
-      `تفاصيل الطلب: ${form.order_details.trim() || "—"}`,
-      `الكمية: ${form.quantity}`,
-      `الاستلام: ${form.method === "delivery" ? "توصيل" : "استلام من المحل"}`,
-      `طريقة الدفع: ${paymentLabel}`,
-      `تاريخ ووقت التسليم: ${form.requested_date || "—"} ${form.requested_time || ""}`.trim(),
-    ];
-    if (form.method === "delivery" && form.area) {
-      lines.push(`المنطقة: ${form.area}`);
-      lines.push(
-        form.area === OTHER_GOVERNORATES_AREA
-          ? "أجرة التوصيل: ٥–٨ د.أ يحددها الفريق حسب العنوان"
-          : `أجرة التوصيل: ${deliveryFee.toFixed(2)} د.أ`,
-      );
-    }
-    if (form.method === "delivery" && form.address.trim()) lines.push(`العنوان: ${form.address.trim()}`);
-    if (form.event_date) lines.push(`تاريخ المناسبة: ${form.event_date}`);
-    if (form.is_urgent) lines.push("🚨 طلب مستعجل");
-    if (extras.ar.length) lines.push(...extras.ar.map((line) => `• ${line}`));
-    const extraNotes = customization.notes.trim();
-    if (extraNotes) lines.push(`ملاحظات إضافية: ${extraNotes}`);
-    if (form.design_notes.trim()) lines.push(`ملاحظات التصميم: ${form.design_notes.trim()}`);
-    return lines.join("\n");
-  }, [form, extras, customization.notes, paymentLabel, deliveryFee]);
 
   /** Official confirmation message. The order number is filled in on the server. */
   const confirmationTemplate = useMemo(
@@ -138,8 +115,8 @@ export function SocialPanel() {
         total: grandTotal,
         paid: paidAmount,
         paymentMethod: paymentLabel,
-        recipientPhone: customization.recipientPhone || form.customer_phone,
-        senderPhone: customization.senderPhone,
+        recipientPhone: form.recipient_phone || customization.recipientPhone || form.customer_phone,
+        senderPhone: form.sender_phone || customization.senderPhone,
       }),
     [form, extras.ar, customization, originalPrice, deliveryFee, grandTotal, paidAmount, paymentLabel],
   );
@@ -235,6 +212,9 @@ export function SocialPanel() {
   const onSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     submit.mutate({
+      order_name: form.order_name,
+      sender_phone: form.sender_phone || customization.senderPhone,
+      recipient_phone: form.recipient_phone || customization.recipientPhone,
       customer_name: form.customer_name,
       customer_phone: form.customer_phone,
       order_details: form.order_details,
@@ -289,6 +269,30 @@ export function SocialPanel() {
       </header>
 
       <div className="mx-auto max-w-3xl px-4 py-6">
+        {/* Two work modes: take a new order, or manage every existing order. */}
+        <nav className="no-scrollbar mb-5 flex max-w-full gap-2 overflow-x-auto" aria-label="أقسام بوابة السوشال">
+          {([
+            { value: "new" as const, label: "طلب جديد · New order" },
+            { value: "orders" as const, label: "إدارة الطلبات · Orders" },
+          ]).map((item) => (
+            <button
+              key={item.value}
+              type="button"
+              aria-current={view === item.value}
+              onClick={() => setView(item.value)}
+              className={`min-h-12 shrink-0 whitespace-nowrap rounded-full px-6 text-sm font-bold transition ${
+                view === item.value
+                  ? "bg-[#8B4513] text-white shadow-sm"
+                  : "border border-slate-200 bg-white text-[#5D2E17] hover:bg-slate-50"
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </nav>
+
+        {view === "new" ? (
+        <>
         {done ? (
           <p role="status" className="mb-4 rounded-2xl bg-amber-50 border border-amber-200 p-4 text-sm font-bold text-amber-900 shadow-xs">
             تم إرسال الطلب {done} ويظهر الآن على شاشة المبيعات والمطبخ ✅
@@ -304,6 +308,39 @@ export function SocialPanel() {
           <h2 className="font-serif text-lg font-bold text-[#3E2723]">طلب جديد · New order</h2>
 
           <div className="grid gap-4 sm:grid-cols-2">
+            {/* Delivery order: order name, sender phone, recipient phone, region. */}
+            <label className="block text-sm font-bold text-[#3E2723] sm:col-span-2">
+              اسم الطلب · Order name
+              <input
+                value={form.order_name}
+                onChange={(event) => set("order_name", event.target.value)}
+                placeholder="مثال: كيكة عيد ميلاد سارة"
+                className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+              />
+              <span className="mt-1 block text-xs font-normal text-[#7A6458]">
+                يظهر في قائمة الطلبات بدل رقم الهاتف.
+              </span>
+            </label>
+            <label className="block text-sm font-bold text-[#3E2723]">
+              رقم المرسل · Sender phone
+              <input
+                dir="ltr"
+                inputMode="tel"
+                value={form.sender_phone}
+                onChange={(event) => set("sender_phone", event.target.value)}
+                className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+              />
+            </label>
+            <label className="block text-sm font-bold text-[#3E2723]">
+              رقم المستلم · Recipient phone
+              <input
+                dir="ltr"
+                inputMode="tel"
+                value={form.recipient_phone}
+                onChange={(event) => set("recipient_phone", event.target.value)}
+                className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+              />
+            </label>
             <label className="block text-sm font-bold text-[#3E2723]">
               اسم العميل · Customer name
               <input
@@ -598,40 +635,17 @@ export function SocialPanel() {
               {submit.isPending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Send className="h-4 w-4" aria-hidden="true" />}
               إرسال فوري للطلب
             </button>
-            <button
-              type="button"
-              onClick={() => void copy(summary, "summary")}
-              className="inline-flex min-h-12 min-w-0 flex-[1_1_12rem] items-center justify-center gap-2 rounded-full border border-[#B8860B] bg-white px-4 text-center text-sm font-bold text-[#8B4513] hover:bg-[#FDE2CF]/30 shadow-xs transition sm:px-5"
-            >
-              {copied === "summary" ? <Check className="h-4 w-4" aria-hidden="true" /> : <ClipboardCopy className="h-4 w-4" aria-hidden="true" />}
-              {copied === "summary" ? "تم النسخ" : "نسخ رسالة واتساب"}
-            </button>
-            <a
-              href={whatsappUrl(summary)}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="فتح واتساب المحل مع نص الطلب"
-              className="inline-flex min-h-12 min-w-0 flex-[1_1_12rem] items-center justify-center gap-2 rounded-full bg-[#25D366] px-4 text-center text-sm font-bold text-white shadow-sm hover:brightness-95 transition sm:px-5"
-            >
-              <MessageCircle className="h-4 w-4" aria-hidden="true" />
-              فتح واتساب · +962 77 917 9995
-            </a>
           </div>
         </form>
 
-        <section className="mt-5 rounded-3xl border border-border bg-card p-5">
-          <h2 className="font-display text-base font-bold text-foreground">معاينة رسالة واتساب</h2>
-          <pre className="mt-2 whitespace-pre-wrap break-words rounded-xl bg-secondary/60 p-3 text-sm text-foreground">{summary}</pre>
-        </section>
-
-        {/* Official confirmation message, saved with the order on submit. */}
+        {/* One ready-to-use confirmation message: copy it, or send it compactly. */}
         <section className="mt-5 rounded-3xl border border-[#B8860B]/40 bg-card p-5">
           <h2 className="font-display text-base font-bold text-foreground">👑 رسالة تأكيد الطلب (Delish Cake)</h2>
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className="mt-3 flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => void copy(confirmationPreview, "confirmation")}
-              className="inline-flex min-h-12 min-w-0 flex-[1_1_12rem] items-center justify-center gap-2 rounded-full border border-[#B8860B] bg-white px-4 text-sm font-bold text-[#8B4513] hover:bg-[#FDE2CF]/30 transition"
+              className="inline-flex min-h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-full border border-[#B8860B] bg-white px-4 text-sm font-bold text-[#8B4513] hover:bg-[#FDE2CF]/30 transition"
             >
               {copied === "confirmation" ? <Check className="h-4 w-4" aria-hidden="true" /> : <ClipboardCopy className="h-4 w-4" aria-hidden="true" />}
               {copied === "confirmation" ? "تم النسخ" : "نسخ رسالة التأكيد"}
@@ -640,14 +654,19 @@ export function SocialPanel() {
               href={whatsappUrl(confirmationPreview)}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex min-h-12 min-w-0 flex-[1_1_12rem] items-center justify-center gap-2 rounded-full bg-[#25D366] px-4 text-sm font-bold text-white shadow-sm hover:brightness-95 transition"
+              aria-label="إرسال رسالة التأكيد على واتساب"
+              title="إرسال على واتساب"
+              className="inline-flex min-h-12 min-w-12 items-center justify-center rounded-full bg-[#25D366] text-white shadow-sm hover:brightness-95 transition"
             >
-              <MessageCircle className="h-4 w-4" aria-hidden="true" />
-              إرسال رسالة التأكيد
+              <MessageCircle className="h-5 w-5" aria-hidden="true" />
             </a>
           </div>
           <pre className="mt-3 max-h-96 overflow-y-auto whitespace-pre-wrap break-words rounded-xl bg-secondary/60 p-3 text-sm text-foreground">{confirmationPreview}</pre>
         </section>
+        </>
+        ) : (
+          <OrdersWorkspace />
+        )}
       </div>
     </main>
   );

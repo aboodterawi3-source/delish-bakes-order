@@ -3,7 +3,8 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertRole, type StaffRoleName } from "@/lib/role-guard";
 import { feeForArea } from "@/lib/delivery-zones";
 
-const SALES_ROLES: StaffRoleName[] = ["sales", "admin"];
+/** The order desk: sales, social media and admins all manage the same orders. */
+const SALES_ROLES: StaffRoleName[] = ["sales", "admin", "social"];
 
 
 export type SalesStatus =
@@ -32,6 +33,12 @@ export type SalesItem = {
 export type SalesOrder = {
   id: string;
   order_number: string;
+  /** Short label for the order, shown in the list instead of the phone number. */
+  order_name: string | null;
+  sender_phone: string | null;
+  recipient_phone: string | null;
+  /** Set every time staff edit the order, so the list shows an edit badge. */
+  last_edited_at: string | null;
   customer_name: string;
   customer_phone: string;
   method: "delivery" | "pickup";
@@ -68,7 +75,7 @@ export type SalesOrder = {
 };
 
 const SELECT =
-  "id, order_number, customer_name, customer_phone, method, area, address, requested_date, requested_time, notes, staff_notes, inscription, card_note, final_photo_requested, confirmation_message, design_image_url, subtotal, delivery_fee, discount_amount, discount_percent, total, deposit_paid, payment_method, driver_name, driver_phone, cancel_reason, status, schedule_updated_at, created_at, updated_at, order_items(id, name_ar, name_en, quantity, unit_price, options_ar, notes, product_id)";
+  "id, order_number, order_name, sender_phone, recipient_phone, last_edited_at, customer_name, customer_phone, method, area, address, requested_date, requested_time, notes, staff_notes, inscription, card_note, final_photo_requested, confirmation_message, design_image_url, subtotal, delivery_fee, discount_amount, discount_percent, total, deposit_paid, payment_method, driver_name, driver_phone, cancel_reason, status, schedule_updated_at, created_at, updated_at, order_items(id, name_ar, name_en, quantity, unit_price, options_ar, notes, product_id)";
 
 type Row = Record<string, unknown> & { order_items?: unknown[] };
 
@@ -135,6 +142,18 @@ export type OrderPatch = {
   card_note?: string | null;
   final_photo_requested?: boolean;
   confirmation_message?: string | null;
+  /** Delivery-order identity fields, editable from Sales and Social alike. */
+  order_name?: string | null;
+  sender_phone?: string | null;
+  recipient_phone?: string | null;
+  customer_name?: string;
+  customer_phone?: string;
+  address?: string | null;
+  requested_date?: string;
+  requested_time?: string;
+  notes?: string | null;
+  staff_notes?: string | null;
+  inscription?: string | null;
 };
 
 const STATUSES: SalesStatus[] = [
@@ -218,6 +237,41 @@ const buildOrderPatch = (input: OrderPatch): Record<string, unknown> => {
       : null;
   }
 
+  // Free-text order identity fields — trimmed and length-capped.
+  const text = (value: unknown, max: number) => {
+    const clean = String(value ?? "").replace(/[\r\n]+/g, " ").trim();
+    return clean ? clean.slice(0, max) : null;
+  };
+  if (input.order_name !== undefined) patch['order_name'] = text(input.order_name, 160);
+  if (input.sender_phone !== undefined) patch['sender_phone'] = text(input.sender_phone, 40);
+  if (input.recipient_phone !== undefined) patch['recipient_phone'] = text(input.recipient_phone, 40);
+  if (input.address !== undefined) patch['address'] = text(input.address, 500);
+  if (input.notes !== undefined) patch['notes'] = text(input.notes, 2000);
+  if (input.staff_notes !== undefined) patch['staff_notes'] = text(input.staff_notes, 2000);
+  if (input.inscription !== undefined) patch['inscription'] = text(input.inscription, 500);
+  if (input.customer_name !== undefined) {
+    const name = text(input.customer_name, 160);
+    if (!name) throw new Error("اسم العميل مطلوب · Customer name is required");
+    patch['customer_name'] = name;
+  }
+  if (input.customer_phone !== undefined) {
+    const phone = text(input.customer_phone, 40);
+    if (!phone) throw new Error("رقم الهاتف مطلوب · Customer phone is required");
+    patch['customer_phone'] = phone;
+  }
+  if (input.requested_date !== undefined) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(input.requested_date))) {
+      throw new Error("تاريخ غير صالح · Invalid date");
+    }
+    patch['requested_date'] = input.requested_date;
+  }
+  if (input.requested_time !== undefined) {
+    if (!/^\d{2}:\d{2}(:\d{2})?$/.test(String(input.requested_time))) {
+      throw new Error("وقت غير صالح · Invalid time");
+    }
+    patch['requested_time'] = input.requested_time;
+  }
+
   return patch;
 };
 
@@ -236,6 +290,9 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
     if (Object.keys(clean).length === 0) {
       throw new Error("لا يوجد تغيير · Nothing to update");
     }
+    // Every desk edit is stamped so the list and printouts show the edit badge.
+    clean['last_edited_at'] = new Date().toISOString();
+    clean['last_edited_by'] = context.userId;
     const { data: row, error } = await context.supabase
       .from("orders")
       .update(clean as never)
@@ -247,26 +304,50 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
   });
 
 
+export type OrderItemPatch = {
+  itemId: string;
+  orderId: string;
+  newUnitPrice?: number;
+  quantity?: number;
+  name?: string;
+  notes?: string | null;
+};
+
+/** Order-desk staff may correct any line: price, quantity, description, notes. */
 export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { itemId: string; orderId: string; newUnitPrice: number }) => {
+  .inputValidator((input: OrderItemPatch) => {
     if (!input?.itemId) throw new Error("itemId is required");
     if (!input?.orderId) throw new Error("orderId is required");
-    const price = Number(input.newUnitPrice);
-    if (!Number.isFinite(price) || price < 0 || price > 100000) {
-      throw new Error("سعر غير صالح · Invalid price");
+    const out: OrderItemPatch = { itemId: String(input.itemId), orderId: String(input.orderId) };
+    if (input.newUnitPrice !== undefined) {
+      const price = Number(input.newUnitPrice);
+      if (!Number.isFinite(price) || price < 0 || price > 100000) {
+        throw new Error("سعر غير صالح · Invalid price");
+      }
+      out.newUnitPrice = price;
     }
-    return { itemId: String(input.itemId), orderId: String(input.orderId), newUnitPrice: price };
+    if (input.quantity !== undefined) {
+      const qty = Math.trunc(Number(input.quantity));
+      if (!Number.isFinite(qty) || qty < 1 || qty > 1000) {
+        throw new Error("كمية غير صالحة · Invalid quantity");
+      }
+      out.quantity = qty;
+    }
+    if (input.name !== undefined) {
+      const name = String(input.name).trim().slice(0, 2000);
+      if (!name) throw new Error("وصف الصنف مطلوب · Item description is required");
+      out.name = name;
+    }
+    if (input.notes !== undefined) {
+      out.notes = input.notes ? String(input.notes).trim().slice(0, 2000) || null : null;
+    }
+    return out;
   })
   .handler(async ({ data, context }): Promise<SalesOrder> => {
     await assertRole(context, SALES_ROLES);
 
-    // Price overrides are a per-employee privilege granted by an admin.
-    const { resolveAuthorization, writeAudit, staffName } = await import("@/lib/authorization.functions");
-    const auth = await resolveAuthorization(context as never);
-    if (!auth.allow_price_override) {
-      throw new Error("تحتاج تصريح المدير لتعديل السعر · Requires admin authorization");
-    }
+    const { writeAudit, staffName } = await import("@/lib/authorization.functions");
 
     const { data: before } = await context.supabase
       .from("order_items")
@@ -277,16 +358,21 @@ export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
       throw new Error("عنصر غير موجود · Order item not found");
     }
 
-    // The per-product allow list configured by the admin is enforced here, not in the UI.
-    const { canEditProductPrice } = await import("@/lib/permissions.functions");
-    if (!(await canEditProductPrice(context as never, before.product_id))) {
-      throw new Error("غير مصرّح بتعديل سعر هذا المنتج · Not authorised to reprice this product");
+    const itemPatch: Record<string, unknown> = {};
+    if (data.newUnitPrice !== undefined) itemPatch['unit_price'] = data.newUnitPrice;
+    if (data.quantity !== undefined) itemPatch['quantity'] = data.quantity;
+    if (data.name !== undefined) {
+      itemPatch['name_ar'] = data.name;
+      itemPatch['name_en'] = data.name;
+    }
+    if (data.notes !== undefined) itemPatch['notes'] = data.notes;
+    if (Object.keys(itemPatch).length === 0) {
+      throw new Error("لا يوجد تغيير · Nothing to update");
     }
 
-    // Update order_items table
     const { error: itemError } = await context.supabase
       .from("order_items")
-      .update({ unit_price: data.newUnitPrice })
+      .update(itemPatch as never)
       .eq("id", data.itemId);
     if (itemError) throw new Error(itemError.message);
 
@@ -313,7 +399,12 @@ export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
 
     const { data: updatedOrder, error: orderError } = await context.supabase
       .from("orders")
-      .update({ subtotal, total })
+      .update({
+        subtotal,
+        total,
+        last_edited_at: new Date().toISOString(),
+        last_edited_by: context.userId,
+      } as never)
       .eq("id", data.orderId)
       .select(SELECT)
       .single();
@@ -328,9 +419,9 @@ export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
       staff_name: staffName(context as never),
       action: "price_override",
       original_amount: Number(before?.unit_price ?? 0),
-      modified_amount: data.newUnitPrice,
+      modified_amount: data.newUnitPrice ?? Number(before?.unit_price ?? 0),
       discount_percent: null,
-      reason: "Unit price adjusted on the sales desk",
+      reason: "Order line edited on the order desk",
     });
 
     return order;

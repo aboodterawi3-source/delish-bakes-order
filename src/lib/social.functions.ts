@@ -7,6 +7,11 @@ const SOCIAL_ROLES: StaffRoleName[] = ["social", "sales", "admin"];
 
 
 export type SocialOrderInput = {
+  /** Short label shown in the orders list instead of the phone number. */
+  order_name?: string | null;
+  /** Delivery order: who sends and who receives. */
+  sender_phone?: string | null;
+  recipient_phone?: string | null;
   customer_name: string;
   customer_phone: string;
   order_details: string;
@@ -133,6 +138,9 @@ export const createSocialOrder = createServerFn({ method: "POST" })
         confirmation_message: message,
         customer_name: data.customer_name.trim(),
         customer_phone: data.customer_phone.trim(),
+        order_name: data.order_name?.trim().slice(0, 160) || null,
+        sender_phone: data.sender_phone?.trim().slice(0, 40) || null,
+        recipient_phone: data.recipient_phone?.trim().slice(0, 40) || null,
         method: data.method,
         area,
         address: data.method === "delivery" ? data.address?.trim() || null : null,

@@ -182,13 +182,18 @@ export type Database = {
           id: string
           inscription: string | null
           is_urgent: boolean
+          last_edited_at: string | null
+          last_edited_by: string | null
           method: Database["public"]["Enums"]["order_method"]
           notes: string | null
+          order_name: string | null
           order_number: string
           payment_method: Database["public"]["Enums"]["payment_method"] | null
+          recipient_phone: string | null
           requested_date: string
           requested_time: string
           schedule_updated_at: string | null
+          sender_phone: string | null
           staff_notes: string | null
           status: Database["public"]["Enums"]["order_status"]
           subtotal: number
@@ -217,13 +222,18 @@ export type Database = {
           id?: string
           inscription?: string | null
           is_urgent?: boolean
+          last_edited_at?: string | null
+          last_edited_by?: string | null
           method?: Database["public"]["Enums"]["order_method"]
           notes?: string | null
+          order_name?: string | null
           order_number?: string
           payment_method?: Database["public"]["Enums"]["payment_method"] | null
+          recipient_phone?: string | null
           requested_date: string
           requested_time: string
           schedule_updated_at?: string | null
+          sender_phone?: string | null
           staff_notes?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           subtotal?: number
@@ -252,13 +262,18 @@ export type Database = {
           id?: string
           inscription?: string | null
           is_urgent?: boolean
+          last_edited_at?: string | null
+          last_edited_by?: string | null
           method?: Database["public"]["Enums"]["order_method"]
           notes?: string | null
+          order_name?: string | null
           order_number?: string
           payment_method?: Database["public"]["Enums"]["payment_method"] | null
+          recipient_phone?: string | null
           requested_date?: string
           requested_time?: string
           schedule_updated_at?: string | null
+          sender_phone?: string | null
           staff_notes?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           subtotal?: number
