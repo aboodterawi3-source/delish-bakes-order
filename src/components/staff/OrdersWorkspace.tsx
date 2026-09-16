@@ -745,7 +745,7 @@ function OrderPanel({
   const confirmationMessage = useMemo(
     () =>
       buildConfirmationMessage({
-        orderNumber: order.order_number,
+        orderNumber: orderLabel(order.order_number, order.staff_code),
         customerName: order.order_name?.trim() || order.customer_name,
         when: `${order.requested_date} ${order.requested_time}`.trim(),
         fulfilment:
@@ -779,7 +779,7 @@ function OrderPanel({
     <div className="fixed inset-0 z-30 flex max-w-full justify-start overflow-x-hidden bg-foreground/50" role="dialog" aria-modal="true" aria-label={`إدارة الطلب ${order.order_number}`}>
       <div className="ms-auto h-full w-full max-w-md min-w-0 overflow-x-hidden overflow-y-auto bg-card p-4 sm:p-5">
         <div className="flex items-center gap-2">
-          <h2 className="me-auto font-display text-lg font-bold text-foreground">{order.order_number}</h2>
+          <h2 className="me-auto font-display text-lg font-bold text-foreground">{orderLabel(order.order_number, order.staff_code)}</h2>
           {order.last_edited_at ? (
             <span className="inline-flex items-center gap-1 rounded-full bg-gold px-2 py-1 text-[11px] font-bold text-white">
               <Pencil className="h-3 w-3" aria-hidden="true" /> تم التعديل
