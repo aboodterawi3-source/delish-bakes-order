@@ -492,7 +492,7 @@ export function OrdersWorkspace({ showShiftReport = false }: { showShiftReport?:
             discount.mutate({ orderId: selected.id, percent, reason })
           }
           onIssueEditLink={() => issueEditLink.mutate(selected.id)}
-          onUpdateItem={(input) => updateItem.mutate({ ...input, orderId: selected.id })}
+          
           onZoom={setZoomImage}
           onClose={() => {
             setSelectedId(null);
