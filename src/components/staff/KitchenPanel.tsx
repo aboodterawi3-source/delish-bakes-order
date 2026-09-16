@@ -291,14 +291,9 @@ export function KitchenPanel() {
     [queryClient, reorderFn, visible],
   );
 
-  const acknowledge = useCallback(() => {
-    setAlerts([]);
-    const audio = audioRef.current;
-    if (audio) {
-      audio.loop = false;
-      audio.pause();
-      audio.currentTime = 0;
-    }
+  /** Kitchen clears the alarm one order at a time, from that order's card. */
+  const acknowledge = useCallback((id: string) => {
+    setAlerts((current) => current.filter((value) => value !== id));
   }, []);
 
   const signOut = useCallback(async () => {
@@ -385,15 +380,8 @@ export function KitchenPanel() {
         >
           <BellRing className="h-5 w-5 animate-pulse" aria-hidden />
           <p className="min-w-0 flex-1 text-sm font-bold">
-            {alerts.length} طلب جديد أو معدّل يحتاج انتباهك · New / modified orders
+            {alerts.length} طلب جديد أو معدّل — اضغط «تم الاطلاع» على بطاقة الطلب لإيقاف التنبيه
           </p>
-          <button
-            type="button"
-            onClick={acknowledge}
-            className="min-h-11 rounded-full bg-white px-5 text-sm font-extrabold text-[#8B4513] shadow-sm hover:bg-[#FDE2CF]"
-          >
-            تم الاطلاع · Acknowledged
-          </button>
         </div>
       )}
 
@@ -432,6 +420,7 @@ export function KitchenPanel() {
                             order={order}
                             busy={pending === order.id}
                             alerted={alerts.includes(order.id)}
+                            onAck={acknowledge}
                             onStage={onStage}
                             onMove={onMove}
                             onZoom={setZoom}
@@ -472,6 +461,7 @@ const KdsCard = memo(function KdsCard({
   order,
   busy,
   alerted = false,
+  onAck,
   onStage,
   onMove,
   onZoom,
@@ -480,6 +470,8 @@ const KdsCard = memo(function KdsCard({
   busy: boolean;
   /** True while this order still waits for a kitchen acknowledgement. */
   alerted?: boolean;
+  /** Stops the alarm for this specific order only. */
+  onAck: (id: string) => void;
   onStage: (id: string, stage: KitchenStage) => void;
   /** Manual priority move: -1 = up (prepare sooner), 1 = down. */
   onMove: (id: string, direction: -1 | 1) => void;
@@ -507,9 +499,21 @@ const KdsCard = memo(function KdsCard({
             <span className="text-base">{(order.requested_time ?? "").slice(0, 5)}</span>
           </p>
           {alerted && (
-            <p className="mt-2 inline-flex items-center gap-1 rounded-full bg-[#8B4513] px-3 py-1 text-[11px] font-extrabold text-white shadow-sm">
-              <PencilLine className="h-3.5 w-3.5" aria-hidden /> تم تعديل الطلب
-            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <p
+                role="alert"
+                className="inline-flex animate-pulse items-center gap-1 rounded-full bg-[#8B4513] px-3 py-1 text-[11px] font-extrabold text-white shadow-sm"
+              >
+                <PencilLine className="h-3.5 w-3.5" aria-hidden /> تم تعديل الطلب
+              </p>
+              <button
+                type="button"
+                onClick={() => onAck(order.id)}
+                className="min-h-10 rounded-full bg-white px-4 text-[11px] font-extrabold text-[#8B4513] shadow-sm hover:bg-[#FDE2CF]"
+              >
+                تم الاطلاع · Seen
+              </button>
+            </div>
           )}
           {order.schedule_updated_at && (
             <p className="mt-2 inline-flex rounded-full bg-[#B8860B] px-3 py-1 text-[11px] font-extrabold text-white shadow-sm">
