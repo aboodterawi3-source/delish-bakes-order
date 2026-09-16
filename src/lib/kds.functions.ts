@@ -12,6 +12,15 @@ const KITCHEN_ROLES: StaffRoleName[] = ["kitchen", "admin"];
 const PREP_ONLY = /هدية|هاتف|رقم|gift|phone|whatsapp|\+?\d[\d\s-]{5,}/i;
 const prepOptions = (options: string[]): string[] => options.filter((option) => !PREP_ONLY.test(option));
 
+/**
+ * Kitchen staff must never see contact numbers, even when a phone number was
+ * typed inside a free-text field (name, notes, inscription). Any phone-shaped
+ * digit run is masked before the data leaves the server.
+ */
+const PHONE_LIKE = /\+?\d[\d\s-]{6,}\d/g;
+const stripPhones = (text: string | null): string | null =>
+  text ? text.replace(PHONE_LIKE, "—") : text;
+
 
 export type KdsItem = {
   id: string;
