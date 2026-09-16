@@ -427,6 +427,7 @@ export function KitchenPanel() {
                             key={order.id}
                             order={order}
                             busy={pending === order.id}
+                            alerted={alerts.includes(order.id)}
                             onStage={onStage}
                             onZoom={setZoom}
                           />
