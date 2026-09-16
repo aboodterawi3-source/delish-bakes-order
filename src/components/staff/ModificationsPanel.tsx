@@ -491,13 +491,27 @@ function OrderEditor({
 /** One order line: description, quantity, price and the customer's extras list. */
 function ItemEditor({
   item,
+  products,
   onItemPatch,
 }: {
   item: SalesOrder["items"][number];
+  products: StorefrontProduct[];
   onItemPatch: (patch: Omit<OrderItemPatch, "orderId">) => void;
 }) {
   const [options, setOptions] = useState<string[]>(item.options_ar);
   const [draft, setDraft] = useState("");
+  const [showWebsite, setShowWebsite] = useState(false);
+  const [custom, setCustom] = useState<Customization>(emptyCustomization);
+  const [productId, setProductId] = useState(item.product_id ?? "");
+  const [sizeLabel, setSizeLabel] = useState("");
+  const [filling, setFilling] = useState("");
+
+  const product = products.find((row) => row.id === productId) ?? null;
+  const fillings = useMemo(() => {
+    const set = new Set<string>();
+    for (const row of products) if (row.filling_ar?.trim()) set.add(row.filling_ar.trim());
+    return [...set].sort();
+  }, [products]);
 
   useEffect(() => {
     setOptions(item.options_ar);
