@@ -433,6 +433,7 @@ export function KitchenPanel() {
                             busy={pending === order.id}
                             alerted={alerts.includes(order.id)}
                             onStage={onStage}
+                            onMove={onMove}
                             onZoom={setZoom}
                           />
                         ))}
@@ -479,6 +480,8 @@ const KdsCard = memo(function KdsCard({
   /** True while this order still waits for a kitchen acknowledgement. */
   alerted?: boolean;
   onStage: (id: string, stage: KitchenStage) => void;
+  /** Manual priority move: -1 = up (prepare sooner), 1 = down. */
+  onMove: (id: string, direction: -1 | 1) => void;
   onZoom: (url: string) => void;
 }) {
   const meta = PRIORITY_META[order.priority_color];
