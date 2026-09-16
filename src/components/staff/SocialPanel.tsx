@@ -18,6 +18,7 @@ import {
   type Customization,
 } from "@/components/delish/CakeCustomizationPanel";
 import { OrdersWorkspace } from "@/components/staff/OrdersWorkspace";
+import { ModificationsPanel } from "@/components/staff/ModificationsPanel";
 
 
 
@@ -57,7 +58,7 @@ export function SocialPanel() {
   const accessFn = useServerFn(getSocialAccess);
   const createFn = useServerFn(createSocialOrder);
 
-  const [view, setView] = useState<"new" | "orders">("new");
+  const [view, setView] = useState<"new" | "orders" | "modifications">("new");
   const [form, setForm] = useState(emptyForm);
   const [customization, setCustomization] = useState<Customization>(emptyCustomization);
   const [copied, setCopied] = useState<"summary" | "confirmation" | null>(null);
@@ -274,6 +275,7 @@ export function SocialPanel() {
           {([
             { value: "new" as const, label: "طلب جديد · New order" },
             { value: "orders" as const, label: "إدارة الطلبات · Orders" },
+            { value: "modifications" as const, label: "تعديلات · Modifications" },
           ]).map((item) => (
             <button
               key={item.value}
@@ -664,6 +666,8 @@ export function SocialPanel() {
           <pre className="mt-3 max-h-96 overflow-y-auto whitespace-pre-wrap break-words rounded-xl bg-secondary/60 p-3 text-sm text-foreground">{confirmationPreview}</pre>
         </section>
         </>
+        ) : view === "modifications" ? (
+          <ModificationsPanel />
         ) : (
           <OrdersWorkspace />
         )}

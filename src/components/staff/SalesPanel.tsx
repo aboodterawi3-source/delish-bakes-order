@@ -8,11 +8,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { getSalesAccess } from "@/lib/sales.functions";
 import { CmsPanel } from "@/components/delish/CmsPanel";
 import { OrdersWorkspace } from "@/components/staff/OrdersWorkspace";
+import { ModificationsPanel } from "@/components/staff/ModificationsPanel";
 
 export function SalesPanel() {
   const navigate = useNavigate();
   const accessFn = useServerFn(getSalesAccess);
-  const [view, setView] = useState<"orders" | "site">("orders");
+  const [view, setView] = useState<"orders" | "modifications" | "site">("orders");
 
   const access = useQuery({
     queryKey: ["sales-access"],
@@ -75,6 +76,7 @@ export function SalesPanel() {
         <nav className="no-scrollbar mb-5 flex max-w-full gap-2 overflow-x-auto" aria-label="أقسام واجهة المبيعات">
           {([
             { value: "orders" as const, ar: "الطلبات", en: "Orders" },
+            { value: "modifications" as const, ar: "تعديلات", en: "Modifications" },
             { value: "site" as const, ar: "إدارة الموقع", en: "Website" },
           ]).map((item) => (
             <button
@@ -93,7 +95,13 @@ export function SalesPanel() {
           ))}
         </nav>
 
-        {view === "site" ? <CmsPanel /> : <OrdersWorkspace showShiftReport />}
+        {view === "site" ? (
+          <CmsPanel />
+        ) : view === "modifications" ? (
+          <ModificationsPanel />
+        ) : (
+          <OrdersWorkspace showShiftReport />
+        )}
       </div>
     </main>
   );

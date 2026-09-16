@@ -29,8 +29,6 @@ import {
   getSalesOrders,
   getShiftReport,
   updateSalesOrder,
-  updateSalesOrderItemPrice,
-  type OrderItemPatch,
   type OrderPatch,
   type PaymentMethod,
   type SalesOrder,
@@ -237,7 +235,7 @@ export function OrdersWorkspace({ showShiftReport = false }: { showShiftReport?:
   const queryClient = useQueryClient();
   const ordersFn = useServerFn(getSalesOrders);
   const updateFn = useServerFn(updateSalesOrder);
-  const updateItemFn = useServerFn(updateSalesOrderItemPrice);
+  
   const reportFn = useServerFn(getShiftReport);
   const authorizationFn = useServerFn(getMyAuthorization);
   const discountFn = useServerFn(applyOrderDiscount);
@@ -293,16 +291,6 @@ export function OrdersWorkspace({ showShiftReport = false }: { showShiftReport?:
     },
   });
 
-  const updateItem = useMutation({
-    mutationFn: (input: OrderItemPatch) => updateItemFn({ data: input }),
-    onSuccess: (updatedOrder) => {
-      setMoneyError(null);
-      queryClient.setQueryData<SalesOrder[]>(ORDERS_KEY, (rows) =>
-        (rows ?? []).map((order) => (order.id === updatedOrder.id ? updatedOrder : order)),
-      );
-    },
-    onError: (error: Error) => setMoneyError(error.message),
-  });
 
   const discount = useMutation({
     mutationFn: (input: { orderId: string; percent: number; reason: string }) =>
@@ -492,7 +480,7 @@ export function OrdersWorkspace({ showShiftReport = false }: { showShiftReport?:
             discount.mutate({ orderId: selected.id, percent, reason })
           }
           onIssueEditLink={() => issueEditLink.mutate(selected.id)}
-          onUpdateItem={(input) => updateItem.mutate({ ...input, orderId: selected.id })}
+          
           onZoom={setZoomImage}
           onClose={() => {
             setSelectedId(null);
@@ -733,7 +721,6 @@ function OrderPanel({
   editLink,
   onApplyDiscount,
   onIssueEditLink,
-  onUpdateItem,
   onZoom,
   onClose,
   onPatch,
@@ -745,7 +732,7 @@ function OrderPanel({
   editLink?: string | null;
   onApplyDiscount?: (percent: number, reason: string) => void;
   onIssueEditLink?: () => void;
-  onUpdateItem?: (input: Omit<OrderItemPatch, "orderId">) => void;
+  
   onZoom: (url: string) => void;
   onClose: () => void;
   onPatch: (input: Omit<OrderPatch, "orderId">) => void;
@@ -765,21 +752,10 @@ function OrderPanel({
   const [driverPhone, setDriverPhone] = useState(order.driver_phone ?? "");
   const [discountPercent, setDiscountPercent] = useState(String(order.discount_percent || ""));
   const [discountReason, setDiscountReason] = useState("");
-  const [cardNote, setCardNote] = useState(order.card_note ?? "");
   const [messageCopied, setMessageCopied] = useState(false);
-
-  // Editable order identity — saved on blur so every screen can fix any detail.
-  const [orderName, setOrderName] = useState(order.order_name ?? "");
-  const [senderPhone, setSenderPhone] = useState(order.sender_phone ?? "");
-  const [recipientPhone, setRecipientPhone] = useState(order.recipient_phone ?? "");
-  const [customerName, setCustomerName] = useState(order.customer_name);
-  const [customerPhone, setCustomerPhone] = useState(order.customer_phone);
+  // Delivery-run fields stay here; all content edits live in «تعديلات».
   const [address, setAddress] = useState(order.address ?? "");
-  const [date, setDate] = useState(order.requested_date);
-  const [time, setTime] = useState(order.requested_time.slice(0, 5));
-  const [inscription, setInscription] = useState(order.inscription ?? "");
-  const [notes, setNotes] = useState(order.notes ?? "");
-  const [staffNotes, setStaffNotes] = useState(order.staff_notes ?? "");
+
 
   const mayDiscount = Boolean(authorization?.allow_custom_discount);
   const discountCap = authorization?.max_discount_percent ?? 0;
@@ -792,19 +768,9 @@ function OrderPanel({
     setDriverPhone(order.driver_phone ?? "");
     setDiscountPercent(String(order.discount_percent || ""));
     setDiscountReason("");
-    setCardNote(order.card_note ?? "");
     setMessageCopied(false);
-    setOrderName(order.order_name ?? "");
-    setSenderPhone(order.sender_phone ?? "");
-    setRecipientPhone(order.recipient_phone ?? "");
-    setCustomerName(order.customer_name);
-    setCustomerPhone(order.customer_phone);
     setAddress(order.address ?? "");
-    setDate(order.requested_date);
-    setTime(order.requested_time.slice(0, 5));
-    setInscription(order.inscription ?? "");
-    setNotes(order.notes ?? "");
-    setStaffNotes(order.staff_notes ?? "");
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order.id]);
 
@@ -830,7 +796,7 @@ function OrderPanel({
           ...item.options_ar.map((option) => `— ${option}`),
         ]),
         cakeWriting: order.inscription ?? "",
-        cardWriting: cardNote,
+        cardWriting: order.card_note ?? "",
         extraNote: "",
         notes: order.notes ?? "",
         price: order.subtotal,
@@ -841,7 +807,7 @@ function OrderPanel({
         recipientPhone: order.recipient_phone || order.customer_phone,
         senderPhone: order.sender_phone ?? "",
       }),
-    [order, cardNote, deposit, liveTotal],
+    [order, deposit, liveTotal],
   );
 
   const stageIndex = flow.indexOf(order.status);
@@ -863,86 +829,27 @@ function OrderPanel({
           </button>
         </div>
 
-        {/* Delivery order identity — order name, sender, recipient, region. */}
-        <section className="mt-4 space-y-3 rounded-2xl border border-border bg-background p-3.5">
-          <h3 className="text-sm font-bold text-foreground">بيانات الطلب · Delivery order</h3>
-          <label className="block text-sm font-bold text-foreground">
-            اسم الطلب · Order name
-            <input
-              value={orderName}
-              onChange={(event) => setOrderName(event.target.value)}
-              onBlur={() => onPatch({ order_name: orderName.trim() || null })}
-              placeholder="مثال: كيكة عيد ميلاد سارة"
-              className={field}
-            />
-          </label>
-          <label className="block text-sm font-bold text-foreground">
-            اسم العميل · Customer
-            <input
-              value={customerName}
-              onChange={(event) => setCustomerName(event.target.value)}
-              onBlur={() => customerName.trim() && onPatch({ customer_name: customerName.trim() })}
-              className={field}
-            />
-          </label>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block text-sm font-bold text-foreground">
-              رقم المرسل · Sender phone
-              <input
-                dir="ltr"
-                inputMode="tel"
-                value={senderPhone}
-                onChange={(event) => setSenderPhone(event.target.value)}
-                onBlur={() => onPatch({ sender_phone: senderPhone.trim() || null })}
-                className={field}
-              />
-            </label>
-            <label className="block text-sm font-bold text-foreground">
-              رقم المستلم · Recipient phone
-              <input
-                dir="ltr"
-                inputMode="tel"
-                value={recipientPhone}
-                onChange={(event) => setRecipientPhone(event.target.value)}
-                onBlur={() => onPatch({ recipient_phone: recipientPhone.trim() || null })}
-                className={field}
-              />
-            </label>
-          </div>
-          <label className="block text-sm font-bold text-foreground">
-            هاتف التواصل · Contact phone
-            <input
-              dir="ltr"
-              inputMode="tel"
-              value={customerPhone}
-              onChange={(event) => setCustomerPhone(event.target.value)}
-              onBlur={() => customerPhone.trim() && onPatch({ customer_phone: customerPhone.trim() })}
-              className={field}
-            />
-          </label>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block text-sm font-bold text-foreground">
-              التاريخ · Date
-              <input
-                type="date"
-                value={date}
-                onChange={(event) => setDate(event.target.value)}
-                onBlur={() => date && onPatch({ requested_date: date })}
-                className={field}
-              />
-            </label>
-            <label className="block text-sm font-bold text-foreground">
-              الوقت · Time
-              <input
-                type="time"
-                value={time}
-                onChange={(event) => setTime(event.target.value)}
-                onBlur={() => time && onPatch({ requested_time: time })}
-                className={field}
-              />
-            </label>
-          </div>
+        {/* Read-only order summary — every change is made in «تعديلات». */}
+        <section className="mt-4 space-y-1 rounded-2xl border border-border bg-background p-3.5 text-sm">
+          <h3 className="text-sm font-bold text-foreground">بيانات الطلب</h3>
+          <p className="text-foreground">{order.order_name?.trim() || "—"}</p>
+          <p className="text-muted-foreground">
+            {order.customer_name} · <span dir="ltr">{order.customer_phone}</span>
+          </p>
+          {order.sender_phone ? (
+            <p className="text-muted-foreground">المرسل: <span dir="ltr">{order.sender_phone}</span></p>
+          ) : null}
+          {order.recipient_phone ? (
+            <p className="text-muted-foreground">المستلم: <span dir="ltr">{order.recipient_phone}</span></p>
+          ) : null}
+          <p className="text-muted-foreground">
+            الموعد: {order.requested_date} · {order.requested_time.slice(0, 5)}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            لتعديل أي تفصيل استخدم قسم «تعديلات».
+          </p>
         </section>
+
 
         <section className="mt-5">
           <h3 className="text-sm font-bold text-foreground">حالة الطلب</h3>
@@ -1217,17 +1124,6 @@ function OrderPanel({
         {/* Card writing and the official confirmation message. */}
         <section className="mt-6 rounded-2xl border border-border p-3.5">
           <h3 className="text-sm font-bold text-foreground">👑 رسالة تأكيد الطلب</h3>
-          <label className="mt-3 block text-sm font-bold text-foreground">
-            الكتابة على الكرت
-            <input
-              type="text"
-              maxLength={1000}
-              value={cardNote}
-              onChange={(event) => setCardNote(event.target.value)}
-              onBlur={() => onPatch({ card_note: cardNote.trim() || null })}
-              className={field}
-            />
-          </label>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <button
               type="button"
@@ -1268,149 +1164,44 @@ function OrderPanel({
           </pre>
         </section>
 
-        <section className="mt-6">
-          <h3 className="text-sm font-bold text-foreground">تفاصيل الطلب</h3>
-          <ul className="mt-2 space-y-2 text-sm">
-            {order.items.map((item) => (
-              <li key={item.id} className="space-y-2 rounded-2xl border border-border bg-background p-3.5">
-                <label className="block text-xs font-bold text-foreground">
-                  وصف الصنف · Item
-                  <textarea
-                    rows={2}
-                    defaultValue={item.name_ar}
-                    onBlur={(event) => {
-                      const value = event.target.value.trim();
-                      if (value && value !== item.name_ar) onUpdateItem?.({ itemId: item.id, name: value });
-                    }}
-                    className="mt-1 w-full rounded-xl border border-input bg-card p-2 text-sm"
-                  />
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <label className="block text-xs font-bold text-foreground">
-                    الكمية · Qty
-                    <input
-                      type="number"
-                      min="1"
-                      step="1"
-                      defaultValue={item.quantity}
-                      onBlur={(event) => {
-                        const value = parseInt(event.target.value, 10);
-                        if (Number.isFinite(value) && value >= 1 && value !== item.quantity) {
-                          onUpdateItem?.({ itemId: item.id, quantity: value });
-                        }
-                      }}
-                      className="mt-1 min-h-11 w-full rounded-xl border border-input bg-card px-2 text-center text-sm font-bold"
-                    />
-                  </label>
-                  <label className="block text-xs font-bold text-foreground">
-                    سعر الوحدة · Unit price
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.25"
-                      defaultValue={item.unit_price}
-                      onBlur={(event) => {
-                        const value = parseFloat(event.target.value);
-                        if (!Number.isNaN(value) && value !== item.unit_price) {
-                          onUpdateItem?.({ itemId: item.id, newUnitPrice: value });
-                        }
-                      }}
-                      className="mt-1 min-h-11 w-full rounded-xl border border-input bg-card px-2 text-center text-sm font-bold"
-                    />
-                  </label>
-                </div>
-                <label className="block text-xs font-bold text-foreground">
-                  ملاحظة الصنف · Item note
-                  <input
-                    defaultValue={item.notes ?? ""}
-                    onBlur={(event) => {
-                      const value = event.target.value.trim();
-                      if (value !== (item.notes ?? "")) onUpdateItem?.({ itemId: item.id, notes: value || null });
-                    }}
-                    className="mt-1 min-h-11 w-full rounded-xl border border-input bg-card px-2 text-sm"
-                  />
-                </label>
-                {item.options_ar.length ? (
-                  <ul className="space-y-0.5 text-xs font-semibold text-primary">
-                    {item.options_ar.map((option) => (
-                      <li key={option}>• {option}</li>
-                    ))}
-                  </ul>
-                ) : null}
-                <p className="text-xs font-bold text-muted-foreground">
-                  إجمالي الصنف: {jd(item.unit_price * item.quantity)}
-                </p>
-              </li>
-            ))}
-          </ul>
-
-          <label className="mt-3 block text-sm font-bold text-foreground">
-            الكتابة على الكيك
-            <input
-              value={inscription}
-              onChange={(event) => setInscription(event.target.value)}
-              onBlur={() => onPatch({ inscription: inscription.trim() || null })}
-              className={field}
-            />
-          </label>
-          <label className="mt-3 block text-sm font-bold text-foreground">
-            ملاحظات العميل
-            <textarea
-              rows={2}
-              value={notes}
-              onChange={(event) => setNotes(event.target.value)}
-              onBlur={() => onPatch({ notes: notes.trim() || null })}
-              className="mt-1 w-full rounded-xl border border-input bg-background p-3 text-sm"
-            />
-          </label>
-          <label className="mt-3 block text-sm font-bold text-foreground">
-            ملاحظات داخلية
-            <textarea
-              rows={2}
-              value={staffNotes}
-              onChange={(event) => setStaffNotes(event.target.value)}
-              onBlur={() => onPatch({ staff_notes: staffNotes.trim() || null })}
-              className="mt-1 w-full rounded-xl border border-input bg-background p-3 text-sm"
-            />
-          </label>
-
-          {order.design_image_url ? (
-            <div className="mt-3 space-y-2">
+        {order.design_image_url ? (
+          <section className="mt-6 space-y-2">
+            <h3 className="text-sm font-bold text-foreground">صورة التصميم</h3>
+            <button
+              type="button"
+              onClick={() => onZoom(order.design_image_url as string)}
+              className="block w-full overflow-hidden rounded-xl border border-border"
+              aria-label="تكبير صورة التصميم"
+            >
+              <img
+                src={order.design_image_url}
+                alt={`صورة التصميم المطلوب للطلب ${order.order_number}`}
+                loading="lazy"
+                className="w-full"
+              />
+            </button>
+            <div className="flex flex-wrap gap-2">
+              <a
+                href={order.design_image_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full border border-primary px-4 text-xs font-bold text-primary"
+              >
+                فتح الصورة · View
+              </a>
               <button
                 type="button"
-                onClick={() => onZoom(order.design_image_url as string)}
-                className="block w-full overflow-hidden rounded-xl border border-border"
-                aria-label="تكبير صورة التصميم"
+                onClick={() =>
+                  void downloadDesignImage(order.design_image_url as string, order.order_number)
+                }
+                className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full bg-primary px-4 text-xs font-bold text-primary-foreground"
               >
-                <img
-                  src={order.design_image_url}
-                  alt={`صورة التصميم المطلوب للطلب ${order.order_number}`}
-                  loading="lazy"
-                  className="w-full"
-                />
+                <Download className="h-4 w-4" aria-hidden="true" /> تحميل الصورة · Download
               </button>
-              <div className="flex flex-wrap gap-2">
-                <a
-                  href={order.design_image_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full border border-primary px-4 text-xs font-bold text-primary"
-                >
-                  فتح الصورة · View
-                </a>
-                <button
-                  type="button"
-                  onClick={() =>
-                    void downloadDesignImage(order.design_image_url as string, order.order_number)
-                  }
-                  className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full bg-primary px-4 text-xs font-bold text-primary-foreground"
-                >
-                  <Download className="h-4 w-4" aria-hidden="true" /> تحميل الصورة · Download
-                </button>
-              </div>
             </div>
-          ) : null}
-        </section>
+          </section>
+        ) : null}
+
 
         <button
           type="button"

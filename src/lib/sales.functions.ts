@@ -315,6 +315,8 @@ export type OrderItemPatch = {
   quantity?: number;
   name?: string;
   notes?: string | null;
+  /** Customer extras: candles, balloons, acrylic topper, filling, any request. */
+  options?: string[];
 };
 
 /** Order-desk staff may correct any line: price, quantity, description, notes. */
@@ -346,6 +348,14 @@ export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
     if (input.notes !== undefined) {
       out.notes = input.notes ? String(input.notes).trim().slice(0, 2000) || null : null;
     }
+    // Customer extras (candles, balloons, acrylic, filling…) — cleaned and capped.
+    if (input.options !== undefined) {
+      if (!Array.isArray(input.options)) throw new Error("إضافات غير صالحة · Invalid options");
+      out.options = input.options
+        .map((option) => String(option ?? "").replace(/[\r\n]+/g, " ").trim().slice(0, 200))
+        .filter(Boolean)
+        .slice(0, 30);
+    }
     return out;
   })
   .handler(async ({ data, context }): Promise<SalesOrder> => {
@@ -370,6 +380,10 @@ export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
       itemPatch['name_en'] = data.name;
     }
     if (data.notes !== undefined) itemPatch['notes'] = data.notes;
+    if (data.options !== undefined) {
+      itemPatch['options_ar'] = data.options;
+      itemPatch['options_en'] = data.options;
+    }
     if (Object.keys(itemPatch).length === 0) {
       throw new Error("لا يوجد تغيير · Nothing to update");
     }
