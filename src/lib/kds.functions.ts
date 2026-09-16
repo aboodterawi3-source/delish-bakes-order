@@ -44,6 +44,8 @@ export type KdsOrder = {
   schedule_updated_at: string | null;
   /** Set whenever sales/social edit the order; drives the kitchen alert. */
   last_edited_at: string | null;
+  /** Manual queue position set with the up/down buttons. */
+  queue_rank: number | null;
   created_at: string;
   items: KdsItem[];
   /** Most urgent priority across the order's lines; drives the card colour. */

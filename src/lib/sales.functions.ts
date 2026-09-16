@@ -490,3 +490,76 @@ export const getShiftReport = createServerFn({ method: "POST" })
       cancelled,
     };
   });
+
+/* ------------------------------- order history ------------------------------ */
+
+export type HistoryRow = {
+  id: string;
+  order_number: string;
+  staff_code: number | null;
+  order_name: string | null;
+  customer_name: string;
+  customer_phone: string;
+  method: "delivery" | "pickup";
+  area: string | null;
+  requested_date: string;
+  requested_time: string;
+  status: SalesStatus;
+  payment_method: PaymentMethod | null;
+  subtotal: number;
+  delivery_fee: number;
+  discount_amount: number;
+  total: number;
+  deposit_paid: number;
+  items: string;
+  created_at: string;
+};
+
+/**
+ * Full order archive for the history table: every past and new order inside the
+ * chosen date range, ready to browse or export.
+ */
+export const listOrderHistory = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { from: string; to: string; status?: SalesStatus | "all" }) => {
+    const day = /^\d{4}-\d{2}-\d{2}$/;
+    if (!day.test(String(input?.from)) || !day.test(String(input?.to))) {
+      throw new Error("نطاق تاريخ غير صالح · Invalid date range");
+    }
+    const status =
+      input.status && input.status !== "all" && STATUSES.includes(input.status) ? input.status : "all";
+    return { from: input.from, to: input.to, status } as const;
+  })
+  .handler(async ({ data, context }): Promise<HistoryRow[]> => {
+    await assertRole(context, SALES_ROLES);
+    let query = context.supabase
+      .from("orders")
+      .select(
+        "id, order_number, staff_code, order_name, customer_name, customer_phone, method, area, requested_date, requested_time, status, payment_method, subtotal, delivery_fee, discount_amount, total, deposit_paid, created_at, order_items(name_ar, quantity)",
+      )
+      .gte("requested_date", data.from)
+      .lte("requested_date", data.to)
+      .order("requested_date", { ascending: false })
+      .order("requested_time", { ascending: false })
+      .limit(2000);
+    if (data.status !== "all") query = query.eq("status", data.status);
+    const { data: rows, error } = await query;
+    if (error) throw new Error(error.message);
+
+    return (rows ?? []).map((row) => {
+      const record = row as unknown as Record<string, unknown> & {
+        order_items?: { name_ar: string; quantity: number }[];
+      };
+      return {
+        ...(record as unknown as Omit<HistoryRow, "items">),
+        subtotal: Number(record['subtotal'] ?? 0),
+        delivery_fee: Number(record['delivery_fee'] ?? 0),
+        discount_amount: Number(record['discount_amount'] ?? 0),
+        total: Number(record['total'] ?? 0),
+        deposit_paid: Number(record['deposit_paid'] ?? 0),
+        items: (record.order_items ?? [])
+          .map((item) => `${item.quantity} × ${item.name_ar}`)
+          .join(" · "),
+      };
+    });
+  });
