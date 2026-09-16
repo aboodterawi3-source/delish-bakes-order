@@ -115,8 +115,8 @@ export function SocialPanel() {
         total: grandTotal,
         paid: paidAmount,
         paymentMethod: paymentLabel,
-        recipientPhone: customization.recipientPhone || form.customer_phone,
-        senderPhone: customization.senderPhone,
+        recipientPhone: form.recipient_phone || customization.recipientPhone || form.customer_phone,
+        senderPhone: form.sender_phone || customization.senderPhone,
       }),
     [form, extras.ar, customization, originalPrice, deliveryFee, grandTotal, paidAmount, paymentLabel],
   );
@@ -308,6 +308,39 @@ export function SocialPanel() {
           <h2 className="font-serif text-lg font-bold text-[#3E2723]">طلب جديد · New order</h2>
 
           <div className="grid gap-4 sm:grid-cols-2">
+            {/* Delivery order: order name, sender phone, recipient phone, region. */}
+            <label className="block text-sm font-bold text-[#3E2723] sm:col-span-2">
+              اسم الطلب · Order name
+              <input
+                value={form.order_name}
+                onChange={(event) => set("order_name", event.target.value)}
+                placeholder="مثال: كيكة عيد ميلاد سارة"
+                className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+              />
+              <span className="mt-1 block text-xs font-normal text-[#7A6458]">
+                يظهر في قائمة الطلبات بدل رقم الهاتف.
+              </span>
+            </label>
+            <label className="block text-sm font-bold text-[#3E2723]">
+              رقم المرسل · Sender phone
+              <input
+                dir="ltr"
+                inputMode="tel"
+                value={form.sender_phone}
+                onChange={(event) => set("sender_phone", event.target.value)}
+                className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+              />
+            </label>
+            <label className="block text-sm font-bold text-[#3E2723]">
+              رقم المستلم · Recipient phone
+              <input
+                dir="ltr"
+                inputMode="tel"
+                value={form.recipient_phone}
+                onChange={(event) => set("recipient_phone", event.target.value)}
+                className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+              />
+            </label>
             <label className="block text-sm font-bold text-[#3E2723]">
               اسم العميل · Customer name
               <input
