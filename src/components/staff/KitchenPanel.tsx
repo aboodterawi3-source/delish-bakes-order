@@ -588,25 +588,6 @@ const KdsCard = memo(function KdsCard({
         ))}
       </ul>
 
-      {order.design_image_url && (
-        <button
-          type="button"
-          onClick={() => onZoom(order.design_image_url as string)}
-          className="h-fit overflow-hidden rounded-2xl border border-card/40 bg-card/20 transition-transform hover:scale-[1.01] active:scale-95"
-        >
-          <img
-            src={order.design_image_url}
-            alt={`صورة تصميم الطلب ${order.order_number}`}
-            loading="lazy"
-            className="h-36 w-full object-cover sm:h-40"
-          />
-          <span className="block bg-peach-coral/80 py-2 text-xs font-bold text-primary">
-            تكبير الصورة · Zoom
-          </span>
-        </button>
-      )}
-      </div>
-
       {order.inscription && (
         <p className="mt-3 rounded-xl bg-[#FDE2CF]/50 p-2.5 text-xs font-bold text-[#7B3F00] border border-[#EFA781]/40">
           الكتابة على الكيك: {order.inscription}
