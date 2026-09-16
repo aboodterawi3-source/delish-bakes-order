@@ -18,6 +18,14 @@ import {
 } from "@/lib/sales.functions";
 import { applyOrderDiscount, getMyAuthorization } from "@/lib/authorization.functions";
 import { DELIVERY_ZONES, OTHER_GOVERNORATES_AREA, feeForArea } from "@/lib/delivery-zones";
+import { useStorefrontContent } from "@/hooks/use-storefront-content";
+import type { StorefrontProduct } from "@/lib/storefront-content";
+import {
+  CakeCustomizationPanel,
+  customizationSummary,
+  emptyCustomization,
+  type Customization,
+} from "@/components/delish/CakeCustomizationPanel";
 
 const jd = (value: number) => `${value.toFixed(2)} د.أ`;
 const field = "mt-1 min-h-12 w-full rounded-xl border border-input bg-background px-3 text-sm";
