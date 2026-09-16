@@ -29,8 +29,6 @@ import {
   getSalesOrders,
   getShiftReport,
   updateSalesOrder,
-  updateSalesOrderItemPrice,
-  type OrderItemPatch,
   type OrderPatch,
   type PaymentMethod,
   type SalesOrder,
