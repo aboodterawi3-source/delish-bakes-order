@@ -247,6 +247,7 @@ export function OrdersWorkspace({ showShiftReport = false }: { showShiftReport?:
   const [shiftOpen, setShiftOpen] = useState(false);
   const [shiftDate, setShiftDate] = useState(todayIso);
   const [report, setReport] = useState<ShiftReport | null>(null);
+  const [mode, setMode] = useState<"list" | "calendar">("list");
 
   const authorization = useQuery({
     queryKey: ["my-authorization"],
