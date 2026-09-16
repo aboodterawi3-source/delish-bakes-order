@@ -94,21 +94,7 @@ ${order.notes ? `<div><b>ملاحظات:</b> ${esc(order.notes)}</div>` : ""}`;
   printDocument(`تذكرة مطبخ ${order.order_number}`, body, "body{font-size:13px}");
 }
 
-const isoDate = (offsetDays: number) => {
-  const date = new Date();
-  date.setDate(date.getDate() + offsetDays);
-  return date.toISOString().slice(0, 10);
-};
-
 const ORDERS_KEY = ["kds-orders"] as const;
-
-type Filter = "today" | "tomorrow" | "all";
-
-const filterMeta: Record<Filter, { ar: string; en: string }> = {
-  today: { ar: "طلبات اليوم", en: "Today" },
-  tomorrow: { ar: "طلبات الغد", en: "Tomorrow" },
-  all: { ar: "كل الطلبات النشطة", en: "All active" },
-};
 
 /** The kitchen board is split into three visible stages. */
 const STAGES: { key: KitchenStage; ar: string; en: string; chip: string }[] = [
