@@ -194,6 +194,7 @@ export type Database = {
           requested_time: string
           schedule_updated_at: string | null
           sender_phone: string | null
+          staff_code: number | null
           staff_notes: string | null
           status: Database["public"]["Enums"]["order_status"]
           subtotal: number
@@ -234,6 +235,7 @@ export type Database = {
           requested_time: string
           schedule_updated_at?: string | null
           sender_phone?: string | null
+          staff_code?: number | null
           staff_notes?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           subtotal?: number
@@ -274,6 +276,7 @@ export type Database = {
           requested_time?: string
           schedule_updated_at?: string | null
           sender_phone?: string | null
+          staff_code?: number | null
           staff_notes?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           subtotal?: number
@@ -396,6 +399,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      staff_codes: {
+        Row: {
+          created_at: string
+          id: string
+          staff_code: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          staff_code: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          staff_code?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       staff_permissions: {
         Row: {
