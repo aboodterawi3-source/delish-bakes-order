@@ -780,19 +780,9 @@ function OrderPanel({
     setDriverPhone(order.driver_phone ?? "");
     setDiscountPercent(String(order.discount_percent || ""));
     setDiscountReason("");
-    setCardNote(order.card_note ?? "");
     setMessageCopied(false);
-    setOrderName(order.order_name ?? "");
-    setSenderPhone(order.sender_phone ?? "");
-    setRecipientPhone(order.recipient_phone ?? "");
-    setCustomerName(order.customer_name);
-    setCustomerPhone(order.customer_phone);
     setAddress(order.address ?? "");
-    setDate(order.requested_date);
-    setTime(order.requested_time.slice(0, 5));
-    setInscription(order.inscription ?? "");
-    setNotes(order.notes ?? "");
-    setStaffNotes(order.staff_notes ?? "");
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order.id]);
 
