@@ -78,8 +78,8 @@ function printKitchenTicket(order: KdsOrder) {
     : `<div class="item">لا توجد أصناف مسجلة على هذا الطلب</div>`;
 
   const body = `<h1>تذكرة مطبخ · KITCHEN</h1>
-<div class="row"><b>${esc(order.order_number)}</b><span>${order.method === "delivery" ? "توصيل" : "استلام"}</span></div>
-<div class="row"><span>${esc(order.requested_date)}</span><span>${esc(order.requested_time.slice(0, 5))}</span></div>
+<div class="row"><b>${esc(orderLabel(order.order_number, order.staff_code))}</b><span>${order.method === "delivery" ? "توصيل" : "استلام"}</span></div>
+<div class="row"><b>${order.method === "delivery" ? "موعد التوصيل" : "موعد الاستلام"}</b><b>${esc(order.requested_date)} ${esc(order.requested_time.slice(0, 5))}</b></div>
 <div>${esc(order.customer_name)}</div>
 ${order.schedule_updated_at ? `<div><b>تم تعديل الموعد 🔄</b></div>` : ""}
 <div class="line"></div>${lines}<div class="line"></div>
@@ -491,9 +491,12 @@ const KdsCard = memo(function KdsCard({
           <h2 className="truncate font-sans text-base font-extrabold">
             {orderLabel(order.order_number, order.staff_code)} · {order.customer_name}
           </h2>
-           <p className="mt-1 flex min-w-0 flex-wrap items-center gap-1 break-words text-xs" style={{ color: meta.fgMuted }}>
-            <Clock3 className="h-3.5 w-3.5 text-[#B8860B]" />
-            {order.requested_date} · {order.requested_time.slice(0, 5)} · {order.method === "delivery" ? "توصيل" : "استلام"}
+          {/* Exact pickup / delivery slot, made unmissable for the kitchen. */}
+          <p className="mt-2 flex min-w-0 flex-wrap items-center gap-2 break-words rounded-xl bg-card/85 px-3 py-2 text-sm font-extrabold text-foreground shadow-xs">
+            <Clock3 className="h-4 w-4 text-[#B8860B]" aria-hidden />
+            <span>{order.method === "delivery" ? "موعد التوصيل" : "موعد الاستلام"}:</span>
+            <span>{order.requested_date}</span>
+            <span className="text-base">{order.requested_time.slice(0, 5)}</span>
           </p>
           {alerted && (
             <p className="mt-2 inline-flex items-center gap-1 rounded-full bg-[#8B4513] px-3 py-1 text-[11px] font-extrabold text-white shadow-sm">
@@ -517,7 +520,8 @@ const KdsCard = memo(function KdsCard({
         </div>
       </div>
 
-      <ul className="mt-4 space-y-2 border-y border-card/30 py-3">
+      <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_10rem]">
+      <ul className="space-y-2 border-y border-card/30 py-3">
         {order.items.map((item) => (
           <li key={item.id} className="rounded-2xl border border-card/25 bg-card/15 p-3">
             <p className="text-sm font-bold">
@@ -540,6 +544,25 @@ const KdsCard = memo(function KdsCard({
         ))}
       </ul>
 
+      {order.design_image_url && (
+        <button
+          type="button"
+          onClick={() => onZoom(order.design_image_url as string)}
+          className="h-fit overflow-hidden rounded-2xl border border-card/40 bg-card/20 transition-transform hover:scale-[1.01] active:scale-95"
+        >
+          <img
+            src={order.design_image_url}
+            alt={`صورة تصميم الطلب ${order.order_number}`}
+            loading="lazy"
+            className="h-36 w-full object-cover sm:h-40"
+          />
+          <span className="block bg-peach-coral/80 py-2 text-xs font-bold text-primary">
+            تكبير الصورة · Zoom
+          </span>
+        </button>
+      )}
+      </div>
+
       {order.inscription && (
         <p className="mt-3 rounded-xl bg-[#FDE2CF]/50 p-2.5 text-xs font-bold text-[#7B3F00] border border-[#EFA781]/40">
           الكتابة على الكيك: {order.inscription}
@@ -554,21 +577,6 @@ const KdsCard = memo(function KdsCard({
 
       {order.design_image_url && (
         <div className="mt-3 space-y-2">
-          <button
-            type="button"
-            onClick={() => onZoom(order.design_image_url as string)}
-            className="block w-full overflow-hidden rounded-2xl border border-card/40 bg-card/20 transition-transform hover:scale-[1.01] active:scale-95"
-          >
-            <img
-              src={order.design_image_url}
-              alt={`صورة تصميم الطلب ${order.order_number}`}
-              loading="lazy"
-              className="h-36 w-full object-cover"
-            />
-            <span className="block bg-peach-coral/80 py-2 text-xs font-bold text-primary">
-              تكبير الصورة · Zoom Design
-            </span>
-          </button>
           <button
             type="button"
             onClick={() => void downloadDesignImage(order.design_image_url as string, order.order_number)}

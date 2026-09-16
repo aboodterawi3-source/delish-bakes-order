@@ -5,6 +5,13 @@ import { highestPriority, type PriorityColor } from "@/lib/priority";
 
 const KITCHEN_ROLES: StaffRoleName[] = ["kitchen", "admin"];
 
+/**
+ * Gift flags and sender/recipient phone numbers are commercial details, not
+ * preparation details, so they are stripped before options reach the kitchen.
+ */
+const PREP_ONLY = /هدية|هاتف|رقم|gift|phone|whatsapp|\+?\d[\d\s-]{5,}/i;
+const prepOptions = (options: string[]): string[] => options.filter((option) => !PREP_ONLY.test(option));
+
 
 export type KdsItem = {
   id: string;
@@ -135,8 +142,8 @@ export const getKitchenOrders = createServerFn({ method: "GET" })
         name_ar: item.name_ar,
         name_en: item.name_en,
         quantity: item.quantity,
-        options_ar: item.options_ar ?? [],
-        options_en: item.options_en ?? [],
+        options_ar: prepOptions(item.options_ar ?? []),
+        options_en: prepOptions(item.options_en ?? []),
         notes: item.notes,
         category: categoryByProduct.get(item.product_id) ?? null,
         priority_color: priorityByProduct.get(item.product_id) ?? null,
