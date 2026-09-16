@@ -578,12 +578,14 @@ export type Database = {
           id: string
           inscription: string
           is_urgent: boolean
+          last_edited_at: string
           method: Database["public"]["Enums"]["order_method"]
           notes: string
           order_number: string
           requested_date: string
           requested_time: string
           schedule_updated_at: string
+          staff_code: number
           status: Database["public"]["Enums"]["order_status"]
         }[]
       }
