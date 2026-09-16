@@ -28,6 +28,12 @@ import {
 } from "@/components/delish/CakeCustomizationPanel";
 
 const jd = (value: number) => `${value.toFixed(2)} د.أ`;
+
+/** Replaces (or removes) a labelled extra such as «الحشوة: نوتيلا» in the list. */
+const withLabel = (list: string[], label: string, value: string) => {
+  const rest = list.filter((entry) => !entry.startsWith(`${label}:`));
+  return value ? [...rest, `${label}: ${value}`] : rest;
+};
 const field = "mt-1 min-h-12 w-full rounded-xl border border-input bg-background px-3 text-sm";
 const boxed = "mt-1 w-full rounded-xl border border-input bg-background p-3 text-sm";
 
