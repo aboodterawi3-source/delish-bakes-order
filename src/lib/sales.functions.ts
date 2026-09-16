@@ -348,6 +348,14 @@ export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
     if (input.notes !== undefined) {
       out.notes = input.notes ? String(input.notes).trim().slice(0, 2000) || null : null;
     }
+    // Customer extras (candles, balloons, acrylic, filling…) — cleaned and capped.
+    if (input.options !== undefined) {
+      if (!Array.isArray(input.options)) throw new Error("إضافات غير صالحة · Invalid options");
+      out.options = input.options
+        .map((option) => String(option ?? "").replace(/[\r\n]+/g, " ").trim().slice(0, 200))
+        .filter(Boolean)
+        .slice(0, 30);
+    }
     return out;
   })
   .handler(async ({ data, context }): Promise<SalesOrder> => {
