@@ -47,7 +47,8 @@ import {
 
 
 /** Keeps an authorisation failure from blanking the screen. */
-export function AdminErrorScreen({ error }: { error: Error }) {
+export function AdminErrorScreen({ error }: { error: unknown }) {
+  const message = error instanceof Error ? error.message : "خطأ غير معروف · Unknown error";
   const navigate = useNavigate();
   const leave = async () => {
     await supabase.auth.signOut();
