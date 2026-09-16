@@ -473,6 +473,7 @@ const KdsCard = memo(function KdsCard({
   busy,
   alerted = false,
   onStage,
+  onMove,
   onZoom,
 }: {
   order: KdsOrder;
@@ -524,6 +525,25 @@ const KdsCard = memo(function KdsCard({
            <span className="rounded-full bg-card/85 px-2.5 py-0.5 text-[10px] font-bold text-foreground">
             {meta.ar}
           </span>
+          {/* Manual priority: move this order up or down the queue. */}
+          <div className="flex gap-1">
+            <button
+              type="button"
+              onClick={() => onMove(order.id, -1)}
+              aria-label="رفع الأولوية"
+              className="grid h-9 w-9 place-items-center rounded-xl bg-card/90 text-primary shadow-xs hover:scale-105 active:scale-95"
+            >
+              <ArrowUp className="h-4 w-4" aria-hidden />
+            </button>
+            <button
+              type="button"
+              onClick={() => onMove(order.id, 1)}
+              aria-label="تنزيل الأولوية"
+              className="grid h-9 w-9 place-items-center rounded-xl bg-card/90 text-primary shadow-xs hover:scale-105 active:scale-95"
+            >
+              <ArrowDown className="h-4 w-4" aria-hidden />
+            </button>
+          </div>
         </div>
       </div>
 
