@@ -59,7 +59,7 @@ export function AdminErrorScreen({ error }: { error: unknown }) {
       <div className="max-w-sm rounded-3xl border border-slate-200 bg-white p-6 text-center shadow-lg">
         <h1 className="font-display text-lg font-bold text-[#3E2723]">هذه اللوحة للمديرين فقط</h1>
         <p className="mt-2 text-sm text-[#7A6458]">This dashboard is limited to admin accounts.</p>
-        <p className="mt-3 rounded-xl bg-slate-50 p-2 text-xs text-[#7A6458]">{error.message}</p>
+        <p className="mt-3 rounded-xl bg-slate-50 p-2 text-xs text-[#7A6458]">{message}</p>
         <button
           type="button"
           onClick={() => void leave()}
