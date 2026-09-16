@@ -22,6 +22,8 @@ export type KdsItem = {
 export type KdsOrder = {
   id: string;
   order_number: string;
+  /** Numeric ID of the employee who created the order, when assigned. */
+  staff_code: number | null;
   customer_name: string;
   method: "delivery" | "pickup";
   requested_date: string;
@@ -33,6 +35,8 @@ export type KdsOrder = {
   notes: string | null;
   /** Set when a customer moved the pickup/delivery slot through their edit link. */
   schedule_updated_at: string | null;
+  /** Set whenever sales/social edit the order; drives the kitchen alert. */
+  last_edited_at: string | null;
   created_at: string;
   items: KdsItem[];
   /** Most urgent priority across the order's lines; drives the card colour. */
@@ -143,6 +147,7 @@ export const getKitchenOrders = createServerFn({ method: "GET" })
     return (data ?? []).map((order: any) => ({
       id: order.id,
       order_number: order.order_number,
+      staff_code: order.staff_code ?? null,
       customer_name: order.customer_name,
       method: order.method,
       requested_date: order.requested_date,
@@ -152,6 +157,7 @@ export const getKitchenOrders = createServerFn({ method: "GET" })
       design_image_url: order.design_image_url,
       notes: order.notes,
       schedule_updated_at: order.schedule_updated_at,
+      last_edited_at: order.last_edited_at ?? null,
       created_at: order.created_at,
       items: itemsByOrder.get(order.id) ?? [],
       priority_color: highestPriority(
