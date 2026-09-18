@@ -343,7 +343,7 @@ export const getOrderByEditToken = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: order, error } = await supabaseAdmin
       .from("orders")
-      .select("order_number, customer_name, customer_phone, requested_date, requested_time, notes, inscription, area, address, method, total")
+      .select("order_number, staff_code, customer_name, customer_phone, requested_date, requested_time, notes, inscription, area, address, method, total")
       .eq("id", row.order_id)
       .single();
     if (error) throw publicError("order-edit.getOrder", error);

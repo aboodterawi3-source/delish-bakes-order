@@ -122,22 +122,15 @@ export function WebsiteRebuildPanel({
         </select>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
         {visible.map((product) => (
           <button
             key={product.id}
             type="button"
             onClick={() => setPicked(product)}
-            className="min-w-0 overflow-hidden rounded-2xl border border-border bg-card text-start shadow-xs transition-transform hover:-translate-y-0.5"
+            className="min-w-0 rounded-xl border border-border bg-card p-2.5 text-start shadow-xs transition-colors hover:border-primary hover:bg-secondary/40"
           >
-            {product.image_url ? (
-              <img
-                src={product.image_url}
-                alt={product.name_ar}
-                loading="lazy"
-                className="h-28 w-full object-cover"
-              />
-            ) : null}
+
             <div className="space-y-1 p-3">
               <p className="break-words text-sm font-bold text-foreground">{product.name_ar}</p>
               <p className="text-xs font-bold text-primary">

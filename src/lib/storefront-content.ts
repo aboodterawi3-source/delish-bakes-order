@@ -5,19 +5,135 @@
  */
 import type { PriorityColor } from "@/lib/priority";
 
-export type Tint = "blush" | "butter" | "pistachio" | "sky" | "lilac" | "cream";
+export type Tint =
+  | "rose"
+  | "pistachio"
+  | "chocolate"
+  | "vanilla"
+  | "lavender"
+  | "blush"
+  | "butter"
+  | "sky"
+  | "lilac"
+  | "cream";
 
-export const TINTS: { value: Tint; ar: string; en: string; fill: string; swatch: string }[] = [
-  { value: "blush", ar: "وردي هادئ", en: "Blush", fill: "bg-tint-blush", swatch: "var(--tint-blush)" },
-  { value: "butter", ar: "أصفر زبدة", en: "Butter", fill: "bg-tint-butter", swatch: "var(--tint-butter)" },
-  { value: "pistachio", ar: "فستقي", en: "Pistachio", fill: "bg-tint-pistachio", swatch: "var(--tint-pistachio)" },
-  { value: "sky", ar: "سماوي", en: "Sky", fill: "bg-tint-sky", swatch: "var(--tint-sky)" },
-  { value: "lilac", ar: "ليلكي", en: "Lilac", fill: "bg-tint-lilac", swatch: "var(--tint-lilac)" },
-  { value: "cream", ar: "كريمي", en: "Cream", fill: "bg-tint-cream", swatch: "var(--tint-cream)" },
+export const TINTS: {
+  value: Tint;
+  ar: string;
+  en: string;
+  fill: string;
+  border: string;
+  badge: string;
+  text: string;
+  hex: string;
+}[] = [
+  {
+    value: "rose",
+    ar: "وردي فاخر · Luxury Rose",
+    en: "Luxury Rose",
+    fill: "bg-[#FFF0F3]",
+    border: "border-[#FFCCD5]",
+    badge: "bg-[#E91E63] text-white",
+    text: "text-[#590D22]",
+    hex: "#FFF0F3",
+  },
+  {
+    value: "pistachio",
+    ar: "فستق حلبي · Fresh Pistachio",
+    en: "Fresh Pistachio",
+    fill: "bg-[#F1F8F5]",
+    border: "border-[#C8E6C9]",
+    badge: "bg-[#2E7D32] text-white",
+    text: "text-[#1B3B1D]",
+    hex: "#F1F8F5",
+  },
+  {
+    value: "chocolate",
+    ar: "شوكولاتة دافئة · Warm Chocolate",
+    en: "Warm Chocolate",
+    fill: "bg-[#FDF8F5]",
+    border: "border-[#D7CCC8]",
+    badge: "bg-[#8D6E63] text-white",
+    text: "text-[#3E2723]",
+    hex: "#FDF8F5",
+  },
+  {
+    value: "vanilla",
+    ar: "فانيلا ذهبية · Golden Vanilla",
+    en: "Golden Vanilla",
+    fill: "bg-[#FFFDE7]",
+    border: "border-[#FFF59D]",
+    badge: "bg-[#F57F17] text-white",
+    text: "text-[#4E342E]",
+    hex: "#FFFDE7",
+  },
+  {
+    value: "lavender",
+    ar: "لافندر ناعم · Soft Lavender",
+    en: "Soft Lavender",
+    fill: "bg-[#F3E5F5]",
+    border: "border-[#E1BEE7]",
+    badge: "bg-[#7B1FA2] text-white",
+    text: "text-[#311B92]",
+    hex: "#F3E5F5",
+  },
+  {
+    value: "blush",
+    ar: "باستيل وردي · Blush",
+    en: "Blush",
+    fill: "bg-tint-blush",
+    border: "border-[#FAD2E1]",
+    badge: "bg-[#D81B60] text-white",
+    text: "text-[#4A0E17]",
+    hex: "#FDE2CF",
+  },
+  {
+    value: "butter",
+    ar: "زبدة دافئة · Butter",
+    en: "Butter",
+    fill: "bg-tint-butter",
+    border: "border-[#FFE5EC]",
+    badge: "bg-[#D97706] text-white",
+    text: "text-[#78350F]",
+    hex: "#FFF1C5",
+  },
+  {
+    value: "sky",
+    ar: "سماوي · Sky",
+    en: "Sky",
+    fill: "bg-tint-sky",
+    border: "border-[#BEE3F8]",
+    badge: "bg-[#0284C7] text-white",
+    text: "text-[#0C4A6E]",
+    hex: "#E0F2FE",
+  },
+  {
+    value: "lilac",
+    ar: "ليلكي · Lilac",
+    en: "Lilac",
+    fill: "bg-tint-lilac",
+    border: "border-[#E9D5FF]",
+    badge: "bg-[#9333EA] text-white",
+    text: "text-[#581C87]",
+    hex: "#F3E8FF",
+  },
+  {
+    value: "cream",
+    ar: "كريمي غني · Cream",
+    en: "Cream",
+    fill: "bg-tint-cream",
+    border: "border-[#E5E7EB]",
+    badge: "bg-[#8B4513] text-white",
+    text: "text-[#3E2723]",
+    hex: "#FFF9F5",
+  },
 ];
 
+export const getTintMeta = (tint: string | null | undefined) =>
+  TINTS.find((option) => option.value === tint) ?? TINTS[0]!;
+
 export const tintFill = (tint: string | null | undefined) =>
-  TINTS.find((option) => option.value === tint)?.fill ?? "bg-tint-cream";
+  (TINTS.find((option) => option.value === tint) ?? TINTS[0]!).fill;
 
 export type SizePrice = { label: string; price: number };
 

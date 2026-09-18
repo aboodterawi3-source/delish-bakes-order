@@ -392,11 +392,33 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                   ))}
                 </div>
                 {form.pay === "cliq" && (
-                  <p className="mt-2 rounded-2xl bg-secondary/40 p-3 text-xs text-foreground">
-                    {lang === "ar"
-                      ? "سيرسل لك فريقنا تفاصيل التحويل عبر واتساب لتأكيد الطلب."
-                      : "Our team will send you the CliQ transfer details on WhatsApp to confirm the order."}
-                  </p>
+                  <div className="mt-2 rounded-2xl border border-primary/20 bg-primary/5 p-3.5 space-y-2 text-xs">
+                    <div className="flex items-center justify-between border-b border-primary/10 pb-2">
+                      <span className="font-extrabold text-foreground">
+                        {lang === "ar" ? "اسم الحساب (CliQ Alias):" : "CliQ Alias:"}
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span dir="ltr" className="font-mono font-black text-primary bg-primary/10 px-2 py-0.5 rounded-md text-sm">
+                          DELISHBAKES
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void navigator.clipboard.writeText("DELISHBAKES");
+                            alert(lang === "ar" ? "تم نسخ اسم مستعار كليك (DELISHBAKES)!" : "CliQ Alias copied!");
+                          }}
+                          className="rounded-lg bg-primary px-2 py-1 text-[10px] font-bold text-primary-foreground shadow-xs active:scale-95"
+                        >
+                          {lang === "ar" ? "نسخ 📋" : "Copy"}
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-muted-foreground leading-relaxed">
+                      {lang === "ar"
+                        ? "اسم المستفيد: مخبز ديليش للحلويات (Bank Etihad). بعد التحويل، يرجى إرسال صورة الإشعار عبر الواتساب لتأكيد الطلب."
+                        : "Beneficiary: Delish Bakes Patisserie (Bank Etihad). After transferring, please share receipt on WhatsApp."}
+                    </p>
+                  </div>
                 )}
               </fieldset>
 

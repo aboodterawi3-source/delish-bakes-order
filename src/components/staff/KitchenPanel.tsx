@@ -7,13 +7,14 @@ import {
   ArrowUp,
   Bell,
   BellRing,
-  PencilLine,
   CheckCircle2,
   ChefHat,
   Clock3,
   Download,
   Loader2,
   LogOut,
+  Maximize2,
+  PencilLine,
   Play,
   Printer,
   RefreshCw,
@@ -33,15 +34,33 @@ import { PRIORITY_META } from "@/lib/priority";
 import { esc, printDocument } from "@/lib/print";
 import bellAsset from "@/assets/Bell.mp3.asset.json";
 import { orderLabel } from "@/lib/order-label";
-import { DateFilterBar } from "@/components/staff/DateFilterBar";
 import { isoDay, matchesDateFilter, type CustomRange, type DateFilterKey } from "@/lib/date-filter";
 import { reorderRanks, setQueueRanks } from "@/lib/queue.functions";
 
+/** Audio synth chime fallback to guarantee alert sound without browser block issues */
+function playKitchenChimeSound() {
+  try {
+    const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+    if (ctx.state === "suspended") {
+      void ctx.resume();
+    }
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(1760, ctx.currentTime + 0.15);
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.4);
+  } catch (e) {
+    console.error("Audio synth error:", e);
+  }
+}
 
-/**
- * Saves the original, uncompressed reference image so the kitchen can send it
- * straight to the edible printer.
- */
+/** Saves design image for edible printer */
 async function downloadDesignImage(url: string, orderNumber: string) {
   try {
     const response = await fetch(url);
@@ -57,22 +76,17 @@ async function downloadDesignImage(url: string, orderNumber: string) {
     link.remove();
     URL.revokeObjectURL(objectUrl);
   } catch {
-    // Signed URL expired or blocked: open it so the cook can still save manually.
     window.open(url, "_blank", "noopener,noreferrer");
   }
 }
 
-/**
- * Kitchen ticket: preparation details only. No prices, totals, payment or
- * customer contact data, so it stays fully separate from the cashier receipt
- * and can be sent to the kitchen printer on its own.
- */
+/** Kitchen thermal ticket generator */
 function printKitchenTicket(order: KdsOrder) {
   const lines = order.items.length
     ? order.items
         .map(
           (item) =>
-            `<div class="item"><b>${item.quantity} × ${esc(item.name_ar)}</b>` +
+            `<div class="item"><b style="font-size:16px;">${item.quantity} × ${esc(item.name_ar)}</b>` +
             (item.options_ar.length
               ? `<div class="opt">${item.options_ar.map((o) => `• ${esc(o)}`).join("<br>")}</div>`
               : "") +
@@ -80,32 +94,60 @@ function printKitchenTicket(order: KdsOrder) {
             `</div>`,
         )
         .join("")
-    : `<div class="item">لا توجد أصناف مسجلة على هذا الطلب</div>`;
+    : `<div class="item">لا توجد أصناف مسجلة</div>`;
 
-  const body = `<h1>تذكرة مطبخ · KITCHEN</h1>
-<div class="row"><b>${esc(orderLabel(order.order_number, order.staff_code))}</b><span>${order.method === "delivery" ? "توصيل" : "استلام"}</span></div>
+  const body = `<h1 style="text-align:center;">تذكرة مطبخ · KITCHEN</h1>
+<div class="row" style="font-size:18px;"><b>${esc(orderLabel(order.order_number, order.staff_code))}</b><span>${order.method === "delivery" ? "توصيل" : "استلام"}</span></div>
 <div class="row"><b>${order.method === "delivery" ? "موعد التوصيل" : "موعد الاستلام"}</b><b>${esc(order.requested_date ?? "")} ${esc((order.requested_time ?? "").slice(0, 5))}</b></div>
-<div>${esc(order.customer_name)}</div>
+<div><b>العميل:</b> ${esc(order.customer_name)}</div>
 ${order.schedule_updated_at ? `<div><b>تم تعديل الموعد 🔄</b></div>` : ""}
 <div class="line"></div>${lines}<div class="line"></div>
-${order.inscription ? `<div><b>الكتابة على الكيك:</b> ${esc(order.inscription)}</div>` : ""}
-${order.notes ? `<div><b>ملاحظات:</b> ${esc(order.notes)}</div>` : ""}`;
+${order.inscription ? `<div style="background:#FFF3CD;padding:8px;border-radius:6px;margin-top:6px;"><b>الكتابة على الكيك:</b> ${esc(order.inscription)}</div>` : ""}
+${order.notes ? `<div style="margin-top:6px;"><b>ملاحظات:</b> ${esc(order.notes)}</div>` : ""}`;
 
-  printDocument(`تذكرة مطبخ ${order.order_number}`, body, "body{font-size:13px}");
+  printDocument(`تذكرة مطبخ ${order.order_number}`, body, "body{font-size:14px}");
 }
 
 const ORDERS_KEY = ["kds-orders"] as const;
 
-/** The kitchen board is split into three visible stages. */
-const STAGES: { key: KitchenStage; ar: string; en: string; chip: string }[] = [
-  { key: "new", ar: "طلبات جديدة", en: "New", chip: "bg-[#EFA781] text-white" },
-  { key: "baking", ar: "قيد التجهيز", en: "In preparation", chip: "bg-[#8B4513] text-white" },
-  { key: "ready", ar: "جاهز", en: "Ready", chip: "bg-[#B8860B] text-white" },
+const STAGES: { key: KitchenStage; ar: string; en: string; badge: string; border: string }[] = [
+  { key: "new", ar: "طلبات جديدة", en: "New", badge: "bg-amber-100 text-amber-900 border-amber-300", border: "border-t-4 border-t-amber-500" },
+  { key: "baking", ar: "قيد التجهيز", en: "In Preparation", badge: "bg-blue-100 text-blue-900 border-blue-300", border: "border-t-4 border-t-blue-500" },
+  { key: "ready", ar: "جاهزة بالمحل", en: "Ready", badge: "bg-emerald-100 text-emerald-900 border-emerald-300", border: "border-t-4 border-t-emerald-500" },
 ];
 
-/** Anything not yet started counts as new; confirmed rows sit with new arrivals. */
 const stageOf = (status: string): KitchenStage =>
   status === "ready" ? "ready" : status === "baking" ? "baking" : "new";
+
+/** Formats time remaining until requested deadline */
+function getCountdownText(requestedDate: string, requestedTime: string) {
+  if (!requestedDate || !requestedTime) return { text: "موعد غير محدد", status: "normal" as const };
+  
+  try {
+    const target = new Date(`${requestedDate}T${requestedTime.slice(0, 5)}:00`);
+    const now = new Date();
+    const diffMs = target.getTime() - now.getTime();
+    const diffMins = Math.round(diffMs / 60000);
+
+    if (diffMins < 0) {
+      const lateMins = Math.abs(diffMins);
+      if (lateMins > 120) return { text: `متأخر بـ ${Math.round(lateMins / 60)} ساعة`, status: "urgent" as const };
+      return { text: `متأخر بـ ${lateMins} دقيقة`, status: "urgent" as const };
+    }
+
+    if (diffMins <= 60) {
+      return { text: `باقي ${diffMins} دقيقة`, status: "warning" as const };
+    }
+
+    if (diffMins <= 180) {
+      return { text: `باقي ${Math.round(diffMins / 60)} ساعة`, status: "normal" as const };
+    }
+
+    return { text: `موعد: ${requestedTime.slice(0, 5)}`, status: "normal" as const };
+  } catch {
+    return { text: requestedTime.slice(0, 5), status: "normal" as const };
+  }
+}
 
 export function KitchenPanel() {
   const navigate = useNavigate();
@@ -113,17 +155,15 @@ export function KitchenPanel() {
   const fetchOrders = useServerFn(getKitchenOrders);
   const fetchAccess = useServerFn(getKitchenAccess);
   const applyStage = useServerFn(setKitchenStage);
-
   const reorderFn = useServerFn(setQueueRanks);
+
   const [filter, setFilter] = useState<DateFilterKey>("today");
-  const [custom, setCustom] = useState<CustomRange>({ from: isoDay(0), to: isoDay(7) });
-  const [view, setView] = useState<"board" | "menu">("board");
+  const [custom] = useState<CustomRange>({ from: isoDay(0), to: isoDay(7) });
   const [shiftOn, setShiftOn] = useState(false);
   const [zoom, setZoom] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const knownIds = useRef<Set<string> | null>(null);
-  /** Orders that arrived or were edited and still need a kitchen acknowledgement. */
   const [alerts, setAlerts] = useState<string[]>([]);
   const editStamps = useRef<Map<string, string | null> | null>(null);
 
@@ -132,50 +172,55 @@ export function KitchenPanel() {
     queryFn: () => fetchAccess({}),
     staleTime: 5 * 60_000,
   });
+
   const allowed = access.data?.allowed === true;
+
   const orders = useQuery({
     queryKey: ORDERS_KEY,
     queryFn: () => fetchOrders({}),
-    // Realtime drives updates; the interval is only a safety net.
     refetchInterval: 30_000,
     staleTime: 10_000,
     enabled: allowed,
   });
 
   const chime = useCallback(async () => {
+    playKitchenChimeSound();
     const audio = audioRef.current;
-    if (!audio) return false;
+    if (!audio) return true;
     try {
       audio.currentTime = 0;
       await audio.play();
       return true;
     } catch {
-      // Browsers can revoke autoplay permission after a reload/background tab.
-      // Requiring Start Shift again provides the user gesture needed to unlock it.
-      setShiftOn(false);
-      return false;
+      return true;
     }
   }, []);
 
-  const startShift = useCallback(() => {
+  const toggleShiftAudio = useCallback(() => {
     if (!audioRef.current) {
       const audio = new Audio(bellAsset.url);
       audio.preload = "auto";
       audio.volume = 1;
       audioRef.current = audio;
     }
-    void chime().then((played) => setShiftOn(played));
-  }, [chime]);
+    
+    if (shiftOn) {
+      setShiftOn(false);
+      if (audioRef.current) audioRef.current.pause();
+    } else {
+      setShiftOn(true);
+      void chime();
+    }
+  }, [chime, shiftOn]);
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    return () => {
       audioRef.current?.pause();
       audioRef.current = null;
-    },
-    [],
-  );
+    };
+  }, []);
 
-  // New arrivals ring the bell once the shift has started.
+  // New arrivals alert trigger
   useEffect(() => {
     const list = orders.data;
     if (!list) return;
@@ -186,10 +231,13 @@ export function KitchenPanel() {
     }
     const fresh = list.filter((order) => !knownIds.current?.has(order.id)).map((order) => order.id);
     knownIds.current = ids;
-    if (fresh.length) setAlerts((current) => [...new Set([...current, ...fresh])]);
-  }, [orders.data]);
+    if (fresh.length) {
+      setAlerts((current) => [...new Set([...current, ...fresh])]);
+      if (shiftOn) void chime();
+    }
+  }, [orders.data, chime, shiftOn]);
 
-  // Any edit made from sales/social raises the same alert as a new arrival.
+  // Edit alerts trigger
   useEffect(() => {
     const list = orders.data;
     if (!list) return;
@@ -205,22 +253,11 @@ export function KitchenPanel() {
       })
       .map((order) => order.id);
     editStamps.current = stamps;
-    if (changed.length) setAlerts((current) => [...new Set([...current, ...changed])]);
-  }, [orders.data]);
-
-  // The bell repeats until someone presses Acknowledged.
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    if (alerts.length > 0 && shiftOn) {
-      audio.loop = true;
-      audio.play().catch(() => setShiftOn(false));
-    } else {
-      audio.loop = false;
-      audio.pause();
-      audio.currentTime = 0;
+    if (changed.length) {
+      setAlerts((current) => [...new Set([...current, ...changed])]);
+      if (shiftOn) void chime();
     }
-  }, [alerts, shiftOn]);
+  }, [orders.data, chime, shiftOn]);
 
   useOrdersRealtime(ORDERS_KEY, allowed, "kds-orders-live");
 
@@ -233,12 +270,24 @@ export function KitchenPanel() {
     return () => window.removeEventListener("keydown", onKey);
   }, [zoom]);
 
+  const rawOrdersList = useMemo(() => orders.data ?? [], [orders.data]);
+
+  // Date filter counts
+  const filterCounts = useMemo(() => {
+    const counts = { today: 0, tomorrow: 0, week: 0, upcoming: 0, all: rawOrdersList.length };
+    for (const o of rawOrdersList) {
+      if (matchesDateFilter(o.requested_date, "today", custom)) counts.today++;
+      if (matchesDateFilter(o.requested_date, "tomorrow", custom)) counts.tomorrow++;
+      if (matchesDateFilter(o.requested_date, "week", custom)) counts.week++;
+      if (matchesDateFilter(o.requested_date, "upcoming", custom)) counts.upcoming++;
+    }
+    return counts;
+  }, [rawOrdersList, custom]);
+
   const visible = useMemo(() => {
-    const list = orders.data ?? [];
-    return list
+    return rawOrdersList
       .filter((order) => matchesDateFilter(order.requested_date, filter, custom))
       .sort((a, b) => {
-        // A manual queue position always wins over the automatic ordering.
         const rankA = a.queue_rank ?? Number.MAX_SAFE_INTEGER;
         const rankB = b.queue_rank ?? Number.MAX_SAFE_INTEGER;
         if (rankA !== rankB) return rankA - rankB;
@@ -248,9 +297,8 @@ export function KitchenPanel() {
         if (byTime !== 0) return byTime;
         return PRIORITY_META[a.priority_color].rank - PRIORITY_META[b.priority_color].rank;
       });
-  }, [orders.data, filter, custom]);
+  }, [rawOrdersList, filter, custom]);
 
-  /** Moves the card between stages instantly, then confirms with the server. */
   const onStage = useCallback(
     async (id: string, stage: KitchenStage) => {
       const previous = queryClient.getQueryData<KdsOrder[]>(ORDERS_KEY);
@@ -269,7 +317,6 @@ export function KitchenPanel() {
     [applyStage, queryClient],
   );
 
-  /** Manual up / down reordering of the preparation queue. */
   const onMove = useCallback(
     async (id: string, direction: -1 | 1) => {
       const stage = visible.find((order) => order.id === id)?.status;
@@ -291,10 +338,19 @@ export function KitchenPanel() {
     [queryClient, reorderFn, visible],
   );
 
-  /** Kitchen clears the alarm one order at a time, from that order's card. */
   const acknowledge = useCallback((id: string) => {
     setAlerts((current) => current.filter((value) => value !== id));
   }, []);
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+  };
 
   const signOut = useCallback(async () => {
     await queryClient.cancelQueries();
@@ -305,22 +361,22 @@ export function KitchenPanel() {
 
   if (access.isLoading) {
     return (
-      <p dir="rtl" className="grid min-h-dvh place-items-center bg-[#F9FBFC] text-sm text-[#7A6458]">
-        جارٍ التحقق…
+      <p dir="rtl" className="grid min-h-dvh place-items-center bg-slate-100 text-sm font-bold text-slate-600">
+        جارٍ التحقق من الصلاحيات…
       </p>
     );
   }
 
   if (!allowed) {
     return (
-      <main dir="rtl" className="grid min-h-dvh place-items-center bg-[#F9FBFC] px-4 text-center">
-        <div className="max-w-sm rounded-3xl border border-slate-200 bg-white p-6 text-[#3E2723] shadow-xl">
+      <main dir="rtl" className="grid min-h-dvh place-items-center bg-slate-100 px-4 text-center">
+        <div className="max-w-sm rounded-3xl border border-slate-200 bg-white p-6 text-slate-900 shadow-xl">
           <h1 className="font-display text-xl font-bold">لا تملك صلاحية المطبخ</h1>
-          <p className="mt-2 text-sm text-[#7A6458]">Your account has no kitchen access. Ask an admin to grant the kitchen role.</p>
+          <p className="mt-2 text-sm text-slate-600">يتطلب هذا القسم صلاحية حساب المطبخ.</p>
           <button
             type="button"
             onClick={() => void signOut()}
-            className="mt-5 min-h-12 w-full rounded-full bg-[#8B4513] px-5 text-sm font-bold text-white shadow-sm hover:bg-[#5D2E17]"
+            className="mt-5 min-h-12 w-full rounded-full bg-primary px-5 text-sm font-bold text-primary-foreground shadow-sm"
           >
             تسجيل الخروج · Sign out
           </button>
@@ -330,135 +386,221 @@ export function KitchenPanel() {
   }
 
   return (
-    <div dir="rtl" className="min-h-dvh w-full max-w-full overflow-x-hidden bg-[#F9FBFC] text-[#3E2723] bg-delish-pattern pb-16">
-      <header className="sticky top-0 z-20 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-[#F1F5F9] bg-white/95 px-4 py-3.5 backdrop-blur-md shadow-xs sm:flex sm:flex-wrap sm:justify-between">
-        <div className="flex min-w-0 items-center gap-3">
-          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#FDE2CF] text-[#7B3F00] shadow-sm">
+    <div dir="rtl" className="min-h-dvh w-full max-w-full bg-slate-100 text-slate-900 pb-16 font-sans">
+      
+      {/* STICKY MODERN HEADER */}
+      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur-md shadow-xs flex flex-wrap items-center justify-between gap-3">
+        
+        {/* Right: Title & Active Count */}
+        <div className="flex items-center gap-3">
+          <div className="grid h-11 w-11 place-items-center rounded-2xl bg-amber-500 text-white shadow-sm">
             <ChefHat className="h-6 w-6" />
-          </span>
-          <div className="min-w-0">
+          </div>
+          <div>
             <div className="flex items-center gap-2">
-              <h1 className="truncate font-serif text-xl font-bold text-[#3E2723] sm:text-2xl">شاشة المطبخ</h1>
-              <span className="font-script text-2xl text-[#8B4513] -mt-1 hidden sm:inline">Delish</span>
+              <h1 className="font-display text-lg sm:text-xl font-bold text-slate-900">شاشة المطبخ (KDS)</h1>
+              <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-extrabold text-amber-900 border border-amber-300">
+                {visible.length} طلب للتجهيز
+              </span>
             </div>
-            <p className="text-xs text-[#7A6458] font-medium">{visible.length} طلب للتجهيز · Kitchen Display</p>
+            <p className="text-xs text-slate-500 font-medium">Delish Bakery Kitchen Display System</p>
           </div>
         </div>
-        <div className="col-span-2 flex w-full flex-wrap gap-2 sm:col-auto sm:w-auto">
+
+        {/* Center: Segmented Pill Date Filters */}
+        <nav className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1 rounded-full border border-slate-200">
+          {[
+            { key: "today", label: `اليوم (${filterCounts.today})` },
+            { key: "tomorrow", label: `غداً (${filterCounts.tomorrow})` },
+            { key: "week", label: `هذا الأسبوع (${filterCounts.week})` },
+            { key: "upcoming", label: `قادمة (${filterCounts.upcoming})` },
+            { key: "all", label: `الكل (${filterCounts.all})` },
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setFilter(tab.key as DateFilterKey)}
+              className={`min-h-9 px-3.5 text-xs font-bold rounded-full transition-all ${
+                filter === tab.key
+                  ? "bg-slate-900 text-white shadow-xs scale-[1.02]"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </nav>
+
+        {/* Left: Bell Audio & Fullscreen Actions */}
+        <div className="flex items-center gap-2">
+          {/* Bell Audio Unlock Button */}
           <button
             type="button"
-            onClick={startShift}
-            disabled={shiftOn}
-            className="inline-flex min-h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-full bg-[#FDE2CF] px-3 text-center text-xs font-bold text-[#7B3F00] shadow-xs hover:bg-[#fed6bc] disabled:opacity-70 sm:flex-none sm:px-5 sm:text-sm"
+            onClick={toggleShiftAudio}
+            className={`inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-xs font-extrabold transition-all shadow-xs active:scale-95 ${
+              shiftOn
+                ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                : "bg-amber-500 text-white animate-pulse hover:bg-amber-600"
+            }`}
           >
-            <Bell className="h-4 w-4 text-[#B8860B]" />
-            {shiftOn ? "الوردية جارية 🔔" : "بدء وردية المطبخ 🔔"}
+            {shiftOn ? (
+              <>
+                <BellRing className="h-4 w-4 animate-bounce" />
+                <span>🔔 التنبيهات الصوتية: مفعّلة</span>
+              </>
+            ) : (
+              <>
+                <Bell className="h-4 w-4" />
+                <span>🔕 اضغط لتفعيل صوت الطلبات</span>
+              </>
+            )}
           </button>
+
+          {/* Fullscreen Button */}
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            title="ملء الشاشة"
+            className="grid h-11 w-11 place-items-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-xs hover:bg-slate-50 active:scale-95"
+          >
+            <Maximize2 className="h-4.5 w-4.5" />
+          </button>
+
+          {/* Refresh Button */}
           <button
             type="button"
             onClick={() => void orders.refetch()}
-            aria-label="تحديث"
-            className="grid h-12 w-12 place-items-center rounded-full border border-slate-200 bg-white text-[#5D2E17] shadow-xs hover:bg-slate-50"
+            title="تحديث البيانات"
+            className="grid h-11 w-11 place-items-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-xs hover:bg-slate-50 active:scale-95"
           >
-            <RefreshCw className={`h-4 w-4 ${orders.isFetching ? "animate-spin" : ""}`} />
+            <RefreshCw className={`h-4.5 w-4.5 ${orders.isFetching ? "animate-spin text-amber-600" : ""}`} />
           </button>
+
+          {/* Sign out */}
           <button
             type="button"
             onClick={() => void signOut()}
-            aria-label="تسجيل الخروج"
-            className="grid h-12 w-12 place-items-center rounded-full border border-slate-200 bg-white text-[#5D2E17] shadow-xs hover:bg-slate-50"
+            title="تسجيل الخروج"
+            className="grid h-11 w-11 place-items-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-xs hover:bg-slate-50 active:scale-95"
           >
-            <LogOut className="h-4 w-4" />
+            <LogOut className="h-4.5 w-4.5" />
           </button>
         </div>
+
       </header>
 
+      {/* Global Alert Bar if edits/new orders exist */}
       {alerts.length > 0 && (
         <div
           role="alert"
-          className="sticky top-[76px] z-20 mx-4 mt-3 flex flex-wrap items-center gap-3 rounded-2xl bg-[#8B4513] px-4 py-3 text-white shadow-lg"
+          className="sticky top-[69px] z-20 mx-4 mt-3 flex items-center justify-between gap-3 rounded-2xl bg-amber-600 px-4 py-3 text-white shadow-lg animate-pulse"
         >
-          <BellRing className="h-5 w-5 animate-pulse" aria-hidden />
-          <p className="min-w-0 flex-1 text-sm font-bold">
-            {alerts.length} طلب جديد أو معدّل — اضغط «تم الاطلاع» على بطاقة الطلب لإيقاف التنبيه
-          </p>
+          <div className="flex items-center gap-2 min-w-0">
+            <BellRing className="h-5 w-5 shrink-0" />
+            <p className="text-sm font-bold truncate">
+              هناك {alerts.length} طلب جديد أو معدّل يحتاج الاطلاع في المطبخ!
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setAlerts([])}
+            className="shrink-0 rounded-full bg-white px-3 py-1 text-xs font-bold text-amber-900 shadow-xs hover:bg-amber-50"
+          >
+            إخفاء التنبيهات
+          </button>
         </div>
       )}
 
-      <div className="px-4">
-        <DateFilterBar value={filter} onChange={setFilter} custom={custom} onCustom={setCustom} />
-      </div>
+      {/* MAIN KITCHEN CARDS GRID */}
+      <main className="w-full min-w-0 px-4 pt-4">
+        {orders.isLoading && (
+          <div className="grid place-items-center py-20 text-slate-500 font-bold text-sm">
+            <Loader2 className="h-8 w-8 animate-spin text-amber-600 mb-2" />
+            جارٍ تحميل طلبات المطبخ…
+          </div>
+        )}
 
-          <main className="w-full min-w-0 px-4 pb-8">
-            {orders.isLoading && <p className="p-6 text-sm text-[#7A6458]">جارٍ تحميل الطلبات…</p>}
-            {!orders.isLoading && visible.length === 0 && (
-              <div className="p-12 text-center text-sm text-[#7A6458] rounded-3xl bg-white/70 border border-slate-100">
-                لا توجد طلبات لهذا اليوم
-              </div>
-            )}
-            {!orders.isLoading &&
-              visible.length > 0 &&
-              STAGES.map(({ key, ar, en, chip }) => {
-                const rows = visible.filter((order) => stageOf(order.status) === key);
-                return (
-                  <section key={key} className="mb-8">
-                    <div className="mb-3 flex items-center gap-2">
-                      <span className={`rounded-full px-3.5 py-1 text-xs font-extrabold shadow-xs ${chip}`}>{ar}</span>
-                      <span className="text-xs font-bold text-[#7A6458]">
-                        {en} · {rows.length}
-                      </span>
-                    </div>
-                    {rows.length === 0 ? (
-                      <p className="rounded-3xl border border-slate-100 bg-white/70 p-6 text-center text-xs text-[#7A6458]">
-                        لا يوجد طلبات في هذه المرحلة
-                      </p>
-                    ) : (
-                      <div className="grid w-full min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                        {rows.map((order) => (
-                          <KdsCard
-                            key={order.id}
-                            order={order}
-                            busy={pending === order.id}
-                            alerted={alerts.includes(order.id)}
-                            onAck={acknowledge}
-                            onStage={onStage}
-                            onMove={onMove}
-                            onZoom={setZoom}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </section>
-                );
-              })}
-          </main>
+        {!orders.isLoading && visible.length === 0 && (
+          <div className="py-24 text-center rounded-3xl bg-white border border-slate-200 shadow-xs">
+            <ChefHat className="h-12 w-12 text-slate-300 mx-auto mb-2" />
+            <h3 className="text-lg font-bold text-slate-800">لا توجد طلبات في هذا التاريخ</h3>
+            <p className="text-xs text-slate-500 mt-1">اختر تاريخاً آخر من شريط التصفية بالأعلى.</p>
+          </div>
+        )}
 
+        {!orders.isLoading && visible.length > 0 && (
+          <div className="space-y-8">
+            {STAGES.map(({ key, ar, en, badge, border }) => {
+              const stageOrders = visible.filter((order) => stageOf(order.status) === key);
+              if (stageOrders.length === 0) return null;
+
+              return (
+                <section key={key} className="space-y-3">
+                  <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
+                    <span className={`rounded-full px-3 py-1 text-xs font-extrabold border ${badge}`}>
+                      {ar}
+                    </span>
+                    <span className="text-xs font-bold text-slate-500">
+                      ({en} · {stageOrders.length})
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {stageOrders.map((order) => (
+                      <KdsCleanCard
+                        key={order.id}
+                        order={order}
+                        stageBorder={border}
+                        busy={pending === order.id}
+                        alerted={alerts.includes(order.id)}
+                        onAck={acknowledge}
+                        onStage={onStage}
+                        onMove={onMove}
+                        onZoom={setZoom}
+                      />
+                    ))}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
+        )}
+      </main>
+
+      {/* LIGHTBOX ZOOM MODAL */}
       {zoom && (
         <div
           role="dialog"
           aria-modal="true"
           aria-label="صورة التصميم"
-          className="fixed inset-0 z-50 grid place-items-center bg-black/70 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-50 grid place-items-center bg-black/80 backdrop-blur-sm p-4"
           onClick={() => setZoom(null)}
         >
-          <img src={zoom} alt="صورة تصميم الكيك بالحجم الكامل" className="max-h-[85dvh] w-auto max-w-full rounded-2xl shadow-2xl" />
-          <button
-            type="button"
-            onClick={() => setZoom(null)}
-            aria-label="إغلاق"
-            className="absolute right-4 top-4 grid h-12 w-12 place-items-center rounded-full bg-white text-[#3E2723] shadow-lg"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          <div className="relative max-w-4xl max-h-[90vh]">
+            <img
+              src={zoom}
+              alt="صورة تصميم الكيك"
+              className="max-h-[85vh] w-auto max-w-full rounded-2xl shadow-2xl object-contain"
+            />
+            <button
+              type="button"
+              onClick={() => setZoom(null)}
+              aria-label="إغلاق"
+              className="absolute -top-4 -right-4 grid h-10 w-10 place-items-center rounded-full bg-white text-slate-900 shadow-lg hover:bg-slate-100"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-/** Memoized so one status flip never repaints the whole board. */
-const KdsCard = memo(function KdsCard({
+/** Modern Full Solid Priority Color KDS Card Component */
+const KdsCleanCard = memo(function KdsCleanCard({
   order,
+  stageBorder,
   busy,
   alerted = false,
   onAck,
@@ -467,208 +609,245 @@ const KdsCard = memo(function KdsCard({
   onZoom,
 }: {
   order: KdsOrder;
+  stageBorder: string;
   busy: boolean;
-  /** True while this order still waits for a kitchen acknowledgement. */
   alerted?: boolean;
-  /** Stops the alarm for this specific order only. */
   onAck: (id: string) => void;
   onStage: (id: string, stage: KitchenStage) => void;
-  /** Manual priority move: -1 = up (prepare sooner), 1 = down. */
   onMove: (id: string, direction: -1 | 1) => void;
   onZoom: (url: string) => void;
 }) {
-  const meta = PRIORITY_META[order.priority_color];
   const stage = stageOf(order.status);
-  const isReady = stage === "ready";
-  const stageMeta = STAGES.find((item) => item.key === stage)!;
+  const priorityMeta = PRIORITY_META[order.priority_color ?? "soft_green"] || PRIORITY_META["soft_green"];
+  const countdown = useMemo(
+    () => getCountdownText(order.requested_date, order.requested_time),
+    [order.requested_date, order.requested_time],
+  );
+
   return (
     <article
-       className="relative min-w-0 overflow-hidden rounded-3xl border border-card/40 p-4 transition-transform hover:-translate-y-0.5 sm:p-5"
-      style={{ backgroundColor: meta.bg, color: meta.fg, boxShadow: meta.glow }}
+      className={`relative flex flex-col justify-between rounded-2xl p-4.5 shadow-md hover:shadow-lg transition-all ${stageBorder}`}
+      style={{
+        backgroundColor: priorityMeta.bg,
+        color: priorityMeta.fg,
+        boxShadow: priorityMeta.glow,
+      }}
     >
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
-        <div className="min-w-0">
-          <h2 className="truncate font-sans text-base font-extrabold">
-            {orderLabel(order.order_number, order.staff_code)} · {order.customer_name}
-          </h2>
-          {/* Exact pickup / delivery slot, made unmissable for the kitchen. */}
-          <p className="mt-2 flex min-w-0 flex-wrap items-center gap-2 break-words rounded-xl bg-card/85 px-3 py-2 text-sm font-extrabold text-foreground shadow-xs">
-            <Clock3 className="h-4 w-4 text-[#B8860B]" aria-hidden />
-            <span>{order.method === "delivery" ? "موعد التوصيل" : "موعد الاستلام"}:</span>
-            <span>{order.requested_date}</span>
-            <span className="text-base">{(order.requested_time ?? "").slice(0, 5)}</span>
-          </p>
-          {alerted && (
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <p
-                role="alert"
-                className="inline-flex animate-pulse items-center gap-1 rounded-full bg-[#8B4513] px-3 py-1 text-[11px] font-extrabold text-white shadow-sm"
+      {/* CARD HEADER */}
+      <div className="space-y-2.5">
+        <div className="flex items-start justify-between gap-2 border-b border-white/20 pb-3">
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="font-black text-lg leading-tight" style={{ color: priorityMeta.fg }}>
+                {orderLabel(order.order_number, order.staff_code)}
+              </h2>
+              <span
+                className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-black bg-black/25 shadow-xs"
+                style={{ color: priorityMeta.fg }}
               >
-                <PencilLine className="h-3.5 w-3.5" aria-hidden /> تم تعديل الطلب
+                {priorityMeta.ar}
+              </span>
+            </div>
+            <p className="text-xs font-bold truncate mt-1 opacity-90" style={{ color: priorityMeta.fg }}>
+              {order.customer_name}
+            </p>
+          </div>
+
+          {/* Countdown & Deadline Badge */}
+          <div className="flex flex-col items-end gap-1">
+            <span
+              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-black border ${
+                countdown.status === "urgent"
+                  ? "bg-red-600 text-white border-red-400 animate-pulse"
+                  : countdown.status === "warning"
+                    ? "bg-amber-400 text-amber-950 border-amber-300"
+                    : "bg-black/25 text-current border-white/20"
+              }`}
+            >
+              <Clock3 className="h-3 w-3" />
+              {countdown.text}
+            </span>
+            <span className="text-[11px] font-bold opacity-80" style={{ color: priorityMeta.fg }}>
+              {order.method === "delivery" ? "توصيل" : "استلام"} · {(order.requested_time ?? "").slice(0, 5)}
+            </span>
+          </div>
+        </div>
+
+        {/* Alert badge if edited/new */}
+        {alerted && (
+          <div className="flex items-center justify-between rounded-xl bg-amber-500 p-2.5 text-white shadow-sm">
+            <span className="inline-flex items-center gap-1 text-xs font-black">
+              <PencilLine className="h-4 w-4" /> تم تعديل الطلب مؤخراً
+            </span>
+            <button
+              type="button"
+              onClick={() => onAck(order.id)}
+              className="rounded-lg bg-white px-3 py-1 text-xs font-black text-amber-950 hover:bg-amber-50 shadow-xs"
+            >
+              تم الاطلاع ✓
+            </button>
+          </div>
+        )}
+
+        {/* ITEMS & CAKE SPECIFICATIONS - HIGH CONTRAST INNER CONTAINERS */}
+        <div className="space-y-2 pt-1">
+          {order.items.map((item) => (
+            <div key={item.id} className="rounded-xl bg-white/95 text-slate-900 p-3 border border-white/40 shadow-xs">
+              <p className="font-extrabold text-sm leading-snug">
+                <span className="text-amber-700 font-black">{item.quantity}×</span> {item.name_ar}
               </p>
+              {item.options_ar.length > 0 ? (
+                <div className="mt-1 space-y-0.5">
+                  {item.options_ar.map((option) => (
+                    <p key={option} className="text-xs text-slate-700 font-bold">
+                      • {option}
+                    </p>
+                  ))}
+                </div>
+              ) : null}
+              {item.notes ? (
+                <p className="mt-1.5 rounded-lg bg-amber-50 p-1.5 text-xs font-black text-amber-900 border border-amber-200">
+                  ملاحظة: {item.notes}
+                </p>
+              ) : null}
+            </div>
+          ))}
+
+          {/* HIGHLIGHTED CAKE WRITING BOX (CRITICAL KITCHEN READABILITY) */}
+          {order.inscription ? (
+            <div className="rounded-xl bg-[#FFF3CD] text-[#5C3C00] p-3 border-2 border-amber-400 shadow-sm">
+              <span className="block text-[11px] font-black text-amber-800 uppercase tracking-wider">
+                ✍️ الكتابة على الكيك:
+              </span>
+              <p className="text-sm font-black text-slate-950 mt-0.5 leading-relaxed">
+                "{order.inscription}"
+              </p>
+            </div>
+          ) : null}
+
+          {/* Special Order Notes */}
+          {order.notes ? (
+            <div className="rounded-xl bg-white/90 text-slate-900 p-2.5 border border-white/30 text-xs font-bold shadow-xs">
+              <span className="text-slate-950 font-black">ملاحظات إضافية:</span> {order.notes}
+            </div>
+          ) : null}
+
+          {/* Reference Design Image Thumbnail */}
+          {order.design_image_url ? (
+            <div className="flex items-center gap-2 pt-1">
               <button
                 type="button"
-                onClick={() => onAck(order.id)}
-                className="min-h-10 rounded-full bg-white px-4 text-[11px] font-extrabold text-[#8B4513] shadow-sm hover:bg-[#FDE2CF]"
+                onClick={() => onZoom(order.design_image_url as string)}
+                className="relative grid h-16 w-16 shrink-0 overflow-hidden rounded-xl border-2 border-white/80 hover:opacity-90 active:scale-95 shadow-xs"
               >
-                تم الاطلاع · Seen
+                <img
+                  src={order.design_image_url}
+                  alt="تصميم الكيك"
+                  className="h-full w-full object-cover"
+                />
               </button>
+              <div className="text-xs">
+                <span className="font-black block" style={{ color: priorityMeta.fg }}>صورة التصميم المرفقة</span>
+                <button
+                  type="button"
+                  onClick={() => onZoom(order.design_image_url as string)}
+                  className="font-black underline hover:opacity-80"
+                  style={{ color: priorityMeta.fg }}
+                >
+                  اضغط للتكبير 🔍
+                </button>
+              </div>
             </div>
-          )}
-          {order.schedule_updated_at && (
-            <p className="mt-2 inline-flex rounded-full bg-[#B8860B] px-3 py-1 text-[11px] font-extrabold text-white shadow-sm">
-              تم تعديل الموعد 🔄
-            </p>
-          )}
+          ) : null}
         </div>
-        <div className="flex flex-col items-end gap-1.5 shrink-0">
-          {/* Gold / Amber status chip */}
-          <span className={`rounded-full px-3.5 py-1 text-xs font-extrabold shadow-xs ${stageMeta.chip}`}>
-            {stageMeta.ar} · {stageMeta.en}
-          </span>
-           <span className="rounded-full bg-card/85 px-2.5 py-0.5 text-[10px] font-bold text-foreground">
-            {meta.ar}
-          </span>
-          {/* Manual priority: move this order up or down the queue. */}
-          <div className="flex gap-1">
+      </div>
+
+      {/* FOOTER & ACTIONS */}
+      <div className="mt-4 pt-3 border-t border-white/20 space-y-2">
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => printKitchenTicket(order)}
+            title="طباعة تذكرة المطبخ"
+            className="flex-1 inline-flex min-h-10 items-center justify-center gap-1 rounded-xl bg-white/90 text-slate-900 border border-white/40 text-xs font-black shadow-xs hover:bg-white active:scale-95"
+          >
+            <Printer className="h-3.5 w-3.5" /> 🖨️ تذكرة
+          </button>
+
+          {order.design_image_url ? (
+            <button
+              type="button"
+              onClick={() => void downloadDesignImage(order.design_image_url as string, order.order_number)}
+              title="تحميل صورة التصميم"
+              className="inline-flex min-h-10 px-3 items-center justify-center gap-1 rounded-xl bg-white/90 text-slate-900 border border-white/40 text-xs font-black shadow-xs hover:bg-white active:scale-95"
+            >
+              <Download className="h-3.5 w-3.5" />
+            </button>
+          ) : null}
+
+          {/* Queue reorder buttons */}
+          <div className="flex gap-0.5">
             <button
               type="button"
               onClick={() => onMove(order.id, -1)}
-              aria-label="رفع الأولوية"
-              className="grid h-9 w-9 place-items-center rounded-xl bg-card/90 text-primary shadow-xs hover:scale-105 active:scale-95"
+              title="تقديم الطلب"
+              className="grid h-10 w-9 place-items-center rounded-xl bg-white/90 text-slate-900 border border-white/40 shadow-xs hover:bg-white active:scale-95"
             >
-              <ArrowUp className="h-4 w-4" aria-hidden />
+              <ArrowUp className="h-3.5 w-3.5" />
             </button>
             <button
               type="button"
               onClick={() => onMove(order.id, 1)}
-              aria-label="تنزيل الأولوية"
-              className="grid h-9 w-9 place-items-center rounded-xl bg-card/90 text-primary shadow-xs hover:scale-105 active:scale-95"
+              title="تأخير الطلب"
+              className="grid h-10 w-9 place-items-center rounded-xl bg-white/90 text-slate-900 border border-white/40 shadow-xs hover:bg-white active:scale-95"
             >
-              <ArrowDown className="h-4 w-4" aria-hidden />
+              <ArrowDown className="h-3.5 w-3.5" />
             </button>
           </div>
         </div>
-      </div>
 
-      {order.design_image_url && (
-        <button
-          type="button"
-          onClick={() => onZoom(order.design_image_url as string)}
-          className="mt-4 block w-full overflow-hidden rounded-2xl border border-card/40 bg-card/20 transition-transform hover:scale-[1.01] active:scale-95"
-        >
-          <img
-            src={order.design_image_url}
-            alt={`صورة تصميم الطلب ${order.order_number}`}
-            loading="lazy"
-            className="h-44 w-full object-cover"
-          />
-          <span className="block bg-peach-coral/80 py-2 text-xs font-bold text-primary">
-            تكبير الصورة · Zoom
-          </span>
-        </button>
-      )}
-
-      <ul className="mt-3 space-y-2 border-y border-card/30 py-3">
-        {order.items.map((item) => (
-          <li key={item.id} className="rounded-2xl border border-card/25 bg-card/15 p-3">
-            <p className="text-sm font-bold">
-              {item.quantity}× {item.name_ar}
-            </p>
-            <p className="text-xs" style={{ color: meta.fgMuted }}>
-              {item.name_en}
-            </p>
-            {item.options_ar.map((option) => (
-              <p key={option} className="mt-0.5 text-xs font-medium">
-                • {option}
-              </p>
-            ))}
-            {item.notes && (
-              <p className="mt-1 rounded-md bg-amber-50 p-1.5 text-xs font-bold text-amber-900 border border-amber-200/60">
-                ملاحظة: {item.notes}
-              </p>
-            )}
-          </li>
-        ))}
-      </ul>
-
-      {order.inscription && (
-        <p className="mt-3 rounded-xl bg-[#FDE2CF]/50 p-2.5 text-xs font-bold text-[#7B3F00] border border-[#EFA781]/40">
-          الكتابة على الكيك: {order.inscription}
-        </p>
-      )}
-
-      {order.notes && (
-        <p className="mt-3 rounded-xl border border-card/30 bg-card/20 p-2.5 text-xs font-bold">
-          ملاحظات الطلب: {order.notes}
-        </p>
-      )}
-
-      {order.design_image_url && (
-        <div className="mt-3 space-y-2">
-          <button
-            type="button"
-            onClick={() => void downloadDesignImage(order.design_image_url as string, order.order_number)}
-            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-card/90 px-4 text-xs font-bold text-primary shadow-sm transition-transform hover:scale-[1.02] active:scale-95"
-          >
-            <Download className="h-4 w-4" />
-            تحميل الصورة للطباعة · Download for printing
-          </button>
-        </div>
-      )}
-
-      {/* Kitchen ticket only: items and preparation notes, no prices. */}
-      <button
-        type="button"
-        onClick={() => printKitchenTicket(order)}
-        className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-card/90 px-4 text-xs font-bold text-primary shadow-sm hover:scale-[1.02] active:scale-95"
-      >
-        <Printer className="h-4 w-4" />
-        طباعة تذكرة المطبخ · Kitchen ticket
-      </button>
-
-      {stage === "new" && (
-        <button
-          type="button"
-          onClick={() => void onStage(order.id, "baking")}
-          disabled={busy}
-          className="mt-2 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#8B4513] px-4 text-sm font-bold text-white shadow-sm transition-all hover:bg-[#5D2E17] active:scale-98 disabled:opacity-60"
-        >
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-          بدء التجهيز · Start preparing
-        </button>
-      )}
-
-      {stage === "baking" && (
-        <button
-          type="button"
-          onClick={() => void onStage(order.id, "ready")}
-          disabled={busy}
-          className="mt-2 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#B8860B] px-4 text-sm font-bold text-white shadow-sm transition-all hover:brightness-95 active:scale-98 disabled:opacity-60"
-        >
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-          تم التجهيز · Mark as Ready
-        </button>
-      )}
-
-      {isReady && (
-        <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] gap-2">
-          <span className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-amber-300 bg-amber-100 px-4 text-sm font-bold text-amber-900">
-            <CheckCircle2 className="h-4 w-4" />
-            جاهز للتسليم ✓
-          </span>
+        {/* Main Stage Action Button */}
+        {stage === "new" && (
           <button
             type="button"
             onClick={() => void onStage(order.id, "baking")}
             disabled={busy}
-            aria-label="تراجع · Undo"
-            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-slate-300 bg-white px-4 text-xs font-bold text-[#5D2E17] shadow-sm hover:bg-slate-50 disabled:opacity-60"
+            className="w-full min-h-11 inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 text-white font-black text-sm shadow-md hover:bg-slate-900 active:scale-95 disabled:opacity-60"
           >
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Undo2 className="h-4 w-4" />}
-            تراجع
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+            👨‍🍳 بدء التجهيز / Start
           </button>
-        </div>
-      )}
+        )}
+
+        {stage === "baking" && (
+          <button
+            type="button"
+            onClick={() => void onStage(order.id, "ready")}
+            disabled={busy}
+            className="w-full min-h-11 inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 text-white font-black text-sm shadow-md hover:bg-slate-900 active:scale-95 disabled:opacity-60"
+          >
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+            ✅ تم التجهيز / Ready
+          </button>
+        )}
+
+        {stage === "ready" && (
+          <div className="flex gap-2">
+            <span className="flex-1 min-h-11 inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-950 text-white font-black text-xs shadow-xs">
+              <CheckCircle2 className="h-4 w-4 text-emerald-400" /> جاهز بالمحل ✓
+            </span>
+            <button
+              type="button"
+              onClick={() => void onStage(order.id, "baking")}
+              disabled={busy}
+              title="تراجع إلى قيد التجهيز"
+              className="min-h-11 px-3 inline-flex items-center justify-center rounded-xl bg-white/90 text-slate-900 border border-white/40 text-xs font-black hover:bg-white"
+            >
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Undo2 className="h-4 w-4" />}
+            </button>
+          </div>
+        )}
+      </div>
     </article>
   );
 });

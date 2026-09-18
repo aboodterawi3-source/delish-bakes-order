@@ -7,11 +7,13 @@ import {
   BadgeDollarSign,
   Bike,
   CalendarClock,
+  CheckCircle2,
   Download,
   Link2,
   Lock,
   MessageCircle,
   Pencil,
+  Phone,
   Printer,
   RefreshCw,
   Search,
@@ -714,6 +716,13 @@ const OrderCard = memo(function OrderCard({
   );
 });
 
+const SAVED_DRIVERS = [
+  { label: "سائق 1 - أحمد", name: "أحمد", phone: "0790000001" },
+  { label: "سائق 2 - محمد", name: "محمد", phone: "0790000002" },
+  { label: "سائق 3 - محمود", name: "محمود", phone: "0790000003" },
+  { label: "شركة توصيل خارجية", name: "شركة التوصيل", phone: "" },
+] as const;
+
 function OrderPanel({
   order,
   authorization,
@@ -732,7 +741,6 @@ function OrderPanel({
   editLink?: string | null;
   onApplyDiscount?: (percent: number, reason: string) => void;
   onIssueEditLink?: () => void;
-  
   onZoom: (url: string) => void;
   onClose: () => void;
   onPatch: (input: Omit<OrderPatch, "orderId">) => void;
@@ -753,14 +761,12 @@ function OrderPanel({
   const [discountPercent, setDiscountPercent] = useState(String(order.discount_percent || ""));
   const [discountReason, setDiscountReason] = useState("");
   const [messageCopied, setMessageCopied] = useState(false);
-  // Delivery-run fields stay here; all content edits live in «تعديلات».
   const [address, setAddress] = useState(order.address ?? "");
-
+  const [showAdvancedPay, setShowAdvancedPay] = useState(false);
 
   const mayDiscount = Boolean(authorization?.allow_custom_discount);
   const discountCap = authorization?.max_discount_percent ?? 0;
 
-  // Reset the local fields only when a different order opens, never while typing.
   useEffect(() => {
     setDeposit(String(order.deposit_paid));
     setPayChoice(initialPayChoice(order));
@@ -770,8 +776,6 @@ function OrderPanel({
     setDiscountReason("");
     setMessageCopied(false);
     setAddress(order.address ?? "");
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order.id]);
 
   const liveTotal = Math.max(
@@ -780,7 +784,6 @@ function OrderPanel({
   );
   const remaining = Math.max(liveTotal - (Number(deposit) || 0), 0);
 
-  /** Built live from the order so staff always send current figures. */
   const confirmationMessage = useMemo(
     () =>
       buildConfirmationMessage({
@@ -810,407 +813,449 @@ function OrderPanel({
     [order, deposit, liveTotal],
   );
 
-  const stageIndex = flow.indexOf(order.status);
-  const next = stageIndex >= 0 && stageIndex < flow.length - 1 ? flow[stageIndex + 1] : null;
+  const driverDispatchMessage = useMemo(() => {
+    return `🚗 **طلب توصيل جديد - ${orderLabel(order.order_number, order.staff_code)}**
+العميل: ${order.order_name?.trim() || order.customer_name}
+الهاتف: ${order.customer_phone}
+العنوان: ${order.area || ""} - ${order.address || ""}
+الموعد: ${order.requested_date} ${order.requested_time.slice(0, 5)}
+المبلغ المطلوب تحصيله: ${jd(remaining)} ${remaining > 0 ? "(كاش)" : "(مدفوع بالكامل ✅)"}
+ملاحظات: ${order.notes || "لا يوجد"}`;
+  }, [order, remaining]);
+
   const field = "mt-1 min-h-12 w-full rounded-xl border border-input bg-background px-3 text-sm";
+
+  const workflowSteps: Array<{ key: SalesStatus; label: string; icon: string }> = [
+    { key: "new", label: "جديد", icon: "⏳" },
+    { key: "baking", label: "قيد التنفيذ", icon: "👨‍🍳" },
+    { key: "ready", label: "جاهز", icon: "🎂" },
+    { key: "out_for_delivery", label: "مع السائق", icon: "🚗" },
+    { key: "completed", label: "تم التسليم", icon: "✅" },
+  ];
+
+  const handleMarkPaidInFull = (method: "cash" | "cliq" = "cash") => {
+    setDeposit(liveTotal.toFixed(2));
+    onPatch({
+      deposit_paid: liveTotal,
+      payment_method: method,
+    });
+  };
 
   return (
     <div className="fixed inset-0 z-30 flex max-w-full justify-start overflow-x-hidden bg-foreground/50" role="dialog" aria-modal="true" aria-label={`إدارة الطلب ${order.order_number}`}>
-      <div className="ms-auto h-full w-full max-w-md min-w-0 overflow-x-hidden overflow-y-auto bg-card p-4 sm:p-5">
-        <div className="flex items-center gap-2">
-          <h2 className="me-auto font-display text-lg font-bold text-foreground">{orderLabel(order.order_number, order.staff_code)}</h2>
-          {order.last_edited_at ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-gold px-2 py-1 text-[11px] font-bold text-white">
-              <Pencil className="h-3 w-3" aria-hidden="true" /> تم التعديل
-            </span>
-          ) : null}
-          <button type="button" onClick={onClose} aria-label="إغلاق" className="grid h-12 w-12 place-items-center rounded-full border border-border">
-            <X className="h-4 w-4" aria-hidden="true" />
-          </button>
+      <div className="ms-auto flex h-full w-full max-w-lg min-w-0 flex-col overflow-x-hidden bg-card p-4 sm:p-5">
+        
+        {/* HEADER: Quick Info & Immediate Actions */}
+        <div className="border-b border-border pb-3">
+          <div className="flex items-center gap-2">
+            <h2 className="me-auto font-display text-lg font-bold text-foreground">
+              {orderLabel(order.order_number, order.staff_code)}
+            </h2>
+            {order.last_edited_at ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-gold px-2.5 py-0.5 text-[11px] font-bold text-white">
+                <Pencil className="h-3 w-3" aria-hidden="true" /> تم التعديل
+              </span>
+            ) : null}
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="إغلاق"
+              className="grid h-10 w-10 place-items-center rounded-full border border-border text-foreground hover:bg-secondary active:scale-95"
+            >
+              <X className="h-5 w-5" aria-hidden="true" />
+            </button>
+          </div>
+
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <div>
+              <p className="text-sm font-bold text-foreground">{order.order_name?.trim() || order.customer_name}</p>
+              <p className="text-xs text-muted-foreground" dir="ltr">{order.customer_phone}</p>
+            </div>
+            
+            {/* Quick Contact Action Buttons */}
+            <div className="flex items-center gap-2">
+              <a
+                href={`tel:${order.customer_phone}`}
+                className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-primary/10 px-3 text-xs font-bold text-primary hover:bg-primary/20 active:scale-95"
+              >
+                <Phone className="h-3.5 w-3.5" aria-hidden="true" /> اتصال
+              </a>
+              <a
+                href={`https://wa.me/${waNumber(order.customer_phone)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-[#25D366]/10 px-3 text-xs font-bold text-[#25D366] hover:bg-[#25D366]/20 active:scale-95"
+              >
+                <MessageCircle className="h-3.5 w-3.5" aria-hidden="true" /> واتساب
+              </a>
+            </div>
+          </div>
         </div>
 
-        {/* Read-only order summary — every change is made in «تعديلات». */}
-        <section className="mt-4 space-y-1 rounded-2xl border border-border bg-background p-3.5 text-sm">
-          <h3 className="text-sm font-bold text-foreground">بيانات الطلب</h3>
-          <p className="text-foreground">{order.order_name?.trim() || "—"}</p>
-          <p className="text-muted-foreground">
-            {order.customer_name} · <span dir="ltr">{order.customer_phone}</span>
-          </p>
-          {order.sender_phone ? (
-            <p className="text-muted-foreground">المرسل: <span dir="ltr">{order.sender_phone}</span></p>
-          ) : null}
-          {order.recipient_phone ? (
-            <p className="text-muted-foreground">المستلم: <span dir="ltr">{order.recipient_phone}</span></p>
-          ) : null}
-          <p className="text-muted-foreground">
-            الموعد: {order.requested_date} · {order.requested_time.slice(0, 5)}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            لتعديل أي تفصيل استخدم قسم «تعديلات».
-          </p>
-        </section>
+        <div className="flex-1 overflow-y-auto pt-4 space-y-5">
 
+          {/* SINGLE-TAP WORKFLOW STEPPER */}
+          <section className="rounded-2xl border border-border bg-background p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="text-xs font-bold text-muted-foreground">حالة الطلب السريعة</h3>
+              {order.status === "cancelled" ? (
+                <span className="rounded-full bg-destructive/15 px-2.5 py-0.5 text-xs font-bold text-destructive">
+                  ملغي: {order.cancel_reason || "لا يوجد سبب"}
+                </span>
+              ) : null}
+            </div>
+            
+            <div className="grid grid-cols-5 gap-1 text-center">
+              {workflowSteps.map((step) => {
+                const isActive = order.status === step.key;
+                return (
+                  <button
+                    key={step.key}
+                    type="button"
+                    onClick={() => onPatch({ status: step.key })}
+                    className={`flex flex-col items-center justify-center rounded-xl p-2 transition-all min-h-14 ${
+                      isActive
+                        ? "bg-primary text-primary-foreground font-bold shadow-sm scale-[1.02]"
+                        : "bg-secondary/50 text-foreground hover:bg-secondary active:scale-95"
+                    }`}
+                  >
+                    <span className="text-base">{step.icon}</span>
+                    <span className="text-[10px] mt-0.5 leading-tight">{step.label}</span>
+                  </button>
+                );
+              })}
+            </div>
 
-        <section className="mt-5">
-          <h3 className="text-sm font-bold text-foreground">حالة الطلب</h3>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {flow.map((status) => (
+            <div className="mt-2 flex justify-end">
               <button
-                key={status}
                 type="button"
-                onClick={() => onPatch({ status })}
-                aria-pressed={order.status === status}
-                className={`min-h-12 rounded-full px-4 text-xs font-bold ${order.status === status ? statusMeta[status].chip : "border border-border text-foreground"}`}
+                onClick={onCancel}
+                className="text-xs text-destructive hover:underline"
               >
-                {statusMeta[status].ar}
+                إلغاء الطلب
               </button>
-            ))}
-          </div>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {next ? (
-              <button type="button" onClick={() => onPatch({ status: next })} className="min-h-12 flex-1 rounded-full bg-primary px-4 text-sm font-bold text-primary-foreground">
-                نقل إلى: {statusMeta[next].ar}
-              </button>
-            ) : null}
-            <button type="button" onClick={onCancel} className="min-h-12 rounded-full border border-destructive px-4 text-sm font-bold text-destructive">
-              إلغاء الطلب
-            </button>
-          </div>
-          {order.cancel_reason ? (
-            <p className="mt-2 rounded-xl bg-destructive/10 p-3 text-xs text-destructive">سبب الإلغاء: {order.cancel_reason}</p>
-          ) : null}
-        </section>
-
-        <section className="mt-6">
-          <h3 className="text-sm font-bold text-foreground">طريقة التسليم</h3>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => onPatch({ method: "pickup", delivery_fee: 0 })}
-              aria-pressed={order.method === "pickup"}
-              className={`min-h-12 flex-1 rounded-full px-4 text-sm font-bold ${order.method === "pickup" ? "bg-primary text-primary-foreground" : "border border-border text-foreground"}`}
-            >
-              استلام من المحل
-            </button>
-            <button
-              type="button"
-              onClick={() => onPatch({ method: "delivery" })}
-              aria-pressed={order.method === "delivery"}
-              className={`min-h-12 flex-1 rounded-full px-4 text-sm font-bold ${order.method === "delivery" ? "bg-primary text-primary-foreground" : "border border-border text-foreground"}`}
-            >
-              توصيل
-            </button>
-          </div>
-
-          {order.method === "delivery" ? (
-            <div className="mt-3 space-y-3">
-              <label className="block text-sm font-bold text-foreground">
-                منطقة التوصيل · Delivery zone
-                <select
-                  value={order.area ?? ""}
-                  onChange={(event) => {
-                    const area = event.target.value;
-                    onPatch(area ? { area } : { area: null, delivery_fee: 0 });
-                  }}
-                  className={field}
-                >
-                  <option value="">— اختر المنطقة —</option>
-                  {DELIVERY_ZONES.map((zone) => (
-                    <optgroup key={zone.labelAr} label={zone.labelAr}>
-                      {zone.areas.map((area) => (
-                        <option key={area} value={area}>
-                          {area}
-                        </option>
-                      ))}
-                    </optgroup>
-                  ))}
-                </select>
-                <span className="mt-1 block text-xs font-medium text-muted-foreground">
-                  أجرة التوصيل المحسوبة: {jd(order.method === "delivery" ? order.delivery_fee : 0)}
-                  {order.area === OTHER_GOVERNORATES_AREA
-                    ? ` · محافظات أخرى ${OTHER_FEE_MIN}–${OTHER_FEE_MAX} د.أ، يعدّلها الفريق`
-                    : ""}
-                </span>
-              </label>
-              <label className="block text-sm font-bold text-foreground">
-                العنوان · Address
-                <input
-                  value={address}
-                  onChange={(event) => setAddress(event.target.value)}
-                  onBlur={() => onPatch({ address: address.trim() || null })}
-                  className={field}
-                />
-              </label>
-              <label className="block text-sm font-bold text-foreground">
-                اسم السائق · Driver name
-                <input
-                  value={driverName}
-                  onChange={(event) => setDriverName(event.target.value)}
-                  onBlur={() => onPatch({ driver_name: driverName.trim() || null })}
-                  className={field}
-                />
-              </label>
-              <label className="block text-sm font-bold text-foreground">
-                هاتف السائق · Driver phone
-                <input
-                  dir="ltr"
-                  inputMode="tel"
-                  value={driverPhone}
-                  onChange={(event) => setDriverPhone(event.target.value)}
-                  onBlur={() => onPatch({ driver_phone: driverPhone.trim() || null })}
-                  className={field}
-                />
-              </label>
             </div>
-          ) : null}
-        </section>
+          </section>
 
-        <section className="mt-6">
-          <h3 className="text-sm font-bold text-foreground">المالية</h3>
-          <div className="mt-2 space-y-1 text-sm">
-            <div className="flex justify-between text-foreground"><span>المجموع الفرعي</span><span>{jd(order.subtotal)}</span></div>
-            <div className="flex justify-between text-foreground"><span>التوصيل</span><span>{jd(order.method === "delivery" ? order.delivery_fee : 0)}</span></div>
-            {order.discount_amount > 0 ? (
-              <div className="flex justify-between text-destructive">
-                <span>الخصم ({order.discount_percent}%)</span>
-                <span>− {jd(order.discount_amount)}</span>
+          {/* ORDER SUMMARY CARD (CRITICAL PREVIEW) */}
+          <section className="rounded-2xl border border-border bg-background p-3.5">
+            <div className="flex items-center justify-between border-b border-border/60 pb-2 mb-2">
+              <h3 className="text-sm font-bold text-foreground">تفاصيل المنتجات المطلوبة</h3>
+              <button
+                type="button"
+                onClick={onClose}
+                className="text-xs font-bold text-primary hover:underline"
+              >
+                ✏️ تعديل الأصناف
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              {order.items.map((item, idx) => (
+                <div key={idx} className="flex justify-between items-start text-xs border-b border-border/30 pb-1.5 last:border-0 last:pb-0">
+                  <div>
+                    <p className="font-bold text-foreground">{item.quantity} × {item.name_ar}</p>
+                    {item.options_ar.length > 0 ? (
+                      <p className="text-[11px] text-muted-foreground">{item.options_ar.join(" · ")}</p>
+                    ) : null}
+                  </div>
+                  <span className="font-bold text-foreground">{jd(item.unit_price * item.quantity)}</span>
+                </div>
+              ))}
+
+              {order.inscription ? (
+                <div className="mt-2 rounded-xl bg-gold/15 p-2 text-xs text-foreground border border-gold/30">
+                  <span className="font-bold text-gold">✍️ الكتابة على الكيك:</span> "{order.inscription}"
+                </div>
+              ) : null}
+
+              {order.card_note ? (
+                <div className="mt-1 rounded-xl bg-secondary p-2 text-xs text-foreground">
+                  <span className="font-bold">📜 كارت الإهداء:</span> "{order.card_note}"
+                </div>
+              ) : null}
+
+              {order.notes ? (
+                <div className="mt-1 rounded-xl bg-secondary/80 p-2 text-xs text-muted-foreground">
+                  <span className="font-bold text-foreground">📝 ملاحظات إضافية:</span> {order.notes}
+                </div>
+              ) : null}
+            </div>
+          </section>
+
+          {/* ONE-TAP FINANCIAL SETTLEMENT */}
+          <section className="rounded-2xl border border-border bg-background p-3.5">
+            <h3 className="text-sm font-bold text-foreground mb-2">الحساب والمالية</h3>
+            
+            <div className="grid grid-cols-3 gap-2 rounded-xl bg-secondary/60 p-2.5 text-center text-xs">
+              <div>
+                <span className="block text-muted-foreground">الإجمالي</span>
+                <span className="font-bold text-foreground text-sm">{jd(liveTotal)}</span>
               </div>
-            ) : null}
-            <div className="flex justify-between font-bold text-foreground"><span>الإجمالي</span><span>{jd(liveTotal)}</span></div>
-          </div>
-
-          <div className="mt-4 rounded-2xl border border-border bg-background p-3">
-            <div className="flex items-center gap-2">
-              <h4 className="me-auto text-sm font-bold text-foreground">خصم خاص · Custom discount</h4>
-              {mayDiscount ? (
-                <span className="rounded-full bg-gold/15 px-2 py-0.5 text-[10px] font-bold text-gold">
-                  حتى {discountCap}%
+              <div>
+                <span className="block text-muted-foreground">المدفوع</span>
+                <span className="font-bold text-emerald-600 text-sm">{jd(Number(deposit) || 0)}</span>
+              </div>
+              <div>
+                <span className="block text-muted-foreground">المتبقي</span>
+                <span className={`font-bold text-sm ${remaining > 0 ? "text-destructive" : "text-emerald-600"}`}>
+                  {jd(remaining)}
                 </span>
-              ) : (
-                <span
-                  title="تحتاج تصريح المدير · Requires admin authorization"
-                  className="inline-flex items-center gap-1 rounded-full bg-gold/15 px-2 py-0.5 text-[10px] font-bold text-gold"
-                >
-                  <Lock className="h-3 w-3" aria-hidden="true" /> تحتاج تصريح المدير
-                </span>
-              )}
+              </div>
             </div>
 
-            {mayDiscount ? (
-              <div className="mt-2 space-y-2">
-                <input
-                  type="number"
-                  min="0"
-                  max={discountCap}
-                  step="1"
-                  value={discountPercent}
-                  onChange={(event) => setDiscountPercent(event.target.value)}
-                  aria-label="نسبة الخصم"
-                  className="min-h-12 w-full rounded-xl border border-input bg-card px-3 text-sm"
-                />
-                <input
-                  value={discountReason}
-                  onChange={(event) => setDiscountReason(event.target.value)}
-                  placeholder="سبب الخصم · Reason"
-                  className="min-h-12 w-full rounded-xl border border-input bg-card px-3 text-sm"
-                />
+            {/* ONE-CLICK SETTLEMENT BUTTON */}
+            {remaining > 0 ? (
+              <div className="mt-3 space-y-2">
                 <button
                   type="button"
-                  onClick={() => onApplyDiscount?.(Number(discountPercent) || 0, discountReason)}
-                  className="min-h-12 w-full rounded-full bg-primary px-4 text-sm font-bold text-primary-foreground transition-transform hover:scale-[1.01] active:scale-95"
+                  onClick={() => handleMarkPaidInFull("cash")}
+                  className="w-full min-h-12 rounded-full bg-emerald-600 px-4 text-sm font-bold text-white shadow-sm transition-transform hover:bg-emerald-700 active:scale-95 flex items-center justify-center gap-2"
                 >
-                  تطبيق الخصم · Apply discount
+                  <CheckCircle2 className="h-4 w-4" /> 💵 تم استلام المتبقي بالكامل ({jd(remaining)} - كاش)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleMarkPaidInFull("cliq")}
+                  className="w-full min-h-10 rounded-full border border-emerald-600/40 bg-emerald-50 px-4 text-xs font-bold text-emerald-800 hover:bg-emerald-100 active:scale-95"
+                >
+                  💳 تم استلام المتبقي عبر CliQ
                 </button>
               </div>
             ) : (
-              <p className="mt-2 text-xs text-muted-foreground">
-                لا يمكنك منح خصم على هذا الحساب. اطلب من المدير تفعيل الصلاحية.
-              </p>
+              <div className="mt-2 rounded-xl bg-emerald-50 p-2 text-center text-xs font-bold text-emerald-700 border border-emerald-200">
+                ✅ الحساب مدفوع بالكامل
+              </div>
             )}
-          </div>
 
-          {/* One-time, one-hour customer edit link */}
-          <div className="mt-3 rounded-2xl border border-border bg-background p-3">
-            <button
-              type="button"
-              onClick={() => onIssueEditLink?.()}
-              className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-primary px-4 text-sm font-bold text-primary transition-transform hover:scale-[1.01] active:scale-95"
-            >
-              <Link2 className="h-4 w-4" aria-hidden="true" /> رابط تعديل للعميل (ساعة واحدة)
-            </button>
-            {editLink ? (
-              <div className="mt-2 space-y-2">
-                <input
-                  readOnly
-                  dir="ltr"
-                  value={editLink}
-                  onFocus={(event) => event.currentTarget.select()}
-                  className="min-h-12 w-full rounded-xl border border-input bg-card px-3 text-xs"
-                />
+            {/* Advanced financial toggle */}
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={() => setShowAdvancedPay(!showAdvancedPay)}
+                className="text-[11px] text-muted-foreground hover:underline"
+              >
+                {showAdvancedPay ? "إخفاء خيارات الخصم والعربون" : "⚙️ خصم خاص / تعديل العربون"}
+              </button>
+
+              {showAdvancedPay ? (
+                <div className="mt-3 space-y-3 pt-2 border-t border-border">
+                  {/* Custom discount */}
+                  {mayDiscount ? (
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <input
+                          type="number"
+                          min="0"
+                          max={discountCap}
+                          value={discountPercent}
+                          onChange={(e) => setDiscountPercent(e.target.value)}
+                          placeholder="نسبة الخصم %"
+                          className="min-h-10 flex-1 rounded-xl border border-input px-3 text-xs"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => onApplyDiscount?.(Number(discountPercent) || 0, discountReason)}
+                          className="min-h-10 rounded-xl bg-primary px-3 text-xs font-bold text-primary-foreground"
+                        >
+                          تطبيق
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {/* Edit deposit manual */}
+                  <label className="block text-xs font-bold text-foreground">
+                    تعديل المبلغ المدفوع يدويًا:
+                    <input
+                      type="number"
+                      value={deposit}
+                      onChange={(e) => setDeposit(e.target.value)}
+                      onBlur={() => onPatch({ deposit_paid: Number(deposit) || 0 })}
+                      className={field}
+                    />
+                  </label>
+
+                  {/* Customer edit link */}
+                  {onIssueEditLink ? (
+                    <button
+                      type="button"
+                      onClick={() => onIssueEditLink()}
+                      className="inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-xl border border-primary text-xs font-bold text-primary"
+                    >
+                      <Link2 className="h-3.5 w-3.5" /> إصدار رابط تعديل للعميل
+                    </button>
+                  ) : null}
+                  {editLink ? (
+                    <input readOnly value={editLink} className="min-h-10 w-full rounded-xl border px-2 text-[11px]" dir="ltr" />
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          </section>
+
+          {/* DELIVERY & DRIVER ASSIGNMENT */}
+          <section className="rounded-2xl border border-border bg-background p-3.5">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-bold text-foreground">التسليم والتوصيل</h3>
+              <div className="flex gap-1">
                 <button
                   type="button"
-                  onClick={() => void navigator.clipboard?.writeText(editLink)}
-                  className="min-h-11 w-full rounded-full bg-secondary px-4 text-xs font-bold text-secondary-foreground"
+                  onClick={() => onPatch({ method: "pickup", delivery_fee: 0 })}
+                  className={`px-3 py-1 text-xs font-bold rounded-full ${order.method === "pickup" ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground"}`}
                 >
-                  نسخ الرابط · Copy link
+                  استلام محلي
                 </button>
-                <p className="text-[11px] text-muted-foreground">
-                  يعمل لمرة واحدة فقط ويُقفل بعد الاستخدام أو بعد ساعة.
-                </p>
+                <button
+                  type="button"
+                  onClick={() => onPatch({ method: "delivery" })}
+                  className={`px-3 py-1 text-xs font-bold rounded-full ${order.method === "delivery" ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground"}`}
+                >
+                  توصيل
+                </button>
               </div>
-            ) : null}
-          </div>
-
-          {moneyError ? (
-            <p className="mt-3 rounded-xl bg-destructive/10 p-3 text-xs font-bold text-destructive">{moneyError}</p>
-          ) : null}
-          <div className="mt-3 flex flex-wrap gap-2">
-            {(
-              [
-                { value: "cash", label: "كاش عند الاستلام" },
-                { value: "cliq_full", label: "كليك دفع كامل" },
-                { value: "cliq_deposit", label: "عربون عبر كليك" },
-              ] as const
-            ).map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => {
-                  setPayChoice(option.value);
-                  if (option.value === "cash") {
-                    setDeposit("0");
-                    onPatch({ payment_method: "cash", deposit_paid: 0 });
-                    return;
-                  }
-                  if (option.value === "cliq_full") {
-                    setDeposit(liveTotal.toFixed(2));
-                    onPatch({ payment_method: "cliq", deposit_paid: liveTotal });
-                    return;
-                  }
-                  onPatch({ payment_method: "cliq" });
-                }}
-                aria-pressed={payChoice === option.value}
-                className={`min-h-12 min-w-20 flex-1 rounded-full px-2 text-sm font-bold ${payChoice === option.value ? "bg-primary text-primary-foreground" : "border border-border text-foreground"}`}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-          {payChoice !== "cash" ? (
-            <label className="mt-3 block text-sm font-bold text-foreground">
-              {payChoice === "cliq_full"
-                ? "المبلغ الكامل المدفوع عبر كليك · CliQ full amount"
-                : "قيمة العربون المدفوع عبر كليك · CliQ deposit"}
-              <input
-                type="number"
-                min="0"
-                step="0.25"
-                value={deposit}
-                onChange={(event) => setDeposit(event.target.value)}
-                onBlur={() => onPatch({ deposit_paid: Number(deposit) || 0 })}
-                className={field}
-              />
-            </label>
-          ) : null}
-          <div className="mt-2 space-y-1 rounded-xl bg-secondary/60 p-3 text-sm">
-            <div className="flex justify-between"><span>الحساب كامل</span><span className="font-bold">{jd(liveTotal)}</span></div>
-            <div className="flex justify-between"><span>المبلغ المدفوع</span><span className="font-bold">{jd(Number(deposit) || 0)}</span></div>
-            <div className={`flex justify-between border-t border-border pt-1 font-bold ${remaining > 0 ? "text-destructive" : "text-foreground"}`}>
-              <span>المبلغ المتبقي</span><span>{jd(remaining)}</span>
             </div>
-          </div>
-        </section>
 
-        {/* Card writing and the official confirmation message. */}
-        <section className="mt-6 rounded-2xl border border-border p-3.5">
-          <h3 className="text-sm font-bold text-foreground">👑 رسالة تأكيد الطلب</h3>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => onPatch({ confirmation_message: confirmationMessage })}
-              className="min-h-12 flex-1 rounded-full bg-primary px-4 text-sm font-bold text-primary-foreground"
-            >
-              توليد وحفظ الرسالة
-            </button>
-            <button
-              type="button"
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(confirmationMessage);
-                  setMessageCopied(true);
-                  window.setTimeout(() => setMessageCopied(false), 2500);
-                } catch {
-                  toast.error("تعذّر النسخ — حدّد النص وانسخه يدوياً");
-                }
-              }}
-              className="min-h-12 flex-1 rounded-full border border-border px-4 text-sm font-bold text-foreground"
-            >
-              {messageCopied ? "تم النسخ" : "نسخ الرسالة"}
-            </button>
-            {/* Compact WhatsApp send button */}
+            {order.method === "pickup" ? (
+              <div className="rounded-xl bg-gold/10 p-3 text-xs font-bold text-gold border border-gold/20 flex items-center gap-2">
+                <span>⏰ موعد الاستلام من المحل:</span>
+                <span>{order.requested_date} · {order.requested_time.slice(0, 5)}</span>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {/* Area Dropdown & Delivery Fee */}
+                <label className="block text-xs font-bold text-foreground">
+                  منطقة التوصيل · Delivery zone:
+                  <select
+                    value={order.area ?? ""}
+                    onChange={(event) => {
+                      const area = event.target.value;
+                      onPatch(area ? { area } : { area: null, delivery_fee: 0 });
+                    }}
+                    className={field}
+                  >
+                    <option value="">— اختر المنطقة —</option>
+                    {DELIVERY_ZONES.map((zone) => (
+                      <optgroup key={zone.labelAr} label={zone.labelAr}>
+                        {zone.areas.map((area) => (
+                          <option key={area} value={area}>
+                            {area}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                  <span className="mt-1 block text-[11px] font-medium text-muted-foreground">
+                    أجرة التوصيل المحسوبة: {jd(order.method === "delivery" ? order.delivery_fee : 0)}
+                    {order.area === OTHER_GOVERNORATES_AREA
+                      ? ` · محافظات أخرى ${OTHER_FEE_MIN}–${OTHER_FEE_MAX} د.أ`
+                      : ""}
+                  </span>
+                </label>
+
+                {/* Text Address Input */}
+                <label className="block text-xs font-bold text-foreground">
+                  العنوان النصي · Text Address:
+                  <input
+                    value={address}
+                    onChange={(event) => setAddress(event.target.value)}
+                    onBlur={() => onPatch({ address: address.trim() || null })}
+                    placeholder="أدخل الشارع، البناية، أو الملاحظة..."
+                    className={field}
+                  />
+                </label>
+
+                {/* Driver Selector */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-foreground">
+                    تعيين سائق التوصيل:
+                    <select
+                      value={SAVED_DRIVERS.find(d => d.name === driverName)?.name || ""}
+                      onChange={(e) => {
+                        const selected = SAVED_DRIVERS.find(d => d.name === e.target.value);
+                        if (selected) {
+                          setDriverName(selected.name);
+                          setDriverPhone(selected.phone);
+                          onPatch({ driver_name: selected.name, driver_phone: selected.phone });
+                        }
+                      }}
+                      className={field}
+                    >
+                      <option value="">— اختر من السائقين المحفوظين —</option>
+                      {SAVED_DRIVERS.map((d) => (
+                        <option key={d.name} value={d.name}>{d.label}</option>
+                      ))}
+                    </select>
+                  </label>
+
+                  {driverPhone ? (
+                    <a
+                      href={`https://wa.me/${waNumber(driverPhone)}?text=${encodeURIComponent(driverDispatchMessage)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-full bg-[#25D366] text-xs font-bold text-white shadow-sm hover:opacity-90 active:scale-95"
+                    >
+                      <MessageCircle className="h-4 w-4" /> 📲 إرسال تفاصيل الطلب للسائق عبر واتساب
+                    </a>
+                  ) : null}
+                </div>
+              </div>
+            )}
+          </section>
+
+          {/* COMPACT WHATSAPP CUSTOMER CONFIRMATION */}
+          <section className="rounded-2xl border border-border bg-background p-3.5 space-y-2">
+            <h3 className="text-sm font-bold text-foreground">تأكيد الطلب مع العميل</h3>
             <a
               href={`https://wa.me/${waNumber(order.recipient_phone || order.customer_phone)}?text=${encodeURIComponent(confirmationMessage)}`}
               target="_blank"
               rel="noopener noreferrer"
-              aria-label="إرسال الرسالة على واتساب"
-              title="إرسال على واتساب"
-              className="inline-flex min-h-12 min-w-12 items-center justify-center rounded-full bg-[#25D366] text-white"
+              className="flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[#25D366] text-sm font-bold text-white shadow-sm hover:opacity-95 active:scale-95"
             >
-              <MessageCircle className="h-5 w-5" aria-hidden="true" />
+              <MessageCircle className="h-5 w-5" /> 💬 إرسال رسالة التأكيد عبر واتساب
             </a>
-          </div>
-          <pre className="mt-3 max-h-80 overflow-y-auto whitespace-pre-wrap break-words rounded-xl bg-secondary/60 p-3 text-xs text-foreground">
-            {confirmationMessage}
-          </pre>
-        </section>
+          </section>
 
-        {order.design_image_url ? (
-          <section className="mt-6 space-y-2">
-            <h3 className="text-sm font-bold text-foreground">صورة التصميم</h3>
-            <button
-              type="button"
-              onClick={() => onZoom(order.design_image_url as string)}
-              className="block w-full overflow-hidden rounded-xl border border-border"
-              aria-label="تكبير صورة التصميم"
-            >
-              <img
-                src={order.design_image_url}
-                alt={`صورة التصميم المطلوب للطلب ${order.order_number}`}
-                loading="lazy"
-                className="w-full"
-              />
-            </button>
-            <div className="flex flex-wrap gap-2">
-              <a
-                href={order.design_image_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full border border-primary px-4 text-xs font-bold text-primary"
-              >
-                فتح الصورة · View
-              </a>
+          {/* DESIGN IMAGE IF AVAILABLE */}
+          {order.design_image_url ? (
+            <section className="space-y-2">
+              <h3 className="text-xs font-bold text-foreground">صورة التصميم</h3>
               <button
                 type="button"
-                onClick={() =>
-                  void downloadDesignImage(order.design_image_url as string, order.order_number)
-                }
-                className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full bg-primary px-4 text-xs font-bold text-primary-foreground"
+                onClick={() => onZoom(order.design_image_url as string)}
+                className="block w-full overflow-hidden rounded-xl border border-border"
               >
-                <Download className="h-4 w-4" aria-hidden="true" /> تحميل الصورة · Download
+                <img
+                  src={order.design_image_url}
+                  alt="تصميم الطلب"
+                  className="w-full max-h-48 object-cover"
+                />
               </button>
-            </div>
-          </section>
-        ) : null}
+            </section>
+          ) : null}
 
+        </div>
 
-        <button
-          type="button"
-          onClick={() => printReceipt(order)}
-          className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full border border-primary px-5 text-sm font-bold text-primary"
-        >
-          <Printer className="h-4 w-4" aria-hidden="true" /> طباعة إيصال حراري
-        </button>
+        {/* FOOTER ACTIONS */}
+        <div className="border-t border-border pt-3 mt-3 flex gap-2">
+          <button
+            type="button"
+            onClick={() => printReceipt(order)}
+            className="flex-1 inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-primary px-4 text-xs font-bold text-primary hover:bg-primary/5 active:scale-95"
+          >
+            <Printer className="h-4 w-4" /> طباعة إيصال
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex min-h-11 items-center justify-center rounded-full bg-secondary px-5 text-xs font-bold text-foreground hover:bg-secondary/80 active:scale-95"
+          >
+            إغلاق
+          </button>
+        </div>
+
       </div>
     </div>
   );
 }
+

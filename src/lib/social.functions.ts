@@ -130,6 +130,14 @@ export const createSocialOrder = createServerFn({ method: "POST" })
         ? data.confirmation_message
         : null;
 
+    const { data: codeRow } = await context.supabase
+      .from("staff_codes")
+      .select("staff_code")
+      .eq("user_id", context.userId)
+      .maybeSingle();
+
+    const staffCode = codeRow?.staff_code ? Number(codeRow.staff_code) : null;
+
     const { data: order, error: orderError } = await context.supabase
       .from("orders")
       .insert({
@@ -157,6 +165,7 @@ export const createSocialOrder = createServerFn({ method: "POST" })
         total: subtotal + deliveryFee,
         status: "new",
         created_by: context.userId,
+        staff_code: staffCode,
       })
       .select("id, order_number, total, staff_code")
       .single();

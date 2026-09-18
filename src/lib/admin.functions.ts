@@ -187,13 +187,14 @@ export const listStaff = createServerFn({ method: "GET" })
 
 export const createStaff = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { username: string; password: string; role: StaffRole }) => {
+  .inputValidator((input: { username: string; password: string; role: StaffRole; staffCode?: number | null }) => {
     if (!normalizeUsername(input?.username ?? "")) throw new Error("اسم المستخدم مطلوب · Name is required");
     if (!input?.password || input.password.length < 8) {
       throw new Error("كلمة المرور 8 أحرف على الأقل · Password must be at least 8 characters");
     }
     if (!["admin", "sales", "kitchen", "social"].includes(input.role)) throw new Error("Invalid role");
-    return { email: usernameToEmail(input.username), password: input.password, role: input.role };
+    const code = input.staffCode !== undefined && input.staffCode !== null ? Number(input.staffCode) : null;
+    return { email: usernameToEmail(input.username), password: input.password, role: input.role, staffCode: code };
   })
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
@@ -230,6 +231,13 @@ export const createStaff = createServerFn({ method: "POST" })
       .from("user_roles")
       .upsert({ user_id: userId, role: data.role }, { onConflict: "user_id,role" });
     if (roleError) throw new Error(roleError.message);
+
+    if (data.staffCode !== null && data.staffCode > 0) {
+      await supabaseAdmin
+        .from("staff_codes")
+        .upsert({ user_id: userId, staff_code: data.staffCode }, { onConflict: "user_id" });
+    }
+
     return { ok: true, reused };
   });
 

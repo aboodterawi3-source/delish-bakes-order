@@ -10,11 +10,24 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+build
+.next
 .output
 .vinxi
 .tanstack/**
 .nitro
 *.local
+
+# Environment variables
+.env
+.env.local
+.env.*
+!.env.example
+
+# Databases
+*.db
+*.sqlite
+
 
 # Wrangler / Cloudflare
 .wrangler/

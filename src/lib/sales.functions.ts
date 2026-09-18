@@ -130,6 +130,126 @@ export const getSalesOrders = createServerFn({ method: "GET" })
     return (data ?? []).map((row) => toOrder(row as Row));
   });
 
+export type CreateSalesOrderInput = {
+  customer_name: string;
+  customer_phone: string;
+  order_name?: string | null | undefined;
+  sender_phone?: string | null | undefined;
+  recipient_phone?: string | null | undefined;
+  method: "delivery" | "pickup";
+  area?: string | null | undefined;
+  address?: string | null | undefined;
+  requested_date: string;
+  requested_time: string;
+  notes?: string | null | undefined;
+  staff_notes?: string | null | undefined;
+  inscription?: string | null | undefined;
+  card_note?: string | null | undefined;
+  design_image_url?: string | null | undefined;
+  payment_method?: PaymentMethod | null | undefined;
+  deposit_paid?: number | undefined;
+  discount_percent?: number | undefined;
+  discount_amount?: number | undefined;
+  items: {
+    productId?: string | null | undefined;
+    name_ar: string;
+    quantity: number;
+    unit_price: number;
+    options_ar?: string[] | undefined;
+    notes?: string | null | undefined;
+  }[];
+};
+
+export const createSalesOrder = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: CreateSalesOrderInput) => {
+    if (!input?.customer_name?.trim()) throw new Error("اسم العميل مطلوب · Customer name is required");
+    if (!input?.customer_phone?.trim()) throw new Error("رقم هاتف العميل مطلوب · Customer phone is required");
+    if (!input?.requested_date) throw new Error("التاريخ مطلوب · Date is required");
+    if (!input?.requested_time) throw new Error("الوقت مطلوب · Time is required");
+    if (!Array.isArray(input.items) || input.items.length === 0) {
+      throw new Error("أضف صنفاً واحداً على الأقل · Add at least one item");
+    }
+    return input;
+  })
+  .handler(async ({ data, context }): Promise<SalesOrder> => {
+    await assertRole(context, SALES_ROLES);
+
+    const subtotal = data.items.reduce((sum, item) => sum + item.unit_price * item.quantity, 0);
+    const deliveryFee = data.method === "delivery" && data.area ? (feeForArea(data.area) ?? 0) : 0;
+    const discountAmount = data.discount_amount ?? 0;
+    const discountPercent = data.discount_percent ?? 0;
+    const total = Math.max(subtotal + deliveryFee - discountAmount, 0);
+
+    const { data: codeRow } = await context.supabase
+      .from("staff_codes")
+      .select("staff_code")
+      .eq("user_id", context.userId)
+      .maybeSingle();
+
+    const staffCode = codeRow?.staff_code ? Number(codeRow.staff_code) : null;
+
+    const { data: order, error } = await context.supabase
+      .from("orders")
+      .insert({
+        customer_name: data.customer_name.trim(),
+        customer_phone: data.customer_phone.trim(),
+        order_name: data.order_name?.trim() || null,
+        sender_phone: data.sender_phone?.trim() || null,
+        recipient_phone: data.recipient_phone?.trim() || null,
+        method: data.method,
+        area: data.method === "delivery" ? data.area || null : null,
+        address: data.method === "delivery" ? data.address?.trim() || null : null,
+        requested_date: data.requested_date,
+        requested_time: data.requested_time.length === 5 ? `${data.requested_time}:00` : data.requested_time,
+        notes: data.notes?.trim() || null,
+        staff_notes: data.staff_notes?.trim() || null,
+        inscription: data.inscription?.trim() || null,
+        card_note: data.card_note?.trim() || null,
+        design_image_url: data.design_image_url || null,
+        payment_method: data.payment_method || null,
+        deposit_paid: data.deposit_paid ?? 0,
+        subtotal,
+        delivery_fee: deliveryFee,
+        discount_amount: discountAmount,
+        discount_percent: discountPercent,
+        total,
+        status: "new",
+        created_by: context.userId,
+        staff_code: staffCode,
+      } as never)
+      .select(SELECT)
+      .single();
+
+    if (error || !order) throw new Error(error?.message || "تعذّر حفظ الطلب · Could not save order");
+
+    const { error: itemError } = await context.supabase.from("order_items").insert(
+      data.items.map((item) => ({
+        order_id: (order as { id: string }).id,
+        product_id: item.productId || null,
+        name_ar: item.name_ar,
+        name_en: item.name_ar,
+        unit_price: item.unit_price,
+        quantity: item.quantity,
+        options_ar: item.options_ar || [],
+        options_en: item.options_ar || [],
+        notes: item.notes || null,
+      })) as never,
+    );
+
+    if (itemError) throw new Error(itemError.message);
+
+    const { data: fullOrder, error: fetchError } = await context.supabase
+      .from("orders")
+      .select(SELECT)
+      .eq("id", (order as { id: string }).id)
+      .single();
+
+    if (fetchError || !fullOrder) throw new Error(fetchError?.message || "تعذّر استرجاع الطلب المحفوظ");
+
+    return toOrder(fullOrder as Row);
+  });
+
 export type OrderPatch = {
   orderId: string;
   status?: SalesStatus;
@@ -614,75 +734,3 @@ export const getShiftReport = createServerFn({ method: "POST" })
     };
   });
 
-/* ------------------------------- order history ------------------------------ */
-
-export type HistoryRow = {
-  id: string;
-  order_number: string;
-  staff_code: number | null;
-  order_name: string | null;
-  customer_name: string;
-  customer_phone: string;
-  method: "delivery" | "pickup";
-  area: string | null;
-  requested_date: string;
-  requested_time: string;
-  status: SalesStatus;
-  payment_method: PaymentMethod | null;
-  subtotal: number;
-  delivery_fee: number;
-  discount_amount: number;
-  total: number;
-  deposit_paid: number;
-  items: string;
-  created_at: string;
-};
-
-/**
- * Full order archive for the history table: every past and new order inside the
- * chosen date range, ready to browse or export.
- */
-export const listOrderHistory = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((input: { from: string; to: string; status?: SalesStatus | "all" }) => {
-    const day = /^\d{4}-\d{2}-\d{2}$/;
-    if (!day.test(String(input?.from)) || !day.test(String(input?.to))) {
-      throw new Error("نطاق تاريخ غير صالح · Invalid date range");
-    }
-    const status =
-      input.status && input.status !== "all" && STATUSES.includes(input.status) ? input.status : "all";
-    return { from: input.from, to: input.to, status } as const;
-  })
-  .handler(async ({ data, context }): Promise<HistoryRow[]> => {
-    await assertRole(context, SALES_ROLES);
-    let query = context.supabase
-      .from("orders")
-      .select(
-        "id, order_number, staff_code, order_name, customer_name, customer_phone, method, area, requested_date, requested_time, status, payment_method, subtotal, delivery_fee, discount_amount, total, deposit_paid, created_at, order_items(name_ar, quantity)",
-      )
-      .gte("requested_date", data.from)
-      .lte("requested_date", data.to)
-      .order("requested_date", { ascending: false })
-      .order("requested_time", { ascending: false })
-      .limit(2000);
-    if (data.status !== "all") query = query.eq("status", data.status);
-    const { data: rows, error } = await query;
-    if (error) throw new Error(error.message);
-
-    return (rows ?? []).map((row) => {
-      const record = row as unknown as Record<string, unknown> & {
-        order_items?: { name_ar: string; quantity: number }[];
-      };
-      return {
-        ...(record as unknown as Omit<HistoryRow, "items">),
-        subtotal: Number(record['subtotal'] ?? 0),
-        delivery_fee: Number(record['delivery_fee'] ?? 0),
-        discount_amount: Number(record['discount_amount'] ?? 0),
-        total: Number(record['total'] ?? 0),
-        deposit_paid: Number(record['deposit_paid'] ?? 0),
-        items: (record.order_items ?? [])
-          .map((item) => `${item.quantity} × ${item.name_ar}`)
-          .join(" · "),
-      };
-    });
-  });

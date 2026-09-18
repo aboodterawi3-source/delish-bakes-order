@@ -29,6 +29,10 @@ import {
   emptyCustomization,
   type Customization,
 } from "@/components/delish/CakeCustomizationPanel";
+import {
+  TouchItemEditorSheet,
+  TouchItemSummaryCard,
+} from "@/components/staff/TouchItemEditorSheet";
 
 const jd = (value: number) => `${value.toFixed(2)} د.أ`;
 
@@ -237,8 +241,9 @@ function OrderEditor({
   onReplaceItems: (lines: RebuildLine[]) => void;
   onDiscount: (percent: number, reason: string) => void;
 }) {
-  // Editing always opens on a fresh website-style builder, nothing carried over.
   const [itemsMode, setItemsMode] = useState<"builder" | "lines">("builder");
+  const [activeSheetItem, setActiveSheetItem] = useState<SalesOrder["items"][number] | null | undefined>(undefined);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [orderName, setOrderName] = useState(order.order_name ?? "");
   const [customerName, setCustomerName] = useState(order.customer_name);
   const [customerPhone, setCustomerPhone] = useState(order.customer_phone);
@@ -262,7 +267,7 @@ function OrderEditor({
   const remaining = Math.max(order.total - (Number(deposit) || 0), 0);
 
   return (
-    <section className="min-w-0 space-y-5 rounded-2xl border border-primary/40 bg-card p-4">
+    <section className="min-w-0 space-y-4 rounded-2xl border border-primary/40 bg-card p-3">
       <header className="flex flex-wrap items-center gap-2">
         <h3 className="me-auto font-display text-base font-bold text-foreground">
           تعديل الطلب {orderLabel(order.order_number, order.staff_code)}
@@ -271,7 +276,7 @@ function OrderEditor({
       </header>
 
       {/* Identity and schedule */}
-      <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-2 sm:grid-cols-2">
         <label className="block text-sm font-bold text-foreground sm:col-span-2">
           اسم الطلب · Order name
           <input
@@ -406,33 +411,39 @@ function OrderEditor({
         ) : null}
       </div>
 
-      {/* Items: rebuild through the website interface, or fine-tune line by line */}
+      {/* Items: Touch-First Mobile/Tablet Friendly Summary Cards & Drawer Sheet */}
       <div className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <h4 className="min-w-0 flex-1 text-sm font-bold text-foreground">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-2">
+          <h4 className="text-sm font-bold text-foreground">
             الأصناف والطلبات الخاصة · Items &amp; extras
           </h4>
-          <div className="inline-flex rounded-lg bg-secondary p-1">
-            {(
-              [
-                { key: "builder", ar: "واجهة الموقع" },
-                { key: "lines", ar: "تعديل سطري" },
-              ] as const
-            ).map((tab) => (
-              <button
-                key={tab.key}
-                type="button"
-                onClick={() => setItemsMode(tab.key)}
-                aria-pressed={itemsMode === tab.key}
-                className={`min-h-10 rounded-md px-3 text-xs font-bold ${
-                  itemsMode === tab.key ? "bg-primary text-primary-foreground" : "text-foreground"
-                }`}
-              >
-                {tab.ar}
-              </button>
-            ))}
+          <div className="flex items-center gap-2">
+            <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary">
+              {order.items.length} أصناف
+            </span>
+            <div className="inline-flex rounded-lg bg-secondary p-1">
+              {(
+                [
+                  { key: "lines", ar: "بطاقات الأصناف 📱" },
+                  { key: "builder", ar: "واجهة الموقع 🌐" },
+                ] as const
+              ).map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setItemsMode(tab.key)}
+                  aria-pressed={itemsMode === tab.key}
+                  className={`min-h-9 rounded-md px-3 text-xs font-bold transition-all cursor-pointer ${
+                    itemsMode === tab.key ? "bg-primary text-primary-foreground" : "text-foreground"
+                  }`}
+                >
+                  {tab.ar}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
+
         {itemsMode === "builder" ? (
           <WebsiteRebuildPanel
             key={order.id}
@@ -442,15 +453,103 @@ function OrderEditor({
             onReplace={onReplaceItems}
           />
         ) : (
-          order.items.map((item) => (
-            <ItemEditor key={item.id} item={item} products={products} onItemPatch={onItemPatch} />
-          ))
+          <>
+            {/* Touch-First Item Summary Cards */}
+            <div className="grid gap-3">
+              {order.items.map((item) => (
+                <TouchItemSummaryCard
+                  key={item.id}
+                  item={item}
+                  onEdit={() => {
+                    setActiveSheetItem(item);
+                    setIsSheetOpen(true);
+                  }}
+                  onDelete={() => {
+                    if (order.items.length <= 1) {
+                      toast.error("لا يمكن حذف آخر صنف، يجب أن يحتوي الطلب على صنف واحد على الأقل");
+                      return;
+                    }
+                    const remainingLines: RebuildLine[] = order.items
+                      .filter((it) => it.id !== item.id)
+                      .map((it) => ({
+                        productId: it.product_id ?? null,
+                        name: it.name_ar,
+                        quantity: it.quantity,
+                        unitPrice: it.unit_price,
+                        options: it.options_ar,
+                        notes: it.notes ?? null,
+                      }));
+                    onReplaceItems(remainingLines);
+                  }}
+                  onQtyChange={(newQty) => {
+                    onItemPatch({ itemId: item.id, quantity: newQty });
+                  }}
+                />
+              ))}
+            </div>
+
+            {order.items.length === 0 && (
+              <p className="rounded-2xl border border-dashed border-border p-6 text-center text-xs text-muted-foreground">
+                لا توجد أصناف مسجلة على هذا الطلب — اضغط زر الإضافة بالأسفل.
+              </p>
+            )}
+
+            {/* Touch Full-Width Add Button */}
+            <button
+              type="button"
+              onClick={() => {
+                setActiveSheetItem(null);
+                setIsSheetOpen(true);
+              }}
+              className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-primary bg-primary/5 px-4 text-sm font-extrabold text-primary transition-all hover:bg-primary/10 cursor-pointer"
+            >
+              <Plus className="h-5 w-5" />
+              <span>+ إضافة صنف جديد للطلب · Add Item</span>
+            </button>
+          </>
         )}
-        {order.items.length === 0 ? (
-          <p className="rounded-2xl border border-dashed border-border p-4 text-xs text-muted-foreground">
-            لا توجد أصناف مسجلة على هذا الطلب.
-          </p>
-        ) : null}
+
+        {/* Touch Item Editor Drawer Sheet */}
+        <TouchItemEditorSheet
+          isOpen={isSheetOpen}
+          onClose={() => setIsSheetOpen(false)}
+          item={activeSheetItem}
+          products={products}
+          onSave={(payload) => {
+            if (activeSheetItem) {
+              // Patch existing item
+              onItemPatch({
+                itemId: activeSheetItem.id,
+                name: payload.name,
+                quantity: payload.quantity,
+                newUnitPrice: payload.unitPrice,
+                options: payload.options,
+                notes: payload.notes ?? null,
+              });
+            } else {
+              // Add new item to order lines
+              const nextLines: RebuildLine[] = [
+                ...order.items.map((it) => ({
+                  productId: it.product_id ?? null,
+                  name: it.name_ar,
+                  quantity: it.quantity,
+                  unitPrice: it.unit_price,
+                  options: it.options_ar,
+                  notes: it.notes ?? null,
+                })),
+                {
+                  productId: payload.productId ?? null,
+                  name: payload.name,
+                  quantity: payload.quantity,
+                  unitPrice: payload.unitPrice,
+                  options: payload.options,
+                  notes: payload.notes ?? null,
+                },
+              ];
+              onReplaceItems(nextLines);
+            }
+          }}
+        />
       </div>
 
       {/* Writing and notes */}

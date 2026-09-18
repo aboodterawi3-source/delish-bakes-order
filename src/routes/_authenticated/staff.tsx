@@ -1,28 +1,20 @@
 import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChefHat, Crown, History, Inbox, Loader2, LogOut, MessageSquareHeart, ShoppingBag } from "lucide-react";
+import { ChefHat, Crown, Inbox, Loader2, LogOut, MessageSquareHeart, ShoppingBag } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminPanel } from "@/components/staff/AdminPanel";
 import { SalesPanel } from "@/components/staff/SalesPanel";
 import { KitchenPanel } from "@/components/staff/KitchenPanel";
 import { SocialPanel } from "@/components/staff/SocialPanel";
 import { MessagesPanel } from "@/components/staff/MessagesPanel";
-import { HistoryPanel } from "@/components/staff/HistoryPanel";
 
-type StaffTab = "sales" | "kitchen" | "social" | "history" | "messages" | "admin";
+type StaffTab = "sales" | "kitchen" | "social" | "messages" | "admin";
 
 const TABS: { value: StaffTab; ar: string; en: string; icon: typeof Crown; roles?: string[] }[] = [
   { value: "sales", ar: "المبيعات", en: "Sales", icon: ShoppingBag },
   { value: "kitchen", ar: "المطبخ", en: "Kitchen", icon: ChefHat },
   { value: "social", ar: "السوشال", en: "Social", icon: MessageSquareHeart },
-  {
-    value: "history",
-    ar: "السجل",
-    en: "History",
-    icon: History,
-    roles: ["sales", "social", "admin"],
-  },
   {
     value: "messages",
     ar: "الرسائل",
@@ -183,14 +175,14 @@ function StaffPortalPage() {
                   type="button"
                   aria-current={on}
                   onClick={() => void navigate({ to: "/staff", search: { tab: tab.value } })}
-                  className={`inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 text-xs font-bold transition-transform hover:scale-[1.02] active:scale-[0.98] ${
+                  className={`inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 text-xs font-bold transition-all active:scale-95 ${
                     on
-                      ? "bg-[#8B4513] text-white shadow-sm"
-                      : "border border-slate-200 bg-white text-[#5D2E17] hover:bg-slate-50"
+                      ? "bg-slate-900 text-white shadow-sm"
+                      : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
                   }`}
                 >
                   <Icon className="h-4 w-4" aria-hidden="true" />
-                  {tab.ar} · {tab.en}
+                  {tab.ar}
                 </button>
               );
             })}
@@ -199,7 +191,7 @@ function StaffPortalPage() {
             type="button"
             onClick={() => void signOut()}
             aria-label="تسجيل الخروج"
-            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-slate-200 text-[#5D2E17] transition-transform hover:scale-[1.02] hover:bg-slate-50 active:scale-[0.98]"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-slate-200 text-slate-700 transition-all hover:bg-slate-50 active:scale-95"
           >
             <LogOut className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -209,7 +201,6 @@ function StaffPortalPage() {
       {active === "sales" && <SalesPanel />}
       {active === "kitchen" && <KitchenPanel />}
       {active === "social" && <SocialPanel />}
-      {active === "history" && <HistoryPanel />}
       {active === "messages" && <MessagesPanel />}
       {active === "admin" && <AdminPanel />}
     </div>

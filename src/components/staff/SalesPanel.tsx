@@ -9,11 +9,12 @@ import { getSalesAccess } from "@/lib/sales.functions";
 import { CmsPanel } from "@/components/delish/CmsPanel";
 import { OrdersWorkspace } from "@/components/staff/OrdersWorkspace";
 import { ModificationsPanel } from "@/components/staff/ModificationsPanel";
+import { PosOrderEntry } from "@/components/staff/PosOrderEntry";
 
 export function SalesPanel() {
   const navigate = useNavigate();
   const accessFn = useServerFn(getSalesAccess);
-  const [view, setView] = useState<"orders" | "modifications" | "site">("orders");
+  const [view, setView] = useState<"pos" | "orders" | "modifications" | "site">("pos");
 
   const access = useQuery({
     queryKey: ["sales-access"],
@@ -54,12 +55,12 @@ export function SalesPanel() {
   return (
     <main dir="rtl" className="min-h-dvh w-full max-w-full overflow-x-hidden bg-background pb-16">
       <header className="sticky top-0 z-20 border-b border-border bg-card/95 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-2 px-4 py-3 sm:gap-3">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-2 px-4 py-3 sm:gap-3">
           <div className="min-w-0 me-auto">
             <h1 className="truncate font-display text-lg font-bold text-foreground sm:text-xl">
               واجهة المبيعات <span className="delish-wordmark">Delish</span>
             </h1>
-            <p className="text-xs text-muted-foreground">Sales Desk · إدارة الطلبات والدفعات</p>
+            <p className="text-xs text-muted-foreground">Sales &amp; POS Desk · نقطة البيع وحجز الطلبات</p>
           </div>
           <button
             type="button"
@@ -72,10 +73,11 @@ export function SalesPanel() {
         </div>
       </header>
 
-      <div className="mx-auto w-full max-w-6xl min-w-0 px-4 py-5">
+      <div className="mx-auto w-full max-w-7xl min-w-0 px-4 py-5">
         <nav className="no-scrollbar mb-5 flex max-w-full gap-2 overflow-x-auto" aria-label="أقسام واجهة المبيعات">
           {([
-            { value: "orders" as const, ar: "الطلبات", en: "Orders" },
+            { value: "pos" as const, ar: "إنشاء طلب جديد", en: "POS Entry" },
+            { value: "orders" as const, ar: "جدول الطلبات", en: "Orders" },
             { value: "modifications" as const, ar: "تعديلات", en: "Modifications" },
             { value: "site" as const, ar: "إدارة الموقع", en: "Website" },
           ]).map((item) => (
@@ -95,7 +97,9 @@ export function SalesPanel() {
           ))}
         </nav>
 
-        {view === "site" ? (
+        {view === "pos" ? (
+          <PosOrderEntry />
+        ) : view === "site" ? (
           <CmsPanel />
         ) : view === "modifications" ? (
           <ModificationsPanel />

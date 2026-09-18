@@ -519,6 +519,7 @@ function StaffPanel() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [newRole, setNewRole] = useState<StaffRole>("sales");
+  const [newStaffCode, setNewStaffCode] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -536,10 +537,19 @@ function StaffPanel() {
   };
 
   const createMutation = useMutation({
-    mutationFn: () => create({ data: { username, password, role: newRole } }),
+    mutationFn: () =>
+      create({
+        data: {
+          username,
+          password,
+          role: newRole,
+          staffCode: newStaffCode.trim() ? Number(newStaffCode) : null,
+        },
+      }),
     onSuccess: (result) => {
       setUsername("");
       setPassword("");
+      setNewStaffCode("");
       setError(null);
       setNotice(
         result?.reused
@@ -615,10 +625,11 @@ function StaffPanel() {
           setError(null);
           createMutation.mutate();
         }}
-        className="grid gap-3 rounded-2xl border border-border bg-card p-4 sm:grid-cols-2"
+        className="grid gap-3 rounded-2xl border border-border bg-card p-4 sm:grid-cols-2 lg:grid-cols-4"
       >
         <Text label="اسم المستخدم · Name" type="text" value={username} onChange={setUsername} required />
         <Text label="كلمة المرور (8 أحرف+)" type="password" value={password} onChange={setPassword} required />
+        <Text label="رقم الموظف · Staff Code (1, 2, 3…)" type="number" value={newStaffCode} onChange={setNewStaffCode} />
         <label className="block text-sm font-bold text-foreground">
           الدور · Role
           <select
@@ -631,8 +642,8 @@ function StaffPanel() {
             ))}
           </select>
         </label>
-        <div className="flex items-end">
-        <button
+        <div className="flex items-end lg:col-span-4">
+          <button
             type="submit"
             disabled={createMutation.isPending || password.length < 8 || !username.trim()}
             className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-primary px-5 text-sm font-bold text-primary-foreground disabled:opacity-60"
