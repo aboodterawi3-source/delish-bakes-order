@@ -105,11 +105,8 @@ export const bootstrapAdmin = createServerFn({ method: "POST" })
   })
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { count } = await supabaseAdmin
-      .from("user_roles")
-      .select("id", { count: "exact", head: true })
-      .eq("role", "admin");
-    if ((count ?? 0) > 0) throw new Error("Setup already completed");
+    if (await setupIsClosed()) throw new Error("Setup already completed");
+
 
     // Reuse an existing account with the same name instead of failing on a duplicate.
     let userId: string | null = null;
