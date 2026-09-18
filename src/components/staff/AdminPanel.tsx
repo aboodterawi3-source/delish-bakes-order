@@ -1297,23 +1297,21 @@ function StoreCmsPanel() {
 /* ---------------------------------- Tab 4: Settings & Operations ---------------------------------- */
 
 function StoreOperationsPanel() {
-  const [cliqAlias, setCliqAlias] = useState("DELISHBAKES");
-  const [beneficiaryName, setBeneficiaryName] = useState("مخبز ديليش · DELISH Bakes");
   const [address, setAddress] = useState("عمّان - الشميساني الرئيسي، مقابل مجمع بنك الاتحاد");
   const [phone, setPhone] = useState("+962 7 9000 0000");
 
   const handleSaveSettings = () => {
-    toast.success("تم حفظ إعدادات كليك والفرع الرئيسي بنجاح 🌸");
+    toast.success("تم حفظ بيانات الفرع الرئيسي بنجاح 🌸");
   };
 
   return (
     <section aria-labelledby="settings-heading" className="space-y-6">
-      {/* CliQ Settings */}
+      {/* Branch Information */}
       <div className="rounded-3xl border border-[#EFE8DC] bg-white p-5 sm:p-6 shadow-xs space-y-4">
         <div className="flex items-center justify-between border-b border-[#EFE8DC] pb-3">
           <h2 id="settings-heading" className="text-base font-black text-[#26160F] flex items-center gap-2">
-            <QrCode className="h-5 w-5 text-[#B8801C]" />
-            إعدادات كليك (CliQ Official Alias Settings)
+            <Building2 className="h-5 w-5 text-[#B8801C]" />
+            بيانات فرع عمّان الرئيسي (Single Physical Branch)
           </h2>
           <button
             type="button"
@@ -1321,39 +1319,9 @@ function StoreOperationsPanel() {
             className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-[#B8801C] px-4 text-xs font-bold text-white shadow-xs hover:bg-[#9E6C14]"
           >
             <Save className="h-4 w-4" />
-            <span>حفظ كليك</span>
+            <span>حفظ البيانات</span>
           </button>
         </div>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className="block text-xs font-bold text-[#26160F]">
-            اسم حساب كليك (CliQ Alias) *
-            <input
-              type="text"
-              value={cliqAlias}
-              onChange={(e) => setCliqAlias(e.target.value)}
-              className="mt-1 min-h-11 w-full rounded-xl border border-[#EFE8DC] bg-[#FDFBF7] px-3 text-xs font-extrabold text-[#B8801C] uppercase"
-            />
-          </label>
-
-          <label className="block text-xs font-bold text-[#26160F]">
-            اسم المستفيد المسجل (Beneficiary Name) *
-            <input
-              type="text"
-              value={beneficiaryName}
-              onChange={(e) => setBeneficiaryName(e.target.value)}
-              className="mt-1 min-h-11 w-full rounded-xl border border-[#EFE8DC] bg-[#FDFBF7] px-3 text-xs font-bold text-[#26160F]"
-            />
-          </label>
-        </div>
-      </div>
-
-      {/* Branch Information */}
-      <div className="rounded-3xl border border-[#EFE8DC] bg-white p-5 sm:p-6 shadow-xs space-y-4">
-        <h3 className="text-base font-black text-[#26160F] flex items-center gap-2">
-          <Building2 className="h-5 w-5 text-[#B8801C]" />
-          بيانات فرع عمّان الرئيسي (Single Physical Branch)
-        </h3>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block text-xs font-bold text-[#26160F]">
