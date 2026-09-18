@@ -492,6 +492,22 @@ export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
       throw new Error("عنصر غير موجود · Order item not found");
     }
 
+    // Per-product price lock: an admin can deny repricing of specific products.
+    if (
+      data.newUnitPrice !== undefined &&
+      Number(data.newUnitPrice) !== Number(before.unit_price ?? 0)
+    ) {
+      const { canEditProductPrice } = await import("@/lib/permissions.functions");
+      const allowed = await canEditProductPrice(
+        context as never,
+        (before.product_id as string | null) ?? null,
+      );
+      if (!allowed) {
+        throw new Error("لا تملك صلاحية تعديل سعر هذا المنتج · You are not allowed to change this product's price");
+      }
+    }
+
+
     const itemPatch: Record<string, unknown> = {};
     if (data.newUnitPrice !== undefined) itemPatch['unit_price'] = data.newUnitPrice;
     if (data.quantity !== undefined) itemPatch['quantity'] = data.quantity;
