@@ -27,6 +27,7 @@ export function DiscoverView({
   const content = useStorefrontContent();
   const { t, lang, dir } = useLang();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [showAllCatalog, setShowAllCatalog] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -37,14 +38,14 @@ export function DiscoverView({
   const visible = useMemo(() => {
     const needle = searchQuery.trim().toLowerCase();
     return products
-      .filter((product) => product.is_popular)
+      .filter((product) => (showAllCatalog ? true : product.is_popular))
       .filter((product) => (selectedCategory ? product.category_id === selectedCategory : true))
       .filter((product) =>
         needle
           ? `${product.name_en} ${product.name_ar} ${product.category}`.toLowerCase().includes(needle)
           : true,
       );
-  }, [products, selectedCategory, searchQuery]);
+  }, [products, selectedCategory, searchQuery, showAllCatalog]);
 
   const activeCategory = categories.find((category) => category.id === selectedCategory) ?? null;
   const activeCategoryName = activeCategory
@@ -236,15 +237,18 @@ export function DiscoverView({
             <h3 className="text-base font-black text-[#26160F] sm:text-lg">
               {activeCategoryName ? `${t("popular")} · ${activeCategoryName}` : t("popular")}
             </h3>
-            <Link
-              to="/product-details"
-              search={{ id: undefined }}
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedCategory(null);
+                setShowAllCatalog((prev) => !prev);
+              }}
               aria-label={t("showAll")}
-              className="flex items-center gap-1 text-xs font-bold text-[#B8801C] hover:text-[#9E6C14] hover:underline"
+              className="flex items-center gap-1.5 text-xs font-extrabold text-[#B8801C] hover:text-[#9E6C14] transition-all rounded-full bg-[#FEF7EB] px-3.5 py-1 border border-[#EFE8DC] active:scale-95 shadow-xs"
             >
-              <span>{t("showAll")}</span>
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
+              <span>{showAllCatalog ? (lang === "ar" ? "المميز فقط ✨" : "Popular Only ✨") : t("showAll")}</span>
+              <ArrowRight className={`h-3.5 w-3.5 transition-transform duration-300 ${showAllCatalog ? "rotate-180" : ""}`} />
+            </button>
           </div>
 
           {content.isPending ? (

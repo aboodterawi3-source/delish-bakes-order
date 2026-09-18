@@ -141,9 +141,10 @@ export function AdminPanel() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<MainTab>("analytics");
 
+  const accessFn = useServerFn(getAdminAccess);
   const access = useQuery({
     queryKey: ["admin", "access"],
-    queryFn: useServerFn(getAdminAccess),
+    queryFn: () => accessFn({}),
     staleTime: 0,
     retry: false,
   });
@@ -151,7 +152,7 @@ export function AdminPanel() {
   const analyticsFn = useServerFn(getAdminAnalytics);
   const analytics = useQuery({
     queryKey: ["admin", "analytics"],
-    queryFn: analyticsFn,
+    queryFn: () => analyticsFn({}),
     enabled: access.data?.allowed === true,
     staleTime: 30_000,
   });
@@ -268,7 +269,30 @@ export function AdminPanel() {
         {/* TAB 1: DASHBOARD & ANALYTICS */}
         {activeTab === "analytics" && (
           <div className="space-y-6">
-            {analytics.isLoading && <p className="text-sm text-[#4A3B32]/70">جاري تحميل التحليلات والتقارير…</p>}
+            {analytics.isLoading && (
+              <div className="flex items-center justify-center gap-3 rounded-2xl border border-[#EFE8DC] bg-white p-8 shadow-xs">
+                <Loader2 className="h-6 w-6 animate-spin text-[#B8801C]" />
+                <span className="text-sm font-bold text-[#6E3917]">جاري تحميل التحليلات والتقارير…</span>
+              </div>
+            )}
+            {analytics.isError && (
+              <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-900 space-y-3 shadow-xs">
+                <p className="font-bold text-base flex items-center gap-2">
+                  <Ban className="h-5 w-5 text-red-600" />
+                  حدث خطأ أثناء جلب تحليلات الإيرادات والطلبات
+                </p>
+                <p className="text-xs text-red-700 bg-white/80 p-3 rounded-xl border border-red-200">
+                  {analytics.error instanceof Error ? analytics.error.message : "خطأ غير معروف أثناء الاتصال بالسيرفر"}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void analytics.refetch()}
+                  className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-red-700 active:scale-95 transition-all"
+                >
+                  <RefreshCw className="h-4 w-4" /> إعادة المحاولة الآن
+                </button>
+              </div>
+            )}
             {data && (
               <>
                 {/* Top KPI Summary Cards */}
@@ -573,9 +597,10 @@ function Text({
 
 function StaffPanel() {
   const queryClient = useQueryClient();
+  const listStaffFn = useServerFn(listStaff);
   const staff = useQuery({
     queryKey: ["admin", "staff"],
-    queryFn: useServerFn(listStaff),
+    queryFn: () => listStaffFn({}),
     staleTime: 60_000,
   });
   const create = useServerFn(createStaff);
