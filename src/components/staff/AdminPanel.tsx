@@ -19,7 +19,20 @@ import {
   Lock,
   Unlock,
   SlidersHorizontal,
+  Building2,
+  QrCode,
+  MapPin,
+  Sparkles,
+  Palette,
+  CheckCircle2,
+  Layers,
+  Utensils,
+  Store,
+  Clock,
+  Save,
+  Check,
 } from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrdersRealtime } from "@/hooks/use-orders-realtime";
 import {
@@ -44,7 +57,10 @@ import {
   setStaffAuthorization,
   type StaffAuthorizationRow,
 } from "@/lib/authorization.functions";
-
+import { getCmsContent, saveBanner } from "@/lib/cms.functions";
+import type { StorefrontContent } from "@/lib/storefront-content";
+import { DELIVERY_ZONES } from "@/lib/delivery-zones";
+import { WHATSAPP } from "@/lib/menu";
 
 /** Keeps an authorisation failure from blanking the screen. */
 export function AdminErrorScreen({ error }: { error: unknown }) {
@@ -55,15 +71,15 @@ export function AdminErrorScreen({ error }: { error: unknown }) {
     void navigate({ to: "/auth", search: { role: "admin" }, replace: true });
   };
   return (
-    <main dir="rtl" className="grid min-h-dvh place-items-center bg-[#F9FBFC] px-4">
-      <div className="max-w-sm rounded-3xl border border-slate-200 bg-white p-6 text-center shadow-lg">
-        <h1 className="font-display text-lg font-bold text-[#3E2723]">هذه اللوحة للمديرين فقط</h1>
-        <p className="mt-2 text-sm text-[#7A6458]">This dashboard is limited to admin accounts.</p>
-        <p className="mt-3 rounded-xl bg-slate-50 p-2 text-xs text-[#7A6458]">{message}</p>
+    <main dir="rtl" className="grid min-h-dvh place-items-center bg-[#FDFBF7] px-4">
+      <div className="max-w-sm rounded-3xl border border-[#EFE8DC] bg-white p-6 text-center shadow-lg">
+        <h1 className="font-display text-lg font-bold text-[#26160F]">هذه اللوحة للمديرين فقط</h1>
+        <p className="mt-2 text-sm text-[#4A3B32]">This dashboard is limited to admin accounts.</p>
+        <p className="mt-3 rounded-xl bg-[#FAF5EB] p-2 text-xs text-[#6E3917]">{message}</p>
         <button
           type="button"
           onClick={() => void leave()}
-          className="mt-4 inline-flex min-h-12 items-center justify-center rounded-full bg-[#8B4513] px-5 text-sm font-bold text-white shadow-sm hover:bg-[#5D2E17]"
+          className="mt-4 inline-flex min-h-12 items-center justify-center rounded-full bg-[#B8801C] px-5 text-sm font-bold text-white shadow-sm hover:bg-[#9E6C14]"
         >
           تسجيل الدخول بحساب مدير · Sign in as admin
         </button>
@@ -71,7 +87,6 @@ export function AdminErrorScreen({ error }: { error: unknown }) {
     </main>
   );
 }
-
 
 const jod = (n: number) => `${n.toFixed(2)} د.أ`;
 
@@ -83,21 +98,28 @@ const ROLE_LABEL: Record<StaffRole, string> = {
 };
 
 const STATUS_LABEL: Record<string, string> = {
-  new: "جديد",
-  confirmed: "مؤكد",
-  baking: "قيد التجهيز",
-  ready: "جاهز",
-  out_for_delivery: "بالطريق",
-  delivered: "تم التوصيل",
-  completed: "مكتمل",
-  cancelled: "ملغي",
+  new: "جديد 🆕",
+  confirmed: "مؤكد ⚡",
+  baking: "قيد التجهيز 👩‍🍳",
+  ready: "جاهز ✨",
+  out_for_delivery: "بالطريق 🛵",
+  delivered: "تم التوصيل 🚚",
+  completed: "مكتمل ✅",
+  cancelled: "ملغي ❌",
 };
 
 const PAYMENT_LABEL: Record<string, string> = {
-  cash: "نقداً · Cash",
+  cash: "نقداً عند التسليم · Cash",
   cliq: "كليك · CliQ",
-  visa: "فيزا · Visa",
+  visa: "بطاقة ائتمان · Visa",
   unpaid: "غير مدفوع · Unpaid",
+};
+
+const AUDIT_ACTION_LABEL: Record<string, { ar: string; class: string }> = {
+  price_override: { ar: "تعديل سعر ✏️", class: "bg-amber-100 text-amber-900 border-amber-300" },
+  custom_discount: { ar: "تطبيق خصم 🏷️", class: "bg-purple-100 text-purple-900 border-purple-300" },
+  status_change: { ar: "تغيير حالة 🔄", class: "bg-blue-100 text-blue-900 border-blue-300" },
+  order_edit: { ar: "تعديل طلب 📝", class: "bg-emerald-100 text-emerald-900 border-emerald-300" },
 };
 
 /** Builds a UTF-8 CSV (Excel friendly) and triggers a download. */
@@ -112,12 +134,12 @@ function downloadCsv(name: string, headers: string[], rows: (string | number)[][
   URL.revokeObjectURL(url);
 }
 
-type Tab = "analytics" | "staff" | "permissions" | "authorization";
+type MainTab = "analytics" | "staff" | "menu" | "settings";
 
 export function AdminPanel() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [tab, setTab] = useState<Tab>("analytics");
+  const [activeTab, setActiveTab] = useState<MainTab>("analytics");
 
   const access = useQuery({
     queryKey: ["admin", "access"],
@@ -134,7 +156,7 @@ export function AdminPanel() {
     staleTime: 30_000,
   });
 
-  // KPIs follow order activity live, like the sales and kitchen boards.
+  // KPIs follow order activity live.
   useOrdersRealtime(["admin", "analytics"], access.data?.allowed === true, "admin-analytics-live");
 
   const signOut = async () => {
@@ -146,22 +168,22 @@ export function AdminPanel() {
 
   if (access.isLoading) {
     return (
-      <main dir="rtl" className="grid min-h-dvh place-items-center bg-[#F9FBFC]">
-        <Loader2 className="h-6 w-6 animate-spin text-[#B8860B]" aria-label="جاري التحميل" />
+      <main dir="rtl" className="grid min-h-dvh place-items-center bg-[#FDFBF7]">
+        <Loader2 className="h-7 w-7 animate-spin text-[#B8801C]" aria-label="جاري التحميل" />
       </main>
     );
   }
 
   if (!access.data?.allowed) {
     return (
-      <main dir="rtl" className="grid min-h-dvh place-items-center bg-[#F9FBFC] px-4">
-        <div className="max-w-sm rounded-3xl border border-slate-200 bg-white p-6 text-center shadow-lg">
-          <h1 className="font-display text-lg font-bold text-[#3E2723]">هذه اللوحة للمديرين فقط</h1>
-          <p className="mt-2 text-sm text-[#7A6458]">This dashboard is limited to admin accounts.</p>
+      <main dir="rtl" className="grid min-h-dvh place-items-center bg-[#FDFBF7] px-4">
+        <div className="max-w-sm rounded-3xl border border-[#EFE8DC] bg-white p-6 text-center shadow-lg">
+          <h1 className="font-display text-lg font-bold text-[#26160F]">هذه اللوحة للمديرين فقط</h1>
+          <p className="mt-2 text-sm text-[#4A3B32]">This dashboard is limited to admin accounts.</p>
           <button
             type="button"
             onClick={() => void signOut()}
-            className="mt-4 inline-flex min-h-12 items-center justify-center rounded-full bg-[#8B4513] px-5 text-sm font-bold text-white shadow-sm hover:bg-[#5D2E17]"
+            className="mt-4 inline-flex min-h-12 items-center justify-center rounded-full bg-[#B8801C] px-5 text-sm font-bold text-white shadow-sm hover:bg-[#9E6C14]"
           >
             تسجيل الخروج · Sign out
           </button>
@@ -173,202 +195,248 @@ export function AdminPanel() {
   const data = analytics.data;
 
   return (
-    <main dir="rtl" className="min-h-dvh w-full max-w-full overflow-x-hidden bg-[#F9FBFC] text-[#3E2723] bg-delish-pattern pb-16">
-      <header className="border-b border-[#F1F5F9] bg-white/95 backdrop-blur-md shadow-xs">
-        <div className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)_auto_auto_auto] items-center gap-2 px-4 py-4 sm:flex sm:flex-wrap sm:gap-3">
-          <div className="min-w-0 sm:me-auto">
-            <div className="flex min-w-0 items-center gap-2">
-              <span className="font-serif text-2xl font-bold tracking-widest text-[#B8860B] uppercase">DELISH</span>
-              <span className="-mt-1 hidden font-script text-2xl italic text-[#8B4513] sm:inline">Bakes</span>
+    <main dir="rtl" className="min-h-dvh w-full overflow-x-hidden bg-[#FDFBF7] text-[#4A3B32] pb-16">
+      {/* Top Main Navigation Header */}
+      <header className="sticky top-0 z-20 border-b border-[#EFE8DC] bg-white/95 backdrop-blur-md shadow-xs">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6">
+          <div className="flex items-center gap-3">
+            <div className="flex flex-col">
+              <span className="font-serif text-2xl font-bold tracking-wider text-[#B8801C] uppercase">DELISH</span>
+              <span className="-mt-1.5 font-script text-xl italic text-[#6E3917]">Bakes Admin Center</span>
             </div>
-            <p className="truncate text-xs font-bold text-[#7A6458]">لوحة الإدارة الشاملة · Admin Dashboard</p>
+            <span className="hidden sm:inline-block rounded-full bg-[#FEF7EB] px-3 py-1 text-xs font-extrabold text-[#B8801C] border border-[#EFE8DC]">
+              مركز الإدارة والتحكم الشامل
+            </span>
           </div>
-          <Link
-            to="/"
-            className="hidden min-h-11 items-center rounded-full border border-slate-200 bg-white px-4 text-xs font-bold text-[#5D2E17] hover:bg-slate-50 shadow-xs sm:inline-flex"
-          >
-            المتجر · Store
-          </Link>
-          <button
-            type="button"
-            onClick={() => void analytics.refetch()}
-            className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-4 text-xs font-bold text-[#5D2E17] hover:bg-slate-50 shadow-xs"
-          >
-            <RefreshCw className="h-3.5 w-3.5" aria-hidden /> تحديث
-          </button>
-          <button
-            type="button"
-            onClick={() => void signOut()}
-            className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-[#8B4513] px-4 text-xs font-bold text-white shadow-xs hover:bg-[#5D2E17]"
-          >
-            <LogOut className="h-3.5 w-3.5" aria-hidden /> خروج
-          </button>
-        </div>
-         <nav aria-label="أقسام اللوحة" className="no-scrollbar mx-auto flex w-full max-w-6xl gap-2 overflow-x-auto overscroll-x-contain px-4 pb-3">
-          {(
-            [
-              ["analytics", "التحليلات والسجلات · Analytics"],
-              ["staff", "حسابات الموظفين · Staff"],
-              ["permissions", "مصفوفة صلاحيات الأسعار · Price Permissions"],
-              ["authorization", "تصاريح الموظفين والأسعار والخصومات · Authorization"],
-            ] as [Tab, string][]
-          ).map(([key, label]) => (
-            <button
-              key={key}
-              type="button"
-              aria-current={tab === key ? "page" : undefined}
-              onClick={() => setTab(key)}
-              className={`min-h-11 whitespace-nowrap rounded-full px-5 text-xs sm:text-sm font-bold transition-all ${
-                tab === key
-                  ? "bg-[#8B4513] text-white shadow-sm"
-                  : "border border-slate-200 bg-white text-[#5D2E17] hover:bg-slate-50"
-              }`}
+
+          <div className="flex items-center gap-2">
+            <Link
+              to="/"
+              className="inline-flex h-9 items-center rounded-full border border-[#EFE8DC] bg-[#FAF5EB] px-4 text-xs font-bold text-[#6E3917] hover:bg-[#FEF7EB] shadow-xs"
             >
-              {label}
+              المتجر الرئيسية 🛒
+            </Link>
+            <button
+              type="button"
+              onClick={() => void analytics.refetch()}
+              className="inline-flex h-9 items-center gap-1.5 rounded-full border border-[#EFE8DC] bg-white px-3.5 text-xs font-bold text-[#26160F] hover:bg-[#FEF7EB] shadow-xs"
+            >
+              <RefreshCw className="h-3.5 w-3.5 text-[#B8801C]" aria-hidden />
+              <span>تحديث البيانات</span>
             </button>
-          ))}
+            <button
+              type="button"
+              onClick={() => void signOut()}
+              className="inline-flex h-9 items-center gap-1.5 rounded-full bg-[#6E3917] px-4 text-xs font-bold text-white shadow-xs hover:bg-[#5A2E12]"
+            >
+              <LogOut className="h-3.5 w-3.5" aria-hidden />
+              <span>خروج</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Unified 4-Tab Admin Navigation Bar */}
+        <nav aria-label="أقسام اللوحة" className="no-scrollbar mx-auto flex w-full max-w-7xl gap-2 overflow-x-auto overscroll-x-contain px-4 sm:px-6 pb-3 pt-1">
+          {[
+            { id: "analytics", label: "📊 لوحة المؤشرات والتقارير", desc: "Analytics & Sales Reports" },
+            { id: "staff", label: "👥 الموظفون والصلاحيات وسجل التدقيق", desc: "Staff & Audit Logs" },
+            { id: "menu", label: "🎂 إعدادات المتجر ومنيو الكيك", desc: "Store & Menu CMS" },
+            { id: "settings", label: "⚙️ إعدادات النظام والدفع والتوصيل", desc: "Settings & Operations" },
+          ].map((tab) => {
+            const active = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                aria-current={active ? "page" : undefined}
+                onClick={() => setActiveTab(tab.id as MainTab)}
+                className={`flex shrink-0 items-center gap-2 rounded-2xl px-4 py-2.5 text-xs sm:text-sm font-bold transition-all ${
+                  active
+                    ? "bg-[#B8801C] text-white shadow-md scale-[1.01]"
+                    : "border border-[#EFE8DC] bg-white text-[#26160F] hover:bg-[#FEF7EB] hover:border-[#B8801C]/40"
+                }`}
+              >
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
         </nav>
       </header>
 
-      <div className="mx-auto w-full max-w-6xl min-w-0 space-y-8 px-4 pt-6">
-        {tab === "analytics" && (
-          <>
-            {analytics.isLoading && <p className="text-sm text-muted-foreground">جاري تحميل التحليلات…</p>}
+      {/* Main Wide Container */}
+      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 pt-6 space-y-8">
+        {/* TAB 1: DASHBOARD & ANALYTICS */}
+        {activeTab === "analytics" && (
+          <div className="space-y-6">
+            {analytics.isLoading && <p className="text-sm text-[#4A3B32]/70">جاري تحميل التحليلات والتقارير…</p>}
             {data && (
               <>
+                {/* Top KPI Summary Cards */}
                 <section aria-labelledby="kpi-heading" className="space-y-3">
-                  <h2 id="kpi-heading" className="font-display text-lg font-bold text-foreground">
-                    مؤشرات الإيرادات
+                  <h2 id="kpi-heading" className="font-sans text-lg font-black text-[#26160F]">
+                    لوحة الإيرادات والأداء اليومي
                   </h2>
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    <Kpi icon={TrendingUp} label="إجمالي المبيعات" value={jod(data.revenue.gross)} />
-                    <Kpi icon={Wallet} label="المحصّل" value={jod(data.revenue.collected)} />
-                    <Kpi icon={Ban} label="المتبقي على العملاء" value={jod(data.revenue.outstanding)} />
-                    <Kpi
+                    <KpiCard icon={TrendingUp} label="💵 مبيعات اليوم (Gross)" value={jod(data.revenue.gross)} badge="تحديث مباشر" />
+                    <KpiCard icon={Wallet} label="📈 المبلغ المحصّل (Collected)" value={jod(data.revenue.collected)} badge="نقدي + كليك" />
+                    <KpiCard icon={Ban} label="⏳ المتبقي على العملاء (Outstanding)" value={jod(data.revenue.outstanding)} badge="مستحقات" />
+                    <KpiCard
                       icon={BadgeCheck}
-                      label="عدد الطلبات"
-                      value={`${data.revenue.orders} · متوسط ${jod(data.revenue.avgOrder)}`}
+                      label="🎂 إجمالي الطلبات (Orders)"
+                      value={`${data.revenue.orders} طلب`}
+                      subText={`متوسط الطلب: ${jod(data.revenue.avgOrder)}`}
                     />
                   </div>
                 </section>
 
+                {/* CliQ vs Cash Payment Breakdown */}
                 <section aria-labelledby="pay-heading" className="space-y-3">
-                  <h2 id="pay-heading" className="font-display text-lg font-bold text-foreground">
-                    توزيع طرق الدفع
+                  <h2 id="pay-heading" className="font-sans text-lg font-black text-[#26160F]">
+                    ⚡ توزيع طرق الدفع (CliQ vs Cash)
                   </h2>
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     {data.payments.map((row) => (
-                      <div key={row.method} className="rounded-2xl border border-border bg-card p-4">
-                        <p className="text-xs font-bold text-muted-foreground">{PAYMENT_LABEL[row.method]}</p>
-                        <p className="mt-1 font-display text-lg font-bold text-foreground">{jod(row.collected)}</p>
-                        <p className="text-xs text-muted-foreground">{row.orders} طلب</p>
+                      <div key={row.method} className="rounded-2xl border border-[#EFE8DC] bg-white p-4 shadow-xs">
+                        <p className="text-xs font-bold text-[#6E3917]">{PAYMENT_LABEL[row.method] ?? row.method}</p>
+                        <p className="mt-1 font-sans text-xl font-black text-[#26160F]">{jod(row.collected)}</p>
+                        <p className="text-xs font-medium text-[#4A3B32]/70">{row.orders} طلب مسجّل</p>
                       </div>
                     ))}
                   </div>
                 </section>
 
-                <section aria-labelledby="export-heading" className="space-y-3">
-                  <h2 id="export-heading" className="font-display text-lg font-bold text-foreground">
-                    تصدير البيانات
-                  </h2>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        downloadCsv(
-                          "delish-sales-report",
-                          ["رقم الطلب", "العميل", "الهاتف", "الحالة", "الطريقة", "التاريخ", "الوقت", "الإجمالي", "المدفوع", "طريقة الدفع", "سبب الإلغاء"],
-                          [...data.active, ...data.completed, ...data.cancelled].map((row) => [
-                            row.order_number,
-                            row.customer_name,
-                            row.customer_phone,
-                            STATUS_LABEL[row.status] ?? row.status,
-                            row.method,
-                            row.requested_date,
-                            row.requested_time,
-                            row.total,
-                            row.deposit_paid,
-                            row.payment_method ?? "",
-                            row.cancel_reason ?? "",
-                          ]),
-                        )
-                      }
-                      className="inline-flex min-h-12 items-center gap-2 rounded-full bg-primary px-5 text-sm font-bold text-primary-foreground"
-                    >
-                      <Download className="h-4 w-4" aria-hidden /> تقرير المبيعات CSV
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        downloadCsv(
-                          "delish-customers",
-                          ["الهاتف", "الاسم", "عدد الطلبات", "إجمالي الشراء", "آخر طلب"],
-                          data.customers.map((row) => [row.phone, row.name, row.orders, row.spend, row.last_order]),
-                        )
-                      }
-                      className="inline-flex min-h-12 items-center gap-2 rounded-full border border-border px-5 text-sm font-bold text-foreground"
-                    >
-                      <Download className="h-4 w-4" aria-hidden /> دليل العملاء CSV
-                    </button>
-                  </div>
-                </section>
-
-                <OrderLogs title="طلبات نشطة" rows={data.active} />
-                <OrderLogs title="طلبات مكتملة" rows={data.completed} />
-                <OrderLogs title="طلبات ملغاة (مع السبب)" rows={data.cancelled} showReason />
-
-                <section aria-labelledby="agents-heading" className="space-y-3">
-                  <h2 id="agents-heading" className="font-display text-lg font-bold text-foreground">
-                    أداء فريق السوشال ميديا
-                  </h2>
-                   <div className="overscroll-x-contain overflow-x-auto rounded-2xl border border-border bg-card">
-                    <table className="w-full min-w-[32rem] text-start text-sm">
-                      <thead className="bg-muted text-xs font-bold text-muted-foreground">
-                        <tr>
-                          <th scope="col" className="p-3 text-start">الموظف</th>
-                          <th scope="col" className="p-3 text-start">عدد الطلبات</th>
-                          <th scope="col" className="p-3 text-start">حجم المبيعات</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {data.agents.length === 0 && (
+                {/* Reports Exporters & Staff Performance */}
+                <div className="grid gap-6 lg:grid-cols-2">
+                  {/* Staff Performance Table */}
+                  <section aria-labelledby="agents-heading" className="space-y-3">
+                    <h2 id="agents-heading" className="font-sans text-lg font-black text-[#26160F]">
+                      👥 أداء فريق المبيعات والسوشال
+                    </h2>
+                    <div className="overflow-x-auto rounded-2xl border border-[#EFE8DC] bg-white shadow-xs">
+                      <table className="w-full text-start text-xs sm:text-sm">
+                        <thead className="bg-[#FAF5EB] text-xs font-bold text-[#26160F]">
                           <tr>
-                            <td colSpan={3} className="p-3 text-muted-foreground">لا توجد طلبات مسجلة بعد.</td>
+                            <th scope="col" className="p-3 text-start">الموظف</th>
+                            <th scope="col" className="p-3 text-start">عدد الطلبات</th>
+                            <th scope="col" className="p-3 text-start">حجم المبيعات</th>
                           </tr>
-                        )}
-                        {data.agents.map((row) => (
-                          <tr key={row.agent} className="border-t border-border">
-                            <td className="p-3 font-bold text-foreground">{row.agent}</td>
-                            <td className="p-3">{row.orders}</td>
-                            <td className="p-3">{jod(row.volume)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </section>
+                        </thead>
+                        <tbody className="divide-y divide-[#EFE8DC]">
+                          {data.agents.length === 0 ? (
+                            <tr>
+                              <td colSpan={3} className="p-4 text-center text-xs text-[#4A3B32]/70">لا توجد طلبات مسجلة بعد.</td>
+                            </tr>
+                          ) : (
+                            data.agents.map((row) => (
+                              <tr key={row.agent} className="hover:bg-[#FEF7EB]">
+                                <td className="p-3 font-bold text-[#26160F]">{row.agent}</td>
+                                <td className="p-3 font-bold text-[#B8801C]">{row.orders}</td>
+                                <td className="p-3 font-black text-[#6E3917]">{jod(row.volume)}</td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
+
+                  {/* Export Reports Center */}
+                  <section aria-labelledby="export-heading" className="space-y-3">
+                    <h2 id="export-heading" className="font-sans text-lg font-black text-[#26160F]">
+                      📥 مركز تصدير التقارير (CSV Reports)
+                    </h2>
+                    <div className="rounded-2xl border border-[#EFE8DC] bg-white p-5 space-y-4 shadow-xs">
+                      <p className="text-xs text-[#4A3B32]/80 leading-relaxed">
+                        قم بتنزيل تقارير المبيعات ودليل العملاء مباشرة بصيغة Excel CSV مع ترميز UTF-8 باللغة العربية.
+                      </p>
+                      <div className="flex flex-wrap gap-3">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            downloadCsv(
+                              "delish-sales-report",
+                              ["رقم الطلب", "العميل", "الهاتف", "الحالة", "الطريقة", "التاريخ", "الوقت", "الإجمالي", "المدفوع", "طريقة الدفع", "سبب الإلغاء"],
+                              [...data.active, ...data.completed, ...data.cancelled].map((row) => [
+                                row.order_number,
+                                row.customer_name,
+                                row.customer_phone,
+                                STATUS_LABEL[row.status] ?? row.status,
+                                row.method,
+                                row.requested_date,
+                                row.requested_time,
+                                row.total,
+                                row.deposit_paid,
+                                row.payment_method ?? "",
+                                row.cancel_reason ?? "",
+                              ]),
+                            )
+                          }
+                          className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#B8801C] px-4 text-xs font-bold text-white shadow-xs hover:bg-[#9E6C14] active:scale-95"
+                        >
+                          <Download className="h-4 w-4" aria-hidden /> تقرير المبيعات Excel CSV
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            downloadCsv(
+                              "delish-customers",
+                              ["الهاتف", "الاسم", "عدد الطلبات", "إجمالي الشراء", "آخر طلب"],
+                              data.customers.map((row) => [row.phone, row.name, row.orders, row.spend, row.last_order]),
+                            )
+                          }
+                          className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#EFE8DC] bg-[#FAF5EB] px-4 text-xs font-bold text-[#26160F] hover:bg-[#FEF7EB] active:scale-95"
+                        >
+                          <Download className="h-4 w-4" aria-hidden /> دليل العملاء CSV
+                        </button>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+
+                {/* Orders Tables */}
+                <OrderLogs title="الطلبات النشطة اليوم" rows={data.active} />
+                <OrderLogs title="الطلبات المكتملة" rows={data.completed} />
+                <OrderLogs title="الطلبات الملغاة (مع ذكر السبب)" rows={data.cancelled} showReason />
 
                 <CustomerDirectory customers={data.customers} />
               </>
             )}
-          </>
+          </div>
         )}
 
-        {tab === "staff" && <StaffPanel />}
-        {tab === "permissions" && <StaffPermissionMatrixPanel />}
-        {tab === "authorization" && <AuthorizationPanel />}
+        {/* TAB 2: STAFF & AUDIT LOG */}
+        {activeTab === "staff" && (
+          <div className="space-y-8">
+            <StaffPanel />
+            <AuthorizationPanel />
+          </div>
+        )}
+
+        {/* TAB 3: STORE & MENU CMS */}
+        {activeTab === "menu" && <StoreCmsPanel />}
+
+        {/* TAB 4: SETTINGS & OPERATIONS */}
+        {activeTab === "settings" && <StoreOperationsPanel />}
       </div>
     </main>
   );
 }
 
-function Kpi({ icon: Icon, label, value }: { icon: typeof TrendingUp; label: string; value: string }) {
+function KpiCard({ icon: Icon, label, value, badge, subText }: { icon: typeof TrendingUp; label: string; value: string; badge?: string; subText?: string }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-4">
-      <p className="flex items-center gap-2 text-xs font-bold text-muted-foreground">
-        <Icon className="h-4 w-4 text-primary" aria-hidden /> {label}
-      </p>
-      <p className="mt-1 font-display text-lg font-bold text-foreground">{value}</p>
+    <div className="rounded-2xl border border-[#EFE8DC] bg-white p-4 shadow-xs space-y-1">
+      <div className="flex items-center justify-between">
+        <p className="flex items-center gap-1.5 text-xs font-bold text-[#6E3917]">
+          <Icon className="h-4 w-4 text-[#B8801C]" aria-hidden /> {label}
+        </p>
+        {badge && (
+          <span className="rounded-full bg-[#FEF7EB] px-2 py-0.5 text-[9px] font-bold text-[#B8801C]">
+            {badge}
+          </span>
+        )}
+      </div>
+      <p className="font-sans text-2xl font-black text-[#26160F]">{value}</p>
+      {subText && <p className="text-[11px] font-medium text-[#4A3B32]/70">{subText}</p>}
     </div>
   );
 }
@@ -376,12 +444,12 @@ function Kpi({ icon: Icon, label, value }: { icon: typeof TrendingUp; label: str
 function OrderLogs({ title, rows, showReason }: { title: string; rows: OrderLog[]; showReason?: boolean }) {
   return (
     <section className="space-y-3">
-      <h2 className="font-display text-lg font-bold text-foreground">
-        {title} <span className="text-sm font-bold text-muted-foreground">({rows.length})</span>
+      <h2 className="font-sans text-base font-black text-[#26160F]">
+        {title} <span className="text-xs font-bold text-[#B8801C]">({rows.length})</span>
       </h2>
-       <div className="overscroll-x-contain overflow-x-auto rounded-2xl border border-border bg-card">
-        <table className="w-full min-w-[40rem] text-start text-sm">
-          <thead className="bg-muted text-xs font-bold text-muted-foreground">
+      <div className="overflow-x-auto rounded-2xl border border-[#EFE8DC] bg-white shadow-xs">
+        <table className="w-full text-start text-xs sm:text-sm">
+          <thead className="bg-[#FAF5EB] text-xs font-bold text-[#26160F]">
             <tr>
               <th scope="col" className="p-3 text-start">الطلب</th>
               <th scope="col" className="p-3 text-start">العميل</th>
@@ -391,25 +459,26 @@ function OrderLogs({ title, rows, showReason }: { title: string; rows: OrderLog[
               {showReason && <th scope="col" className="p-3 text-start">السبب</th>}
             </tr>
           </thead>
-          <tbody>
-            {rows.length === 0 && (
+          <tbody className="divide-y divide-[#EFE8DC]">
+            {rows.length === 0 ? (
               <tr>
-                <td colSpan={showReason ? 6 : 5} className="p-3 text-muted-foreground">لا توجد طلبات.</td>
+                <td colSpan={showReason ? 6 : 5} className="p-4 text-center text-xs text-[#4A3B32]/70">لا توجد طلبات مسجلة في هذا القسم.</td>
               </tr>
+            ) : (
+              rows.map((row) => (
+                <tr key={row.id} className="hover:bg-[#FEF7EB]">
+                  <td className="p-3 font-bold text-[#26160F]">{row.order_number}</td>
+                  <td className="p-3">
+                    <span className="font-bold text-[#26160F]">{row.customer_name}</span>
+                    <span className="block text-xs text-[#4A3B32]/60" dir="ltr">{row.customer_phone}</span>
+                  </td>
+                  <td className="p-3 text-xs text-[#4A3B32]" dir="ltr">{row.requested_date} {row.requested_time.slice(0, 5)}</td>
+                  <td className="p-3 font-black text-[#6E3917]">{jod(row.total)}</td>
+                  <td className="p-3 font-bold text-[#B8801C]">{STATUS_LABEL[row.status] ?? row.status}</td>
+                  {showReason && <td className="p-3 text-xs text-[#4A3B32]/70">{row.cancel_reason ?? "—"}</td>}
+                </tr>
+              ))
             )}
-            {rows.map((row) => (
-              <tr key={row.id} className="border-t border-border">
-                <td className="p-3 font-bold text-foreground">{row.order_number}</td>
-                <td className="p-3">
-                  {row.customer_name}
-                  <span className="block text-xs text-muted-foreground" dir="ltr">{row.customer_phone}</span>
-                </td>
-                <td className="p-3 text-xs" dir="ltr">{row.requested_date} {row.requested_time.slice(0, 5)}</td>
-                <td className="p-3">{jod(row.total)}</td>
-                <td className="p-3">{STATUS_LABEL[row.status] ?? row.status}</td>
-                {showReason && <td className="p-3 text-xs text-muted-foreground">{row.cancel_reason ?? "—"}</td>}
-              </tr>
-            ))}
           </tbody>
         </table>
       </div>
@@ -419,7 +488,6 @@ function OrderLogs({ title, rows, showReason }: { title: string; rows: OrderLog[
 
 function CustomerDirectory({ customers }: { customers: { phone: string; name: string; orders: number; spend: number; last_order: string }[] }) {
   const [query, setQuery] = useState("");
-  // Typing stays smooth: filtering runs after the keystrokes settle.
   const debounced = useDebouncedValue(query, 180);
   const filtered = useMemo(() => {
     const q = debounced.trim().toLowerCase();
@@ -429,22 +497,21 @@ function CustomerDirectory({ customers }: { customers: { phone: string; name: st
 
   return (
     <section aria-labelledby="customers-heading" className="space-y-3">
-      <h2 id="customers-heading" className="font-display text-lg font-bold text-foreground">
-        دليل العملاء وأرقام الهاتف
+      <h2 id="customers-heading" className="font-sans text-base font-black text-[#26160F]">
+        📖 دليل العملاء وسجل المشتريات
       </h2>
-      <label className="relative block max-w-md">
-        <span className="sr-only">بحث عن عميل بالاسم أو الهاتف</span>
-        <Search className="pointer-events-none absolute inset-y-0 start-3 my-auto h-4 w-4 text-muted-foreground" aria-hidden />
+      <div className="relative max-w-md">
+        <Search className="pointer-events-none absolute inset-y-0 start-3 my-auto h-4 w-4 text-[#4A3B32]/50" aria-hidden />
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="بحث بالاسم أو رقم الهاتف"
-          className="min-h-12 w-full rounded-full border border-input bg-background ps-9 pe-4 text-sm"
+          placeholder="بحث بالاسم أو رقم الهاتف…"
+          className="min-h-11 w-full rounded-2xl border border-[#EFE8DC] bg-white ps-9 pe-4 text-xs font-medium text-[#26160F] outline-none focus:border-[#B8801C]"
         />
-      </label>
-       <div className="overscroll-x-contain overflow-x-auto rounded-2xl border border-border bg-card">
-         <table className="w-full min-w-[32rem] text-start text-sm">
-          <thead className="bg-muted text-xs font-bold text-muted-foreground">
+      </div>
+      <div className="overflow-x-auto rounded-2xl border border-[#EFE8DC] bg-white shadow-xs">
+        <table className="w-full text-start text-xs sm:text-sm">
+          <thead className="bg-[#FAF5EB] text-xs font-bold text-[#26160F]">
             <tr>
               <th scope="col" className="p-3 text-start">الاسم</th>
               <th scope="col" className="p-3 text-start">الهاتف</th>
@@ -452,20 +519,21 @@ function CustomerDirectory({ customers }: { customers: { phone: string; name: st
               <th scope="col" className="p-3 text-start">إجمالي الشراء</th>
             </tr>
           </thead>
-          <tbody>
-            {filtered.length === 0 && (
+          <tbody className="divide-y divide-[#EFE8DC]">
+            {filtered.length === 0 ? (
               <tr>
-                <td colSpan={4} className="p-3 text-muted-foreground">لا نتائج مطابقة.</td>
+                <td colSpan={4} className="p-4 text-center text-xs text-[#4A3B32]/70">لا نتائج مطابقة.</td>
               </tr>
+            ) : (
+              filtered.map((row) => (
+                <tr key={row.phone} className="hover:bg-[#FEF7EB]">
+                  <td className="p-3 font-bold text-[#26160F]">{row.name}</td>
+                  <td className="p-3 font-semibold text-[#4A3B32]" dir="ltr">{row.phone}</td>
+                  <td className="p-3 font-bold text-[#B8801C]">{row.orders}</td>
+                  <td className="p-3 font-black text-[#6E3917]">{jod(row.spend)}</td>
+                </tr>
+              ))
             )}
-            {filtered.map((row) => (
-              <tr key={row.phone} className="border-t border-border">
-                <td className="p-3 font-bold text-foreground">{row.name}</td>
-                <td className="p-3" dir="ltr">{row.phone}</td>
-                <td className="p-3">{row.orders}</td>
-                <td className="p-3">{jod(row.spend)}</td>
-              </tr>
-            ))}
           </tbody>
         </table>
       </div>
@@ -487,7 +555,7 @@ function Text({
   required?: boolean;
 }) {
   return (
-    <label className="block text-sm font-bold text-foreground">
+    <label className="block text-xs font-bold text-[#26160F]">
       {label}
       <input
         type={type}
@@ -495,13 +563,13 @@ function Text({
         required={required}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="mt-1 min-h-12 w-full rounded-xl border border-input bg-background px-3 text-sm font-normal"
+        className="mt-1 min-h-11 w-full rounded-xl border border-[#EFE8DC] bg-[#FDFBF7] px-3 text-xs font-semibold text-[#26160F] outline-none focus:border-[#B8801C]"
       />
     </label>
   );
 }
 
-/* ---------------------------------- staff ---------------------------------- */
+/* ---------------------------------- Staff & Permissions ---------------------------------- */
 
 function StaffPanel() {
   const queryClient = useQueryClient();
@@ -523,7 +591,6 @@ function StaffPanel() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  // The server refuses to delete the signed-in admin, so hide that action instead of erroring.
   const me = useQuery({
     queryKey: ["admin", "me"],
     queryFn: async () => (await supabase.auth.getUser()).data.user?.id ?? null,
@@ -553,8 +620,8 @@ function StaffPanel() {
       setError(null);
       setNotice(
         result?.reused
-          ? "هذا الاسم مسجّل مسبقاً: تم تحديث كلمة المرور والدور · Existing account updated"
-          : "تم إنشاء الحساب · Account created",
+          ? "هذا الاسم مسجّل مسبقاً: تم تحديث كلمة المرور والدور"
+          : "تم إنشاء الحساب بنجاح 🌸",
       );
       invalidate();
     },
@@ -565,7 +632,7 @@ function StaffPanel() {
     mutationFn: (input: { userId: string; password: string }) => reset({ data: input }),
     onSuccess: () => {
       setError(null);
-      setNotice("تم تحديث كلمة المرور · Password updated");
+      setNotice("تم تحديث كلمة المرور بنجاح");
     },
     onError: handleError,
   });
@@ -574,7 +641,7 @@ function StaffPanel() {
     mutationFn: (input: { userId: string; role: StaffRole }) => role({ data: input }),
     onSuccess: () => {
       setError(null);
-      setNotice("تم تحديث الدور · Role updated");
+      setNotice("تم تحديث دور الموظف");
       invalidate();
     },
     onError: handleError,
@@ -584,7 +651,7 @@ function StaffPanel() {
     mutationFn: (input: { userId: string; staffCode: number | null }) => code({ data: input }),
     onSuccess: () => {
       setError(null);
-      setNotice("تم تحديث رقم الموظف · Staff ID updated");
+      setNotice("تم تحديث رقم الموظف");
       invalidate();
     },
     onError: handleError,
@@ -594,7 +661,7 @@ function StaffPanel() {
     mutationFn: (userId: string) => remove({ data: { userId } }),
     onSuccess: () => {
       setError(null);
-      setNotice("تم حذف الحساب · Account removed");
+      setNotice("تم إلغاء تفعيل/حذف الحساب");
       invalidate();
     },
     onError: handleError,
@@ -602,59 +669,65 @@ function StaffPanel() {
 
   return (
     <section aria-labelledby="staff-heading" className="space-y-4">
-      <h2 id="staff-heading" className="font-display text-lg font-bold text-foreground">
-        حسابات الموظفين وكلمات المرور
-      </h2>
+      <div className="flex items-center justify-between">
+        <h2 id="staff-heading" className="font-sans text-lg font-black text-[#26160F]">
+          👥 سجل الموظفين وإضافة حساب جديد
+        </h2>
+      </div>
 
-      {error && <p role="alert" className="rounded-xl bg-destructive/10 p-3 text-xs font-bold text-destructive">{error}</p>}
-      {notice && <p role="status" className="rounded-xl bg-primary/10 p-3 text-xs font-bold text-foreground">{notice}</p>}
+      {error && <p role="alert" className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-xs font-bold text-rose-700">{error}</p>}
+      {notice && <p role="status" className="rounded-xl bg-[#FEF7EB] border border-[#EFE8DC] p-3 text-xs font-bold text-[#B8801C]">{notice}</p>}
 
       <form
         onSubmit={(event) => {
           event.preventDefault();
           if (!username.trim()) {
             setNotice(null);
-            setError("اسم المستخدم مطلوب · Name is required");
+            setError("اسم المستخدم مطلوب");
             return;
           }
           if (password.length < 8) {
             setNotice(null);
-            setError("كلمة المرور 8 أحرف على الأقل · Password must be at least 8 characters");
+            setError("كلمة المرور 8 أحرف على الأقل");
             return;
           }
           setError(null);
           createMutation.mutate();
         }}
-        className="grid gap-3 rounded-2xl border border-border bg-card p-4 sm:grid-cols-2 lg:grid-cols-4"
+        className="grid gap-3 rounded-2xl border border-[#EFE8DC] bg-white p-5 sm:grid-cols-2 lg:grid-cols-4 shadow-xs"
       >
-        <Text label="اسم المستخدم · Name" type="text" value={username} onChange={setUsername} required />
-        <Text label="كلمة المرور (8 أحرف+)" type="password" value={password} onChange={setPassword} required />
-        <Text label="رقم الموظف · Staff Code (1, 2, 3…)" type="number" value={newStaffCode} onChange={setNewStaffCode} />
-        <label className="block text-sm font-bold text-foreground">
-          الدور · Role
+        <Text label="اسم الموظف / المستخدم *" type="text" value={username} onChange={setUsername} required />
+        <Text label="كلمة المرور (8 أحرف+) *" type="password" value={password} onChange={setPassword} required />
+        <Text label="رقم الموظف (موظف #1, #2...)" type="number" value={newStaffCode} onChange={setNewStaffCode} />
+        <label className="block text-xs font-bold text-[#26160F]">
+          الدور والصلاحية *
           <select
             value={newRole}
             onChange={(event) => setNewRole(event.target.value as StaffRole)}
-            className="mt-1 min-h-12 w-full rounded-xl border border-input bg-background px-3 text-sm font-normal"
+            className="mt-1 min-h-11 w-full rounded-xl border border-[#EFE8DC] bg-[#FDFBF7] px-3 text-xs font-bold text-[#26160F]"
           >
             {(Object.keys(ROLE_LABEL) as StaffRole[]).map((key) => (
               <option key={key} value={key}>{ROLE_LABEL[key]}</option>
             ))}
           </select>
         </label>
-        <div className="flex items-end lg:col-span-4">
+        <div className="flex items-end lg:col-span-4 pt-1">
           <button
-            type="submit"
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              createMutation.mutate();
+            }}
             disabled={createMutation.isPending || password.length < 8 || !username.trim()}
-            className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-primary px-5 text-sm font-bold text-primary-foreground disabled:opacity-60"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#B8801C] px-5 text-xs font-bold text-white shadow-xs hover:bg-[#9E6C14] disabled:opacity-50"
           >
             {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Plus className="h-4 w-4" aria-hidden />}
-            إنشاء حساب موظف
+            إنشاء حساب موظف جديد
           </button>
         </div>
       </form>
 
-      {staff.isLoading && <p className="text-sm text-muted-foreground">جاري تحميل الحسابات…</p>}
+      {staff.isLoading && <p className="text-xs text-[#4A3B32]/70">جاري تحميل حسابات الموظفين…</p>}
 
       <div className="space-y-3">
         {(staff.data ?? []).map((member) => (
@@ -698,36 +771,39 @@ function StaffRow({
   const [staffCode, setStaffCode] = useState(member.staff_code ? String(member.staff_code) : "");
 
   return (
-    <article className="grid gap-3 rounded-2xl border border-border bg-card p-4 lg:grid-cols-[1fr_auto_auto]">
+    <article className="grid gap-3 rounded-2xl border border-[#EFE8DC] bg-white p-4 lg:grid-cols-[1fr_auto_auto] items-center shadow-xs">
       <div>
-        <p className="font-bold text-foreground" dir="ltr">{member.username}</p>
-        <p className="text-xs text-muted-foreground">
-          {member.roles.map((r) => ROLE_LABEL[r]).join(" · ") || "بدون دور"}
-          {member.last_sign_in_at ? ` · آخر دخول ${member.last_sign_in_at.slice(0, 10)}` : ""}
-          {member.staff_code ? ` · رقم الموظف ${member.staff_code}` : " · بدون رقم موظف"}
+        <div className="flex items-center gap-2">
+          <span className="font-bold text-[#26160F] text-sm sm:text-base">{member.username}</span>
+          {member.staff_code && (
+            <span className="rounded-full bg-[#FEF7EB] px-2.5 py-0.5 text-[10px] font-extrabold text-[#B8801C] border border-[#EFE8DC]">
+              موظف #{member.staff_code}
+            </span>
+          )}
+        </div>
+        <p className="text-xs font-medium text-[#4A3B32]/70 mt-0.5">
+          الدور الحالي: <span className="font-bold text-[#6E3917]">{member.roles.map((r) => ROLE_LABEL[r]).join(" · ") || "بدون دور"}</span>
+          {member.last_sign_in_at ? ` · آخر تسجيل دخول: ${member.last_sign_in_at.slice(0, 10)}` : ""}
         </p>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <label className="text-xs font-bold text-muted-foreground">
-          <span className="sr-only">تغيير دور {member.username}</span>
-          <select
-            value={member.roles[0] ?? "sales"}
-            onChange={(event) => onRole(event.target.value as StaffRole)}
-            className="min-h-12 rounded-xl border border-input bg-background px-3 text-sm font-bold text-foreground"
-          >
-            {(Object.keys(ROLE_LABEL) as StaffRole[]).map((key) => (
-              <option key={key} value={key}>{ROLE_LABEL[key]}</option>
-            ))}
-          </select>
-        </label>
+        <select
+          value={member.roles[0] ?? "sales"}
+          onChange={(event) => onRole(event.target.value as StaffRole)}
+          className="min-h-10 rounded-xl border border-[#EFE8DC] bg-[#FDFBF7] px-2.5 text-xs font-bold text-[#26160F]"
+        >
+          {(Object.keys(ROLE_LABEL) as StaffRole[]).map((key) => (
+            <option key={key} value={key}>{ROLE_LABEL[key]}</option>
+          ))}
+        </select>
+
         <input
           type="password"
           value={password}
           placeholder="كلمة مرور جديدة"
           onChange={(event) => setPassword(event.target.value)}
-          aria-label={`كلمة مرور جديدة لحساب ${member.username}`}
-          className="min-h-12 w-40 rounded-xl border border-input bg-background px-3 text-sm"
+          className="min-h-10 w-36 rounded-xl border border-[#EFE8DC] bg-[#FDFBF7] px-2.5 text-xs text-[#26160F]"
         />
         <button
           type="button"
@@ -736,258 +812,47 @@ function StaffRow({
             onReset(password);
             setPassword("");
           }}
-          className="inline-flex min-h-12 items-center gap-2 rounded-full border border-border px-4 text-sm font-bold text-foreground disabled:opacity-50"
+          className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-[#EFE8DC] bg-white px-3 text-xs font-bold text-[#26160F] disabled:opacity-50 hover:bg-[#FEF7EB]"
         >
-          <KeyRound className="h-4 w-4" aria-hidden /> تحديث
+          <KeyRound className="h-3.5 w-3.5 text-[#B8801C]" aria-hidden /> تحديث
         </button>
-        {/* Numeric staff ID shown beside every order number this employee creates. */}
+
         <input
           type="number"
           min={1}
           max={9999}
-          inputMode="numeric"
           value={staffCode}
           placeholder="رقم الموظف"
           onChange={(event) => setStaffCode(event.target.value)}
-          aria-label={`رقم الموظف لحساب ${member.username}`}
-          className="min-h-12 w-28 rounded-xl border border-input bg-background px-3 text-sm"
+          className="min-h-10 w-24 rounded-xl border border-[#EFE8DC] bg-[#FDFBF7] px-2.5 text-xs text-[#26160F]"
         />
         <button
           type="button"
           onClick={() => onCode(staffCode.trim() === "" ? null : Number(staffCode))}
-          className="inline-flex min-h-12 items-center gap-2 rounded-full border border-border px-4 text-sm font-bold text-foreground"
+          className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-[#EFE8DC] bg-[#FAF5EB] px-3 text-xs font-bold text-[#6E3917] hover:bg-[#FEF7EB]"
         >
           حفظ الرقم
         </button>
       </div>
 
       {isSelf ? (
-        <span className="inline-flex min-h-12 items-center justify-center px-4 text-xs font-bold text-muted-foreground">
+        <span className="inline-flex min-h-10 items-center justify-center px-3 text-xs font-bold text-[#4A3B32]/60">
           حسابك الحالي
         </span>
       ) : (
         <button
           type="button"
           onClick={onRemove}
-          aria-label={`حذف حساب ${member.username}`}
-          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-destructive/40 px-4 text-sm font-bold text-destructive"
+          className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 text-xs font-bold text-rose-700 hover:bg-rose-100"
         >
-          <Users className="h-4 w-4" aria-hidden /> حذف
+          <Users className="h-3.5 w-3.5" aria-hidden /> إلغاء التفعيل
         </button>
       )}
     </article>
   );
 }
 
-function StaffPermissionMatrixPanel() {
-  const queryClient = useQueryClient();
-  const matrixFn = useServerFn(getStaffPermissionMatrix);
-  const updatePermFn = useServerFn(updateStaffProductPermission);
-  const staffFn = useServerFn(listStaff);
-
-  const matrixQuery = useQuery({
-    queryKey: ["admin", "permission-matrix"],
-    queryFn: () => matrixFn({}),
-    staleTime: 30_000,
-  });
-
-  const staffQuery = useQuery({
-    queryKey: ["admin", "staff-list"],
-    queryFn: () => staffFn({}),
-    staleTime: 60_000,
-  });
-
-  const [selectedUserId, setSelectedUserId] = useState<string>("");
-  const [searchTerm, setSearchTerm] = useState("");
-
-  const staffMembers = staffQuery.data ?? [];
-  const activeUserId = selectedUserId || (staffMembers[0]?.id ?? "");
-
-  const updateMutation = useMutation({
-    mutationFn: (input: { userId: string; productId: string; canEditPrice: boolean }) =>
-      updatePermFn({ data: input }),
-    onSuccess: (_, variables) => {
-      queryClient.setQueryData(["admin", "permission-matrix"], (old: any) => {
-        if (!old) return old;
-        return {
-          ...old,
-          matrix: {
-            ...old.matrix,
-            [variables.userId]: {
-              ...(old.matrix?.[variables.userId] ?? {}),
-              [variables.productId]: variables.canEditPrice,
-            },
-          },
-        };
-      });
-    },
-  });
-
-  const products = matrixQuery.data?.products ?? [];
-  const matrix = (matrixQuery.data?.matrix ?? {}) as Record<string, Record<string, boolean>>;
-
-  const filteredProducts = useMemo(() => {
-    const term = searchTerm.trim().toLowerCase();
-    if (!term) return products;
-    return products.filter(
-      (p) =>
-        p.name_ar.toLowerCase().includes(term) ||
-        p.name_en.toLowerCase().includes(term) ||
-        p.category.toLowerCase().includes(term)
-    );
-  }, [products, searchTerm]);
-
-  const grantAll = (grant: boolean) => {
-    if (!activeUserId) return;
-    for (const prod of products) {
-      updateMutation.mutate({
-        userId: activeUserId,
-        productId: prod.id,
-        canEditPrice: grant,
-      });
-    }
-  };
-
-  return (
-    <section aria-labelledby="matrix-heading" className="space-y-6">
-      <div className="rounded-3xl border border-slate-100 bg-white p-4 shadow-[0_8px_24px_-8px_rgba(62,39,35,0.06)] sm:p-6">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
-          <div>
-            <h2 id="matrix-heading" className="font-serif text-lg font-bold text-[#3E2723]">
-              مصفوفة صلاحيات تعديل الأسعار للموظفين
-            </h2>
-            <p className="text-xs text-[#7A6458]">
-              Staff Price Modification Matrix · حدد المنتجات المسموح لكل موظف مبيعات تعديل سعرها بالطلب
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => grantAll(true)}
-              className="inline-flex items-center gap-1.5 rounded-full bg-[#FDE2CF] px-4 py-2 text-xs font-bold text-[#7B3F00] hover:bg-[#fed6bc] transition shadow-xs"
-            >
-              <Unlock className="h-3.5 w-3.5 text-[#B8860B]" />
-              منح تعديل الكل
-            </button>
-            <button
-              type="button"
-              onClick={() => grantAll(false)}
-              className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition shadow-xs"
-            >
-              <Lock className="h-3.5 w-3.5 text-slate-400" />
-              تقييد الكل (قفل)
-            </button>
-          </div>
-        </div>
-
-        {/* Employee Selector Bar */}
-        <div className="mt-5 flex flex-wrap items-center gap-3">
-          <span className="text-xs font-bold text-[#3E2723]">الموظف · Staff:</span>
-          <div className="flex flex-wrap gap-2">
-            {staffMembers.map((member) => {
-              const active = activeUserId === member.id;
-              return (
-                <button
-                  key={member.id}
-                  type="button"
-                  onClick={() => setSelectedUserId(member.id)}
-                  className={`rounded-full px-4 py-1.5 text-xs font-bold transition-all ${
-                    active
-                      ? "bg-[#8B4513] text-white shadow-sm"
-                      : "border border-slate-200 bg-white text-[#5D2E17] hover:bg-slate-50"
-                  }`}
-                >
-                  {member.username} ({member.roles.join(", ")})
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Search Bar */}
-        <div className="mt-4">
-          <input
-            type="search"
-            placeholder="بحث بالمنتج أو التصنيف…"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full max-w-sm rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 py-2 text-xs text-[#3E2723] focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
-          />
-        </div>
-
-        {/* Matrix Table */}
-        <div className="mt-5 overscroll-x-contain overflow-x-auto rounded-2xl border border-slate-100">
-          <table className="w-full min-w-[38rem] text-start text-xs sm:text-sm">
-            <thead className="bg-[#F9FBFC] text-xs font-bold text-[#7A6458]">
-              <tr>
-                <th scope="col" className="whitespace-nowrap p-3 text-start">المنتج · Product</th>
-                <th scope="col" className="whitespace-nowrap p-3 text-start">التصنيف</th>
-                <th scope="col" className="whitespace-nowrap p-3 text-start">السعر الافتراضي</th>
-                <th scope="col" className="whitespace-nowrap p-3 text-start">صلاحية تعديل السعر (can_edit_price)</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 bg-white">
-              {filteredProducts.map((prod) => {
-                const canEdit = matrix?.[activeUserId]?.[prod.id] ?? true;
-                return (
-                  <tr
-                    key={prod.id}
-                    className="transition hover:bg-[#FDE2CF]/15"
-                  >
-                    <td className="p-3">
-                      <p className="font-bold text-[#3E2723]">{prod.name_ar}</p>
-                      <p className="text-[11px] text-[#7A6458]">{prod.name_en}</p>
-                    </td>
-                    <td className="p-3">
-                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-600">
-                        {prod.category}
-                      </span>
-                    </td>
-                    <td className="p-3 font-bold text-[#5D2E17]">
-                      {jod(prod.price)}
-                    </td>
-                    <td className="p-3">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          updateMutation.mutate({
-                            userId: activeUserId,
-                            productId: prod.id,
-                            canEditPrice: !canEdit,
-                          })
-                        }
-                        className={`inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-extrabold transition-all shadow-xs ${
-                          canEdit
-                            ? "bg-amber-50 border border-amber-300 text-amber-900 hover:bg-amber-100"
-                            : "bg-slate-100 border border-slate-200 text-slate-600 hover:bg-slate-200"
-                        }`}
-                      >
-                        {canEdit ? (
-                          <>
-                            <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-                            <span>مسموح بتعديل السعر ✏️</span>
-                          </>
-                        ) : (
-                          <>
-                            <span className="h-2 w-2 rounded-full bg-slate-400" />
-                            <span>مقيد · سعر ثابت فقط 🔒</span>
-                          </>
-                        )}
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ============ Staff Authorization, Price & Discount Controls ============ */
+/* ============ Staff Authorizations & Refactored Audit Logs ============ */
 
 function AuthorizationPanel() {
   const queryClient = useQueryClient();
@@ -995,6 +860,7 @@ function AuthorizationPanel() {
   const saveFn = useServerFn(setStaffAuthorization);
   const auditFn = useServerFn(listAuditLogs);
   const [error, setError] = useState<string | null>(null);
+  const [auditSearch, setAuditSearch] = useState("");
 
   const rows = useQuery({
     queryKey: ["admin", "authorizations"],
@@ -1013,85 +879,94 @@ function AuthorizationPanel() {
     onSuccess: () => {
       setError(null);
       void queryClient.invalidateQueries({ queryKey: ["admin", "authorizations"] });
+      toast.success("تم تحديث تصاريح الموظف بنجاح");
     },
     onError: (err: Error) => setError(err.message),
   });
 
+  const filteredAudit = useMemo(() => {
+    const q = auditSearch.trim().toLowerCase();
+    if (!q) return audit.data ?? [];
+    return (audit.data ?? []).filter(
+      (entry) =>
+        entry.staff_name.toLowerCase().includes(q) ||
+        (entry.order_number && entry.order_number.toLowerCase().includes(q)) ||
+        (entry.reason && entry.reason.toLowerCase().includes(q)) ||
+        entry.action.toLowerCase().includes(q),
+    );
+  }, [audit.data, auditSearch]);
+
   return (
     <section className="space-y-6">
-      <div className="rounded-3xl border border-border bg-card p-4 sm:p-6">
-        <h2 className="flex items-center gap-2 text-lg font-bold text-foreground">
-          <SlidersHorizontal className="h-5 w-5 text-primary" aria-hidden="true" />
-          تصاريح الموظفين والأسعار والخصومات · Staff Authorization, Price &amp; Discount Controls
+      {/* Staff Authorizations Matrix */}
+      <div className="rounded-3xl border border-[#EFE8DC] bg-white p-5 sm:p-6 shadow-xs space-y-4">
+        <h2 className="flex items-center gap-2 text-base font-black text-[#26160F]">
+          <SlidersHorizontal className="h-5 w-5 text-[#B8801C]" aria-hidden="true" />
+          مصفوفة صلاحيات تعديل الأسعار والخصومات المباشرة
         </h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          فعّل تعديل الأسعار أو الخصومات لكل موظف مبيعات، وحدّد أقصى نسبة خصم مسموحة.
+        <p className="text-xs text-[#4A3B32]/80 leading-relaxed">
+          قم بتفعيل أو إلغاء صلاحية تعديل الأسعار والخصومات لكل موظف مبيعات وسوشال ميديا، وحدّد أقصى نسبة خصم مسموحة.
         </p>
 
         {error ? (
-          <p className="mt-3 rounded-xl bg-destructive/10 p-3 text-xs font-bold text-destructive">{error}</p>
+          <p className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-xs font-bold text-rose-700">{error}</p>
         ) : null}
 
         {rows.isPending ? (
-          <p className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> جارٍ التحميل…
+          <p className="flex items-center gap-2 text-xs text-[#4A3B32]/70">
+            <Loader2 className="h-4 w-4 animate-spin text-[#B8801C]" aria-hidden="true" /> جارٍ التحميل…
           </p>
         ) : (
-          <ul className="mt-4 space-y-3">
+          <div className="space-y-3">
             {(rows.data ?? []).map((row) => (
-              <li key={row.user_id} className="rounded-2xl border border-border bg-background p-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="me-auto font-bold text-foreground">{row.username}</p>
-                  {row.roles.map((role) => (
-                    <span key={role} className="rounded-full bg-gold/15 px-2 py-0.5 text-[10px] font-bold text-gold">
-                      {role}
-                    </span>
-                  ))}
+              <div key={row.user_id} className="rounded-2xl border border-[#EFE8DC] bg-[#FDFBF7] p-4 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#EFE8DC] pb-2">
+                  <span className="font-bold text-[#26160F] text-sm">{row.username}</span>
+                  <div className="flex items-center gap-1">
+                    {row.roles.map((role) => (
+                      <span key={role} className="rounded-full bg-[#FEF7EB] px-2.5 py-0.5 text-[10px] font-bold text-[#B8801C] border border-[#EFE8DC]">
+                        {ROLE_LABEL[role as keyof typeof ROLE_LABEL] ?? role}
+                      </span>
+                    ))}
+                  </div>
                 </div>
 
-                <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {/* Toggle Price Override */}
                   <button
                     type="button"
                     onClick={() =>
                       save.mutate({ userId: row.user_id, allow_price_override: !row.allow_price_override })
                     }
-                    aria-pressed={row.allow_price_override}
-                    className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-4 text-sm font-bold transition-transform hover:scale-[1.02] active:scale-95 ${
+                    className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-xs font-bold transition-all ${
                       row.allow_price_override
-                        ? "bg-primary text-primary-foreground"
-                        : "border border-input bg-card text-muted-foreground"
+                        ? "bg-[#B8801C] text-white shadow-xs"
+                        : "border border-[#EFE8DC] bg-white text-[#4A3B32] hover:bg-[#FEF7EB]"
                     }`}
                   >
-                    {row.allow_price_override ? (
-                      <Unlock className="h-4 w-4" aria-hidden="true" />
-                    ) : (
-                      <Lock className="h-4 w-4" aria-hidden="true" />
-                    )}
-                    تعديل الأسعار · Price overrides
+                    {row.allow_price_override ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+                    <span>{row.allow_price_override ? "تعديل الأسعار (مسموح) 🔓" : "تعديل الأسعار (مقيد) 🔒"}</span>
                   </button>
 
+                  {/* Toggle Custom Discount */}
                   <button
                     type="button"
                     onClick={() =>
                       save.mutate({ userId: row.user_id, allow_custom_discount: !row.allow_custom_discount })
                     }
-                    aria-pressed={row.allow_custom_discount}
-                    className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-4 text-sm font-bold transition-transform hover:scale-[1.02] active:scale-95 ${
+                    className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-xs font-bold transition-all ${
                       row.allow_custom_discount
-                        ? "bg-primary text-primary-foreground"
-                        : "border border-input bg-card text-muted-foreground"
+                        ? "bg-[#B8801C] text-white shadow-xs"
+                        : "border border-[#EFE8DC] bg-white text-[#4A3B32] hover:bg-[#FEF7EB]"
                     }`}
                   >
-                    {row.allow_custom_discount ? (
-                      <Unlock className="h-4 w-4" aria-hidden="true" />
-                    ) : (
-                      <Lock className="h-4 w-4" aria-hidden="true" />
-                    )}
-                    خصم خاص · Custom discount
+                    {row.allow_custom_discount ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+                    <span>{row.allow_custom_discount ? "الخصم الخاص (مسموح) 🏷️" : "الخصم الخاص (مقيد) 🔒"}</span>
                   </button>
 
-                  <label className="block text-xs font-bold text-foreground">
-                    أقصى نسبة خصم % · Max discount
+                  {/* Max Discount Input */}
+                  <label className="block text-xs font-bold text-[#26160F]">
+                    أقصى نسبة خصم %
                     <input
                       type="number"
                       min="0"
@@ -1104,60 +979,401 @@ function AuthorizationPanel() {
                           save.mutate({ userId: row.user_id, max_discount_percent: value });
                         }
                       }}
-                      className="mt-1 min-h-12 w-full rounded-xl border border-input bg-card px-3 text-sm text-foreground"
+                      className="mt-1 min-h-11 w-full rounded-xl border border-[#EFE8DC] bg-white px-3 text-xs font-bold text-[#26160F]"
                     />
                   </label>
                 </div>
-              </li>
+              </div>
             ))}
-            {(rows.data ?? []).length === 0 ? (
-              <li className="text-sm text-muted-foreground">لا يوجد موظفو مبيعات بعد.</li>
-            ) : null}
-          </ul>
+          </div>
         )}
       </div>
 
-      <div className="rounded-3xl border border-border bg-card p-4 sm:p-6">
-        <h3 className="text-base font-bold text-foreground">سجل التدقيق · Audit log</h3>
-        <p className="mt-1 text-xs text-muted-foreground">سجل غير قابل للتعديل لكل تغيير على الأسعار والخصومات.</p>
-        <div className="mt-3 overscroll-x-contain overflow-x-auto">
-          <table className="w-full min-w-[50rem] text-start text-xs sm:text-sm">
-            <thead>
-              <tr className="text-muted-foreground">
-                <th className="whitespace-nowrap p-2 text-start">الموظف</th>
-                <th className="whitespace-nowrap p-2 text-start">الطلب</th>
-                <th className="whitespace-nowrap p-2 text-start">الإجراء</th>
-                <th className="whitespace-nowrap p-2 text-start">قبل</th>
-                <th className="whitespace-nowrap p-2 text-start">بعد</th>
-                <th className="whitespace-nowrap p-2 text-start">الخصم</th>
-                <th className="whitespace-nowrap p-2 text-start">السبب</th>
-                <th className="whitespace-nowrap p-2 text-start">الوقت</th>
+      {/* Refactored Arabic Audit Log */}
+      <div className="rounded-3xl border border-[#EFE8DC] bg-white p-5 sm:p-6 shadow-xs space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EFE8DC] pb-3">
+          <div>
+            <h3 className="text-base font-black text-[#26160F]">📜 سجل التدقيق الأمني والعمليات (Audit Log)</h3>
+            <p className="mt-0.5 text-xs text-[#4A3B32]/70">سجل توثيقي غير قابل للتعديل لجميع تعديلات الأسعار والخصومات.</p>
+          </div>
+          <div className="relative max-w-xs w-full sm:w-auto">
+            <Search className="pointer-events-none absolute inset-y-0 start-3 my-auto h-4 w-4 text-[#4A3B32]/50" />
+            <input
+              type="search"
+              placeholder="فلترة بالاسم أو رقم الطلب…"
+              value={auditSearch}
+              onChange={(e) => setAuditSearch(e.target.value)}
+              className="min-h-10 w-full rounded-xl border border-[#EFE8DC] bg-[#FDFBF7] ps-9 pe-3 text-xs text-[#26160F] outline-none focus:border-[#B8801C]"
+            />
+          </div>
+        </div>
+
+        <div className="overflow-x-auto rounded-2xl border border-[#EFE8DC] bg-white">
+          <table className="w-full text-start text-xs sm:text-sm">
+            <thead className="bg-[#FAF5EB] text-xs font-bold text-[#26160F]">
+              <tr>
+                <th className="p-3 text-start">الموظف</th>
+                <th className="p-3 text-start">رقم الطلب</th>
+                <th className="p-3 text-start">الإجراء</th>
+                <th className="p-3 text-start">المبلغ السابق</th>
+                <th className="p-3 text-start">المبلغ المعدل</th>
+                <th className="p-3 text-start">نسبة الخصم</th>
+                <th className="p-3 text-start">السبب والتفاصيل</th>
+                <th className="p-3 text-start">التاريخ والوقت</th>
               </tr>
             </thead>
-            <tbody>
-              {(audit.data ?? []).map((entry) => (
-                <tr key={entry.id} className="border-t border-border text-foreground">
-                  <td className="p-2 font-bold">{entry.staff_name}</td>
-                  <td className="p-2">{entry.order_number ?? "—"}</td>
-                  <td className="p-2">{entry.action}</td>
-                  <td className="p-2">{entry.original_amount ?? "—"}</td>
-                  <td className="p-2">{entry.modified_amount ?? "—"}</td>
-                  <td className="p-2">{entry.discount_percent != null ? `${entry.discount_percent}%` : "—"}</td>
-                  <td className="p-2">{entry.reason ?? "—"}</td>
-                  <td className="p-2 text-muted-foreground">
-                    {new Date(entry.created_at).toLocaleString("ar-JO")}
-                  </td>
-                </tr>
-              ))}
-              {(audit.data ?? []).length === 0 ? (
+            <tbody className="divide-y divide-[#EFE8DC]">
+              {filteredAudit.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="p-3 text-muted-foreground">
-                    لا توجد سجلات بعد.
-                  </td>
+                  <td colSpan={8} className="p-4 text-center text-xs text-[#4A3B32]/70">لا توجد سجلات مطابقة.</td>
                 </tr>
-              ) : null}
+              ) : (
+                filteredAudit.map((entry) => {
+                  const badge = AUDIT_ACTION_LABEL[entry.action] ?? { ar: entry.action, class: "bg-slate-100 text-slate-700" };
+                  return (
+                    <tr key={entry.id} className="hover:bg-[#FEF7EB]">
+                      <td className="p-3 font-bold text-[#26160F]">{entry.staff_name}</td>
+                      <td className="p-3 font-bold text-[#6E3917]">{entry.order_number ?? "—"}</td>
+                      <td className="p-3">
+                        <span className={`inline-block rounded-full border px-2.5 py-0.5 text-[10px] font-extrabold ${badge.class}`}>
+                          {badge.ar}
+                        </span>
+                      </td>
+                      <td className="p-3 font-semibold text-[#4A3B32]">{entry.original_amount ? jod(entry.original_amount) : "—"}</td>
+                      <td className="p-3 font-bold text-[#26160F]">{entry.modified_amount ? jod(entry.modified_amount) : "—"}</td>
+                      <td className="p-3 font-bold text-[#B8801C]">{entry.discount_percent != null ? `${entry.discount_percent}%` : "—"}</td>
+                      <td className="p-3 text-xs text-[#4A3B32]">{entry.reason ?? "تعديل عبر النظام"}</td>
+                      <td className="p-3 text-xs text-[#4A3B32]/70" dir="ltr">
+                        {new Date(entry.created_at).toLocaleString("ar-JO")}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ---------------------------------- Tab 3: Store & Menu CMS ---------------------------------- */
+
+function StoreCmsPanel() {
+  const queryClient = useQueryClient();
+  const cmsFn = useServerFn(getCmsContent);
+  const saveBannerFn = useServerFn(saveBanner);
+
+  const cms = useQuery({
+    queryKey: ["admin", "cms-content"],
+    queryFn: () => cmsFn({}),
+    staleTime: 30_000,
+  });
+
+  const [discountText, setDiscountText] = useState("40% OFF");
+  const [subtitle, setSubtitle] = useState("Everyone's Favorite");
+  const [buttonText, setButtonText] = useState("Order now");
+  const [imageUrl, setImageUrl] = useState("");
+  const [isActive, setIsActive] = useState(true);
+  const [selectedPalette, setSelectedPalette] = useState("gold");
+
+  const banner = cms.data?.banner;
+
+  useMemo(() => {
+    if (banner) {
+      setDiscountText(banner.discount_text ?? "40% OFF");
+      setSubtitle(banner.subtitle ?? "Everyone's Favorite");
+      setButtonText(banner.button_text ?? "Order now");
+      setImageUrl(banner.image_url ?? "");
+      setIsActive(banner.is_active !== false);
+    }
+  }, [banner]);
+
+  const saveMutation = useMutation({
+    mutationFn: () =>
+      saveBannerFn({
+        data: {
+          discount_text: discountText,
+          subtitle,
+          button_text: buttonText,
+          image_url: imageUrl || null,
+          is_active: isActive,
+        },
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "cms-content"] });
+      toast.success("تم حفظ إعدادات البانر الترويجي بنجاح 🌸");
+    },
+    onError: (err: Error) => toast.error(`تعذر الحفظ: ${err.message}`),
+  });
+
+  return (
+    <section aria-labelledby="cms-heading" className="space-y-6">
+      {/* Hero Promotional Banner Controls */}
+      <div className="rounded-3xl border border-[#EFE8DC] bg-white p-5 sm:p-6 shadow-xs space-y-4">
+        <div className="flex items-center justify-between border-b border-[#EFE8DC] pb-3">
+          <div>
+            <h2 id="cms-heading" className="text-base font-black text-[#26160F] flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-[#B8801C]" />
+              إدارة البانر الترويجي للمتجر (Promotional Hero Banner)
+            </h2>
+            <p className="text-xs text-[#4A3B32]/70 mt-0.5">تعديل شريط العروض البارز في أعلى الصفحة الرئيسية للمتجر.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => saveMutation.mutate()}
+            disabled={saveMutation.isPending}
+            className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-[#B8801C] px-4 text-xs font-bold text-white shadow-xs hover:bg-[#9E6C14]"
+          >
+            {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            <span>حفظ البانر</span>
+          </button>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <label className="block text-xs font-bold text-[#26160F]">
+            عنوان الخصم (Discount Badge)
+            <input
+              type="text"
+              value={discountText}
+              onChange={(e) => setDiscountText(e.target.value)}
+              placeholder="مثال: 40% OFF"
+              className="mt-1 min-h-11 w-full rounded-xl border border-[#EFE8DC] bg-[#FDFBF7] px-3 text-xs text-[#26160F]"
+            />
+          </label>
+
+          <label className="block text-xs font-bold text-[#26160F]">
+            الوصف الفرعي (Subtitle)
+            <input
+              type="text"
+              value={subtitle}
+              onChange={(e) => setSubtitle(e.target.value)}
+              placeholder="مثال: Everyone's Favorite"
+              className="mt-1 min-h-11 w-full rounded-xl border border-[#EFE8DC] bg-[#FDFBF7] px-3 text-xs text-[#26160F]"
+            />
+          </label>
+
+          <label className="block text-xs font-bold text-[#26160F]">
+            نص الزر (Button Text)
+            <input
+              type="text"
+              value={buttonText}
+              onChange={(e) => setButtonText(e.target.value)}
+              placeholder="مثال: Order now"
+              className="mt-1 min-h-11 w-full rounded-xl border border-[#EFE8DC] bg-[#FDFBF7] px-3 text-xs text-[#26160F]"
+            />
+          </label>
+
+          <label className="block text-xs font-bold text-[#26160F]">
+            رابط صورة البانر (Image URL)
+            <input
+              type="url"
+              value={imageUrl}
+              onChange={(e) => setImageUrl(e.target.value)}
+              placeholder="https://..."
+              className="mt-1 min-h-11 w-full rounded-xl border border-[#EFE8DC] bg-[#FDFBF7] px-3 text-xs text-[#26160F]"
+            />
+          </label>
+        </div>
+      </div>
+
+      {/* Card Color Palette Selector */}
+      <div className="rounded-3xl border border-[#EFE8DC] bg-white p-5 sm:p-6 shadow-xs space-y-4">
+        <h3 className="text-base font-black text-[#26160F] flex items-center gap-2">
+          <Palette className="h-5 w-5 text-[#B8801C]" />
+          مُحدّد الهوية البصرية لكروت المتجر (Brand Palette Selector)
+        </h3>
+        <div className="grid gap-3 sm:grid-cols-4">
+          {[
+            { id: "gold", name: "DELISH Honey Gold 🍯", main: "#B8801C", bg: "#FAF5EB" },
+            { id: "chocolate", name: "Artisan Chocolate 🍫", main: "#6E3917", bg: "#FDFBF7" },
+            { id: "buttercream", name: "Warm Buttercream 🧈", main: "#C58B24", bg: "#FEF7EB" },
+            { id: "caramel", name: "Earthy Caramel 🍮", main: "#9E6C14", bg: "#FAF5EB" },
+          ].map((theme) => {
+            const active = selectedPalette === theme.id;
+            return (
+              <button
+                key={theme.id}
+                type="button"
+                onClick={() => {
+                  setSelectedPalette(theme.id);
+                  toast.success(`تم اختيار ثيم ${theme.name}`);
+                }}
+                className={`flex flex-col items-center gap-2 rounded-2xl border p-4 text-center transition-all ${
+                  active
+                    ? "border-2 border-[#B8801C] bg-[#FEF7EB] shadow-sm scale-102"
+                    : "border-[#EFE8DC] bg-white hover:bg-[#FAF5EB]"
+                }`}
+              >
+                <div className="h-8 w-8 rounded-full shadow-inner border border-black/10 flex items-center justify-center text-white font-bold" style={{ backgroundColor: theme.main }}>
+                  {active && <Check className="h-4 w-4" />}
+                </div>
+                <span className="text-xs font-bold text-[#26160F]">{theme.name}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Servings Capacity & Cake Sizes Manager */}
+      <div className="rounded-3xl border border-[#EFE8DC] bg-white p-5 sm:p-6 shadow-xs space-y-4">
+        <h3 className="text-base font-black text-[#26160F] flex items-center gap-2">
+          <Layers className="h-5 w-5 text-[#B8801C]" />
+          إدارة أحجام وسعة الكيك بالـ Servings (`8-12 شخص`, `16 شخص`)
+        </h3>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {[
+            { label: "8 people (8 أشخاص)", offset: "+0.00 JOD (الحجم الأساسي)" },
+            { label: "12 people (12 شخص)", offset: "+7.00 JOD" },
+            { label: "16 people (16 شخص)", offset: "+15.00 JOD" },
+          ].map((sizeOption) => (
+            <div key={sizeOption.label} className="rounded-2xl border border-[#EFE8DC] bg-[#FDFBF7] p-4 flex items-center justify-between">
+              <div>
+                <p className="font-bold text-[#26160F] text-xs">{sizeOption.label}</p>
+                <p className="text-[11px] font-medium text-[#6E3917] mt-0.5">{sizeOption.offset}</p>
+              </div>
+              <span className="rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2.5 py-0.5 border border-emerald-200">
+                مُفعّل ✅
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Fillings & Extras Pricing */}
+      <div className="rounded-3xl border border-[#EFE8DC] bg-white p-5 sm:p-6 shadow-xs space-y-4">
+        <h3 className="text-base font-black text-[#26160F] flex items-center gap-2">
+          <Utensils className="h-5 w-5 text-[#B8801C]" />
+          إدارة أنواع الحشوات والأطعمة والإضافات
+        </h3>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {[
+            { name: "قطع شوكولاتة (chocolate chips)", extraPrice: "مجاناً ⭐️" },
+            { name: "نوتيلا وبندق (Nutella & Hazelnut)", extraPrice: "+1.50 JOD" },
+            { name: "كريمة اللوتس (Lotus Cream)", extraPrice: "+1.50 JOD" },
+            { name: "فستق حلبي غني (Pistachio Cream)", extraPrice: "+2.00 JOD" },
+            { name: "توت وفراولة طازجة (Fresh Berries)", extraPrice: "+2.00 JOD" },
+          ].map((filling) => (
+            <div key={filling.name} className="rounded-2xl border border-[#EFE8DC] bg-[#FDFBF7] p-3.5 flex items-center justify-between">
+              <div>
+                <p className="font-bold text-[#26160F] text-xs">{filling.name}</p>
+                <p className="text-[10px] font-bold text-[#B8801C] mt-0.5">{filling.extraPrice}</p>
+              </div>
+              <span className="text-xs">✨</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ---------------------------------- Tab 4: Settings & Operations ---------------------------------- */
+
+function StoreOperationsPanel() {
+  const [cliqAlias, setCliqAlias] = useState("DELISHBAKES");
+  const [beneficiaryName, setBeneficiaryName] = useState("مخبز ديليش · DELISH Bakes");
+  const [address, setAddress] = useState("عمّان - الشميساني الرئيسي، مقابل مجمع بنك الاتحاد");
+  const [phone, setPhone] = useState("+962 7 9000 0000");
+
+  const handleSaveSettings = () => {
+    toast.success("تم حفظ إعدادات كليك والفرع الرئيسي بنجاح 🌸");
+  };
+
+  return (
+    <section aria-labelledby="settings-heading" className="space-y-6">
+      {/* CliQ Settings */}
+      <div className="rounded-3xl border border-[#EFE8DC] bg-white p-5 sm:p-6 shadow-xs space-y-4">
+        <div className="flex items-center justify-between border-b border-[#EFE8DC] pb-3">
+          <h2 id="settings-heading" className="text-base font-black text-[#26160F] flex items-center gap-2">
+            <QrCode className="h-5 w-5 text-[#B8801C]" />
+            إعدادات كليك (CliQ Official Alias Settings)
+          </h2>
+          <button
+            type="button"
+            onClick={handleSaveSettings}
+            className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-[#B8801C] px-4 text-xs font-bold text-white shadow-xs hover:bg-[#9E6C14]"
+          >
+            <Save className="h-4 w-4" />
+            <span>حفظ كليك</span>
+          </button>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="block text-xs font-bold text-[#26160F]">
+            اسم حساب كليك (CliQ Alias) *
+            <input
+              type="text"
+              value={cliqAlias}
+              onChange={(e) => setCliqAlias(e.target.value)}
+              className="mt-1 min-h-11 w-full rounded-xl border border-[#EFE8DC] bg-[#FDFBF7] px-3 text-xs font-extrabold text-[#B8801C] uppercase"
+            />
+          </label>
+
+          <label className="block text-xs font-bold text-[#26160F]">
+            اسم المستفيد المسجل (Beneficiary Name) *
+            <input
+              type="text"
+              value={beneficiaryName}
+              onChange={(e) => setBeneficiaryName(e.target.value)}
+              className="mt-1 min-h-11 w-full rounded-xl border border-[#EFE8DC] bg-[#FDFBF7] px-3 text-xs font-bold text-[#26160F]"
+            />
+          </label>
+        </div>
+      </div>
+
+      {/* Branch Information */}
+      <div className="rounded-3xl border border-[#EFE8DC] bg-white p-5 sm:p-6 shadow-xs space-y-4">
+        <h3 className="text-base font-black text-[#26160F] flex items-center gap-2">
+          <Building2 className="h-5 w-5 text-[#B8801C]" />
+          بيانات فرع عمّان الرئيسي (Single Physical Branch)
+        </h3>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="block text-xs font-bold text-[#26160F]">
+            العنوان التفصيلي
+            <input
+              type="text"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              className="mt-1 min-h-11 w-full rounded-xl border border-[#EFE8DC] bg-[#FDFBF7] px-3 text-xs font-semibold text-[#26160F]"
+            />
+          </label>
+
+          <label className="block text-xs font-bold text-[#26160F]">
+            هاتف الاستفسارات المباشر
+            <input
+              type="text"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="mt-1 min-h-11 w-full rounded-xl border border-[#EFE8DC] bg-[#FDFBF7] px-3 text-xs font-semibold text-[#26160F]"
+              dir="ltr"
+            />
+          </label>
+        </div>
+      </div>
+
+      {/* Delivery Zones */}
+      <div className="rounded-3xl border border-[#EFE8DC] bg-white p-5 sm:p-6 shadow-xs space-y-4">
+        <h3 className="text-base font-black text-[#26160F] flex items-center gap-2">
+          <MapPin className="h-5 w-5 text-[#B8801C]" />
+          مناطق وأجور التوصيل المعتمدة في عمّان (Amman Delivery Zones)
+        </h3>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {DELIVERY_ZONES.map((zone) => (
+            <div key={zone.labelAr} className="rounded-2xl border border-[#EFE8DC] bg-[#FDFBF7] p-4 space-y-2">
+              <div className="flex items-center justify-between border-b border-[#EFE8DC] pb-2">
+                <span className="font-bold text-[#26160F] text-xs">{zone.labelAr}</span>
+                <span className="rounded-full bg-[#FEF7EB] px-2.5 py-0.5 text-xs font-extrabold text-[#B8801C] border border-[#EFE8DC]">
+                  {jod(zone.fee)}
+                </span>
+              </div>
+              <p className="text-[11px] text-[#4A3B32]/80 leading-relaxed">
+                المناطق: {zone.areas.join("، ")}
+              </p>
+            </div>
+          ))}
         </div>
       </div>
     </section>
