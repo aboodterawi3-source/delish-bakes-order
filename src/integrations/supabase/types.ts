@@ -14,6 +14,21 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_setup_state: {
+        Row: {
+          admin_setup_completed_at: string | null
+          id: boolean
+        }
+        Insert: {
+          admin_setup_completed_at?: string | null
+          id?: boolean
+        }
+        Update: {
+          admin_setup_completed_at?: string | null
+          id?: boolean
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
