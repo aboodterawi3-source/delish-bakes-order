@@ -135,7 +135,14 @@ export const bootstrapAdmin = createServerFn({ method: "POST" })
       .from("user_roles")
       .upsert({ user_id: userId, role: "admin" }, { onConflict: "user_id,role" });
     if (roleError) throw new Error(roleError.message);
+
+    // Close the public setup path permanently.
+    await (supabaseAdmin as any)
+      .from("app_setup_state")
+      .upsert({ id: true, admin_setup_completed_at: new Date().toISOString() }, { onConflict: "id" });
+
     return { ok: true };
+
 
   });
 
