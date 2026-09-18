@@ -123,72 +123,52 @@ export function DiscoverView({
       )}
 
       <main className="relative z-10 w-full max-w-3xl flex-1 space-y-6 self-center overflow-x-hidden px-4 py-4 sm:px-5">
-        {/* Luxury "Custom Occasions & Signature Bakes" Showcase */}
-        <section
-          aria-label="Custom Occasions Showcase"
-          className="relative overflow-hidden rounded-3xl border border-[#EFE8DC] bg-gradient-to-br from-[#FDFBF7] via-[#FAF5EB] to-[#F5ECE0] p-5 sm:p-6 shadow-sm transition-all hover:shadow-md"
-        >
-          {/* Subtle background glow decorative elements */}
-          <div className="absolute -left-12 -top-12 h-40 w-40 rounded-full bg-[#B8801C]/10 blur-3xl" />
-          <div className="absolute -right-12 -bottom-12 h-40 w-40 rounded-full bg-[#6E3917]/10 blur-3xl" />
+        {/* Dynamic Hero Banner (Managed via Sales/Admin Website Management) */}
+        {banner && banner.is_active !== false && (
+          <section
+            aria-label="Promotional Hero Showcase"
+            className="relative overflow-hidden rounded-3xl border border-[#EFE8DC] bg-gradient-to-br from-[#FDFBF7] via-[#FAF5EB] to-[#F5ECE0] p-5 sm:p-6 shadow-sm transition-all hover:shadow-md"
+          >
+            {/* Ambient background glow decorative elements */}
+            <div className="absolute -left-12 -top-12 h-40 w-40 rounded-full bg-[#B8801C]/10 blur-3xl" />
+            <div className="absolute -right-12 -bottom-12 h-40 w-40 rounded-full bg-[#6E3917]/10 blur-3xl" />
 
-          <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-5 sm:gap-6">
-            {/* Left Content Side */}
-            <div className="flex-1 min-w-0 space-y-3 text-start">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-[#EFE8DC] bg-white px-3 py-1 text-[11px] sm:text-xs font-black text-[#B8801C] shadow-2xs">
-                <Sparkles className="h-3.5 w-3.5 text-[#B8801C]" />
-                {lang === "ar" ? "كيكات واستشارات مخصصة" : "Custom Occasions & Signature Bakes"}
-              </span>
+            <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-5 sm:gap-6">
+              {/* Left Content Side: Purely Dynamic Headline & Subtitle */}
+              <div className="flex-1 min-w-0 space-y-3 text-start">
+                <h2 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight text-[#26160F] leading-snug">
+                  {banner.discount_text || (lang === "ar" ? "كيكات مميزة تُصنع بحب لمناسباتكم الخاصة 🎂" : "Signature Celebration Cakes 🎂")}
+                </h2>
 
-              <h2 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight text-[#26160F] leading-snug">
-                {lang === "ar"
-                  ? "كيكات مميزة تُصنع بحب لمناسباتكم الخاصة 🎂"
-                  : "Signature Celebration Cakes Crafted With Love 🎂"}
-              </h2>
+                <p className="text-xs sm:text-sm font-medium text-[#6E3917]/80 leading-relaxed max-w-lg">
+                  {banner.subtitle || (lang === "ar" ? "سواء كان حفل تخرج، عيد ميلاد، أو ذكرى مميزة.. نصمم لك كيكة استثنائية تناسب ذوقك وتليق بلحظاتك السعيدة." : "We craft exceptional cakes tailored to your special moments.")}
+                </p>
 
-              <p className="text-xs sm:text-sm font-medium text-[#6E3917]/80 leading-relaxed max-w-lg">
-                {lang === "ar"
-                  ? "سواء كان حفل تخرج، عيد ميلاد، أو ذكرى مميزة.. نصمم لك كيكة استثنائية تناسب ذوقك وتليق بلحظاتك السعيدة."
-                  : "Whether it's a graduation, birthday, or anniversary... We craft an exceptional cake tailored to your taste and special moments."}
-              </p>
-
-              {/* Value Badges */}
-              <div className="pt-1 flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-xl border border-[#EFE8DC] bg-white/90 px-2.5 py-1 text-[11px] font-bold text-[#4A3B32] shadow-2xs">
-                  🍰 {lang === "ar" ? "خبيز طازج يومياً بأجود المكونات" : "Baked Fresh Daily"}
-                </span>
-                <span className="inline-flex items-center gap-1.5 rounded-xl border border-[#EFE8DC] bg-white/90 px-2.5 py-1 text-[11px] font-bold text-[#4A3B32] shadow-2xs">
-                  🚗 {lang === "ar" ? "توصيل مبرد وآمن في كافة مناطق عمّان" : "Refrigerated Amman Delivery"}
-                </span>
-                <span className="inline-flex items-center gap-1.5 rounded-xl border border-[#EFE8DC] bg-white/90 px-2.5 py-1 text-[11px] font-bold text-[#4A3B32] shadow-2xs">
-                  ⚡ {lang === "ar" ? "دفع ميسر وسريع عبر كليك أو كاش" : "Easy CliQ & Cash Payment"}
-                </span>
-              </div>
-
-              {/* Action Button */}
-              <div className="pt-2">
-                <Link
-                  to="/edit-order"
-                  className="inline-flex items-center gap-2 rounded-full bg-[#B8801C] px-6 py-2.5 text-xs sm:text-sm font-bold text-white shadow-md transition-all hover:bg-[#9E6C14] hover:shadow-lg active:scale-95 cursor-pointer"
-                >
-                  <Sparkles className="h-4 w-4" />
-                  <span>
-                    {lang === "ar" ? "✨ صمم كيكتك الخاصة / Custom Order" : "✨ Custom Order / صمم كيكتك"}
+                {/* Visual Value Badges */}
+                <div className="pt-1 flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 rounded-xl border border-[#EFE8DC] bg-white/90 px-2.5 py-1 text-[11px] font-bold text-[#4A3B32] shadow-2xs">
+                    🍰 {lang === "ar" ? "خبيز طازج يومياً بأجود المكونات" : "Baked Fresh Daily"}
                   </span>
-                </Link>
+                  <span className="inline-flex items-center gap-1.5 rounded-xl border border-[#EFE8DC] bg-white/90 px-2.5 py-1 text-[11px] font-bold text-[#4A3B32] shadow-2xs">
+                    🚗 {lang === "ar" ? "توصيل مبرد وآمن في كافة مناطق عمّان" : "Refrigerated Amman Delivery"}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 rounded-xl border border-[#EFE8DC] bg-white/90 px-2.5 py-1 text-[11px] font-bold text-[#4A3B32] shadow-2xs">
+                    ⚡ {lang === "ar" ? "دفع ميسر وسريع عبر كليك أو كاش" : "Easy CliQ & Cash Payment"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Right Showcase Image: Purely Dynamic Image URL */}
+              <div className="relative shrink-0 w-36 h-36 sm:w-44 sm:h-44 rounded-2xl overflow-hidden border-2 border-white shadow-md bg-white p-1">
+                <img
+                  src={banner.image_url || luxuryCakeShowcaseImg}
+                  alt={banner.discount_text || "Delish Bakery Banner"}
+                  className="h-full w-full object-cover rounded-xl transition-transform duration-700 hover:scale-110"
+                />
               </div>
             </div>
-
-            {/* Right Showcase Image */}
-            <div className="relative shrink-0 w-36 h-36 sm:w-44 sm:h-44 rounded-2xl overflow-hidden border-2 border-white shadow-md bg-white p-1">
-              <img
-                src={luxuryCakeShowcaseImg}
-                alt={lang === "ar" ? "كيكات مناسبات مخصصة" : "Custom Celebration Cakes"}
-                className="h-full w-full object-cover rounded-xl transition-transform duration-700 hover:scale-110"
-              />
-            </div>
-          </div>
-        </section>
+          </section>
+        )}
 
         {/* Discover by category — Redesigned & Enlarged */}
         {categories.length > 0 && (

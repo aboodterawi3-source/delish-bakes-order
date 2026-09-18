@@ -1129,42 +1129,43 @@ function StoreCmsPanel() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "cms-content"] });
-      toast.success("تم حفظ إعدادات البانر الترويجي بنجاح 🌸");
+      queryClient.invalidateQueries({ queryKey: ["storefront-content"] });
+      toast.success("تم حفظ ونشر البانر الرئيسي على الموقع بنجاح 🌸");
     },
     onError: (err: Error) => toast.error(`تعذر الحفظ: ${err.message}`),
   });
 
   return (
     <section aria-labelledby="cms-heading" className="space-y-6">
-      {/* Hero Promotional Banner Controls */}
+      {/* Hero Banner Management */}
       <div className="rounded-3xl border border-[#EFE8DC] bg-white p-5 sm:p-6 shadow-xs space-y-4">
-        <div className="flex items-center justify-between border-b border-[#EFE8DC] pb-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EFE8DC] pb-3">
           <div>
             <h2 id="cms-heading" className="text-base font-black text-[#26160F] flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-[#B8801C]" />
-              إدارة البانر الترويجي للمتجر (Promotional Hero Banner)
+              إدارة البانر العلوي للمتجر (Hero Banner Management)
             </h2>
-            <p className="text-xs text-[#4A3B32]/70 mt-0.5">تعديل شريط العروض البارز في أعلى الصفحة الرئيسية للمتجر.</p>
+            <p className="text-xs text-[#4A3B32]/70 mt-0.5">تعديل ونشر البانر البارز في أعلى الصفحة الرئيسية للمتجر.</p>
           </div>
           <button
             type="button"
             onClick={() => saveMutation.mutate()}
             disabled={saveMutation.isPending}
-            className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-[#B8801C] px-4 text-xs font-bold text-white shadow-xs hover:bg-[#9E6C14]"
+            className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-[#B8801C] px-4 text-xs font-bold text-white shadow-xs hover:bg-[#9E6C14] cursor-pointer"
           >
             {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            <span>حفظ البانر</span>
+            <span>💾 حفظ ونشر البانر على الموقع / Save & Publish</span>
           </button>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <label className="block text-xs font-bold text-[#26160F]">
-            عنوان الخصم (Discount Badge)
+            العنوان الرئيسي للبانر (Headline)
             <input
               type="text"
               value={discountText}
               onChange={(e) => setDiscountText(e.target.value)}
-              placeholder="مثال: 40% OFF"
+              placeholder="مثال: كيكات مميزة تُصنع بحب لمناسباتكم الخاصة 🎂"
               className="mt-1 min-h-11 w-full rounded-xl border border-[#EFE8DC] bg-[#FDFBF7] px-3 text-xs text-[#26160F]"
             />
           </label>
@@ -1175,18 +1176,7 @@ function StoreCmsPanel() {
               type="text"
               value={subtitle}
               onChange={(e) => setSubtitle(e.target.value)}
-              placeholder="مثال: Everyone's Favorite"
-              className="mt-1 min-h-11 w-full rounded-xl border border-[#EFE8DC] bg-[#FDFBF7] px-3 text-xs text-[#26160F]"
-            />
-          </label>
-
-          <label className="block text-xs font-bold text-[#26160F]">
-            نص الزر (Button Text)
-            <input
-              type="text"
-              value={buttonText}
-              onChange={(e) => setButtonText(e.target.value)}
-              placeholder="مثال: Order now"
+              placeholder="مثال: سواء كان حفل تخرج، عيد ميلاد، أو ذكرى مميزة.."
               className="mt-1 min-h-11 w-full rounded-xl border border-[#EFE8DC] bg-[#FDFBF7] px-3 text-xs text-[#26160F]"
             />
           </label>

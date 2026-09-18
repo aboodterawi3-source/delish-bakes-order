@@ -11,7 +11,10 @@ import {
 
   Trash2,
   X,
+  Save,
+  Sparkles,
 } from "lucide-react";
+import { toast } from "sonner";
 import {
   deleteCategory,
   deleteStorefrontProduct,
@@ -258,49 +261,95 @@ function BannerEditor({ banner }: { banner: { discount_text: string; subtitle: s
   const queryClient = useQueryClient();
   const saveFn = useServerFn(saveBanner);
   const [form, setForm] = useState({
-    discount_text: banner?.discount_text ?? "40% OFF",
-    subtitle: banner?.subtitle ?? "Everyone's Favorite",
-    button_text: banner?.button_text ?? "Order Now",
+    discount_text: banner?.discount_text ?? "كيكات مميزة تُصنع بحب لمناسباتكم الخاصة 🎂",
+    subtitle: banner?.subtitle ?? "سواء كان حفل تخرج، عيد ميلاد، أو ذكرى مميزة.. نصمم لك كيكة استثنائية تناسب ذوقك وتليق بلحظاتك السعيدة.",
+    button_text: banner?.button_text ?? "طلب مخصص",
     image_url: banner?.image_url ?? null,
   });
 
   const save = useMutation({
     mutationFn: () => saveFn({ data: form }),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: CMS_KEY }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: CMS_KEY });
+      void queryClient.invalidateQueries({ queryKey: ["storefront-content"] });
+      toast.success("تم حفظ ونشر البانر الرئيسي على الموقع بنجاح 🌸");
+    },
+    onError: (err: Error) => {
+      toast.error(`تعذر حفظ البانر: ${err.message}`);
+    },
   });
 
   return (
     <form
-      className="space-y-4 rounded-3xl border border-border bg-card p-5"
+      className="space-y-5 rounded-3xl border border-border bg-card p-5 sm:p-6 shadow-xs"
       onSubmit={(event) => {
         event.preventDefault();
         save.mutate();
       }}
     >
-      <h3 className="font-display text-lg font-bold text-foreground">بانر العروض · Hero banner</h3>
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
+        <div>
+          <h3 className="font-display text-base sm:text-lg font-bold text-foreground flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-primary" />
+            إدارة البانر العلوي للمتجر (Hero Banner Management)
+          </h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            التحكم في عنوان ووصف وصورة البانر الرئيسي في أعلى الصفحة الرئيسية للمتجر.
+          </p>
+        </div>
+        <button
+          type="submit"
+          disabled={save.isPending}
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-primary px-6 text-xs sm:text-sm font-bold text-primary-foreground shadow-sm transition hover:opacity-90 disabled:opacity-60 cursor-pointer"
+        >
+          {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Save className="h-4 w-4" aria-hidden />}
+          <span>💾 حفظ ونشر البانر على الموقع / Save & Publish</span>
+        </button>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
         <label className="space-y-1.5">
-          <span className={label}>نص الخصم · Discount text</span>
-          <input value={form.discount_text} onChange={(e) => setForm({ ...form, discount_text: e.target.value })} className={field} required />
+          <span className={label}>العنوان الرئيسي للبانر (Headline)</span>
+          <input
+            type="text"
+            value={form.discount_text}
+            onChange={(e) => setForm({ ...form, discount_text: e.target.value })}
+            placeholder="مثال: كيكات مميزة تُصنع بحب لمناسباتكم الخاصة 🎂"
+            className={field}
+            required
+          />
         </label>
+
         <label className="space-y-1.5">
-          <span className={label}>العنوان الفرعي · Subtitle</span>
-          <input value={form.subtitle} onChange={(e) => setForm({ ...form, subtitle: e.target.value })} className={field} required />
-        </label>
-        <label className="space-y-1.5">
-          <span className={label}>نص الزر · Button text</span>
-          <input value={form.button_text} onChange={(e) => setForm({ ...form, button_text: e.target.value })} className={field} required />
+          <span className={label}>الوصف الفرعي والترويجي (Subtitle / Description)</span>
+          <textarea
+            rows={2}
+            value={form.subtitle}
+            onChange={(e) => setForm({ ...form, subtitle: e.target.value })}
+            placeholder="مثال: سواء كان حفل تخرج، عيد ميلاد، أو ذكرى مميزة.."
+            className="w-full rounded-2xl border border-input bg-background p-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            required
+          />
         </label>
       </div>
 
-      <ImageField value={form.image_url} folder="banner" onChange={(url) => setForm({ ...form, image_url: url })} />
+      {/* Image Uploader with live preview & file input */}
+      <ImageField
+        value={form.image_url}
+        folder="banner"
+        onChange={(url) => setForm({ ...form, image_url: url })}
+        note="اختر صورة عالية الجودة للبانر من جهازك (سيتم تحويلها لـ WebP وتأطيرها تلقائياً)."
+      />
 
-      <div className="flex items-center gap-3">
-        <button type="submit" disabled={save.isPending} className={primaryBtn}>
-          {save.isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />} نشر البانر · Publish
+      <div className="pt-2 flex items-center justify-end border-t border-border/50">
+        <button
+          type="submit"
+          disabled={save.isPending}
+          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-primary px-7 text-sm font-bold text-primary-foreground shadow-md transition hover:opacity-90 disabled:opacity-60 cursor-pointer"
+        >
+          {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Save className="h-4 w-4" aria-hidden />}
+          <span>💾 حفظ ونشر البانر على الموقع / Save & Publish</span>
         </button>
-        {save.isSuccess && <span className="text-xs font-bold text-primary">تم النشر ✓</span>}
-        {save.isError && <span className="text-xs font-bold text-destructive">{(save.error as Error).message}</span>}
       </div>
     </form>
   );
