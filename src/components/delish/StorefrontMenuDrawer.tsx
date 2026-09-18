@@ -11,9 +11,12 @@ import {
   Sparkles,
   ShieldCheck,
 } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { WHATSAPP } from "@/lib/menu";
 import { DelishLogo } from "./DelishLogo";
+import { submitCustomerMessage } from "@/lib/customer-messages.functions";
+import { supabase } from "@/integrations/supabase/client";
 
 interface StorefrontMenuDrawerProps {
   open: boolean;
@@ -22,6 +25,7 @@ interface StorefrontMenuDrawerProps {
 
 export function StorefrontMenuDrawer({ open, onClose }: StorefrontMenuDrawerProps) {
   const [activeTab, setActiveTab] = useState<"story" | "location" | "policy" | "feedback">("story");
+  const submitMessageFn = useServerFn(submitCustomerMessage);
 
   // Feedback form state
   const [feedbackName, setFeedbackName] = useState("");
@@ -32,21 +36,57 @@ export function StorefrontMenuDrawer({ open, onClose }: StorefrontMenuDrawerProp
 
   if (!open) return null;
 
-  const handleFeedbackSubmit = (e: React.FormEvent) => {
+  const handleFeedbackSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!feedbackName.trim() || !feedbackPhone.trim() || !feedbackMessage.trim()) {
+    const name = feedbackName.trim();
+    const phone = feedbackPhone.trim();
+    const rawMsg = feedbackMessage.trim();
+
+    if (!name || !phone || !rawMsg) {
       toast.error("يرجى ملء جميع الحقول المطلوبة");
       return;
     }
 
+    const catLabel =
+      feedbackCategory === "complaint"
+        ? "شكوى / ملاحظة"
+        : feedbackCategory === "inquiry"
+        ? "استفسار خاص"
+        : "اقتراح وتحسين";
+
+    const fullMessage = `[${catLabel}] ${rawMsg}`;
+
     setSubmitting(true);
-    setTimeout(() => {
-      toast.success("شكراً لاهتمامك! تم استلام رسالتك وسيتم التواصل معك خلال وقت قصير 🌸");
+    try {
+      // 1. Submit via server function
+      await submitMessageFn({
+        data: {
+          name,
+          phone,
+          message: fullMessage,
+        },
+      });
+      toast.success("شكراً لاهتمامك! تم إرسال رسالتك بنجاح وسيتواصل معك فريقنا في أقرب وقت 🌸");
       setFeedbackName("");
       setFeedbackPhone("");
       setFeedbackMessage("");
+    } catch (err: any) {
+      // 2. Direct Supabase fallback
+      try {
+        const { error: supabaseErr } = await supabase
+          .from("customer_messages")
+          .insert([{ name, phone, message: fullMessage, status: "new" }]);
+        if (supabaseErr) throw supabaseErr;
+        toast.success("شكراً لاهتمامك! تم إرسال رسالتك بنجاح وسيتواصل معك فريقنا في أقرب وقت 🌸");
+        setFeedbackName("");
+        setFeedbackPhone("");
+        setFeedbackMessage("");
+      } catch (fallbackErr: any) {
+        toast.error(err?.message || fallbackErr?.message || "تعذّر إرسال الرسالة، يرجى المحاولة لاحقاً");
+      }
+    } finally {
       setSubmitting(false);
-    }, 600);
+    }
   };
 
   const whatsappSupportUrl = `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(

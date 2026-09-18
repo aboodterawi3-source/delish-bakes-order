@@ -10,11 +10,12 @@ import { CmsPanel } from "@/components/delish/CmsPanel";
 import { OrdersWorkspace } from "@/components/staff/OrdersWorkspace";
 import { ModificationsPanel } from "@/components/staff/ModificationsPanel";
 import { PosOrderEntry } from "@/components/staff/PosOrderEntry";
+import { MessagesPanel } from "@/components/staff/MessagesPanel";
 
 export function SalesPanel() {
   const navigate = useNavigate();
   const accessFn = useServerFn(getSalesAccess);
-  const [view, setView] = useState<"pos" | "orders" | "modifications" | "site">("pos");
+  const [view, setView] = useState<"pos" | "orders" | "modifications" | "messages" | "site">("pos");
 
   const access = useQuery({
     queryKey: ["sales-access"],
@@ -79,6 +80,7 @@ export function SalesPanel() {
             { value: "pos" as const, ar: "إنشاء طلب جديد", en: "POS Entry" },
             { value: "orders" as const, ar: "جدول الطلبات", en: "Orders" },
             { value: "modifications" as const, ar: "تعديلات", en: "Modifications" },
+            { value: "messages" as const, ar: "رسائل العملاء", en: "Messages" },
             { value: "site" as const, ar: "إدارة الموقع", en: "Website" },
           ]).map((item) => (
             <button
@@ -99,6 +101,8 @@ export function SalesPanel() {
 
         {view === "pos" ? (
           <PosOrderEntry />
+        ) : view === "messages" ? (
+          <MessagesPanel />
         ) : view === "site" ? (
           <CmsPanel />
         ) : view === "modifications" ? (
