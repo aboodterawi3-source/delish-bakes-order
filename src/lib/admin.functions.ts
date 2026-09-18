@@ -67,15 +67,29 @@ export type AdminAnalytics = {
 const ACTIVE = ["new", "confirmed", "baking", "ready", "out_for_delivery"];
 const DONE = ["delivered", "completed"];
 
-/** True only while the database has no admin yet, so the one-time setup screen can run. */
-export const getAdminSetupState = createServerFn({ method: "GET" }).handler(async () => {
+/**
+ * The one-time setup screen may only run before the first admin is created.
+ * A persistent flag closes it forever, even if the admin count later drops to zero.
+ */
+async function setupIsClosed(): Promise<boolean> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data } = await (supabaseAdmin as any)
+    .from("app_setup_state")
+    .select("admin_setup_completed_at")
+    .maybeSingle();
+  if (data?.admin_setup_completed_at) return true;
+
   const { count, error } = await supabaseAdmin
     .from("user_roles")
     .select("id", { count: "exact", head: true })
     .eq("role", "admin");
   if (error) throw new Error(error.message);
-  return { needsSetup: (count ?? 0) === 0 };
+  return (count ?? 0) > 0;
+}
+
+/** True only while the app has never completed admin setup. */
+export const getAdminSetupState = createServerFn({ method: "GET" }).handler(async () => {
+  return { needsSetup: !(await setupIsClosed()) };
 });
 
 /**
@@ -91,11 +105,8 @@ export const bootstrapAdmin = createServerFn({ method: "POST" })
   })
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { count } = await supabaseAdmin
-      .from("user_roles")
-      .select("id", { count: "exact", head: true })
-      .eq("role", "admin");
-    if ((count ?? 0) > 0) throw new Error("Setup already completed");
+    if (await setupIsClosed()) throw new Error("Setup already completed");
+
 
     // Reuse an existing account with the same name instead of failing on a duplicate.
     let userId: string | null = null;
@@ -124,7 +135,14 @@ export const bootstrapAdmin = createServerFn({ method: "POST" })
       .from("user_roles")
       .upsert({ user_id: userId, role: "admin" }, { onConflict: "user_id,role" });
     if (roleError) throw new Error(roleError.message);
+
+    // Close the public setup path permanently.
+    await (supabaseAdmin as any)
+      .from("app_setup_state")
+      .upsert({ id: true, admin_setup_completed_at: new Date().toISOString() }, { onConflict: "id" });
+
     return { ok: true };
+
 
   });
 

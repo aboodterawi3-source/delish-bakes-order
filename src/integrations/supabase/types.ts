@@ -14,6 +14,21 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_setup_state: {
+        Row: {
+          admin_setup_completed_at: string | null
+          id: boolean
+        }
+        Insert: {
+          admin_setup_completed_at?: string | null
+          id?: boolean
+        }
+        Update: {
+          admin_setup_completed_at?: string | null
+          id?: boolean
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
@@ -255,13 +270,10 @@ export type Database = {
           discount_percent?: number
           driver_name?: string | null
           driver_phone?: string | null
-          employee_number?: number | null
           event_date?: string | null
-          filling?: string | null
           final_photo_requested?: boolean
           id?: string
           inscription?: string | null
-          is_gift?: boolean
           is_urgent?: boolean
           last_edited_at?: string | null
           last_edited_by?: string | null
@@ -271,13 +283,11 @@ export type Database = {
           order_number?: string
           payment_method?: Database["public"]["Enums"]["payment_method"] | null
           queue_rank?: number | null
-          recipient_name?: string | null
           recipient_phone?: string | null
           requested_date: string
           requested_time: string
           schedule_updated_at?: string | null
           sender_phone?: string | null
-          servings_capacity?: string | null
           staff_code?: number | null
           staff_notes?: string | null
           status?: Database["public"]["Enums"]["order_status"]
@@ -302,13 +312,10 @@ export type Database = {
           discount_percent?: number
           driver_name?: string | null
           driver_phone?: string | null
-          employee_number?: number | null
           event_date?: string | null
-          filling?: string | null
           final_photo_requested?: boolean
           id?: string
           inscription?: string | null
-          is_gift?: boolean
           is_urgent?: boolean
           last_edited_at?: string | null
           last_edited_by?: string | null
@@ -318,13 +325,11 @@ export type Database = {
           order_number?: string
           payment_method?: Database["public"]["Enums"]["payment_method"] | null
           queue_rank?: number | null
-          recipient_name?: string | null
           recipient_phone?: string | null
           requested_date?: string
           requested_time?: string
           schedule_updated_at?: string | null
           sender_phone?: string | null
-          servings_capacity?: string | null
           staff_code?: number | null
           staff_notes?: string | null
           status?: Database["public"]["Enums"]["order_status"]

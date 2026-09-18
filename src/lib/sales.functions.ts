@@ -492,6 +492,22 @@ export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
       throw new Error("عنصر غير موجود · Order item not found");
     }
 
+    // Per-product price lock: an admin can deny repricing of specific products.
+    if (
+      data.newUnitPrice !== undefined &&
+      Number(data.newUnitPrice) !== Number(before.unit_price ?? 0)
+    ) {
+      const { canEditProductPrice } = await import("@/lib/permissions.functions");
+      const allowed = await canEditProductPrice(
+        context as never,
+        (before.product_id as string | null) ?? null,
+      );
+      if (!allowed) {
+        throw new Error("لا تملك صلاحية تعديل سعر هذا المنتج · You are not allowed to change this product's price");
+      }
+    }
+
+
     const itemPatch: Record<string, unknown> = {};
     if (data.newUnitPrice !== undefined) itemPatch['unit_price'] = data.newUnitPrice;
     if (data.quantity !== undefined) itemPatch['quantity'] = data.quantity;
@@ -620,6 +636,35 @@ export const replaceSalesOrderItems = createServerFn({ method: "POST" })
       .eq("id", data.orderId)
       .single();
     if (readError || !existing) throw new Error("طلب غير موجود · Order not found");
+
+    // Per-product price lock: staff denied repricing must keep the catalog price.
+    const { canEditProductPrice } = await import("@/lib/permissions.functions");
+    const pricedProductIds = Array.from(
+      new Set(data.lines.map((line) => line.productId).filter((id): id is string => Boolean(id))),
+    );
+    if (pricedProductIds.length > 0) {
+      const { data: catalog } = await context.supabase
+        .from("products")
+        .select("id, price")
+        .in("id", pricedProductIds);
+      const catalogPrice = new Map<string, number>(
+        (catalog ?? []).map((row: { id: string; price: number | null }) => [row.id, Number(row.price ?? 0)]),
+      );
+      for (const productId of pricedProductIds) {
+        const allowed = await canEditProductPrice(context as never, productId);
+        if (allowed) continue;
+        const locked = catalogPrice.get(productId);
+        const mismatched = data.lines.some(
+          (line) => line.productId === productId && Number(line.unitPrice) !== Number(locked ?? 0),
+        );
+        if (mismatched) {
+          throw new Error(
+            "لا تملك صلاحية تعديل سعر هذا المنتج · You are not allowed to change this product's price",
+          );
+        }
+      }
+    }
+
 
     const { error: deleteError } = await context.supabase
       .from("order_items")
