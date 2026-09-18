@@ -7,6 +7,8 @@ import { useStorefrontContent } from "@/hooks/use-storefront-content";
 import { priceForSize, tintFill, type StorefrontProduct } from "@/lib/storefront-content";
 import { LangToggle, useLang, type Lang } from "@/lib/i18n";
 import { formatJod } from "@/lib/currency";
+import { useBrandPalette, type BrandPalette } from "@/lib/brand-palette";
+import luxuryCakeShowcaseImg from "@/assets/luxury-cake-showcase.jpg";
 
 interface DiscoverViewProps {
   onSelectProduct?: (productId: string) => void;
@@ -26,6 +28,7 @@ export function DiscoverView({
 }: DiscoverViewProps) {
   const content = useStorefrontContent();
   const { t, lang, dir } = useLang();
+  const { palette } = useBrandPalette();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -120,46 +123,72 @@ export function DiscoverView({
       )}
 
       <main className="relative z-10 w-full max-w-3xl flex-1 space-y-6 self-center overflow-x-hidden px-4 py-4 sm:px-5">
-        {/* Promotional hero banner */}
-        {banner && (
-          <section
-            aria-label="Promotional offer"
-            className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#B8801C] to-[#C58B24] p-5 text-white shadow-md"
-          >
-            <div className="absolute -right-8 -bottom-10 h-44 w-44 rounded-full bg-white/10 blur-2xl" />
-            <svg className="pointer-events-none absolute inset-0 h-full w-full opacity-20" viewBox="0 0 400 200" fill="none">
-              <path d="M180 -20 C240 60, 260 140, 420 180" stroke="currentColor" strokeWidth="24" strokeOpacity="0.2" />
-            </svg>
+        {/* Luxury "Custom Occasions & Signature Bakes" Showcase */}
+        <section
+          aria-label="Custom Occasions Showcase"
+          className="relative overflow-hidden rounded-3xl border border-[#EFE8DC] bg-gradient-to-br from-[#FDFBF7] via-[#FAF5EB] to-[#F5ECE0] p-5 sm:p-6 shadow-sm transition-all hover:shadow-md"
+        >
+          {/* Subtle background glow decorative elements */}
+          <div className="absolute -left-12 -top-12 h-40 w-40 rounded-full bg-[#B8801C]/10 blur-3xl" />
+          <div className="absolute -right-12 -bottom-12 h-40 w-40 rounded-full bg-[#6E3917]/10 blur-3xl" />
 
-            <div className="relative z-10 grid grid-cols-[minmax(0,1fr)_6rem] items-center gap-2 sm:grid-cols-[minmax(0,1fr)_9rem]">
-              <div className="min-w-0 space-y-1.5">
-                <p className="text-xs font-semibold tracking-wide text-amber-100">{banner.subtitle}</p>
-                <h2 className="text-3xl font-black uppercase leading-none tracking-tight text-white">
-                  {banner.discount_text}
-                </h2>
-                <div className="pt-2">
-                  <Link
-                    to="/product-details"
-                    search={{ id: undefined }}
-                    className="inline-flex items-center justify-center rounded-full bg-white px-4 py-1.5 text-xs font-bold text-[#6E3917] shadow-sm transition hover:bg-[#FEF7EB] active:scale-95"
-                  >
-                    {banner.button_text}
-                  </Link>
-                </div>
+          <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-5 sm:gap-6">
+            {/* Left Content Side */}
+            <div className="flex-1 min-w-0 space-y-3 text-start">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-[#EFE8DC] bg-white px-3 py-1 text-[11px] sm:text-xs font-black text-[#B8801C] shadow-2xs">
+                <Sparkles className="h-3.5 w-3.5 text-[#B8801C]" />
+                {lang === "ar" ? "كيكات واستشارات مخصصة" : "Custom Occasions & Signature Bakes"}
+              </span>
+
+              <h2 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight text-[#26160F] leading-snug">
+                {lang === "ar"
+                  ? "كيكات مميزة تُصنع بحب لمناسباتكم الخاصة 🎂"
+                  : "Signature Celebration Cakes Crafted With Love 🎂"}
+              </h2>
+
+              <p className="text-xs sm:text-sm font-medium text-[#6E3917]/80 leading-relaxed max-w-lg">
+                {lang === "ar"
+                  ? "سواء كان حفل تخرج، عيد ميلاد، أو ذكرى مميزة.. نصمم لك كيكة استثنائية تناسب ذوقك وتليق بلحظاتك السعيدة."
+                  : "Whether it's a graduation, birthday, or anniversary... We craft an exceptional cake tailored to your taste and special moments."}
+              </p>
+
+              {/* Value Badges */}
+              <div className="pt-1 flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-xl border border-[#EFE8DC] bg-white/90 px-2.5 py-1 text-[11px] font-bold text-[#4A3B32] shadow-2xs">
+                  🍰 {lang === "ar" ? "خبيز طازج يومياً بأجود المكونات" : "Baked Fresh Daily"}
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-xl border border-[#EFE8DC] bg-white/90 px-2.5 py-1 text-[11px] font-bold text-[#4A3B32] shadow-2xs">
+                  🚗 {lang === "ar" ? "توصيل مبرد وآمن في كافة مناطق عمّان" : "Refrigerated Amman Delivery"}
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-xl border border-[#EFE8DC] bg-white/90 px-2.5 py-1 text-[11px] font-bold text-[#4A3B32] shadow-2xs">
+                  ⚡ {lang === "ar" ? "دفع ميسر وسريع عبر كليك أو كاش" : "Easy CliQ & Cash Payment"}
+                </span>
               </div>
 
-              {banner.image_url && (
-                <div className="relative -my-2 flex h-24 w-24 items-center justify-center sm:h-28 sm:w-36">
-                  <img
-                    src={banner.image_url}
-                    alt={`${banner.subtitle} ${banner.discount_text}`}
-                    className="h-full w-full object-contain transition-transform duration-500 hover:scale-105"
-                  />
-                </div>
-              )}
+              {/* Action Button */}
+              <div className="pt-2">
+                <Link
+                  to="/edit-order"
+                  className="inline-flex items-center gap-2 rounded-full bg-[#B8801C] px-6 py-2.5 text-xs sm:text-sm font-bold text-white shadow-md transition-all hover:bg-[#9E6C14] hover:shadow-lg active:scale-95 cursor-pointer"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  <span>
+                    {lang === "ar" ? "✨ صمم كيكتك الخاصة / Custom Order" : "✨ Custom Order / صمم كيكتك"}
+                  </span>
+                </Link>
+              </div>
             </div>
-          </section>
-        )}
+
+            {/* Right Showcase Image */}
+            <div className="relative shrink-0 w-36 h-36 sm:w-44 sm:h-44 rounded-2xl overflow-hidden border-2 border-white shadow-md bg-white p-1">
+              <img
+                src={luxuryCakeShowcaseImg}
+                alt={lang === "ar" ? "كيكات مناسبات مخصصة" : "Custom Celebration Cakes"}
+                className="h-full w-full object-cover rounded-xl transition-transform duration-700 hover:scale-110"
+              />
+            </div>
+          </div>
+        </section>
 
         {/* Discover by category — Redesigned & Enlarged */}
         {categories.length > 0 && (
@@ -263,6 +292,7 @@ const ProductCard = memo(function ProductCard({
   lang: Lang;
   onSelect?: ((productId: string) => void) | undefined;
 }) {
+  const { palette } = useBrandPalette();
   const name = lang === "ar" ? product.name_ar : product.name_en;
   const description = lang === "ar"
     ? product.description_ar || "كيك فاخر مغطى بالسكر والكريمة"
@@ -272,10 +302,14 @@ const ProductCard = memo(function ProductCard({
   return (
     <div
       onClick={() => onSelect?.(product.id)}
-      className="group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-[#EFE8DC] bg-white p-2.5 sm:p-3 shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-[#B8801C]/40 hover:shadow-xl cursor-pointer"
+      style={{ borderColor: palette.border }}
+      className="group relative flex flex-col justify-between overflow-hidden rounded-3xl border bg-white p-2.5 sm:p-3 shadow-xs transition-all duration-300 hover:-translate-y-1 hover:shadow-xl cursor-pointer"
     >
       {/* Top Square Image Showcase Container */}
-      <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-[#FAF5EB] p-3 flex items-center justify-center">
+      <div
+        style={{ backgroundColor: palette.cardBg }}
+        className="relative aspect-square w-full overflow-hidden rounded-2xl p-3 flex items-center justify-center transition-colors duration-300"
+      >
         {/* Center Hover Glassmorphic Action Button (Luxury Quick Look Pill) */}
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/15 opacity-0 transition-opacity duration-300 group-hover:opacity-100 pointer-events-none">
           <button
@@ -284,9 +318,9 @@ const ProductCard = memo(function ProductCard({
               e.stopPropagation();
               onSelect?.(product.id);
             }}
-            className="pointer-events-auto flex items-center gap-1.5 rounded-full border border-[#B8801C]/40 bg-white/85 px-3.5 py-1.5 sm:px-4 sm:py-2 text-xs font-bold text-[#26160F] shadow-md backdrop-blur-xs transition-all duration-300 transform scale-95 group-hover:scale-100 hover:bg-white hover:border-[#B8801C] hover:shadow-lg active:scale-95"
+            className="pointer-events-auto flex items-center gap-1.5 rounded-full border border-black/10 bg-white/90 px-3.5 py-1.5 sm:px-4 sm:py-2 text-xs font-bold text-[#26160F] shadow-md backdrop-blur-xs transition-all duration-300 transform scale-95 group-hover:scale-100 hover:bg-white hover:shadow-lg active:scale-95 cursor-pointer"
           >
-            <Sparkles className="h-3.5 w-3.5 text-[#B8801C]" />
+            <Sparkles className="h-3.5 w-3.5" style={{ color: palette.main }} />
             <span>{lang === "ar" ? "🎂 نظرة سريعة" : "🎂 Quick Look"}</span>
           </button>
         </div>
@@ -300,7 +334,7 @@ const ProductCard = memo(function ProductCard({
             className="h-full w-full object-contain drop-shadow-md transition-transform duration-500 ease-out group-hover:scale-105"
           />
         ) : (
-          <span className="grid h-full w-full place-items-center text-xs font-bold text-[#B8801C]">
+          <span className="grid h-full w-full place-items-center text-xs font-bold" style={{ color: palette.main }}>
             {name}
           </span>
         )}
@@ -308,10 +342,10 @@ const ProductCard = memo(function ProductCard({
 
       {/* Card Body Content */}
       <div className="mt-3 flex-1 space-y-1 px-1">
-        <span className="block text-[9px] font-black uppercase tracking-wider text-[#B8801C]">
+        <span className="block text-[9px] font-black uppercase tracking-wider" style={{ color: palette.main }}>
           TRENDING
         </span>
-        <h4 className="font-bold text-[#26160F] text-sm sm:text-base leading-tight line-clamp-1 group-hover:text-[#B8801C] transition-colors">
+        <h4 className="font-bold text-[#26160F] text-sm sm:text-base leading-tight line-clamp-1 transition-colors">
           {name}
         </h4>
         <p className="text-[11px] font-medium text-[#4A3B32]/70 line-clamp-1">
@@ -334,7 +368,8 @@ const ProductCard = memo(function ProductCard({
             onSelect?.(product.id);
           }}
           aria-label={lang === "ar" ? "إضافة إلى السلة" : "Add to cart"}
-          className="grid h-9 w-9 sm:h-10 sm:w-10 place-items-center rounded-2xl bg-[#B8801C] text-white shadow-md hover:bg-[#9E6C14] active:scale-90 transition-all border border-amber-900/10"
+          style={{ backgroundColor: palette.btnBg }}
+          className="grid h-9 w-9 sm:h-10 sm:w-10 place-items-center rounded-2xl text-white shadow-md active:scale-90 transition-all border border-amber-900/10 cursor-pointer hover:opacity-90"
         >
           <Plus className="h-4 w-4 stroke-[3]" />
         </button>

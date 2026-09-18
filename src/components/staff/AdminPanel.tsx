@@ -35,6 +35,7 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrdersRealtime } from "@/hooks/use-orders-realtime";
+import { BRAND_PALETTES, useBrandPalette } from "@/lib/brand-palette";
 import {
   createStaff,
   getAdminAccess,
@@ -1101,7 +1102,7 @@ function StoreCmsPanel() {
   const [buttonText, setButtonText] = useState("Order now");
   const [imageUrl, setImageUrl] = useState("");
   const [isActive, setIsActive] = useState(true);
-  const [selectedPalette, setSelectedPalette] = useState("gold");
+  const { paletteId: selectedPalette, setPalette: setSelectedPalette } = useBrandPalette();
 
   const banner = cms.data?.banner;
 
@@ -1205,17 +1206,20 @@ function StoreCmsPanel() {
 
       {/* Card Color Palette Selector */}
       <div className="rounded-3xl border border-[#EFE8DC] bg-white p-5 sm:p-6 shadow-xs space-y-4">
-        <h3 className="text-base font-black text-[#26160F] flex items-center gap-2">
-          <Palette className="h-5 w-5 text-[#B8801C]" />
-          مُحدّد الهوية البصرية لكروت المتجر (Brand Palette Selector)
-        </h3>
-        <div className="grid gap-3 sm:grid-cols-4">
-          {[
-            { id: "gold", name: "DELISH Honey Gold 🍯", main: "#B8801C", bg: "#FAF5EB" },
-            { id: "chocolate", name: "Artisan Chocolate 🍫", main: "#6E3917", bg: "#FDFBF7" },
-            { id: "buttercream", name: "Warm Buttercream 🧈", main: "#C58B24", bg: "#FEF7EB" },
-            { id: "caramel", name: "Earthy Caramel 🍮", main: "#9E6C14", bg: "#FAF5EB" },
-          ].map((theme) => {
+        <div className="flex items-center justify-between border-b border-[#EFE8DC] pb-3">
+          <div>
+            <h3 className="text-base font-black text-[#26160F] flex items-center gap-2">
+              <Palette className="h-5 w-5 text-[#B8801C]" />
+              مُحدّد الهوية البصرية لكروت المتجر (Brand Palette Selector)
+            </h3>
+            <p className="text-xs text-[#4A3B32]/70 mt-0.5">
+              اختر ثيم الألوان المعتمد لكروت المنتجات في واجهة الزبائن (يتحدث فورياً).
+            </p>
+          </div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          {Object.values(BRAND_PALETTES).map((theme) => {
             const active = selectedPalette === theme.id;
             return (
               <button
@@ -1223,71 +1227,31 @@ function StoreCmsPanel() {
                 type="button"
                 onClick={() => {
                   setSelectedPalette(theme.id);
-                  toast.success(`تم اختيار ثيم ${theme.name}`);
+                  toast.success(`تم اختيار ثيم ${theme.nameAr} بنجاح 🎨`);
                 }}
-                className={`flex flex-col items-center gap-2 rounded-2xl border p-4 text-center transition-all ${
+                className={`flex flex-col items-center gap-2.5 rounded-2xl border p-4 text-center transition-all cursor-pointer ${
                   active
-                    ? "border-2 border-[#B8801C] bg-[#FEF7EB] shadow-sm scale-102"
-                    : "border-[#EFE8DC] bg-white hover:bg-[#FAF5EB]"
+                    ? "border-2 border-[#B8801C] bg-[#FEF7EB] shadow-md scale-105 ring-2 ring-[#B8801C]/20"
+                    : "border-[#EFE8DC] bg-white hover:border-[#B8801C]/50 hover:bg-[#FAF5EB]"
                 }`}
               >
-                <div className="h-8 w-8 rounded-full shadow-inner border border-black/10 flex items-center justify-center text-white font-bold" style={{ backgroundColor: theme.main }}>
-                  {active && <Check className="h-4 w-4" />}
+                <div
+                  className="h-10 w-10 rounded-full shadow-md border border-black/10 flex items-center justify-center text-white font-bold transition-transform group-hover:scale-110"
+                  style={{ backgroundColor: theme.main }}
+                >
+                  {active && <Check className="h-5 w-5 stroke-[3]" />}
                 </div>
-                <span className="text-xs font-bold text-[#26160F]">{theme.name}</span>
+                <div className="space-y-1">
+                  <span className="block text-xs font-black text-[#26160F]">{theme.nameAr}</span>
+                  <div className="flex justify-center gap-1">
+                    <span className="h-3 w-3 rounded-full border border-black/10" style={{ backgroundColor: theme.cardBg }} title="خلفية الصورة" />
+                    <span className="h-3 w-3 rounded-full border border-black/10" style={{ backgroundColor: theme.main }} title="اللون الرئيسي" />
+                    <span className="h-3 w-3 rounded-full border border-black/10" style={{ backgroundColor: theme.secondary }} title="النصوص واللمسات" />
+                  </div>
+                </div>
               </button>
             );
           })}
-        </div>
-      </div>
-
-      {/* Servings Capacity & Cake Sizes Manager */}
-      <div className="rounded-3xl border border-[#EFE8DC] bg-white p-5 sm:p-6 shadow-xs space-y-4">
-        <h3 className="text-base font-black text-[#26160F] flex items-center gap-2">
-          <Layers className="h-5 w-5 text-[#B8801C]" />
-          إدارة أحجام وسعة الكيك بالـ Servings (`8-12 شخص`, `16 شخص`)
-        </h3>
-        <div className="grid gap-3 sm:grid-cols-3">
-          {[
-            { label: "8 people (8 أشخاص)", offset: "+0.00 JOD (الحجم الأساسي)" },
-            { label: "12 people (12 شخص)", offset: "+7.00 JOD" },
-            { label: "16 people (16 شخص)", offset: "+15.00 JOD" },
-          ].map((sizeOption) => (
-            <div key={sizeOption.label} className="rounded-2xl border border-[#EFE8DC] bg-[#FDFBF7] p-4 flex items-center justify-between">
-              <div>
-                <p className="font-bold text-[#26160F] text-xs">{sizeOption.label}</p>
-                <p className="text-[11px] font-medium text-[#6E3917] mt-0.5">{sizeOption.offset}</p>
-              </div>
-              <span className="rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2.5 py-0.5 border border-emerald-200">
-                مُفعّل ✅
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Fillings & Extras Pricing */}
-      <div className="rounded-3xl border border-[#EFE8DC] bg-white p-5 sm:p-6 shadow-xs space-y-4">
-        <h3 className="text-base font-black text-[#26160F] flex items-center gap-2">
-          <Utensils className="h-5 w-5 text-[#B8801C]" />
-          إدارة أنواع الحشوات والأطعمة والإضافات
-        </h3>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {[
-            { name: "قطع شوكولاتة (chocolate chips)", extraPrice: "مجاناً ⭐️" },
-            { name: "نوتيلا وبندق (Nutella & Hazelnut)", extraPrice: "+1.50 JOD" },
-            { name: "كريمة اللوتس (Lotus Cream)", extraPrice: "+1.50 JOD" },
-            { name: "فستق حلبي غني (Pistachio Cream)", extraPrice: "+2.00 JOD" },
-            { name: "توت وفراولة طازجة (Fresh Berries)", extraPrice: "+2.00 JOD" },
-          ].map((filling) => (
-            <div key={filling.name} className="rounded-2xl border border-[#EFE8DC] bg-[#FDFBF7] p-3.5 flex items-center justify-between">
-              <div>
-                <p className="font-bold text-[#26160F] text-xs">{filling.name}</p>
-                <p className="text-[10px] font-bold text-[#B8801C] mt-0.5">{filling.extraPrice}</p>
-              </div>
-              <span className="text-xs">✨</span>
-            </div>
-          ))}
         </div>
       </div>
     </section>
