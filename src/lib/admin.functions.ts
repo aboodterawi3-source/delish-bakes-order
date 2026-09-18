@@ -67,15 +67,29 @@ export type AdminAnalytics = {
 const ACTIVE = ["new", "confirmed", "baking", "ready", "out_for_delivery"];
 const DONE = ["delivered", "completed"];
 
-/** True only while the database has no admin yet, so the one-time setup screen can run. */
-export const getAdminSetupState = createServerFn({ method: "GET" }).handler(async () => {
+/**
+ * The one-time setup screen may only run before the first admin is created.
+ * A persistent flag closes it forever, even if the admin count later drops to zero.
+ */
+async function setupIsClosed(): Promise<boolean> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data } = await (supabaseAdmin as any)
+    .from("app_setup_state")
+    .select("admin_setup_completed_at")
+    .maybeSingle();
+  if (data?.admin_setup_completed_at) return true;
+
   const { count, error } = await supabaseAdmin
     .from("user_roles")
     .select("id", { count: "exact", head: true })
     .eq("role", "admin");
   if (error) throw new Error(error.message);
-  return { needsSetup: (count ?? 0) === 0 };
+  return (count ?? 0) > 0;
+}
+
+/** True only while the app has never completed admin setup. */
+export const getAdminSetupState = createServerFn({ method: "GET" }).handler(async () => {
+  return { needsSetup: !(await setupIsClosed()) };
 });
 
 /**
