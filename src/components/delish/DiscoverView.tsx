@@ -27,7 +27,6 @@ export function DiscoverView({
   const content = useStorefrontContent();
   const { t, lang, dir } = useLang();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [showAllCatalog, setShowAllCatalog] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -38,14 +37,13 @@ export function DiscoverView({
   const visible = useMemo(() => {
     const needle = searchQuery.trim().toLowerCase();
     return products
-      .filter((product) => (showAllCatalog ? true : product.is_popular))
       .filter((product) => (selectedCategory ? product.category_id === selectedCategory : true))
       .filter((product) =>
         needle
           ? `${product.name_en} ${product.name_ar} ${product.category}`.toLowerCase().includes(needle)
           : true,
       );
-  }, [products, selectedCategory, searchQuery, showAllCatalog]);
+  }, [products, selectedCategory, searchQuery]);
 
   const activeCategory = categories.find((category) => category.id === selectedCategory) ?? null;
   const activeCategoryName = activeCategory
@@ -168,15 +166,6 @@ export function DiscoverView({
           <section aria-label="Discover by category" className="space-y-3">
             <div className="flex items-center justify-between px-1">
               <h3 className="text-sm font-bold text-[#26160F] sm:text-base">{t("discoverByCategory")}</h3>
-              {selectedCategory && (
-                <button
-                  type="button"
-                  onClick={() => setSelectedCategory(null)}
-                  className="text-xs font-semibold text-[#B8801C] transition-transform hover:underline active:scale-95"
-                >
-                  {t("showAll")}
-                </button>
-              )}
             </div>
 
             <div className="no-scrollbar flex w-full max-w-full gap-3.5 sm:gap-5 overflow-x-auto overscroll-x-contain pb-2 pt-1 px-1">
@@ -233,22 +222,10 @@ export function DiscoverView({
 
         {/* Popular cakes — Grid */}
         <section aria-label="Popular cakes" className="space-y-4 pb-8">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between px-1">
             <h3 className="text-base font-black text-[#26160F] sm:text-lg">
-              {activeCategoryName ? `${t("popular")} · ${activeCategoryName}` : t("popular")}
+              {activeCategoryName ? activeCategoryName : (lang === "ar" ? "قائمة المنتجات" : "Product Catalog")}
             </h3>
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedCategory(null);
-                setShowAllCatalog((prev) => !prev);
-              }}
-              aria-label={t("showAll")}
-              className="flex items-center gap-1.5 text-xs font-extrabold text-[#B8801C] hover:text-[#9E6C14] transition-all rounded-full bg-[#FEF7EB] px-3.5 py-1 border border-[#EFE8DC] active:scale-95 shadow-xs"
-            >
-              <span>{showAllCatalog ? (lang === "ar" ? "المميز فقط ✨" : "Popular Only ✨") : t("showAll")}</span>
-              <ArrowRight className={`h-3.5 w-3.5 transition-transform duration-300 ${showAllCatalog ? "rotate-180" : ""}`} />
-            </button>
           </div>
 
           {content.isPending ? (
