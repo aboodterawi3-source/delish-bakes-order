@@ -1215,9 +1215,14 @@ function StoreCmsPanel() {
               <button
                 key={theme.id}
                 type="button"
-                onClick={() => {
-                  setSelectedPalette(theme.id);
-                  toast.success(`تم اختيار ثيم ${theme.nameAr} بنجاح 🎨`);
+                onClick={async () => {
+                  try {
+                    await setSelectedPalette(theme.id);
+                    toast.success(`تم حفظ وتطبيق ثيم ${theme.nameAr} بنجاح 🎨`);
+                  } catch (err) {
+                    const message = err instanceof Error ? err.message : "خطأ غير متوقع";
+                    toast.error(`تعذر حفظ الثيم: ${message}`);
+                  }
                 }}
                 className={`flex flex-col items-center gap-2.5 rounded-2xl border p-4 text-center transition-all cursor-pointer ${
                   active

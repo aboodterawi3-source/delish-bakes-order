@@ -1,29 +1,31 @@
 import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface BrandPalette {
   id: string;
   nameEn: string;
   nameAr: string;
-  main: string;        // Accent / Primary color e.g. #B8801C
-  secondary: string;   // Dark text accent e.g. #6E3917
-  cardBg: string;      // Image container background e.g. #FAF5EB
-  border: string;      // Card border color e.g. #EFE8DC
-  badgeBg: string;     // Badge background e.g. #B8801C
-  badgeText: string;   // Badge text color e.g. #FFFFFF
-  btnBg: string;       // Button background e.g. #B8801C
-  btnHoverBg: string;  // Button hover background e.g. #9E6C14
-  highlightBg: string; // Soft highlight background e.g. #FEF7EB
+  main: string;        // Accent color (e.g. #B8801C)
+  secondary: string;   // Secondary text accent (e.g. #6E3917, #26160F)
+  cardBg: string;      // Image box background / light tint background
+  border: string;      // Card border color
+  badgeBg: string;     // Badge background
+  badgeText: string;   // Badge text color
+  btnBg: string;       // Button background
+  btnHoverBg: string;  // Button hover background
+  highlightBg: string; // Soft highlight background
 }
 
 export const BRAND_PALETTES: Record<string, BrandPalette> = {
   gold: {
     id: "gold",
-    nameEn: "DELISH Honey Gold 🍯",
-    nameAr: "العسلي الذهبي (DELISH Honey Gold 🍯)",
+    nameEn: "Honey Gold 🍯",
+    nameAr: "عسل ذهبي 🍯",
     main: "#B8801C",
     secondary: "#6E3917",
-    cardBg: "#FAF5EB",
-    border: "#EFE8DC",
+    cardBg: "#FEF7EB",
+    border: "#FDE68A",
     badgeBg: "#B8801C",
     badgeText: "#FFFFFF",
     btnBg: "#B8801C",
@@ -32,64 +34,65 @@ export const BRAND_PALETTES: Record<string, BrandPalette> = {
   },
   ivory: {
     id: "ivory",
-    nameEn: "Soft Cream Ivory 🍦",
-    nameAr: "عاجي ناعم (Soft Cream Ivory 🍦)",
+    nameEn: "Soft Ivory 🍦",
+    nameAr: "عاجي ناعم 🍦",
     main: "#C58B24",
-    secondary: "#4A3B32",
+    secondary: "#26160F",
     cardBg: "#FAF5EB",
-    border: "#F3E9DC",
+    border: "#EFE8DC",
     badgeBg: "#C58B24",
     badgeText: "#FFFFFF",
     btnBg: "#C58B24",
     btnHoverBg: "#A9731B",
-    highlightBg: "#FEF7EB",
+    highlightBg: "#FAF5EB",
   },
   rose: {
     id: "rose",
-    nameEn: "Warm Rose Pastel 🌸",
-    nameAr: "باستيل وردي دافئ (Warm Rose Pastel 🌸)",
-    main: "#D9777F",
-    secondary: "#6E3917",
-    cardBg: "#FFF5F5",
-    border: "#FCD5CE",
-    badgeBg: "#D9777F",
+    nameEn: "Pastel Rose 🌸",
+    nameAr: "باستيل وردي 🌸",
+    main: "#E11D48",
+    secondary: "#9F1239",
+    cardBg: "#FDF2F4",
+    border: "#FBCFE8",
+    badgeBg: "#E11D48",
     badgeText: "#FFFFFF",
-    btnBg: "#D9777F",
-    btnHoverBg: "#C25D65",
-    highlightBg: "#FFF0F0",
+    btnBg: "#E11D48",
+    btnHoverBg: "#BE123C",
+    highlightBg: "#FDF2F4",
   },
   pistachio: {
     id: "pistachio",
-    nameEn: "Delicate Pistachio 🌿",
-    nameAr: "فستق راقي (Delicate Pistachio 🌿)",
-    main: "#4E8752",
-    secondary: "#1B3B1D",
-    cardBg: "#E8F5E9",
-    border: "#C8E6C9",
-    badgeBg: "#4E8752",
+    nameEn: "Refined Pistachio 🌿",
+    nameAr: "فستق راقي 🌿",
+    main: "#16A34A",
+    secondary: "#14532D",
+    cardBg: "#F0FDF4",
+    border: "#BBF7D0",
+    badgeBg: "#16A34A",
     badgeText: "#FFFFFF",
-    btnBg: "#4E8752",
-    btnHoverBg: "#3B693E",
-    highlightBg: "#F1F8F5",
+    btnBg: "#16A34A",
+    btnHoverBg: "#15803D",
+    highlightBg: "#F0FDF4",
   },
   chocolate: {
     id: "chocolate",
-    nameEn: "Rich Chocolate Brown 🍫",
-    nameAr: "شوكولاتة فاخرة (Rich Chocolate Brown 🍫)",
+    nameEn: "Luxury Chocolate 🍫",
+    nameAr: "شوكولاتة فاخرة 🍫",
     main: "#6E3917",
     secondary: "#3E2723",
-    cardBg: "#FDFBF7",
-    border: "#D7CCC8",
+    cardBg: "#FAF5F0",
+    border: "#E4D5C7",
     badgeBg: "#6E3917",
     badgeText: "#FFFFFF",
     btnBg: "#6E3917",
     btnHoverBg: "#542A10",
-    highlightBg: "#F7F0EB",
+    highlightBg: "#FAF5F0",
   },
 };
 
 const PALETTE_STORAGE_KEY = "delish_active_brand_palette";
 const PALETTE_EVENT_NAME = "delish-palette-change";
+export const STORE_SETTINGS_KEY = ["store_settings"] as const;
 
 export function getStoredPaletteId(): string {
   if (typeof window === "undefined") return "gold";
@@ -103,15 +106,52 @@ export function setStoredPaletteId(id: string): void {
 }
 
 export function useBrandPalette() {
-  const [paletteId, setPaletteId] = useState<string>(getStoredPaletteId);
+  const queryClient = useQueryClient();
+  const [localPaletteId, setLocalPaletteId] = useState<string>(getStoredPaletteId);
 
+  // Query card_color_palette from store_settings table in Supabase
+  const { data: storeSettings } = useQuery({
+    queryKey: STORE_SETTINGS_KEY,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("store_settings")
+        .select("card_color_palette")
+        .eq("singleton", true)
+        .maybeSingle();
+
+      if (error) {
+        console.warn("[store_settings] error fetching card_color_palette:", error);
+        return null;
+      }
+      return data;
+    },
+    staleTime: 30_000,
+  });
+
+  // Subscribe to Supabase Realtime changes on store_settings table
+  useEffect(() => {
+    const invalidate = () => {
+      void queryClient.invalidateQueries({ queryKey: STORE_SETTINGS_KEY });
+    };
+
+    const channel = supabase
+      .channel(`store-settings-palette-${Math.random().toString(36).slice(2)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "store_settings" }, invalidate)
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
+
+  // Keep local storage & event state in sync with custom events
   useEffect(() => {
     const handlePaletteChange = (event: Event) => {
       const customEvent = event as CustomEvent<string>;
       if (customEvent.detail) {
-        setPaletteId(customEvent.detail);
+        setLocalPaletteId(customEvent.detail);
       } else {
-        setPaletteId(getStoredPaletteId());
+        setLocalPaletteId(getStoredPaletteId());
       }
     };
 
@@ -123,15 +163,38 @@ export function useBrandPalette() {
     };
   }, []);
 
-  const changePalette = (newId: string) => {
+  // Determine active palette ID: database value takes precedence if available
+  const activePaletteId = storeSettings?.card_color_palette && BRAND_PALETTES[storeSettings.card_color_palette]
+    ? storeSettings.card_color_palette
+    : localPaletteId;
+
+  // Persist chosen palette to database and invalidate query cache
+  const changePalette = async (newId: string) => {
+    if (!BRAND_PALETTES[newId]) return;
+
+    // Optimistically update local state & local storage
     setStoredPaletteId(newId);
-    setPaletteId(newId);
+    setLocalPaletteId(newId);
+
+    // Save to Supabase store_settings table
+    const { error } = await supabase
+      .from("store_settings")
+      .update({ card_color_palette: newId } as never)
+      .eq("singleton", true);
+
+    if (error) {
+      console.error("[store_settings] failed to save card_color_palette:", error);
+      throw error;
+    }
+
+    // Invalidate query cache so all components refresh
+    await queryClient.invalidateQueries({ queryKey: STORE_SETTINGS_KEY });
   };
 
-  const activePalette = BRAND_PALETTES[paletteId] || BRAND_PALETTES.gold;
+  const activePalette = BRAND_PALETTES[activePaletteId] || BRAND_PALETTES.gold;
 
   return {
-    paletteId,
+    paletteId: activePaletteId,
     setPalette: changePalette,
     palette: activePalette,
   };
