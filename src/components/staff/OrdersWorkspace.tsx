@@ -461,7 +461,7 @@ export function OrdersWorkspace({ showShiftReport = false }: { showShiftReport?:
       ) : orders.isError ? (
         <p className="py-10 text-center text-sm text-destructive">تعذّر تحميل الطلبات — حدّث الصفحة</p>
       ) : mode === "calendar" ? (
-        <OrdersCalendar orders={orders.data ?? []} onOpen={openOrder} />
+        <OrdersCalendar orders={orders.data ?? []} onOpen={openOrder} onPatch={(patchData) => patch.mutate(patchData)} />
       ) : list.length === 0 ? (
         <p className="py-10 text-center text-sm text-muted-foreground">لا توجد طلبات مطابقة</p>
       ) : (

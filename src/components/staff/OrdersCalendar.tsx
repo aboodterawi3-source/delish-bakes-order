@@ -1,4 +1,5 @@
-import { memo, useMemo, useState, useEffect } from "react";
+import { memo, useMemo, useState, useEffect, useRef } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import {
   Calendar,
   ChevronLeft,
@@ -19,7 +20,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
-import type { SalesOrder, SalesStatus } from "@/lib/sales.functions";
+import { updateSalesOrder, type OrderPatch, type SalesOrder, type SalesStatus } from "@/lib/sales.functions";
 import { orderLabel } from "@/lib/order-label";
 import { esc, printDocument } from "@/lib/print";
 
@@ -221,7 +222,7 @@ function computeHourlyMultiColumnLayout(orders: SalesOrder[], pixelsPerHour = 72
     const numCols = columns.length;
     for (const item of cluster) {
       const topPx = (item.start / 60) * pixelsPerHour;
-      const heightPx = Math.max(54, (item.end - item.start) / 60 * pixelsPerHour - 4);
+      const heightPx = Math.max(54, ((item.end - item.start) / 60) * pixelsPerHour - 4);
       result.push({
         order: item.order,
         startMinutes: item.start,
@@ -284,14 +285,38 @@ function printOrderReceipt(order: SalesOrder) {
 export interface OrdersCalendarProps {
   orders: SalesOrder[];
   onOpen: (id: string) => void;
+  onPatch?: (input: OrderPatch) => void;
 }
 
-export const OrdersCalendar = memo(function OrdersCalendar({ orders, onOpen }: OrdersCalendarProps) {
+export const OrdersCalendar = memo(function OrdersCalendar({ orders, onOpen, onPatch }: OrdersCalendarProps) {
+  const updateOrderServerFn = useServerFn(updateSalesOrder);
   const [viewMode, setViewMode] = useState<CalendarViewMode>("day");
   const [currentDate, setCurrentDate] = useState<Date>(() => new Date());
   const [statusFilter, setStatusFilter] = useState<SalesStatus | "all">("all");
   const [selectedOrder, setSelectedOrder] = useState<SalesOrder | null>(null);
   const [zoomImage, setZoomImage] = useState<string | null>(null);
+
+  // Touch Long-Press Dragging State
+  const [dragging, setDragging] = useState<{
+    order: SalesOrder;
+    startX: number;
+    startY: number;
+    currentX: number;
+    currentY: number;
+    targetHour: number; // 6 to 23
+  } | null>(null);
+
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const startPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const isDraggingActive = useRef<boolean>(false);
+  const timelineRef = useRef<HTMLDivElement | null>(null);
+
+  // Clean up timer on unmount
+  useEffect(() => {
+    return () => {
+      if (longPressTimer.current) clearTimeout(longPressTimer.current);
+    };
+  }, []);
 
   // Active YYYY-MM-DD
   const dateISO = useMemo(() => {
@@ -316,6 +341,109 @@ export const OrdersCalendar = memo(function OrdersCalendar({ orders, onOpen }: O
   const positionedDayOrders = useMemo(() => {
     return computeHourlyMultiColumnLayout(dayOrders, 72);
   }, [dayOrders]);
+
+  // Touch / Pointer Handlers for 300ms Long-Press Touch Dragging
+  const handlePointerDown = (e: React.PointerEvent, ord: SalesOrder) => {
+    if (e.button !== 0 && e.pointerType === "mouse") return;
+
+    const startX = e.clientX;
+    const startY = e.clientY;
+    startPos.current = { x: startX, y: startY };
+    isDraggingActive.current = false;
+    const targetElement = e.currentTarget as HTMLElement;
+
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+
+    longPressTimer.current = setTimeout(() => {
+      // Haptic Vibration feedback on touch screens
+      if (typeof window !== "undefined" && window.navigator?.vibrate) {
+        try {
+          window.navigator.vibrate(40);
+        } catch {
+          /* ignore */
+        }
+      }
+
+      isDraggingActive.current = true;
+      try {
+        targetElement.setPointerCapture(e.pointerId);
+      } catch {
+        /* ignore */
+      }
+
+      const initialHour = Math.floor(parseTimeInMinutes(ord.requested_time) / 60);
+      const clampedHour = Math.min(Math.max(initialHour, 6), 23);
+
+      setDragging({
+        order: ord,
+        startX,
+        startY,
+        currentX: startX,
+        currentY: startY,
+        targetHour: clampedHour,
+      });
+    }, 300);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isDraggingActive.current && longPressTimer.current) {
+      const dx = Math.abs(e.clientX - startPos.current.x);
+      const dy = Math.abs(e.clientY - startPos.current.y);
+      if (dx > 6 || dy > 6) {
+        clearTimeout(longPressTimer.current);
+        longPressTimer.current = null;
+      }
+      return;
+    }
+
+    if (isDraggingActive.current && dragging) {
+      e.preventDefault();
+      const currentX = e.clientX;
+      const currentY = e.clientY;
+
+      let targetHour = dragging.targetHour;
+      if (timelineRef.current) {
+        const rect = timelineRef.current.getBoundingClientRect();
+        const relativeY = currentY - rect.top;
+        const rawHour = 6 + Math.floor(relativeY / 72);
+        targetHour = Math.min(Math.max(rawHour, 6), 23);
+      }
+
+      setDragging((prev) => (prev ? { ...prev, currentX, currentY, targetHour } : null));
+    }
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+
+    if (isDraggingActive.current && dragging) {
+      e.preventDefault();
+      const finalHour = dragging.targetHour;
+      const orderToMove = dragging.order;
+      const targetTimeStr = `${String(finalHour).padStart(2, "0")}:00:00`;
+      const displayTime = formatMinutesArabic(finalHour * 60);
+
+      isDraggingActive.current = false;
+      setDragging(null);
+
+      // Perform mutation
+      if (onPatch) {
+        onPatch({ orderId: orderToMove.id, requested_time: targetTimeStr });
+      } else {
+        updateOrderServerFn({ data: { orderId: orderToMove.id, requested_time: targetTimeStr } }).catch(() => {
+          toast.error("تعذر تحديث موعد الطلب");
+        });
+      }
+
+      toast.success(`✨ تم نقل الطلب إلى الساعة ${displayTime} بنجاح`);
+      return;
+    }
+
+    isDraggingActive.current = false;
+  };
 
   // Navigation helpers
   const handleToday = () => setCurrentDate(new Date());
@@ -429,7 +557,13 @@ export const OrdersCalendar = memo(function OrdersCalendar({ orders, onOpen }: O
   };
 
   return (
-    <div className="flex flex-col rounded-2xl border border-border bg-card shadow-lg text-card-foreground overflow-hidden transition-all" dir="rtl">
+    <div
+      className="flex flex-col rounded-2xl border border-border bg-card shadow-lg text-card-foreground overflow-hidden transition-all select-none"
+      dir="rtl"
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+    >
       {/* 1. CALENDAR CONTROL HEADER */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-muted/30 p-3 sm:p-4">
         {/* Left (RTL): Navigation & Title */}
@@ -646,9 +780,9 @@ export const OrdersCalendar = memo(function OrdersCalendar({ orders, onOpen }: O
           </div>
         </div>
       ) : (
-        /* DAY HOURLY TIMELINE VIEW (06:00 AM to 11:00 PM) */
+        /* DAY HOURLY TIMELINE VIEW (06:00 AM to 11:00 PM) WITH TOUCH LONG-PRESS DRAG & DROP */
         <div className="relative flex flex-col bg-background">
-          <div className="max-h-[640px] overflow-y-auto overflow-x-hidden relative">
+          <div className="max-h-[640px] overflow-y-auto overflow-x-hidden relative" ref={timelineRef}>
             {/* Hourly Rows Grid */}
             <div className="relative min-h-[1296px] w-full border-b border-border">
               {/* 18 Hours Rows (06:00 AM to 11:00 PM) */}
@@ -674,6 +808,19 @@ export const OrdersCalendar = memo(function OrdersCalendar({ orders, onOpen }: O
                 );
               })}
 
+              {/* TARGET HOUR DROP HIGHLIGHT BOX (When Dragging on Touch) */}
+              {dragging ? (
+                <div
+                  style={{ top: `${(dragging.targetHour - 6) * 72}px`, height: "72px" }}
+                  className="absolute inset-x-0 right-16 sm:right-20 z-20 flex items-center justify-between bg-primary/20 border-2 border-dashed border-primary px-4 rounded-xl shadow-lg pointer-events-none transition-all animate-pulse"
+                >
+                  <span className="text-xs font-black text-primary bg-background px-3 py-1 rounded-full shadow-sm">
+                    🎯 نقل الطلب إلى الساعة {formatMinutesArabic(dragging.targetHour * 60)}
+                  </span>
+                  <span className="text-xs font-bold text-primary">اترك الإصبع للإسقاط</span>
+                </div>
+              ) : null}
+
               {/* LIVE CURRENT TIME INDICATOR BAR */}
               {currentDate.toDateString() === new Date().toDateString() ? (
                 (() => {
@@ -698,7 +845,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({ orders, onOpen }: O
                 })()
               ) : null}
 
-              {/* POSITIONED MULTI-COLUMN EVENT CARDS */}
+              {/* POSITIONED MULTI-COLUMN EVENT CARDS WITH TOUCH LONG-PRESS DRAG */}
               <div className="absolute top-0 bottom-0 right-16 sm:right-20 left-0 z-10">
                 {positionedDayOrders.length === 0 ? (
                   <div className="flex h-48 items-center justify-center text-sm font-bold text-muted-foreground">
@@ -716,21 +863,33 @@ export const OrdersCalendar = memo(function OrdersCalendar({ orders, onOpen }: O
                     // RTL Sub-column placement logic
                     const widthPercent = 100 / pos.totalCols;
                     const rightPercent = pos.colIndex * widthPercent;
+                    const isBeingDragged = dragging?.order.id === ord.id;
 
                     return (
                       <div
                         key={ord.id}
-                        onClick={() => setSelectedOrder(ord)}
+                        onPointerDown={(e) => handlePointerDown(e, ord)}
+                        onClick={() => {
+                          if (!isDraggingActive.current) {
+                            setSelectedOrder(ord);
+                          }
+                        }}
                         style={{
                           top: `${pos.topPx}px`,
                           height: `${pos.heightPx}px`,
                           right: `${rightPercent}%`,
                           width: `calc(${widthPercent}% - 4px)`,
+                          touchAction: "none",
+                          userSelect: "none",
+                          WebkitUserSelect: "none",
+                          WebkitTouchCallout: "none",
                         }}
-                        className={`order-item absolute rounded-xl border p-2.5 shadow-md cursor-pointer transition-all hover:scale-[1.01] hover:z-30 overflow-hidden flex flex-col justify-between ${cfg.bg} ${cfg.border} ${cfg.text}`}
+                        className={`order-item absolute rounded-xl border p-2.5 shadow-md cursor-grab active:cursor-grabbing transition-all hover:scale-[1.01] hover:z-30 overflow-hidden flex flex-col justify-between ${cfg.bg} ${cfg.border} ${cfg.text} ${
+                          isBeingDragged ? "opacity-30 scale-95 border-dashed border-primary" : ""
+                        }`}
                       >
                         {/* Card Header: Code + Status Badge */}
-                        <div className="flex items-center justify-between gap-1">
+                        <div className="flex items-center justify-between gap-1 pointer-events-none">
                           <span className="inline-flex items-center gap-1 rounded-md bg-black/10 px-1.5 py-0.5 font-mono text-[11px] font-black dir-ltr">
                             {code}
                           </span>
@@ -740,7 +899,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({ orders, onOpen }: O
                         </div>
 
                         {/* Card Body: Customer & Location */}
-                        <div className="mt-1 space-y-0.5">
+                        <div className="mt-1 space-y-0.5 pointer-events-none">
                           <div className="flex items-center gap-1 text-xs font-black truncate">
                             {ord.method === "delivery" ? <Truck className="h-3.5 w-3.5 text-blue-600 shrink-0" /> : <Store className="h-3.5 w-3.5 text-amber-600 shrink-0" />}
                             <span className="truncate">{ord.customer_name}</span>
@@ -751,7 +910,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({ orders, onOpen }: O
                         </div>
 
                         {/* Card Footer: Time slot */}
-                        <div className="mt-1 flex items-center justify-between text-[10px] font-bold opacity-75">
+                        <div className="mt-1 flex items-center justify-between text-[10px] font-bold opacity-75 pointer-events-none">
                           <span className="flex items-center gap-1">
                             <Clock className="h-3 w-3" /> {timeWindow}
                           </span>
@@ -766,6 +925,35 @@ export const OrdersCalendar = memo(function OrdersCalendar({ orders, onOpen }: O
           </div>
         </div>
       )}
+
+      {/* FLOATING GHOST CARD PREVIEW DURING TOUCH DRAG */}
+      {dragging ? (
+        <div
+          style={{
+            position: "fixed",
+            left: dragging.currentX - 110,
+            top: dragging.currentY - 35,
+            width: "220px",
+            zIndex: 99999,
+            pointerEvents: "none",
+          }}
+          className="rounded-2xl border-2 border-primary bg-card p-3 shadow-2xl ring-4 ring-primary/40 rotate-2 scale-105 transition-transform"
+          dir="rtl"
+        >
+          <div className="flex items-center justify-between gap-1 text-xs font-black text-primary">
+            <span>{orderLabel(dragging.order.order_number, dragging.order.staff_code)}</span>
+            <span className="text-[10px] bg-primary text-primary-foreground px-2 py-0.5 rounded-full font-bold">
+              سحب ✋
+            </span>
+          </div>
+          <div className="text-xs font-black text-foreground mt-1 truncate">
+            {dragging.order.customer_name}
+          </div>
+          <div className="text-[11px] font-bold text-primary mt-1 flex items-center gap-1">
+            <Clock className="h-3 w-3" /> نقل إلى: {formatMinutesArabic(dragging.targetHour * 60)}
+          </div>
+        </div>
+      ) : null}
 
       {/* 4. STRUCTURED ORDER DETAILS MODAL / SHEET */}
       {selectedOrder ? (
