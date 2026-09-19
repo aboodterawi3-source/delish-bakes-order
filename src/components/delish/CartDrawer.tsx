@@ -7,6 +7,7 @@ import { useLang } from "@/lib/i18n";
 import { useDismissable } from "@/lib/a11y";
 import { useServerFn } from "@tanstack/react-start";
 import { submitStorefrontOrder } from "@/lib/storefront-order.functions";
+import { useBrandPalette } from "@/lib/brand-palette";
 
 
 type Form = {
@@ -36,6 +37,7 @@ const empty: Form = {
 
 export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t, lang } = useLang();
+  const { palette } = useBrandPalette();
   const { lines, setQty, remove, clear, subtotal, count } = useCart();
   const [stage, setStage] = useState<"cart" | "checkout" | "done">("cart");
   const [waUrl, setWaUrl] = useState("");
@@ -356,8 +358,12 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                       type="button"
                       aria-pressed={form.method === m}
                       onClick={() => set("method", m)}
-                      className={`min-h-12 rounded-2xl border px-3 py-2.5 text-sm ${
-                        form.method === m ? "border-gold bg-secondary font-semibold" : "border-border text-foreground"
+                      style={{
+                        borderColor: form.method === m ? palette.main : undefined,
+                        backgroundColor: form.method === m ? palette.cardBg : undefined,
+                      }}
+                      className={`min-h-12 rounded-2xl border px-3 py-2.5 text-sm cursor-pointer transition-all ${
+                        form.method === m ? "font-semibold shadow-xs" : "border-border text-foreground hover:bg-secondary/20"
                       }`}
                     >
                       {m === "delivery" ? t("deliveryOpt") : t("pickup")}
@@ -377,8 +383,12 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                       type="button"
                       aria-pressed={form.pay === option}
                       onClick={() => set("pay", option)}
-                      className={`min-h-12 rounded-2xl border px-3 py-2.5 text-sm ${
-                        form.pay === option ? "border-gold bg-secondary font-semibold" : "border-border text-foreground"
+                      style={{
+                        borderColor: form.pay === option ? palette.main : undefined,
+                        backgroundColor: form.pay === option ? palette.cardBg : undefined,
+                      }}
+                      className={`min-h-12 rounded-2xl border px-3 py-2.5 text-sm cursor-pointer transition-all ${
+                        form.pay === option ? "font-semibold shadow-xs" : "border-border text-foreground hover:bg-secondary/20"
                       }`}
                     >
                       {option === "cash"
@@ -392,7 +402,10 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                   ))}
                 </div>
                 {form.pay === "cliq" && (
-                  <div className="mt-2 rounded-2xl border border-primary/20 bg-primary/5 p-3.5 space-y-2 text-xs">
+                  <div
+                    style={{ borderColor: palette.border, backgroundColor: palette.cardBg }}
+                    className="mt-2 rounded-2xl border p-3.5 space-y-2 text-xs transition-colors"
+                  >
                     <p className="text-muted-foreground leading-relaxed">
                       {lang === "ar"
                         ? "الدفع عبر كليك · يرجى إرسال صورة إشعار التحويل عبر الواتساب بعد إتمام العملية لتأكيد طلبك."
@@ -491,12 +504,18 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
           <div className="space-y-3 border-t border-border bg-card px-4 py-4 sm:px-5">
             <Row label={t("subtotal")} value={`${subtotal.toFixed(2)} ${t("jod")}`} />
             <Row label={t("delivery")} value={`${deliveryFee.toFixed(2)} ${t("jod")}`} />
-            <Row label={t("total")} value={`${total.toFixed(2)} ${t("jod")}`} strong />
+            <div className="flex items-center justify-between text-sm">
+              <span className="font-display text-base font-semibold">{t("total")}</span>
+              <span style={{ color: palette.main }} className="font-display text-base font-black">
+                {`${total.toFixed(2)} ${t("jod")}`}
+              </span>
+            </div>
             {stage === "cart" ? (
               <>
                 <button
                   onClick={() => setStage("checkout")}
-                  className="min-h-12 w-full rounded-full bg-primary py-3.5 text-sm font-semibold text-primary-foreground"
+                  style={{ backgroundColor: palette.btnBg }}
+                  className="min-h-12 w-full rounded-full py-3.5 text-sm font-bold text-white shadow-md transition-all hover:opacity-90 active:scale-[0.98] cursor-pointer"
                 >
                   {t("checkout")}
                 </button>

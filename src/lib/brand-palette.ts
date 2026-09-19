@@ -6,14 +6,14 @@ export interface BrandPalette {
   id: string;
   nameEn: string;
   nameAr: string;
-  main: string;        // Accent color (e.g. #B8801C)
-  secondary: string;   // Secondary text accent (e.g. #6E3917, #26160F)
-  cardBg: string;      // Image box background / light tint background
-  border: string;      // Card border color
+  main: string;        // Primary Accent e.g. #B8801C, #8C6D3B, #E11D48, #16A34A, #6E3917
+  secondary: string;   // Text & secondary accent
+  cardBg: string;      // Light Tint background e.g. #FEF7EB, #FAF5EB, #FDF2F4, #F0FDF4, #FAF5F0
+  border: string;      // Border color e.g. #FDE68A, #EFE8DC, #FBCFE8, #BBF7D0, #E4D5C7
   badgeBg: string;     // Badge background
   badgeText: string;   // Badge text color
   btnBg: string;       // Button background
-  btnHoverBg: string;  // Button hover background
+  btnHoverBg: string;  // Button hover background e.g. #9E6C14, #70552B, #BE123C, #15803D, #552B11
   highlightBg: string; // Soft highlight background
 }
 
@@ -36,14 +36,14 @@ export const BRAND_PALETTES: Record<string, BrandPalette> = {
     id: "ivory",
     nameEn: "Soft Ivory 🍦",
     nameAr: "عاجي ناعم 🍦",
-    main: "#C58B24",
+    main: "#8C6D3B",
     secondary: "#26160F",
     cardBg: "#FAF5EB",
     border: "#EFE8DC",
-    badgeBg: "#C58B24",
+    badgeBg: "#8C6D3B",
     badgeText: "#FFFFFF",
-    btnBg: "#C58B24",
-    btnHoverBg: "#A9731B",
+    btnBg: "#8C6D3B",
+    btnHoverBg: "#70552B",
     highlightBg: "#FAF5EB",
   },
   rose: {
@@ -85,7 +85,7 @@ export const BRAND_PALETTES: Record<string, BrandPalette> = {
     badgeBg: "#6E3917",
     badgeText: "#FFFFFF",
     btnBg: "#6E3917",
-    btnHoverBg: "#542A10",
+    btnHoverBg: "#552B11",
     highlightBg: "#FAF5F0",
   },
 };
@@ -103,6 +103,17 @@ export function setStoredPaletteId(id: string): void {
   if (typeof window === "undefined") return;
   localStorage.setItem(PALETTE_STORAGE_KEY, id);
   window.dispatchEvent(new CustomEvent(PALETTE_EVENT_NAME, { detail: id }));
+}
+
+/** Helper to update CSS custom properties on document element for site-wide styling. */
+function applyThemeCssVariables(palette: BrandPalette) {
+  if (typeof document === "undefined") return;
+  const root = document.documentElement;
+  root.style.setProperty("--theme-primary", palette.main);
+  root.style.setProperty("--theme-hover", palette.btnHoverBg);
+  root.style.setProperty("--theme-light", palette.cardBg);
+  root.style.setProperty("--theme-border", palette.border);
+  root.style.setProperty("--theme-secondary", palette.secondary);
 }
 
 export function useBrandPalette() {
@@ -168,6 +179,13 @@ export function useBrandPalette() {
     ? storeSettings.card_color_palette
     : localPaletteId;
 
+  const activePalette = BRAND_PALETTES[activePaletteId] || BRAND_PALETTES.gold;
+
+  // Apply CSS custom variables to document root whenever active palette changes
+  useEffect(() => {
+    applyThemeCssVariables(activePalette);
+  }, [activePalette]);
+
   // Persist chosen palette to database and invalidate query cache
   const changePalette = async (newId: string) => {
     if (!BRAND_PALETTES[newId]) return;
@@ -175,6 +193,7 @@ export function useBrandPalette() {
     // Optimistically update local state & local storage
     setStoredPaletteId(newId);
     setLocalPaletteId(newId);
+    applyThemeCssVariables(BRAND_PALETTES[newId]);
 
     // Save to Supabase store_settings table
     const { error } = await supabase
@@ -190,8 +209,6 @@ export function useBrandPalette() {
     // Invalidate query cache so all components refresh
     await queryClient.invalidateQueries({ queryKey: STORE_SETTINGS_KEY });
   };
-
-  const activePalette = BRAND_PALETTES[activePaletteId] || BRAND_PALETTES.gold;
 
   return {
     paletteId: activePaletteId,

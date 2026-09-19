@@ -101,7 +101,10 @@ export function DiscoverView({
           >
             <ShoppingBag className="h-4 w-4" />
             {cartCount > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#B8801C] text-[9px] font-bold text-white shadow">
+              <span
+                style={{ backgroundColor: palette.badgeBg || palette.main }}
+                className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold text-white shadow"
+              >
                 {cartCount}
               </span>
             )}
@@ -116,7 +119,8 @@ export function DiscoverView({
             placeholder={t("search")}
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
-            className="w-full rounded-2xl border border-[#EFE8DC] bg-white px-4 py-2 text-xs text-[#26160F] placeholder:text-[#4A3B32]/50 focus:outline-none focus:ring-2 focus:ring-[#B8801C]"
+            style={{ borderColor: palette.border }}
+            className="w-full rounded-2xl bg-white px-4 py-2 text-xs text-[#26160F] placeholder:text-[#4A3B32]/50 focus:outline-none focus:ring-2"
             autoFocus
           />
         </div>
@@ -127,11 +131,12 @@ export function DiscoverView({
         {banner && banner.is_active !== false && (
           <section
             aria-label="Promotional Hero Showcase"
-            className="relative overflow-hidden rounded-3xl border border-[#EFE8DC] bg-gradient-to-br from-[#FDFBF7] via-[#FAF5EB] to-[#F5ECE0] p-5 sm:p-6 shadow-sm transition-all hover:shadow-md"
+            style={{ borderColor: palette.border }}
+            className="relative overflow-hidden rounded-3xl border bg-gradient-to-br from-[#FDFBF7] via-[#FAF5EB] to-[#F5ECE0] p-5 sm:p-6 shadow-sm transition-all hover:shadow-md"
           >
             {/* Ambient background glow decorative elements */}
-            <div className="absolute -left-12 -top-12 h-40 w-40 rounded-full bg-[#B8801C]/10 blur-3xl" />
-            <div className="absolute -right-12 -bottom-12 h-40 w-40 rounded-full bg-[#6E3917]/10 blur-3xl" />
+            <div className="absolute -left-12 -top-12 h-40 w-40 rounded-full blur-3xl" style={{ backgroundColor: `${palette.main}1A` }} />
+            <div className="absolute -right-12 -bottom-12 h-40 w-40 rounded-full blur-3xl" style={{ backgroundColor: `${palette.secondary}1A` }} />
 
             <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-5 sm:gap-6">
               {/* Left Content Side: Purely Dynamic Headline & Subtitle */}
@@ -187,18 +192,24 @@ export function DiscoverView({
                     type="button"
                     aria-pressed={active}
                     onClick={() => setSelectedCategory(active ? null : category.id)}
-                    className={`group flex w-20 sm:w-24 shrink-0 flex-col items-center gap-2 rounded-3xl p-2 transition-all duration-300 ${
+                    style={{
+                      backgroundColor: active ? palette.cardBg : undefined,
+                    }}
+                    className={`group flex w-20 sm:w-24 shrink-0 flex-col items-center gap-2 rounded-3xl p-2 transition-all duration-300 cursor-pointer ${
                       active
-                        ? "bg-[#FEF7EB] shadow-sm -translate-y-0.5"
+                        ? "shadow-sm -translate-y-0.5"
                         : "hover:-translate-y-1 hover:bg-[#FAF5EB]/60"
                     }`}
                   >
                     {/* Generous 80px (desktop) / 64px (mobile) Food Circle */}
                     <div
-                      className={`relative h-16 w-16 sm:h-20 sm:w-20 overflow-hidden rounded-full p-1 transition-all duration-300 ${
-                        active
-                          ? "border-2 border-[#B8801C] ring-4 ring-[#B8801C]/20 bg-[#FAF5EB] shadow-md scale-105"
-                          : "border-2 border-[#EFE8DC] bg-[#FAF5EB] shadow-xs group-hover:border-[#B8801C]/40 group-hover:shadow-md"
+                      style={{
+                        borderColor: active ? palette.main : palette.border,
+                        boxShadow: active ? `0 0 0 4px ${palette.main}33` : undefined,
+                        backgroundColor: palette.cardBg,
+                      }}
+                      className={`relative h-16 w-16 sm:h-20 sm:w-20 overflow-hidden rounded-full p-1 transition-all duration-300 border-2 ${
+                        active ? "shadow-md scale-105" : "shadow-xs group-hover:shadow-md"
                       }`}
                     >
                       {category.image_url ? (
@@ -208,7 +219,10 @@ export function DiscoverView({
                           className="h-full w-full rounded-full object-cover transition-transform duration-500 group-hover:scale-110"
                         />
                       ) : (
-                        <span className="grid h-full w-full place-items-center rounded-full bg-[#FAF5EB] text-xs sm:text-sm font-black text-[#B8801C]">
+                        <span
+                          style={{ color: palette.main, backgroundColor: palette.cardBg }}
+                          className="grid h-full w-full place-items-center rounded-full text-xs sm:text-sm font-black"
+                        >
                           {categoryName.slice(0, 1)}
                         </span>
                       )}
@@ -216,8 +230,9 @@ export function DiscoverView({
 
                     {/* Category Title */}
                     <span
+                      style={{ color: active ? palette.main : undefined }}
                       className={`text-xs sm:text-sm text-center leading-tight line-clamp-1 transition-colors ${
-                        active ? "font-extrabold text-[#B8801C]" : "font-bold text-[#26160F] group-hover:text-[#B8801C]"
+                        active ? "font-extrabold" : "font-bold text-[#26160F]"
                       }`}
                     >
                       {categoryName}

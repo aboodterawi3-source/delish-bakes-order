@@ -12,6 +12,7 @@ import { LangToggle, useLang } from "@/lib/i18n";
 import { formatJod } from "@/lib/currency";
 import { WHATSAPP } from "@/lib/menu";
 import { priceForSize, type StorefrontProduct } from "@/lib/storefront-content";
+import { useBrandPalette } from "@/lib/brand-palette";
 
 export interface ProductDetailsAddPayload {
   productId: string;
@@ -46,6 +47,7 @@ export function ProductDetailsView({
 }: ProductDetailsViewProps) {
   const { t, lang, dir } = useLang();
   const ar = lang === "ar";
+  const { palette } = useBrandPalette();
   const [quantity, setQuantity] = useState(1);
   const [size, setSize] = useState<string | null>(null);
   const [descriptionOpen, setDescriptionOpen] = useState(true);
@@ -111,7 +113,7 @@ export function ProductDetailsView({
 
         <div className="flex min-w-0 flex-col items-center">
           <DelishLogo size="sm" />
-          <span className="-mt-0.5 truncate text-[9px] font-bold uppercase tracking-[0.24em] text-gold">
+          <span style={{ color: palette.main }} className="-mt-0.5 truncate text-[9px] font-bold uppercase tracking-[0.24em]">
             {t("celebrationCakes")}
           </span>
         </div>
@@ -122,11 +124,14 @@ export function ProductDetailsView({
             type="button"
             onClick={onOpenCart}
             aria-label={t("cart")}
-            className="relative flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-primary shadow-sm transition-transform hover:scale-[1.04] hover:bg-secondary/40 active:scale-95"
+            className="relative flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-primary shadow-sm transition-transform hover:scale-[1.04] hover:bg-secondary/40 active:scale-95 cursor-pointer"
           >
             <ShoppingBag className="h-4 w-4" />
             {cartCount > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground shadow">
+              <span
+                style={{ backgroundColor: palette.badgeBg || palette.main }}
+                className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold text-white shadow"
+              >
                 {cartCount}
               </span>
             )}
@@ -273,10 +278,10 @@ export function ProductDetailsView({
         ) : (
           <>
         <div className="flex min-w-0 flex-col">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-primary">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
             {t("from")}
           </span>
-          <span className="font-sans text-xl font-extrabold text-foreground sm:text-3xl">
+          <span style={{ color: palette.main }} className="font-sans text-xl font-extrabold sm:text-3xl">
             {formatJod(currentPrice, lang)}
           </span>
         </div>
@@ -285,7 +290,8 @@ export function ProductDetailsView({
           type="button"
           onClick={handleAdd}
           disabled={!product}
-          className="inline-flex min-h-[50px] min-w-0 items-center justify-center gap-2 rounded-full bg-primary px-4 py-3.5 text-center text-xs font-bold uppercase text-primary-foreground shadow-sm transition-all hover:scale-[1.02] hover:bg-cocoa-deep active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 sm:flex-none sm:px-7 sm:text-sm"
+          style={{ backgroundColor: palette.btnBg }}
+          className="inline-flex min-h-[50px] min-w-0 items-center justify-center gap-2 rounded-full px-4 py-3.5 text-center text-xs font-bold uppercase text-white shadow-sm transition-all hover:scale-[1.02] hover:opacity-90 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 sm:flex-none sm:px-7 sm:text-sm cursor-pointer"
         >
           {addedAnimation ? (
             <>

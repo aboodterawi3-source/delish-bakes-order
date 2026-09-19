@@ -5,6 +5,7 @@ import { useDismissable } from "@/lib/a11y";
 import { formatJod } from "@/lib/currency";
 import { WHATSAPP } from "@/lib/menu";
 import { priceForSize, type StorefrontProduct } from "@/lib/storefront-content";
+import { useBrandPalette } from "@/lib/brand-palette";
 import {
   CakeCustomizationPanel,
   emptyCustomization,
@@ -62,6 +63,7 @@ export function StorefrontProductModal({
   const { t, lang } = useLang();
   const ar = lang === "ar";
   const titleId = useId();
+  const { palette } = useBrandPalette();
   
   const [size, setSize] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
@@ -122,10 +124,14 @@ export function StorefrontProductModal({
         aria-modal="true"
         aria-labelledby={titleId}
         dir={ar ? "rtl" : "ltr"}
-        className="relative max-h-[92vh] w-full max-w-4xl overflow-hidden rounded-3xl bg-white shadow-2xl flex flex-col md:flex-row z-10 border border-[#EFE8DC]"
+        style={{ borderColor: palette.border }}
+        className="relative max-h-[92vh] w-full max-w-4xl overflow-hidden rounded-3xl bg-white shadow-2xl flex flex-col md:flex-row z-10 border"
       >
-        {/* LEFT COLUMN: Visual Showcase (Soft Warm Buttercream Background) */}
-        <div className="relative w-full md:w-1/2 bg-[#FAF5EB] p-6 flex flex-col justify-center items-center min-h-[260px] md:min-h-[460px] shrink-0">
+        {/* LEFT COLUMN: Visual Showcase */}
+        <div
+          style={{ backgroundColor: palette.cardBg }}
+          className="relative w-full md:w-1/2 p-6 flex flex-col justify-center items-center min-h-[260px] md:min-h-[460px] shrink-0 transition-colors duration-300"
+        >
           {/* Large Cake Showcase Image */}
           <div className="relative my-auto flex h-full w-full items-center justify-center p-4">
             {product.image_url ? (
@@ -135,7 +141,10 @@ export function StorefrontProductModal({
                 className="max-h-56 md:max-h-80 max-w-full object-contain drop-shadow-xl transition-transform duration-300 hover:scale-105"
               />
             ) : (
-              <div className="grid h-48 w-48 place-items-center rounded-3xl bg-white/70 text-[#B8801C] shadow-inner">
+              <div
+                style={{ color: palette.main }}
+                className="grid h-48 w-48 place-items-center rounded-3xl bg-white/70 shadow-inner"
+              >
                 <ImageOff className="h-10 w-10" aria-hidden />
               </div>
             )}
@@ -146,14 +155,14 @@ export function StorefrontProductModal({
         <div className="w-full md:w-1/2 p-5 sm:p-7 flex flex-col justify-between overflow-y-auto space-y-4 max-h-[65vh] md:max-h-[90vh]">
           {/* Header row: Badge & Close Button */}
           <div className="flex items-center justify-between border-b border-[#EFE8DC] pb-3">
-            <span className="text-[11px] font-black uppercase tracking-wider text-[#B8801C]">
+            <span style={{ color: palette.main }} className="text-[11px] font-black uppercase tracking-wider">
               TRENDING · الأكثر طلباً
             </span>
             <button
               type="button"
               onClick={onClose}
               aria-label={ar ? "إغلاق" : "Close"}
-              className="grid h-8 w-8 place-items-center rounded-full border border-[#EFE8DC] bg-white text-[#4A3B32] shadow-xs transition hover:bg-[#FEF7EB] hover:text-[#B8801C] active:scale-95"
+              className="grid h-8 w-8 place-items-center rounded-full border border-[#EFE8DC] bg-white text-[#4A3B32] shadow-xs transition hover:bg-[#FEF7EB] active:scale-95 cursor-pointer"
             >
               <X className="h-4 w-4" aria-hidden />
             </button>
@@ -171,7 +180,7 @@ export function StorefrontProductModal({
 
           {product.price_on_request ? (
             <div className="space-y-3 py-2">
-              <p className="text-sm font-bold text-[#B8801C]">
+              <p style={{ color: palette.main }} className="text-sm font-bold">
                 {ar
                   ? "هذا التصميم يُسعّر حسب الطلب — تواصل معنا لمعرفة السعر."
                   : "This design is priced per request — contact us for a quote."}
@@ -212,10 +221,15 @@ export function StorefrontProductModal({
                           type="button"
                           aria-pressed={active}
                           onClick={() => setSize(option.label)}
-                          className={`rounded-xl px-3.5 py-2 text-xs font-bold transition-all ${
+                          style={{
+                            backgroundColor: active ? palette.btnBg : undefined,
+                            color: active ? "#ffffff" : undefined,
+                            borderColor: active ? palette.btnBg : palette.border,
+                          }}
+                          className={`rounded-xl px-3.5 py-2 text-xs font-bold transition-all cursor-pointer ${
                             active
-                              ? "bg-[#B8801C] text-white shadow-xs scale-[1.02]"
-                              : "border border-[#EFE8DC] bg-white text-[#4A3B32] hover:border-[#B8801C]/50 hover:bg-[#FEF7EB]"
+                              ? "shadow-xs scale-[1.02]"
+                              : "border bg-white text-[#4A3B32] hover:bg-[#FEF7EB]"
                           }`}
                         >
                           {option.label} ({formatJod(option.price, lang)})
@@ -232,10 +246,15 @@ export function StorefrontProductModal({
                           type="button"
                           aria-pressed={active}
                           onClick={() => setSize(option.label)}
-                          className={`rounded-xl px-3.5 py-2 text-xs font-bold transition-all ${
+                          style={{
+                            backgroundColor: active ? palette.btnBg : undefined,
+                            color: active ? "#ffffff" : undefined,
+                            borderColor: active ? palette.btnBg : palette.border,
+                          }}
+                          className={`rounded-xl px-3.5 py-2 text-xs font-bold transition-all cursor-pointer ${
                             active
-                              ? "bg-[#B8801C] text-white shadow-xs scale-[1.02]"
-                              : "border border-[#EFE8DC] bg-white text-[#4A3B32] hover:border-[#B8801C]/50 hover:bg-[#FEF7EB]"
+                              ? "shadow-xs scale-[1.02]"
+                              : "border bg-white text-[#4A3B32] hover:bg-[#FEF7EB]"
                           }`}
                         >
                           {ar ? option.ar : option.label} ({option.offset > 0 ? `+${option.offset}.00 JOD` : formatJod(displayPrice, lang)})
@@ -307,7 +326,12 @@ export function StorefrontProductModal({
                 <button
                   type="button"
                   onClick={() => setShowExtras(!showExtras)}
-                  className="flex w-full items-center justify-between rounded-xl border border-[#EFE8DC] bg-[#FEF7EB] px-3.5 py-2.5 text-xs font-bold text-[#B8801C] hover:bg-[#FDF1DA]"
+                  style={{
+                    color: palette.main,
+                    backgroundColor: palette.cardBg,
+                    borderColor: palette.border,
+                  }}
+                  className="flex w-full items-center justify-between rounded-xl border px-3.5 py-2.5 text-xs font-bold transition-colors hover:opacity-90 cursor-pointer"
                 >
                   <span>{ar ? "✨ إضافات خاصة (شموع، بالونات، توبر، هدية)" : "✨ Extra Options (Candles, Balloons, Gift)"}</span>
                   <ChevronDown className={`h-4 w-4 transition-transform ${showExtras ? "rotate-180" : ""}`} />
@@ -327,7 +351,7 @@ export function StorefrontProductModal({
                     type="button"
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
                     aria-label={ar ? "تقليل الكمية" : "Decrease quantity"}
-                    className="grid h-10 w-9 place-items-center rounded-lg text-[#6E3917] hover:bg-[#FEF7EB] active:scale-95"
+                    className="grid h-10 w-9 place-items-center rounded-lg text-[#6E3917] hover:bg-[#FEF7EB] active:scale-95 cursor-pointer"
                   >
                     <Minus className="h-3.5 w-3.5" aria-hidden />
                   </button>
@@ -336,7 +360,7 @@ export function StorefrontProductModal({
                     type="button"
                     onClick={() => setQuantity(quantity + 1)}
                     aria-label={ar ? "زيادة الكمية" : "Increase quantity"}
-                    className="grid h-10 w-9 place-items-center rounded-lg text-[#6E3917] hover:bg-[#FEF7EB] active:scale-95"
+                    className="grid h-10 w-9 place-items-center rounded-lg text-[#6E3917] hover:bg-[#FEF7EB] active:scale-95 cursor-pointer"
                   >
                     <Plus className="h-3.5 w-3.5" aria-hidden />
                   </button>
@@ -358,7 +382,8 @@ export function StorefrontProductModal({
                       customization,
                     })
                   }
-                  className="flex-1 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#B8801C] hover:bg-[#9E6C14] text-white text-xs font-bold shadow-md transition-all active:scale-[0.98]"
+                  style={{ backgroundColor: palette.btnBg }}
+                  className="flex-1 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl text-white text-xs font-bold shadow-md transition-all hover:opacity-90 active:scale-[0.98] cursor-pointer"
                 >
                   <ShoppingBag className="h-4 w-4" />
                   <span>{t("addToCart")}</span>
