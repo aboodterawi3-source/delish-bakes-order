@@ -1,27 +1,29 @@
 import { memo, useMemo, useState, useEffect } from "react";
 import {
-  CalendarDays,
-  Calendar as CalendarIcon,
+  Calendar,
   ChevronLeft,
   ChevronRight,
   Clock,
-  Clock3,
   Filter,
   MapPin,
   Maximize2,
+  MessageCircle,
   Package,
-  Plus,
-  ShoppingBag,
+  Pencil,
+  Phone,
+  Printer,
   Sparkles,
   Store,
   Truck,
   User,
   X,
 } from "lucide-react";
+import { toast } from "sonner";
 import type { SalesOrder, SalesStatus } from "@/lib/sales.functions";
 import { orderLabel } from "@/lib/order-label";
+import { esc, printDocument } from "@/lib/print";
 
-export type CalendarViewMode = "month" | "week" | "day" | "agenda";
+export type CalendarViewMode = "month" | "day";
 
 const WEEKDAYS_AR = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
 const MONTHS_AR = [
@@ -51,1020 +53,952 @@ export const STATUS_CONFIG: Record<
   }
 > = {
   new: {
-    bg: "bg-amber-50/90",
-    border: "border-amber-300",
-    text: "text-amber-950",
+    bg: "bg-amber-50/90 dark:bg-amber-950/40",
+    border: "border-amber-300 dark:border-amber-700",
+    text: "text-amber-950 dark:text-amber-200",
     badgeBg: "bg-amber-500",
     badgeText: "text-white",
     ar: "جديد 🆕",
   },
   confirmed: {
-    bg: "bg-sky-50/90",
-    border: "border-sky-300",
-    text: "text-sky-950",
+    bg: "bg-sky-50/90 dark:bg-sky-950/40",
+    border: "border-sky-300 dark:border-sky-700",
+    text: "text-sky-950 dark:text-sky-200",
     badgeBg: "bg-sky-500",
     badgeText: "text-white",
     ar: "مؤكد 🤝",
   },
   baking: {
-    bg: "bg-amber-100/90",
-    border: "border-amber-400",
-    text: "text-amber-950",
+    bg: "bg-amber-100/90 dark:bg-amber-900/50",
+    border: "border-amber-400 dark:border-amber-600",
+    text: "text-amber-950 dark:text-amber-100",
     badgeBg: "bg-amber-600",
     badgeText: "text-white",
     ar: "قيد التجهيز 🎂",
   },
   ready: {
-    bg: "bg-emerald-50/90",
-    border: "border-emerald-400",
-    text: "text-emerald-950",
+    bg: "bg-emerald-50/90 dark:bg-emerald-950/40",
+    border: "border-emerald-400 dark:border-emerald-700",
+    text: "text-emerald-950 dark:text-emerald-200",
     badgeBg: "bg-emerald-600",
     badgeText: "text-white",
     ar: "جاهز ✨",
   },
   out_for_delivery: {
-    bg: "bg-blue-50/90",
-    border: "border-blue-400",
-    text: "text-blue-950",
+    bg: "bg-blue-50/90 dark:bg-blue-950/40",
+    border: "border-blue-400 dark:border-blue-700",
+    text: "text-blue-950 dark:text-blue-200",
     badgeBg: "bg-blue-600",
     badgeText: "text-white",
     ar: "خرج للتوصيل 🚗",
   },
   completed: {
-    bg: "bg-slate-100/80",
-    border: "border-slate-300",
-    text: "text-slate-800",
+    bg: "bg-slate-100/80 dark:bg-slate-900/60",
+    border: "border-slate-300 dark:border-slate-700",
+    text: "text-slate-800 dark:text-slate-200",
     badgeBg: "bg-slate-600",
     badgeText: "text-white",
     ar: "مكتمل ✅",
   },
   delivered: {
-    bg: "bg-emerald-50/80",
-    border: "border-emerald-300",
-    text: "text-emerald-900",
-    badgeBg: "bg-emerald-600",
+    bg: "bg-teal-50/90 dark:bg-teal-950/40",
+    border: "border-teal-400 dark:border-teal-700",
+    text: "text-teal-950 dark:text-teal-200",
+    badgeBg: "bg-teal-600",
     badgeText: "text-white",
-    ar: "تم التسليم 🌸",
+    ar: "تم التسليم 📦",
   },
   cancelled: {
-    bg: "bg-red-50/90",
-    border: "border-red-300",
-    text: "text-red-900 line-through opacity-70",
-    badgeBg: "bg-red-600",
+    bg: "bg-rose-50/90 dark:bg-rose-950/40",
+    border: "border-rose-300 dark:border-rose-700",
+    text: "text-rose-950 dark:text-rose-200",
+    badgeBg: "bg-rose-600",
     badgeText: "text-white",
     ar: "ملغى ❌",
   },
 };
 
-/** Formats YYYY-MM-DD into a JS Date object safely */
-function parseIsoDate(isoStr: string): Date {
-  const [y, m, d] = isoStr.split("-").map(Number);
-  return new Date(y || 2026, (m || 1) - 1, d || 1);
-}
-
-/** Converts Date to YYYY-MM-DD string */
-function formatIsoDate(d: Date): string {
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-/** Parses time string ("14:30:00" or "09:15") into minutes from 00:00 midnight */
-function parseTimeInMinutes(timeStr: string): number {
-  if (!timeStr) return 9 * 60; // Default 09:00 AM
-  const parts = timeStr.trim().split(":");
-  const hours = Number(parts[0]) || 0;
-  const minutes = Number(parts[1]) || 0;
-  return hours * 60 + minutes;
-}
-
-/** Formats 24h time ("14:30") into readable 12h Arabic time string (2:30 م) */
-function formatArabicTime(timeStr: string): string {
-  if (!timeStr) return "—";
-  const mins = parseTimeInMinutes(timeStr);
-  const h24 = Math.floor(mins / 60);
-  const m = mins % 60;
-  const period = h24 >= 12 ? "م" : "ص";
-  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
-  return `${h12}:${String(m).padStart(2, "0")} ${period}`;
-}
-
-/** Extracts cake / item tag for compact display */
-function productSummaryTag(order: SalesOrder): string {
-  const first = order.items[0];
-  if (!first) return order.order_name?.trim() || "كيكة مميزة";
-  const nameWords = first.name_ar.trim().split(/\s+/).slice(0, 3).join(" ");
-  return `${first.quantity}× ${nameWords}`;
-}
-
-type Props = {
-  orders: SalesOrder[];
-  onOpen: (id: string) => void;
+const PAYMENT_METHOD_MAP: Record<string, string> = {
+  cash: "نقداً عند الاستلام 💵",
+  cliq: "كليك (CliQ) 📲",
+  visa: "بطاقة ائتمان 💳",
 };
 
-export const OrdersCalendar = memo(function OrdersCalendar({ orders, onOpen }: Props) {
-  const [viewMode, setViewMode] = useState<CalendarViewMode>("month");
-  const [cursorDate, setCursorDate] = useState<Date>(() => new Date());
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [drawerDate, setDrawerDate] = useState<string | null>(null);
+/** Parse HH:mm time string to minutes from midnight */
+function parseTimeInMinutes(timeStr: string): number {
+  if (!timeStr) return 9 * 60; // default 9:00 AM
+  const [h, m] = timeStr.split(":").map(Number);
+  if (isNaN(h)) return 9 * 60;
+  return h * 60 + (isNaN(m) ? 0 : m);
+}
 
-  const todayIso = useMemo(() => formatIsoDate(new Date()), []);
+/** Format time in minutes to 12-hour Arabic format (e.g. 9:00 ص) */
+function formatMinutesArabic(totalMins: number): string {
+  let h = Math.floor(totalMins / 60) % 24;
+  const m = totalMins % 60;
+  const period = h >= 12 ? "م" : "ص";
+  h = h % 12;
+  if (h === 0) h = 12;
+  const mStr = m < 10 ? `0${m}` : `${m}`;
+  return `${h}:${mStr} ${period}`;
+}
 
-  // Filter orders by quick status filter
+/** Positioned Order layout metadata for multi-column same-hour scheduling */
+interface PositionedOrder {
+  order: SalesOrder;
+  startMinutes: number; // minutes from 06:00 AM
+  durationMinutes: number;
+  colIndex: number;
+  totalCols: number;
+  topPx: number;
+  heightPx: number;
+}
+
+/**
+ * Calculates multi-column parallel sub-column layout for orders occurring at the same hour
+ * timeline bounds: 06:00 AM to 11:00 PM (18 hours total = 1080 mins)
+ */
+function computeHourlyMultiColumnLayout(orders: SalesOrder[], pixelsPerHour = 72): PositionedOrder[] {
+  const START_DAY_MINUTES = 6 * 60; // 06:00 AM
+  const DEFAULT_DURATION = 60; // 1 hour block height
+
+  const items = orders.map((order) => {
+    const rawMins = parseTimeInMinutes(order.requested_time);
+    const startM = Math.max(0, rawMins - START_DAY_MINUTES);
+    const dur = DEFAULT_DURATION;
+    return {
+      order,
+      start: startM,
+      end: startM + dur,
+      colIndex: 0,
+      totalCols: 1,
+    };
+  });
+
+  // Sort by start time, then by longer duration first
+  items.sort((a, b) => a.start - b.start || (b.end - b.start) - (a.end - a.start));
+
+  // Find overlapping clusters
+  const clusters: (typeof items)[] = [];
+  let currentCluster: typeof items = [];
+  let clusterEnd = -1;
+
+  for (const item of items) {
+    if (currentCluster.length === 0 || item.start < clusterEnd) {
+      currentCluster.push(item);
+      clusterEnd = Math.max(clusterEnd, item.end);
+    } else {
+      clusters.push(currentCluster);
+      currentCluster = [item];
+      clusterEnd = item.end;
+    }
+  }
+  if (currentCluster.length > 0) {
+    clusters.push(currentCluster);
+  }
+
+  const result: PositionedOrder[] = [];
+
+  for (const cluster of clusters) {
+    const columns: (typeof items)[0][] = [];
+
+    for (const item of cluster) {
+      let placed = false;
+      for (let c = 0; c < columns.length; c++) {
+        if (columns[c].end <= item.start) {
+          columns[c] = item;
+          item.colIndex = c;
+          placed = true;
+          break;
+        }
+      }
+      if (!placed) {
+        item.colIndex = columns.length;
+        columns.push(item);
+      }
+    }
+
+    const numCols = columns.length;
+    for (const item of cluster) {
+      const topPx = (item.start / 60) * pixelsPerHour;
+      const heightPx = Math.max(54, (item.end - item.start) / 60 * pixelsPerHour - 4);
+      result.push({
+        order: item.order,
+        startMinutes: item.start,
+        durationMinutes: item.end - item.start,
+        colIndex: item.colIndex,
+        totalCols: numCols,
+        topPx,
+        heightPx,
+      });
+    }
+  }
+
+  return result;
+}
+
+/** Print single order receipt */
+function printOrderReceipt(order: SalesOrder) {
+  const payLabel = order.payment_method ? (PAYMENT_METHOD_MAP[order.payment_method] ?? order.payment_method) : "—";
+  const remaining = order.total - order.deposit_paid;
+  const itemsRows = (order.items ?? [])
+    .map(
+      (item) => `
+    <div class="item">
+      <div class="row"><b>${esc(item.name_ar)} x${item.quantity}</b><b>${(item.unit_price * item.quantity).toFixed(2)}</b></div>
+      ${item.options_ar?.length ? `<div class="opt">${esc(item.options_ar.join(" ، "))}</div>` : ""}
+      ${item.notes ? `<div class="note">ملاحظة: ${esc(item.notes)}</div>` : ""}
+    </div>`,
+    )
+    .join("");
+
+  const body = `
+    <h1>ديليش كيك DELISH BAKES</h1>
+    <div style="text-align:center;font-weight:700">بون الطلب الإداري</div>
+    <div class="line"></div>
+    <div class="row"><span>رقم الأوردر:</span><b>${esc(orderLabel(order.order_number, order.staff_code))}</b></div>
+    <div class="row"><span>تاريخ وموعد التسليم:</span><span>${esc(order.requested_date)} ${esc(order.requested_time.slice(0, 5))}</span></div>
+    <div class="row"><span>العميل:</span><span>${esc(order.customer_name)} (${esc(order.customer_phone)})</span></div>
+    <div class="row"><span>نوع التسليم:</span><span>${order.method === "delivery" ? `توصيل: ${esc(order.area ?? "")} ${esc(order.address ?? "")}` : "استلام من المحل"}</span></div>
+    ${order.inscription ? `<div class="line"></div><div class="note">✍️ الكتابة: ${esc(order.inscription)}</div>` : ""}
+    ${order.notes ? `<div class="note">📝 ملاحظات: ${esc(order.notes)}</div>` : ""}
+    <div class="line"></div>
+    ${itemsRows}
+    <div class="line"></div>
+    <div class="row"><span>المجموع الفرعي</span><span>${order.subtotal.toFixed(2)} د.أ</span></div>
+    ${order.delivery_fee ? `<div class="row"><span>أجرة التوصيل</span><span>${order.delivery_fee.toFixed(2)} د.أ</span></div>` : ""}
+    ${order.discount_amount ? `<div class="row"><span>الخصم</span><span>-${order.discount_amount.toFixed(2)} د.أ</span></div>` : ""}
+    <div class="row"><b>الإجمالي</b><b>${order.total.toFixed(2)} د.أ</b></div>
+    <div class="row"><span>المدفوع</span><span>${order.deposit_paid.toFixed(2)} د.أ</span></div>
+    <div class="row"><b>المتبقي</b><b>${remaining.toFixed(2)} د.أ</b></div>
+    <div class="row"><span>طريقة الدفع</span><span>${esc(payLabel)}</span></div>
+    <div class="line"></div>
+    <div style="text-align:center">شكراً لاختياركم ديليش 🤍</div>
+  `;
+
+  if (!printDocument(`إيصال ${order.order_number}`, body, "b{font-size:13px}")) {
+    toast.error("تعذر فتح نافذة الطباعة");
+  }
+}
+
+export interface OrdersCalendarProps {
+  orders: SalesOrder[];
+  onOpen: (id: string) => void;
+}
+
+export const OrdersCalendar = memo(function OrdersCalendar({ orders, onOpen }: OrdersCalendarProps) {
+  const [viewMode, setViewMode] = useState<CalendarViewMode>("day");
+  const [currentDate, setCurrentDate] = useState<Date>(() => new Date());
+  const [statusFilter, setStatusFilter] = useState<SalesStatus | "all">("all");
+  const [selectedOrder, setSelectedOrder] = useState<SalesOrder | null>(null);
+  const [zoomImage, setZoomImage] = useState<string | null>(null);
+
+  // Active YYYY-MM-DD
+  const dateISO = useMemo(() => {
+    const y = currentDate.getFullYear();
+    const m = String(currentDate.getMonth() + 1).padStart(2, "0");
+    const d = String(currentDate.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }, [currentDate]);
+
+  // Status Filtered orders
   const filteredOrders = useMemo(() => {
     if (statusFilter === "all") return orders;
-    if (statusFilter === "preparing") {
-      return orders.filter((o) => o.status === "new" || o.status === "confirmed" || o.status === "baking");
-    }
     return orders.filter((o) => o.status === statusFilter);
   }, [orders, statusFilter]);
 
-  // Group orders by YYYY-MM-DD
-  const ordersByDate = useMemo(() => {
-    const map = new Map<string, SalesOrder[]>();
-    for (const order of filteredOrders) {
-      const dateKey = order.requested_date?.slice(0, 10);
-      if (!dateKey) continue;
-      const list = map.get(dateKey) ?? [];
-      list.push(order);
-      map.set(dateKey, list);
-    }
-    for (const list of map.values()) {
-      list.sort((a, b) => parseTimeInMinutes(a.requested_time) - parseTimeInMinutes(b.requested_time));
-    }
-    return map;
-  }, [filteredOrders]);
+  // Orders for current active date
+  const dayOrders = useMemo(() => {
+    return filteredOrders.filter((o) => o.requested_date === dateISO);
+  }, [filteredOrders, dateISO]);
 
-  // Navigation Handlers
-  const handleToday = () => setCursorDate(new Date());
+  // Compute multi-column positioning for day view
+  const positionedDayOrders = useMemo(() => {
+    return computeHourlyMultiColumnLayout(dayOrders, 72);
+  }, [dayOrders]);
+
+  // Navigation helpers
+  const handleToday = () => setCurrentDate(new Date());
 
   const handlePrev = () => {
-    setCursorDate((curr) => {
-      const d = new Date(curr);
-      if (viewMode === "month") d.setMonth(d.getMonth() - 1);
-      else if (viewMode === "week") d.setDate(d.getDate() - 7);
-      else if (viewMode === "day") d.setDate(d.getDate() - 1);
-      else d.setMonth(d.getMonth() - 1);
-      return d;
-    });
+    const next = new Date(currentDate);
+    if (viewMode === "month") {
+      next.setMonth(next.getMonth() - 1);
+    } else {
+      next.setDate(next.getDate() - 1);
+    }
+    setCurrentDate(next);
   };
 
   const handleNext = () => {
-    setCursorDate((curr) => {
-      const d = new Date(curr);
-      if (viewMode === "month") d.setMonth(d.getMonth() + 1);
-      else if (viewMode === "week") d.setDate(d.getDate() + 7);
-      else if (viewMode === "day") d.setDate(d.getDate() + 1);
-      else d.setMonth(d.getMonth() + 1);
-      return d;
-    });
+    const next = new Date(currentDate);
+    if (viewMode === "month") {
+      next.setMonth(next.getMonth() + 1);
+    } else {
+      next.setDate(next.getDate() + 1);
+    }
+    setCurrentDate(next);
   };
 
-  // Heading Title
-  const headerTitle = useMemo(() => {
-    const year = cursorDate.getFullYear();
-    const monthName = MONTHS_AR[cursorDate.getMonth()];
-    if (viewMode === "month" || viewMode === "agenda") {
-      return `${monthName} ${year}`;
+  // Surrounding 7 days strip for Day Timeline View
+  const surroundingDays = useMemo(() => {
+    const result = [];
+    const base = new Date(currentDate);
+    base.setDate(base.getDate() - 3);
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(base);
+      d.setDate(d.getDate() + i);
+      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      result.push({
+        date: d,
+        iso,
+        dayNum: d.getDate(),
+        dayName: WEEKDAYS_AR[d.getDay()],
+        isToday: new Date().toDateString() === d.toDateString(),
+        isSelected: currentDate.toDateString() === d.toDateString(),
+        count: filteredOrders.filter((o) => o.requested_date === iso).length,
+      });
     }
-    if (viewMode === "day") {
-      const dayName = WEEKDAYS_AR[cursorDate.getDay()];
-      const dayNum = cursorDate.getDate();
-      return `${dayName}، ${dayNum} ${monthName} ${year}`;
+    return result;
+  }, [currentDate, filteredOrders]);
+
+  // Month grid days calculation
+  const monthGridDays = useMemo(() => {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+
+    const firstDayIndex = new Date(year, month, 1).getDay();
+    const totalDays = new Date(year, month + 1, 0).getDate();
+
+    const grid = [];
+
+    // Prev month padding
+    const prevMonthDays = new Date(year, month, 0).getDate();
+    for (let i = firstDayIndex - 1; i >= 0; i--) {
+      const dayNum = prevMonthDays - i;
+      const d = new Date(year, month - 1, dayNum);
+      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      grid.push({
+        date: d,
+        iso,
+        dayNum,
+        isCurrentMonth: false,
+        isToday: false,
+        orders: filteredOrders.filter((o) => o.requested_date === iso),
+      });
     }
-    // Week mode range
-    const startOfWeek = new Date(cursorDate);
-    startOfWeek.setDate(cursorDate.getDate() - cursorDate.getDay());
-    const endOfWeek = new Date(startOfWeek);
-    endOfWeek.setDate(startOfWeek.getDate() + 6);
-    return `${startOfWeek.getDate()} - ${endOfWeek.getDate()} ${monthName} ${year}`;
-  }, [cursorDate, viewMode]);
+
+    // Current month days
+    const todayISO = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-${String(new Date().getDate()).padStart(2, "0")}`;
+    for (let dayNum = 1; dayNum <= totalDays; dayNum++) {
+      const d = new Date(year, month, dayNum);
+      const iso = `${year}-${String(month + 1).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
+      grid.push({
+        date: d,
+        iso,
+        dayNum,
+        isCurrentMonth: true,
+        isToday: iso === todayISO,
+        orders: filteredOrders.filter((o) => o.requested_date === iso),
+      });
+    }
+
+    // Next month padding
+    const remaining = 42 - grid.length;
+    for (let i = 1; i <= remaining; i++) {
+      const d = new Date(year, month + 1, i);
+      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(i).padStart(2, "0")}`;
+      grid.push({
+        date: d,
+        iso,
+        dayNum: i,
+        isCurrentMonth: false,
+        isToday: false,
+        orders: filteredOrders.filter((o) => o.requested_date === iso),
+      });
+    }
+
+    return grid;
+  }, [currentDate, filteredOrders]);
+
+  // Clean customer phone number for WhatsApp
+  const getCleanPhone = (phoneStr: string) => {
+    let clean = phoneStr.replace(/\D/g, "");
+    if (clean.startsWith("07")) clean = "962" + clean.slice(1);
+    return clean;
+  };
 
   return (
-    <section className="mt-4 space-y-4 min-w-0" aria-label="تقويم الطلبات">
-      {/* ----------------- Top Controls Header ----------------- */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-[#EFE8DC] bg-white p-3.5 sm:p-4 shadow-xs">
-        {/* Left Navigation Controls (RTL) */}
-        <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-col rounded-2xl border border-border bg-card shadow-lg text-card-foreground overflow-hidden transition-all" dir="rtl">
+      {/* 1. CALENDAR CONTROL HEADER */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-muted/30 p-3 sm:p-4">
+        {/* Left (RTL): Navigation & Title */}
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={handleToday}
-            className="inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-[#EFE8DC] bg-[#FAF5EB] px-3.5 text-xs font-bold text-[#6E3917] hover:bg-[#FEF7EB] active:scale-95 transition-all cursor-pointer"
+            className="inline-flex min-h-9 items-center justify-center rounded-xl border border-primary/30 bg-primary/10 px-3 text-xs font-bold text-primary transition-colors hover:bg-primary/20 active:scale-95"
           >
-            <CalendarDays className="h-4 w-4 text-[#B8801C]" />
-            <span>اليوم</span>
+            اليوم
           </button>
-
-          <div className="flex items-center gap-1">
+          <div className="flex items-center rounded-xl border border-border bg-background p-0.5 shadow-sm">
             <button
               type="button"
               onClick={handlePrev}
-              aria-label="السابق"
-              className="grid h-9 w-9 place-items-center rounded-xl border border-[#EFE8DC] bg-white text-[#4A3B32] hover:bg-[#FAF5EB] active:scale-95 cursor-pointer"
+              aria-label="Previous"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
               <ChevronRight className="h-4 w-4" />
             </button>
             <button
               type="button"
               onClick={handleNext}
-              aria-label="التالي"
-              className="grid h-9 w-9 place-items-center rounded-xl border border-[#EFE8DC] bg-white text-[#4A3B32] hover:bg-[#FAF5EB] active:scale-95 cursor-pointer"
+              aria-label="Next"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
           </div>
-
-          <h2 className="text-sm font-black text-[#26160F] sm:text-base ms-1">
-            {headerTitle}
+          <h2 className="text-sm font-black text-foreground sm:text-base">
+            {viewMode === "month"
+              ? `${MONTHS_AR[currentDate.getMonth()]} ${currentDate.getFullYear()}`
+              : `${WEEKDAYS_AR[currentDate.getDay()]}، ${currentDate.getDate()} ${MONTHS_AR[currentDate.getMonth()]} ${currentDate.getFullYear()}`}
           </h2>
         </div>
 
-        {/* Right View Switcher & Status Filter */}
-        <div className="flex flex-wrap items-center gap-2.5 ms-auto sm:ms-0">
-          {/* Status Quick Filter */}
-          <div className="flex items-center gap-1 rounded-xl border border-[#EFE8DC] bg-[#FAF5EB] px-2.5 py-1">
-            <Filter className="h-3.5 w-3.5 text-[#B8801C]" />
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="bg-transparent text-xs font-bold text-[#26160F] outline-none cursor-pointer"
+        {/* Right (RTL): View Mode Switcher */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center rounded-xl bg-muted p-1 border border-border">
+            <button
+              type="button"
+              onClick={() => setViewMode("month")}
+              className={`min-h-8 rounded-lg px-3 text-xs font-bold transition-all ${
+                viewMode === "month"
+                  ? "bg-background text-primary shadow-sm border border-border"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
             >
-              <option value="all">كل الطلبات</option>
-              <option value="preparing">قيد التجهيز (جديد/مؤكد/مخبوز)</option>
-              <option value="ready">جاهز للاستلام</option>
-              <option value="out_for_delivery">خرج للتوصيل</option>
-              <option value="completed">مكتمل / تم التسليم</option>
-              <option value="cancelled">ملغى</option>
-            </select>
-          </div>
-
-          {/* Segmented View Switcher */}
-          <div className="flex items-center gap-1 rounded-2xl border border-[#EFE8DC] bg-[#FAF5EB] p-1">
-            {(
-              [
-                { mode: "month", label: "شهر", icon: "📅" },
-                { mode: "week", label: "أسبوع", icon: "📆" },
-                { mode: "day", label: "يوم", icon: "🕒" },
-                { mode: "agenda", label: "جدول", icon: "📋" },
-              ] as const
-            ).map((item) => {
-              const active = viewMode === item.mode;
-              return (
-                <button
-                  key={item.mode}
-                  type="button"
-                  onClick={() => setViewMode(item.mode)}
-                  className={`flex items-center gap-1 rounded-xl px-2.5 sm:px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
-                    active
-                      ? "bg-[#B8801C] text-white shadow-xs scale-105"
-                      : "text-[#4A3B32] hover:bg-white/60"
-                  }`}
-                >
-                  <span>{item.icon}</span>
-                  <span>{item.label}</span>
-                </button>
-              );
-            })}
+              📅 شهر
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("day")}
+              className={`min-h-8 rounded-lg px-3 text-xs font-bold transition-all ${
+                viewMode === "day"
+                  ? "bg-background text-primary shadow-sm border border-border"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              🕒 يوم بالساعات
+            </button>
           </div>
         </div>
       </div>
 
-      {/* ----------------- Active View Render ----------------- */}
-      <div className="rounded-3xl border border-[#EFE8DC] bg-white p-2 sm:p-4 shadow-xs min-h-[500px]">
-        {viewMode === "month" && (
-          <MonthView
-            cursorDate={cursorDate}
-            ordersByDate={ordersByDate}
-            todayIso={todayIso}
-            onOpen={onOpen}
-            onOpenDay={(dateStr) => setDrawerDate(dateStr)}
-          />
-        )}
-
-        {viewMode === "week" && (
-          <WeekView
-            cursorDate={cursorDate}
-            ordersByDate={ordersByDate}
-            todayIso={todayIso}
-            onOpen={onOpen}
-          />
-        )}
-
-        {viewMode === "day" && (
-          <DayView
-            cursorDate={cursorDate}
-            ordersByDate={ordersByDate}
-            todayIso={todayIso}
-            onOpen={onOpen}
-          />
-        )}
-
-        {viewMode === "agenda" && (
-          <AgendaView
-            ordersByDate={ordersByDate}
-            onOpen={onOpen}
-          />
-        )}
+      {/* STATUS QUICK FILTER STRIP */}
+      <div className="flex items-center gap-1.5 overflow-x-auto border-b border-border bg-background p-2 text-xs no-scrollbar">
+        <span className="flex items-center gap-1 font-bold text-muted-foreground pl-1 shrink-0">
+          <Filter className="h-3.5 w-3.5" /> تصفية:
+        </span>
+        <button
+          type="button"
+          onClick={() => setStatusFilter("all")}
+          className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold transition-all ${
+            statusFilter === "all" ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted text-muted-foreground hover:bg-accent"
+          }`}
+        >
+          الكل ({orders.length})
+        </button>
+        {(Object.keys(STATUS_CONFIG) as SalesStatus[]).map((st) => {
+          const cfg = STATUS_CONFIG[st];
+          const count = orders.filter((o) => o.status === st).length;
+          if (count === 0 && statusFilter !== st) return null;
+          return (
+            <button
+              key={st}
+              type="button"
+              onClick={() => setStatusFilter(st)}
+              className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold border transition-all ${
+                statusFilter === st
+                  ? `${cfg.badgeBg} ${cfg.badgeText} border-transparent shadow-sm`
+                  : `border-border bg-background text-foreground hover:bg-muted`
+              }`}
+            >
+              {cfg.ar} ({count})
+            </button>
+          );
+        })}
       </div>
 
-      {/* ----------------- Day Orders Slide-Over Drawer ----------------- */}
-      {drawerDate && (
-        <DayDrawer
-          dateStr={drawerDate}
-          orders={ordersByDate.get(drawerDate) ?? []}
-          onClose={() => setDrawerDate(null)}
-          onOpenOrder={(id) => {
-            setDrawerDate(null);
-            onOpen(id);
-          }}
-        />
-      )}
-    </section>
-  );
-});
-
-/* ============================================================================
-   1. Month View Component (Traditional 7-column Calendar)
-   ============================================================================ */
-
-function MonthView({
-  cursorDate,
-  ordersByDate,
-  todayIso,
-  onOpen,
-  onOpenDay,
-}: {
-  cursorDate: Date;
-  ordersByDate: Map<string, SalesOrder[]>;
-  todayIso: string;
-  onOpen: (id: string) => void;
-  onOpenDay: (dateStr: string) => void;
-}) {
-  const cells = useMemo(() => {
-    const year = cursorDate.getFullYear();
-    const month = cursorDate.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const leadEmpty = firstDay.getDay(); // Sunday = 0
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const totalCells = Math.ceil((leadEmpty + daysInMonth) / 7) * 7;
-
-    return Array.from({ length: totalCells }, (_, i) => {
-      const dayNum = i - leadEmpty + 1;
-      if (dayNum < 1 || dayNum > daysInMonth) return null;
-      const dateStr = formatIsoDate(new Date(year, month, dayNum));
-      return { day: dayNum, dateStr };
-    });
-  }, [cursorDate]);
-
-  return (
-    <div className="overflow-x-auto overscroll-x-contain">
-      <div className="min-w-[700px]">
-        {/* Days of Week Row */}
-        <div className="grid grid-cols-7 border-b border-[#EFE8DC] pb-2 text-center text-xs font-black text-[#6E3917]">
-          {WEEKDAYS_AR.map((name) => (
-            <div key={name} className="py-1">
-              {name}
-            </div>
+      {/* 2. DAY VIEW: HORIZONTAL WEEKDAY SELECTOR STRIP */}
+      {viewMode === "day" ? (
+        <div className="flex items-center gap-2 overflow-x-auto border-b border-border bg-muted/20 p-2 text-center no-scrollbar">
+          {surroundingDays.map((d) => (
+            <button
+              key={d.iso}
+              type="button"
+              onClick={() => setCurrentDate(d.date)}
+              className={`flex shrink-0 min-w-[72px] flex-col items-center justify-center rounded-xl p-2 transition-all ${
+                d.isSelected
+                  ? "bg-primary text-primary-foreground font-black shadow-md ring-2 ring-primary/40"
+                  : d.isToday
+                  ? "bg-primary/10 text-primary border border-primary/30 font-bold"
+                  : "bg-background border border-border text-foreground hover:bg-muted"
+              }`}
+            >
+              <span className="text-[11px] opacity-80">{d.dayName}</span>
+              <span className="text-base font-black leading-tight">{d.dayNum}</span>
+              {d.count > 0 ? (
+                <span
+                  className={`mt-1 rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
+                    d.isSelected ? "bg-white/20 text-white" : "bg-primary/20 text-primary"
+                  }`}
+                >
+                  {d.count} طلب
+                </span>
+              ) : (
+                <span className="mt-1 h-3 text-[10px] opacity-40">—</span>
+              )}
+            </button>
           ))}
         </div>
+      ) : null}
 
-        {/* 7-Column Grid */}
-        <div className="grid grid-cols-7 gap-1 pt-1">
-          {cells.map((cell, index) => {
-            if (!cell) {
-              return (
-                <div
-                  key={`empty-${index}`}
-                  className="min-h-[120px] rounded-2xl bg-[#FAF5EB]/40 border border-transparent"
-                />
-              );
-            }
+      {/* 3. CALENDAR CONTENT AREA */}
+      {viewMode === "month" ? (
+        /* MONTH GRID VIEW */
+        <div className="flex flex-col">
+          {/* Weekday Labels Header */}
+          <div className="grid grid-cols-7 border-b border-border bg-muted/40 text-center text-xs font-black text-muted-foreground">
+            {WEEKDAYS_AR.map((wd) => (
+              <div key={wd} className="py-2.5">
+                {wd}
+              </div>
+            ))}
+          </div>
 
-            const dayOrders = ordersByDate.get(cell.dateStr) ?? [];
-            const isToday = cell.dateStr === todayIso;
-            const maxVisible = 3;
-            const visibleOrders = dayOrders.slice(0, maxVisible);
-            const extraCount = dayOrders.length - maxVisible;
-
-            return (
+          {/* 7-Column Grid */}
+          <div className="grid grid-cols-7 border-collapse">
+            {monthGridDays.map((cell, idx) => (
               <div
-                key={cell.dateStr}
-                onClick={() => onOpenDay(cell.dateStr)}
-                className={`group flex min-h-[130px] flex-col justify-between rounded-2xl border p-1.5 transition-all cursor-pointer ${
-                  isToday
-                    ? "border-2 border-[#B8801C] bg-[#FEF7EB] shadow-xs"
-                    : "border-[#EFE8DC] bg-white hover:border-[#B8801C]/50 hover:bg-[#FAF5EB]/50"
+                key={cell.iso + idx}
+                onClick={() => {
+                  setCurrentDate(cell.date);
+                  setViewMode("day");
+                }}
+                className={`group min-h-[110px] border-b border-l border-border p-1.5 transition-colors cursor-pointer hover:bg-muted/30 ${
+                  !cell.isCurrentMonth ? "bg-muted/10 opacity-50" : "bg-background"
                 }`}
               >
-                {/* Cell Header */}
-                <div className="flex items-center justify-between px-1">
+                {/* Cell Date Pill */}
+                <div className="mb-1 flex items-center justify-between">
                   <span
-                    className={`grid h-6 w-6 place-items-center rounded-full text-xs font-black transition-transform group-hover:scale-110 ${
-                      isToday
-                        ? "bg-[#B8801C] text-white shadow-xs"
-                        : "text-[#26160F]"
+                    className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
+                      cell.isToday
+                        ? "bg-primary text-primary-foreground font-black shadow-sm"
+                        : cell.isCurrentMonth
+                        ? "text-foreground group-hover:bg-accent"
+                        : "text-muted-foreground"
                     }`}
                   >
-                    {cell.day}
+                    {cell.dayNum}
                   </span>
-                  {dayOrders.length > 0 && (
-                    <span className="text-[10px] font-extrabold text-[#6E3917]/70">
-                      {dayOrders.length} طلبات
-                    </span>
-                  )}
+                  {cell.orders.length > 0 ? (
+                    <span className="text-[10px] font-bold text-muted-foreground">{cell.orders.length} طلبات</span>
+                  ) : null}
                 </div>
 
-                {/* Orders List Chips */}
-                <div className="mt-1 space-y-1 flex-1">
-                  {visibleOrders.map((order) => {
-                    const style = STATUS_CONFIG[order.status] ?? STATUS_CONFIG.new;
-                    const isDelivery = order.method === "delivery";
-
-                    return (
-                      <button
-                        key={order.id}
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onOpen(order.id);
-                        }}
-                        className={`w-full rounded-xl border p-1 text-start text-[10px] font-bold leading-tight shadow-2xs transition-all hover:scale-[1.02] cursor-pointer ${style.bg} ${style.border} ${style.text}`}
-                      >
-                        <div className="flex items-center justify-between gap-1 truncate">
-                          <span className="truncate flex items-center gap-1">
-                            <Clock3 className="h-3 w-3 shrink-0 text-[#B8801C]" />
-                            {formatArabicTime(order.requested_time)}
-                          </span>
-                          <span>{isDelivery ? "🚗" : "🏬"}</span>
-                        </div>
-                        <div className="truncate font-black mt-0.5">
-                          {order.customer_name} • {productSummaryTag(order)}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Extra Orders Pill */}
-                {extraCount > 0 && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onOpenDay(cell.dateStr);
-                    }}
-                    className="mt-1 text-center text-[10px] font-black text-[#B8801C] hover:underline"
-                  >
-                    +{extraCount} طلبات أخرى
-                  </button>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ============================================================================
-   2. Week View Component (Vertical Hourly Timeline Grid 08:00 AM - 11:00 PM)
-   ============================================================================ */
-
-function WeekView({
-  cursorDate,
-  ordersByDate,
-  todayIso,
-  onOpen,
-}: {
-  cursorDate: Date;
-  ordersByDate: Map<string, SalesOrder[]>;
-  todayIso: string;
-  onOpen: (id: string) => void;
-}) {
-  // Compute the 7 days of the week for the current cursor
-  const weekDays = useMemo(() => {
-    const startOfWeek = new Date(cursorDate);
-    startOfWeek.setDate(cursorDate.getDate() - cursorDate.getDay());
-    return Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(startOfWeek);
-      d.setDate(startOfWeek.getDate() + i);
-      return {
-        date: d,
-        dateStr: formatIsoDate(d),
-        dayName: WEEKDAYS_AR[i],
-        dayNum: d.getDate(),
-      };
-    });
-  }, [cursorDate]);
-
-  // Hours array from 08:00 to 23:00 (15 hours)
-  const hours = useMemo(() => Array.from({ length: 16 }, (_, i) => i + 8), []);
-
-  // Live current time calculation (minutes from 08:00)
-  const [currentMinutes, setCurrentMinutes] = useState(() => {
-    const now = new Date();
-    return now.getHours() * 60 + now.getMinutes();
-  });
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      const now = new Date();
-      setCurrentMinutes(now.getHours() * 60 + now.getMinutes());
-    }, 60000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const liveLineTop = useMemo(() => {
-    const start = 8 * 60; // 08:00 AM
-    if (currentMinutes < start || currentMinutes > 23 * 60) return null;
-    return (currentMinutes - start) * (64 / 60); // 64px per hour
-  }, [currentMinutes]);
-
-  return (
-    <div className="overflow-x-auto overscroll-x-contain">
-      <div className="min-w-[760px]">
-        {/* Header Row: Days of the Week */}
-        <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-[#EFE8DC] pb-2 text-center">
-          <div className="text-[11px] font-bold text-[#4A3B32]/60 flex items-center justify-center">
-            الوقت
-          </div>
-          {weekDays.map((day) => {
-            const isToday = day.dateStr === todayIso;
-            return (
-              <div
-                key={day.dateStr}
-                className={`py-1 rounded-xl flex flex-col items-center ${
-                  isToday ? "bg-[#FEF7EB]" : ""
-                }`}
-              >
-                <span className="text-xs font-bold text-[#6E3917]">{day.dayName}</span>
-                <span
-                  className={`mt-0.5 grid h-7 w-7 place-items-center rounded-full text-xs font-black ${
-                    isToday ? "bg-[#B8801C] text-white shadow-xs" : "text-[#26160F]"
-                  }`}
-                >
-                  {day.dayNum}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Scrollable Hourly Timeline Container */}
-        <div className="relative max-h-[560px] overflow-y-auto pt-2 no-scrollbar">
-          <div className="grid grid-cols-[60px_repeat(7,1fr)] relative">
-            {/* Time Labels Column */}
-            <div className="space-y-12 text-center text-[10px] font-bold text-[#4A3B32]/70 pt-1">
-              {hours.map((h) => {
-                const period = h >= 12 ? "م" : "ص";
-                const displayH = h % 12 === 0 ? 12 : h % 12;
-                return (
-                  <div key={h} className="h-16 flex items-start justify-center border-t border-transparent">
-                    {displayH}:00 {period}
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* 7 Columns for the 7 Days */}
-            {weekDays.map((day) => {
-              const dayOrders = ordersByDate.get(day.dateStr) ?? [];
-              const isToday = day.dateStr === todayIso;
-
-              return (
-                <div
-                  key={day.dateStr}
-                  className={`relative border-r border-[#EFE8DC] ${
-                    isToday ? "bg-[#FEF7EB]/30" : ""
-                  }`}
-                  style={{ minHeight: `${hours.length * 64}px` }}
-                >
-                  {/* Grid Lines per hour */}
-                  {hours.map((h) => (
-                    <div
-                      key={h}
-                      className="h-16 border-t border-[#EFE8DC]/60 hover:bg-[#FAF5EB]/40 transition-colors"
-                    />
-                  ))}
-
-                  {/* Red/Gold Live Time Line Indicator */}
-                  {isToday && liveLineTop !== null && (
-                    <div
-                      className="absolute left-0 right-0 z-20 flex items-center pointer-events-none"
-                      style={{ top: `${liveLineTop}px` }}
-                    >
-                      <div className="h-2 w-2 rounded-full bg-[#E11D48] -ms-1 shadow-xs" />
-                      <div className="h-[2px] w-full bg-[#E11D48]" />
-                    </div>
-                  )}
-
-                  {/* Positioned Event Blocks */}
-                  {dayOrders.map((order) => {
-                    const mins = parseTimeInMinutes(order.requested_time);
-                    const startMins = 8 * 60; // 08:00 AM
-                    const offsetMins = Math.max(0, mins - startMins);
-                    const topPx = offsetMins * (64 / 60); // 64px per 60 minutes
-                    const style = STATUS_CONFIG[order.status] ?? STATUS_CONFIG.new;
-                    const isDelivery = order.method === "delivery";
+                {/* Order Chips */}
+                <div className="space-y-1">
+                  {cell.orders.slice(0, 3).map((ord) => {
+                    const cfg = STATUS_CONFIG[ord.status] ?? STATUS_CONFIG.new;
+                    const code = orderLabel(ord.order_number, ord.staff_code);
+                    const timeStr = ord.requested_time ? ord.requested_time.slice(0, 5) : "";
+                    const firstItem = ord.items?.[0]?.name_ar ?? "كيكة";
 
                     return (
                       <div
-                        key={order.id}
-                        onClick={() => onOpen(order.id)}
-                        style={{ top: `${topPx}px` }}
-                        className={`absolute left-1 right-1 z-10 min-h-[52px] rounded-xl border p-1.5 shadow-xs transition-all hover:scale-[1.02] hover:z-30 cursor-pointer ${style.bg} ${style.border} ${style.text}`}
+                        key={ord.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedOrder(ord);
+                        }}
+                        className={`truncate rounded-lg border px-1.5 py-1 text-[11px] font-bold transition-transform hover:scale-[1.02] shadow-2xs ${cfg.bg} ${cfg.border} ${cfg.text}`}
                       >
-                        <div className="flex items-center justify-between text-[10px] font-black border-b border-black/10 pb-0.5">
-                          <span className="flex items-center gap-1">
-                            <Clock3 className="h-3 w-3 text-[#B8801C]" />
-                            {formatArabicTime(order.requested_time)}
-                          </span>
-                          <span>{isDelivery ? "🚗 توصيل" : "🏬 استلام"}</span>
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="shrink-0 font-black">{timeStr}</span>
+                          <span className="truncate">{code}</span>
                         </div>
-                        <div className="mt-1 text-[11px] font-extrabold truncate">
-                          {order.customer_name}
-                        </div>
-                        <div className="text-[10px] font-bold opacity-80 truncate">
-                          {productSummaryTag(order)}
+                        <div className="truncate text-[10px] opacity-80">
+                          {ord.area ? ord.area : firstItem}
                         </div>
                       </div>
                     );
                   })}
+                  {cell.orders.length > 3 ? (
+                    <div className="text-center text-[10px] font-bold text-primary hover:underline">
+                      +{cell.orders.length - 3} طلبات أخرى
+                    </div>
+                  ) : null}
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ============================================================================
-   3. Day View Component (Single Day Vertical Hourly Timeline 08:00 AM - 11:00 PM)
-   ============================================================================ */
-
-function DayView({
-  cursorDate,
-  ordersByDate,
-  todayIso,
-  onOpen,
-}: {
-  cursorDate: Date;
-  ordersByDate: Map<string, SalesOrder[]>;
-  todayIso: string;
-  onOpen: (id: string) => void;
-}) {
-  const dateStr = useMemo(() => formatIsoDate(cursorDate), [cursorDate]);
-  const isToday = dateStr === todayIso;
-  const dayOrders = ordersByDate.get(dateStr) ?? [];
-
-  const hours = useMemo(() => Array.from({ length: 16 }, (_, i) => i + 8), []);
-
-  const [currentMinutes, setCurrentMinutes] = useState(() => {
-    const now = new Date();
-    return now.getHours() * 60 + now.getMinutes();
-  });
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      const now = new Date();
-      setCurrentMinutes(now.getHours() * 60 + now.getMinutes());
-    }, 60000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const liveLineTop = useMemo(() => {
-    const start = 8 * 60;
-    if (currentMinutes < start || currentMinutes > 23 * 60) return null;
-    return (currentMinutes - start) * (64 / 60);
-  }, [currentMinutes]);
-
-  return (
-    <div className="space-y-3">
-      {/* Day Overview Ribbon */}
-      <div className="flex items-center justify-between rounded-2xl border border-[#EFE8DC] bg-[#FAF5EB] p-3">
-        <div className="flex items-center gap-2">
-          <span className="text-base font-black text-[#26160F]">
-            جدول أوقات الطلبات ({dayOrders.length} طلبات)
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="rounded-xl bg-[#B8801C] px-3 py-1 text-xs font-bold text-white shadow-xs">
-            {WEEKDAYS_AR[cursorDate.getDay()]}، {cursorDate.getDate()} {MONTHS_AR[cursorDate.getMonth()]}
-          </span>
-        </div>
-      </div>
-
-      {/* Hourly Timeline */}
-      <div className="relative max-h-[580px] overflow-y-auto pt-2 no-scrollbar rounded-2xl border border-[#EFE8DC] bg-white p-2">
-        <div className="grid grid-cols-[80px_1fr] relative">
-          {/* Time Column */}
-          <div className="space-y-12 text-center text-xs font-bold text-[#4A3B32]/70 pt-1">
-            {hours.map((h) => {
-              const period = h >= 12 ? "م" : "ص";
-              const displayH = h % 12 === 0 ? 12 : h % 12;
-              return (
-                <div key={h} className="h-16 flex items-start justify-center">
-                  {displayH}:00 {period}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Timeline Column */}
-          <div
-            className={`relative border-r border-[#EFE8DC] ${
-              isToday ? "bg-[#FEF7EB]/30" : ""
-            }`}
-            style={{ minHeight: `${hours.length * 64}px` }}
-          >
-            {/* Grid lines */}
-            {hours.map((h) => (
-              <div
-                key={h}
-                className="h-16 border-t border-[#EFE8DC]/60 hover:bg-[#FAF5EB]/40 transition-colors"
-              />
+              </div>
             ))}
-
-            {/* Live Indicator */}
-            {isToday && liveLineTop !== null && (
-              <div
-                className="absolute left-0 right-0 z-20 flex items-center pointer-events-none"
-                style={{ top: `${liveLineTop}px` }}
-              >
-                <div className="h-3 w-3 rounded-full bg-[#E11D48] -ms-1.5 shadow-md" />
-                <div className="h-[2px] w-full bg-[#E11D48]" />
-              </div>
-            )}
-
-            {/* Placed Order Event Cards */}
-            {dayOrders.map((order) => {
-              const mins = parseTimeInMinutes(order.requested_time);
-              const startMins = 8 * 60;
-              const offsetMins = Math.max(0, mins - startMins);
-              const topPx = offsetMins * (64 / 60);
-              const style = STATUS_CONFIG[order.status] ?? STATUS_CONFIG.new;
-              const isDelivery = order.method === "delivery";
-
-              return (
-                <div
-                  key={order.id}
-                  onClick={() => onOpen(order.id)}
-                  style={{ top: `${topPx}px` }}
-                  className={`absolute left-2 right-2 z-10 rounded-2xl border p-3 shadow-md transition-all hover:scale-[1.01] hover:z-30 cursor-pointer ${style.bg} ${style.border} ${style.text}`}
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-black/10 pb-1.5">
-                    <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center gap-1 text-xs font-black text-[#B8801C]">
-                        <Clock3 className="h-4 w-4" />
-                        {formatArabicTime(order.requested_time)}
-                      </span>
-                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${style.badgeBg} ${style.badgeText}`}>
-                        {style.ar}
-                      </span>
-                    </div>
-                    <span className="text-xs font-black">
-                      {isDelivery ? "🚗 توصيل عمّان" : "🏬 استلام فرع الشميساني"}
-                    </span>
-                  </div>
-
-                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                      <h4 className="font-extrabold text-sm text-[#26160F]">
-                        {order.customer_name} ({order.customer_phone})
-                      </h4>
-                      <p className="text-xs font-bold text-[#6E3917]/80 mt-0.5">
-                        🎂 {productSummaryTag(order)}
-                      </p>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onOpen(order.id);
-                      }}
-                      className="inline-flex h-8 items-center gap-1 rounded-xl bg-white/90 border border-black/10 px-3 text-xs font-bold text-[#26160F] shadow-2xs hover:bg-white cursor-pointer"
-                    >
-                      <Maximize2 className="h-3.5 w-3.5" />
-                      <span>إدارة الطلب</span>
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
           </div>
         </div>
-      </div>
-    </div>
-  );
-}
-
-/* ============================================================================
-   4. Agenda View Component (Chronological List View Grouped by Date)
-   ============================================================================ */
-
-function AgendaView({
-  ordersByDate,
-  onOpen,
-}: {
-  ordersByDate: Map<string, SalesOrder[]>;
-  onOpen: (id: string) => void;
-}) {
-  const sortedDates = useMemo(() => {
-    return Array.from(ordersByDate.keys()).sort();
-  }, [ordersByDate]);
-
-  if (sortedDates.length === 0) {
-    return (
-      <div className="py-16 text-center text-sm font-bold text-[#4A3B32]/70">
-        لا توجد طلبات مسجلة في هذه الفترة 🌸
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      {sortedDates.map((dateStr) => {
-        const d = parseIsoDate(dateStr);
-        const dayName = WEEKDAYS_AR[d.getDay()];
-        const dayOrders = ordersByDate.get(dateStr) ?? [];
-
-        return (
-          <div key={dateStr} className="space-y-3">
-            {/* Agenda Group Header */}
-            <div className="sticky top-0 z-10 flex items-center justify-between rounded-2xl border border-[#EFE8DC] bg-[#FAF5EB] px-4 py-2.5 shadow-2xs backdrop-blur-md">
-              <div className="flex items-center gap-2">
-                <CalendarDays className="h-4 w-4 text-[#B8801C]" />
-                <span className="font-extrabold text-sm text-[#26160F]">
-                  {dayName}، {d.getDate()} {MONTHS_AR[d.getMonth()]} {d.getFullYear()}
-                </span>
-              </div>
-              <span className="rounded-full bg-[#B8801C] px-2.5 py-0.5 text-xs font-bold text-white">
-                {dayOrders.length} طلبات
-              </span>
-            </div>
-
-            {/* Group Orders Cards */}
-            <div className="grid gap-3 sm:grid-cols-2">
-              {dayOrders.map((order) => {
-                const style = STATUS_CONFIG[order.status] ?? STATUS_CONFIG.new;
-                const isDelivery = order.method === "delivery";
+      ) : (
+        /* DAY HOURLY TIMELINE VIEW (06:00 AM to 11:00 PM) */
+        <div className="relative flex flex-col bg-background">
+          <div className="max-h-[640px] overflow-y-auto overflow-x-hidden relative">
+            {/* Hourly Rows Grid */}
+            <div className="relative min-h-[1296px] w-full border-b border-border">
+              {/* 18 Hours Rows (06:00 AM to 11:00 PM) */}
+              {Array.from({ length: 18 }).map((_, hourIndex) => {
+                const hourNum = 6 + hourIndex; // 6 to 23
+                const label = formatMinutesArabic(hourNum * 60);
 
                 return (
                   <div
-                    key={order.id}
-                    onClick={() => onOpen(order.id)}
-                    className={`rounded-2xl border p-4 shadow-xs transition-all hover:scale-[1.01] hover:shadow-md cursor-pointer ${style.bg} ${style.border} ${style.text}`}
+                    key={hourNum}
+                    className="flex h-[72px] border-b border-border/60 text-xs font-semibold text-muted-foreground relative"
                   >
-                    <div className="flex items-center justify-between border-b border-black/10 pb-2">
-                      <span className="inline-flex items-center gap-1.5 font-black text-xs text-[#B8801C]">
-                        <Clock3 className="h-4 w-4" />
-                        {formatArabicTime(order.requested_time)}
-                      </span>
-                      <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-black ${style.badgeBg} ${style.badgeText}`}>
-                        {style.ar}
-                      </span>
+                    {/* Time Label Column */}
+                    <div className="w-16 sm:w-20 shrink-0 border-l border-border/60 bg-muted/10 p-2 text-left font-mono font-bold select-none">
+                      {label}
                     </div>
 
-                    <div className="mt-3 flex items-start justify-between gap-2">
-                      <div>
-                        <h4 className="font-black text-sm text-[#26160F]">
-                          {order.customer_name} ({order.customer_phone})
-                        </h4>
-                        <p className="text-xs font-bold text-[#6E3917]/80 mt-1">
-                          🎂 {productSummaryTag(order)}
-                        </p>
-                      </div>
-
-                      <span className="inline-flex shrink-0 items-center gap-1 rounded-xl border border-black/10 bg-white/90 px-2.5 py-1 text-[11px] font-bold text-[#26160F]">
-                        {isDelivery ? "🚗 توصيل" : "🏬 استلام"}
-                      </span>
-                    </div>
-
-                    <div className="mt-3 pt-2 border-t border-black/10 flex items-center justify-between text-xs">
-                      <span className="font-bold text-[#6E3917]">
-                        رقم الطلب: <span dir="ltr">{orderLabel(order.order_number, order.staff_code)}</span>
-                      </span>
-                      <span className="font-black text-[#B8801C] hover:underline">
-                        عرض التفاصيل 👁️
-                      </span>
+                    {/* Hourly Horizontal Guide Line */}
+                    <div className="flex-1 relative">
+                      <div className="absolute inset-x-0 top-0 border-t border-dashed border-border/40 pointer-events-none" />
                     </div>
                   </div>
                 );
               })}
+
+              {/* LIVE CURRENT TIME INDICATOR BAR */}
+              {currentDate.toDateString() === new Date().toDateString() ? (
+                (() => {
+                  const now = new Date();
+                  const currentMins = now.getHours() * 60 + now.getMinutes();
+                  const startMins = 6 * 60;
+                  if (currentMins >= startMins && currentMins <= 23 * 60) {
+                    const topPx = ((currentMins - startMins) / 60) * 72;
+                    return (
+                      <div
+                        style={{ top: `${topPx}px` }}
+                        className="absolute inset-x-0 z-20 flex items-center pointer-events-none"
+                      >
+                        <div className="mr-14 sm:mr-18 flex items-center gap-1 w-full">
+                          <div className="h-3 w-3 rounded-full bg-rose-500 ring-4 ring-rose-500/20 shadow-sm" />
+                          <div className="h-0.5 w-full bg-rose-500 shadow-xs" />
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()
+              ) : null}
+
+              {/* POSITIONED MULTI-COLUMN EVENT CARDS */}
+              <div className="absolute top-0 bottom-0 right-16 sm:right-20 left-0 z-10">
+                {positionedDayOrders.length === 0 ? (
+                  <div className="flex h-48 items-center justify-center text-sm font-bold text-muted-foreground">
+                    لا توجد طلبات مسجلة لهذا اليوم 🎉
+                  </div>
+                ) : (
+                  positionedDayOrders.map((pos) => {
+                    const ord = pos.order;
+                    const cfg = STATUS_CONFIG[ord.status] ?? STATUS_CONFIG.new;
+                    const code = orderLabel(ord.order_number, ord.staff_code);
+                    const mainItem = ord.items?.[0]?.name_ar ?? "كيكة مخصصة";
+                    const locationText = ord.method === "delivery" ? ord.area ?? "توصيل" : "استلام من المحل";
+                    const timeWindow = `${formatMinutesArabic(parseTimeInMinutes(ord.requested_time))} - ${formatMinutesArabic(parseTimeInMinutes(ord.requested_time) + 60)}`;
+
+                    // RTL Sub-column placement logic
+                    const widthPercent = 100 / pos.totalCols;
+                    const rightPercent = pos.colIndex * widthPercent;
+
+                    return (
+                      <div
+                        key={ord.id}
+                        onClick={() => setSelectedOrder(ord)}
+                        style={{
+                          top: `${pos.topPx}px`,
+                          height: `${pos.heightPx}px`,
+                          right: `${rightPercent}%`,
+                          width: `calc(${widthPercent}% - 4px)`,
+                        }}
+                        className={`absolute rounded-xl border p-2.5 shadow-md cursor-pointer transition-all hover:scale-[1.01] hover:z-30 overflow-hidden flex flex-col justify-between ${cfg.bg} ${cfg.border} ${cfg.text}`}
+                      >
+                        {/* Card Header: Code + Status Badge */}
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="inline-flex items-center gap-1 rounded-md bg-black/10 px-1.5 py-0.5 font-mono text-[11px] font-black dir-ltr">
+                            {code}
+                          </span>
+                          <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-black ${cfg.badgeBg} ${cfg.badgeText}`}>
+                            {cfg.ar}
+                          </span>
+                        </div>
+
+                        {/* Card Body: Customer & Location */}
+                        <div className="mt-1 space-y-0.5">
+                          <div className="flex items-center gap-1 text-xs font-black truncate">
+                            {ord.method === "delivery" ? <Truck className="h-3.5 w-3.5 text-blue-600 shrink-0" /> : <Store className="h-3.5 w-3.5 text-amber-600 shrink-0" />}
+                            <span className="truncate">{ord.customer_name}</span>
+                          </div>
+                          <div className="text-[11px] font-bold opacity-90 truncate flex items-center gap-1">
+                            <MapPin className="h-3 w-3 shrink-0" /> {locationText} • {mainItem}
+                          </div>
+                        </div>
+
+                        {/* Card Footer: Time slot */}
+                        <div className="mt-1 flex items-center justify-between text-[10px] font-bold opacity-75">
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" /> {timeWindow}
+                          </span>
+                          <span>{ord.total.toFixed(2)} د.أ</span>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
             </div>
           </div>
-        );
-      })}
-    </div>
-  );
-}
-
-/* ============================================================================
-   5. Day Drawer Component (Slide-Over Drawer for Selected Date)
-   ============================================================================ */
-
-function DayDrawer({
-  dateStr,
-  orders,
-  onClose,
-  onOpenOrder,
-}: {
-  dateStr: string;
-  orders: SalesOrder[];
-  onClose: () => void;
-  onOpenOrder: (id: string) => void;
-}) {
-  const dateObj = parseIsoDate(dateStr);
-  const dayName = WEEKDAYS_AR[dateObj.getDay()];
-  const monthName = MONTHS_AR[dateObj.getMonth()];
-
-  return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/50 backdrop-blur-xs transition-opacity">
-      <div
-        type="button"
-        onClick={onClose}
-        className="absolute inset-0 cursor-default"
-      />
-
-      <div
-        dir="rtl"
-        className="relative z-10 flex h-full w-full max-w-md flex-col bg-white shadow-2xl border-s border-[#EFE8DC]"
-      >
-        {/* Drawer Header */}
-        <div className="flex items-center justify-between border-b border-[#EFE8DC] bg-[#FAF5EB] p-4 sm:p-5">
-          <div>
-            <h3 className="text-base font-black text-[#26160F]">
-              طلبات يوم {dayName}
-            </h3>
-            <p className="text-xs text-[#6E3917] mt-0.5">
-              {dateObj.getDate()} {monthName} {dateObj.getFullYear()} ({orders.length} طلبات)
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="grid h-9 w-9 place-items-center rounded-full border border-[#EFE8DC] bg-white text-[#26160F] hover:bg-[#FEF7EB] cursor-pointer"
-          >
-            <X className="h-5 w-5" />
-          </button>
         </div>
+      )}
 
-        {/* Drawer Content */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
-          {orders.length === 0 ? (
-            <div className="py-16 text-center text-xs font-bold text-[#4A3B32]/70">
-              لا توجد طلبات مسجلة لهذا اليوم 🌸
-            </div>
-          ) : (
-            orders.map((order) => {
-              const style = STATUS_CONFIG[order.status] ?? STATUS_CONFIG.new;
-              const isDelivery = order.method === "delivery";
-
-              return (
-                <div
-                  key={order.id}
-                  onClick={() => onOpenOrder(order.id)}
-                  className={`rounded-2xl border p-4 shadow-xs transition-all hover:scale-[1.01] hover:shadow-md cursor-pointer ${style.bg} ${style.border} ${style.text}`}
-                >
-                  <div className="flex items-center justify-between border-b border-black/10 pb-2">
-                    <span className="inline-flex items-center gap-1 font-black text-xs text-[#B8801C]">
-                      <Clock3 className="h-4 w-4" />
-                      {formatArabicTime(order.requested_time)}
-                    </span>
-                    <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-black ${style.badgeBg} ${style.badgeText}`}>
-                      {style.ar}
-                    </span>
-                  </div>
-
-                  <div className="mt-2 space-y-1">
-                    <h4 className="font-extrabold text-sm text-[#26160F]">
-                      {order.customer_name} ({order.customer_phone})
-                    </h4>
-                    <p className="text-xs font-bold text-[#6E3917]/80">
-                      🎂 {productSummaryTag(order)}
-                    </p>
-                  </div>
-
-                  <div className="mt-3 pt-2 border-t border-black/10 flex items-center justify-between text-xs">
-                    <span className="font-bold">
-                      {isDelivery ? "🚗 توصيل" : "🏬 استلام"}
-                    </span>
-                    <span className="font-black text-[#B8801C]">
-                      إدارة الطلب 👁️
-                    </span>
-                  </div>
+      {/* 4. STRUCTURED ORDER DETAILS MODAL / SHEET */}
+      {selectedOrder ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200" dir="rtl">
+          <div className="relative w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl border border-border bg-card text-card-foreground shadow-2xl transition-all">
+            {/* Modal Header */}
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-card/95 px-5 py-4 backdrop-blur-md">
+              <div className="flex items-center gap-2">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <Package className="h-5 w-5" />
                 </div>
-              );
-            })
-          )}
+                <div>
+                  <h3 className="text-base font-black text-foreground flex items-center gap-2">
+                    {selectedOrder.area ?? (selectedOrder.method === "delivery" ? "توصيل" : "استلام محل")} • {orderLabel(selectedOrder.order_number, selectedOrder.staff_code)}
+                  </h3>
+                  <p className="text-xs font-bold text-muted-foreground">
+                    نافذة التسليم: {formatMinutesArabic(parseTimeInMinutes(selectedOrder.requested_time))} - {formatMinutesArabic(parseTimeInMinutes(selectedOrder.requested_time) + 60)}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedOrder(null)}
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-muted text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 space-y-4">
+              {/* Status & Code Bar */}
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-muted/40 p-3 border border-border">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-muted-foreground">حالة الأوردر:</span>
+                  <span className={`rounded-full px-3 py-1 text-xs font-black ${(STATUS_CONFIG[selectedOrder.status] ?? STATUS_CONFIG.new).badgeBg} ${(STATUS_CONFIG[selectedOrder.status] ?? STATUS_CONFIG.new).badgeText}`}>
+                    {(STATUS_CONFIG[selectedOrder.status] ?? STATUS_CONFIG.new).ar}
+                  </span>
+                </div>
+                {selectedOrder.staff_code ? (
+                  <span className="text-xs font-bold text-muted-foreground">
+                    كود الموظف: <b className="text-foreground">{selectedOrder.staff_code}</b>
+                  </span>
+                ) : null}
+              </div>
+
+              {/* Customer & Direct Action Buttons */}
+              <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-muted-foreground">العميل</span>
+                    <h4 className="text-base font-black text-foreground">{selectedOrder.customer_name}</h4>
+                  </div>
+                  <span className="font-mono text-sm font-bold text-muted-foreground">{selectedOrder.customer_phone}</span>
+                </div>
+
+                {/* 1-Tap Call & WhatsApp Buttons */}
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <a
+                    href={`tel:${selectedOrder.customer_phone}`}
+                    className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-600 text-white font-bold text-xs shadow-sm hover:bg-emerald-700 transition-colors"
+                  >
+                    <Phone className="h-4 w-4" /> 📞 اتصال مباشر
+                  </a>
+                  <a
+                    href={`https://wa.me/${getCleanPhone(selectedOrder.customer_phone)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-500 text-white font-bold text-xs shadow-sm hover:bg-emerald-600 transition-colors"
+                  >
+                    <MessageCircle className="h-4 w-4" /> 💬 واتساب
+                  </a>
+                </div>
+              </div>
+
+              {/* Date & Fulfillment */}
+              <div className="rounded-2xl border border-border bg-card p-4 space-y-2">
+                <h4 className="text-xs font-black text-muted-foreground flex items-center gap-1.5">
+                  <Clock className="h-4 w-4 text-primary" /> موعد ونوع التسليم
+                </h4>
+                <div className="text-sm font-bold text-foreground">
+                  📅 {selectedOrder.requested_date} — الساعة {formatMinutesArabic(parseTimeInMinutes(selectedOrder.requested_time))}
+                </div>
+                <div className="text-xs font-bold text-muted-foreground flex items-center gap-1">
+                  {selectedOrder.method === "delivery" ? (
+                    <>
+                      <Truck className="h-4 w-4 text-blue-500" /> توصيل إلى: {selectedOrder.area ?? "منطقة غير محددة"} {selectedOrder.address ? `— ${selectedOrder.address}` : ""} (أجرة: {selectedOrder.delivery_fee.toFixed(2)} د.أ)
+                    </>
+                  ) : (
+                    <>
+                      <Store className="h-4 w-4 text-amber-500" /> استلام مباشر من الفرع/المحل
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Items & Options */}
+              <div className="rounded-2xl border border-border bg-card p-4 space-y-2">
+                <h4 className="text-xs font-black text-muted-foreground flex items-center gap-1.5">
+                  <Sparkles className="h-4 w-4 text-primary" /> تفاصيل الكيك والمنتجات
+                </h4>
+                <div className="divide-y divide-border">
+                  {selectedOrder.items?.map((it) => (
+                    <div key={it.id} className="py-2 first:pt-0 last:pb-0">
+                      <div className="flex items-center justify-between text-sm font-bold">
+                        <span>{it.name_ar} (x{it.quantity})</span>
+                        <span>{(it.unit_price * it.quantity).toFixed(2)} د.أ</span>
+                      </div>
+                      {it.options_ar?.length ? (
+                        <div className="text-xs font-semibold text-muted-foreground mt-0.5">
+                          الخيارات: {it.options_ar.join(" ، ")}
+                        </div>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Inscription Text */}
+              {selectedOrder.inscription ? (
+                <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4">
+                  <h4 className="text-xs font-black text-primary mb-1">✍️ الكتابة على الكيك / القاعدة:</h4>
+                  <p className="text-sm font-bold text-foreground bg-background p-2.5 rounded-xl border border-border">
+                    "{selectedOrder.inscription}"
+                  </p>
+                </div>
+              ) : null}
+
+              {/* Notes & Design Reference Image */}
+              {selectedOrder.notes || selectedOrder.design_image_url ? (
+                <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
+                  <h4 className="text-xs font-black text-muted-foreground">📝 ملاحظات خاصة وصورة التصميم</h4>
+                  {selectedOrder.notes ? (
+                    <p className="text-xs font-bold text-foreground bg-muted p-2.5 rounded-xl">{selectedOrder.notes}</p>
+                  ) : null}
+                  {selectedOrder.design_image_url ? (
+                    <div>
+                      <span className="text-[11px] font-bold text-muted-foreground block mb-1">صورة التصميم المرفقة:</span>
+                      <img
+                        src={selectedOrder.design_image_url}
+                        alt="Design Reference"
+                        onClick={() => setZoomImage(selectedOrder.design_image_url)}
+                        className="h-28 w-28 rounded-xl object-cover border border-border cursor-pointer hover:opacity-90 transition-opacity"
+                      />
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {/* Financial Calculation & Payment */}
+              <div className="rounded-2xl border border-border bg-card p-4 space-y-2 text-xs font-bold">
+                <h4 className="text-xs font-black text-muted-foreground mb-2">💵 الحساب المالي وطريقة الدفع</h4>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">المجموع الفرعي:</span>
+                  <span>{selectedOrder.subtotal.toFixed(2)} د.أ</span>
+                </div>
+                {selectedOrder.delivery_fee > 0 ? (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">أجرة التوصيل:</span>
+                    <span>+{selectedOrder.delivery_fee.toFixed(2)} د.أ</span>
+                  </div>
+                ) : null}
+                {selectedOrder.discount_amount > 0 ? (
+                  <div className="flex justify-between text-rose-600">
+                    <span>الخصم:</span>
+                    <span>-{selectedOrder.discount_amount.toFixed(2)} د.أ</span>
+                  </div>
+                ) : null}
+                <div className="flex justify-between text-sm font-black pt-1 border-t border-border">
+                  <span>الإجمالي النهائي:</span>
+                  <span className="text-primary">{selectedOrder.total.toFixed(2)} د.أ</span>
+                </div>
+                <div className="flex justify-between text-emerald-600">
+                  <span>المدفوع (العربون):</span>
+                  <span>{selectedOrder.deposit_paid.toFixed(2)} د.أ</span>
+                </div>
+                <div className="flex justify-between text-amber-600 font-black text-sm">
+                  <span>المتبقي المطلوب:</span>
+                  <span>{(selectedOrder.total - selectedOrder.deposit_paid).toFixed(2)} د.أ</span>
+                </div>
+                <div className="pt-2 border-t border-border flex items-center justify-between text-muted-foreground">
+                  <span>طريقة الدفع:</span>
+                  <span className="font-bold text-foreground">
+                    {selectedOrder.payment_method ? (PAYMENT_METHOD_MAP[selectedOrder.payment_method] ?? selectedOrder.payment_method) : "لم تحدد"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Bottom Action Controls */}
+            <div className="sticky bottom-0 z-10 flex items-center justify-between gap-2 border-t border-border bg-card/95 p-4 backdrop-blur-md">
+              <button
+                type="button"
+                onClick={() => {
+                  const id = selectedOrder.id;
+                  setSelectedOrder(null);
+                  onOpen(id);
+                }}
+                className="flex flex-1 min-h-11 items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground font-bold text-xs shadow-sm hover:opacity-90 transition-opacity"
+              >
+                <Pencil className="h-4 w-4" /> ✏️ تعديل كامل الطلب
+              </button>
+              <button
+                type="button"
+                onClick={() => printOrderReceipt(selectedOrder)}
+                className="flex flex-1 min-h-11 items-center justify-center gap-2 rounded-xl border border-border bg-muted text-foreground font-bold text-xs hover:bg-accent transition-colors"
+              >
+                <Printer className="h-4 w-4" /> 🖨️ طباعة البون
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
+      ) : null}
+
+      {/* IMAGE ZOOM MODAL */}
+      {zoomImage ? (
+        <div
+          onClick={() => setZoomImage(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4"
+        >
+          <div className="relative max-w-3xl max-h-[90vh]">
+            <img src={zoomImage} alt="Zoomed view" className="max-h-[85vh] max-w-full rounded-2xl object-contain" />
+            <button
+              type="button"
+              onClick={() => setZoomImage(null)}
+              className="absolute -top-3 -right-3 flex h-9 w-9 items-center justify-center rounded-full bg-white text-black shadow-lg"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
-}
+});
