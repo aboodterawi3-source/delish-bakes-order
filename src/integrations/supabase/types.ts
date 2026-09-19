@@ -544,6 +544,30 @@ export type Database = {
         }
         Relationships: []
       }
+      store_settings: {
+        Row: {
+          card_color_palette: string
+          created_at: string
+          id: string
+          singleton: boolean
+          updated_at: string
+        }
+        Insert: {
+          card_color_palette?: string
+          created_at?: string
+          id?: string
+          singleton?: boolean
+          updated_at?: string
+        }
+        Update: {
+          card_color_palette?: string
+          created_at?: string
+          id?: string
+          singleton?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       storefront_banner: {
         Row: {
           button_text: string
