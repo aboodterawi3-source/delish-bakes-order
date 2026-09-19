@@ -128,9 +128,11 @@ const PAYMENT_METHOD_MAP: Record<string, string> = {
 /** Parse HH:mm time string to minutes from midnight */
 function parseTimeInMinutes(timeStr: string): number {
   if (!timeStr) return 9 * 60; // default 9:00 AM
-  const [h, m] = timeStr.split(":").map(Number);
-  if (isNaN(h)) return 9 * 60;
-  return h * 60 + (isNaN(m) ? 0 : m);
+  const parts = timeStr.split(":").map(Number);
+  const h = parts[0] ?? Number.NaN;
+  const m = parts[1] ?? 0;
+  if (Number.isNaN(h)) return 9 * 60;
+  return h * 60 + (Number.isNaN(m) ? 0 : m);
 }
 
 /** Format time in minutes to 12-hour Arabic format (e.g. 9:00 ص) */
@@ -206,7 +208,8 @@ function computeHourlyMultiColumnLayout(orders: SalesOrder[], pixelsPerHour = 72
     for (const item of cluster) {
       let placed = false;
       for (let c = 0; c < columns.length; c++) {
-        if (columns[c].end <= item.start) {
+        const col = columns[c];
+        if (col && col.end <= item.start) {
           columns[c] = item;
           item.colIndex = c;
           placed = true;
