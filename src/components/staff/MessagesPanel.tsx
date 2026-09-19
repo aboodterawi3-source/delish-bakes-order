@@ -33,7 +33,10 @@ export function MessagesPanel() {
 
   // Real-time subscription for incoming customer messages
   useEffect(() => {
-    const invalidate = () => void queryClient.invalidateQueries({ queryKey: MESSAGES_KEY });
+    const invalidate = () => {
+      void queryClient.invalidateQueries({ queryKey: MESSAGES_KEY });
+      void queryClient.invalidateQueries({ queryKey: ["staff", "unread-messages-count"] });
+    };
     const channel = supabase
       .channel(`customer-messages-live-${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "customer_messages" }, invalidate)
@@ -45,7 +48,10 @@ export function MessagesPanel() {
 
   const update = useMutation({
     mutationFn: (input: { id: string; status: "new" | "handled" }) => setStatus({ data: input }),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: MESSAGES_KEY }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: MESSAGES_KEY });
+      void queryClient.invalidateQueries({ queryKey: ["staff", "unread-messages-count"] });
+    },
   });
 
   const rows: CustomerMessage[] = messages.data ?? [];

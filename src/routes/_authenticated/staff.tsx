@@ -90,10 +90,51 @@ function StaffErrorScreen({ error }: { error: unknown }) {
   );
 }
 
+export function useUnreadMessagesCount() {
+  const queryClient = useQueryClient();
+
+  const query = useQuery({
+    queryKey: ["staff", "unread-messages-count"],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("customer_messages")
+        .select("*", { count: "exact", head: true })
+        .neq("status", "handled");
+
+      if (error) {
+        console.warn("[customer_messages] failed to fetch unread count:", error);
+        return 0;
+      }
+      return count ?? 0;
+    },
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+  });
+
+  useEffect(() => {
+    const invalidate = () => {
+      void queryClient.invalidateQueries({ queryKey: ["staff", "unread-messages-count"] });
+      void queryClient.invalidateQueries({ queryKey: ["staff", "customer-messages"] });
+    };
+
+    const channel = supabase
+      .channel("customer-messages-unread-channel")
+      .on("postgres_changes", { event: "*", schema: "public", table: "customer_messages" }, invalidate)
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
+
+  return query.data ?? 0;
+}
+
 function StaffPortalPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const search = useSearch({ from: "/_authenticated/staff" });
+  const unreadCount = useUnreadMessagesCount();
 
   const roles = useQuery({
     queryKey: ["staff", "roles"],
@@ -169,20 +210,30 @@ function StaffPortalPage() {
             {allowed.map((tab) => {
               const Icon = tab.icon;
               const on = tab.value === active;
+              const isMessagesTab = tab.value === "messages";
+              const showBadge = isMessagesTab && unreadCount > 0;
+
               return (
                 <button
                   key={tab.value}
                   type="button"
                   aria-current={on}
                   onClick={() => void navigate({ to: "/staff", search: { tab: tab.value } })}
-                  className={`inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 text-xs font-bold transition-all active:scale-95 ${
+                  className={`inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 text-xs font-bold transition-all active:scale-95 cursor-pointer ${
                     on
                       ? "bg-slate-900 text-white shadow-sm"
                       : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
                   }`}
                 >
                   <Icon className="h-4 w-4" aria-hidden="true" />
-                  {tab.ar}
+                  <span className="relative inline-flex items-center gap-1.5">
+                    {tab.ar}
+                    {showBadge && (
+                      <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold text-white bg-red-600 rounded-full animate-pulse shadow-sm">
+                        {unreadCount}
+                      </span>
+                    )}
+                  </span>
                 </button>
               );
             })}
@@ -191,7 +242,7 @@ function StaffPortalPage() {
             type="button"
             onClick={() => void signOut()}
             aria-label="تسجيل الخروج"
-            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-slate-200 text-slate-700 transition-all hover:bg-slate-50 active:scale-95"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-slate-200 text-slate-700 transition-all hover:bg-slate-50 active:scale-95 cursor-pointer"
           >
             <LogOut className="h-4 w-4" aria-hidden="true" />
           </button>
