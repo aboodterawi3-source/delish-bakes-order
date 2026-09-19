@@ -179,7 +179,8 @@ export function useBrandPalette() {
     ? storeSettings.card_color_palette
     : localPaletteId;
 
-  const activePalette = BRAND_PALETTES[activePaletteId] || BRAND_PALETTES.gold;
+  const fallbackPalette = BRAND_PALETTES["gold"]!;
+  const activePalette: BrandPalette = BRAND_PALETTES[activePaletteId] ?? fallbackPalette;
 
   // Apply CSS custom variables to document root whenever active palette changes
   useEffect(() => {
@@ -193,7 +194,7 @@ export function useBrandPalette() {
     // Optimistically update local state & local storage
     setStoredPaletteId(newId);
     setLocalPaletteId(newId);
-    applyThemeCssVariables(BRAND_PALETTES[newId]);
+    applyThemeCssVariables(BRAND_PALETTES[newId]!);
 
     // Save to Supabase store_settings table
     const { error } = await supabase

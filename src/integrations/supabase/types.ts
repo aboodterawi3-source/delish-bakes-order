@@ -216,22 +216,27 @@ export type Database = {
           area: string | null
           cancel_reason: string | null
           card_note: string | null
+          chosen_filling: string | null
           confirmation_message: string | null
           created_at: string
           created_by: string | null
           customer_name: string
           customer_phone: string
+          delivery_date: string | null
           delivery_fee: number
+          delivery_time_slot: string | null
           deposit_paid: number
           design_image_url: string | null
           discount_amount: number
           discount_percent: number
           driver_name: string | null
           driver_phone: string | null
+          employee_number: number | null
           event_date: string | null
           final_photo_requested: boolean
           id: string
           inscription: string | null
+          is_gift: boolean | null
           is_urgent: boolean
           last_edited_at: string | null
           last_edited_by: string | null
@@ -241,11 +246,13 @@ export type Database = {
           order_number: string
           payment_method: Database["public"]["Enums"]["payment_method"] | null
           queue_rank: number | null
+          recipient_name: string | null
           recipient_phone: string | null
           requested_date: string
           requested_time: string
           schedule_updated_at: string | null
           sender_phone: string | null
+          servings: string | null
           staff_code: number | null
           staff_notes: string | null
           status: Database["public"]["Enums"]["order_status"]
@@ -258,22 +265,27 @@ export type Database = {
           area?: string | null
           cancel_reason?: string | null
           card_note?: string | null
+          chosen_filling?: string | null
           confirmation_message?: string | null
           created_at?: string
           created_by?: string | null
           customer_name: string
           customer_phone: string
+          delivery_date?: string | null
           delivery_fee?: number
+          delivery_time_slot?: string | null
           deposit_paid?: number
           design_image_url?: string | null
           discount_amount?: number
           discount_percent?: number
           driver_name?: string | null
           driver_phone?: string | null
+          employee_number?: number | null
           event_date?: string | null
           final_photo_requested?: boolean
           id?: string
           inscription?: string | null
+          is_gift?: boolean | null
           is_urgent?: boolean
           last_edited_at?: string | null
           last_edited_by?: string | null
@@ -283,11 +295,13 @@ export type Database = {
           order_number?: string
           payment_method?: Database["public"]["Enums"]["payment_method"] | null
           queue_rank?: number | null
+          recipient_name?: string | null
           recipient_phone?: string | null
           requested_date: string
           requested_time: string
           schedule_updated_at?: string | null
           sender_phone?: string | null
+          servings?: string | null
           staff_code?: number | null
           staff_notes?: string | null
           status?: Database["public"]["Enums"]["order_status"]
@@ -300,22 +314,27 @@ export type Database = {
           area?: string | null
           cancel_reason?: string | null
           card_note?: string | null
+          chosen_filling?: string | null
           confirmation_message?: string | null
           created_at?: string
           created_by?: string | null
           customer_name?: string
           customer_phone?: string
+          delivery_date?: string | null
           delivery_fee?: number
+          delivery_time_slot?: string | null
           deposit_paid?: number
           design_image_url?: string | null
           discount_amount?: number
           discount_percent?: number
           driver_name?: string | null
           driver_phone?: string | null
+          employee_number?: number | null
           event_date?: string | null
           final_photo_requested?: boolean
           id?: string
           inscription?: string | null
+          is_gift?: boolean | null
           is_urgent?: boolean
           last_edited_at?: string | null
           last_edited_by?: string | null
@@ -325,11 +344,13 @@ export type Database = {
           order_number?: string
           payment_method?: Database["public"]["Enums"]["payment_method"] | null
           queue_rank?: number | null
+          recipient_name?: string | null
           recipient_phone?: string | null
           requested_date?: string
           requested_time?: string
           schedule_updated_at?: string | null
           sender_phone?: string | null
+          servings?: string | null
           staff_code?: number | null
           staff_notes?: string | null
           status?: Database["public"]["Enums"]["order_status"]
@@ -492,8 +513,10 @@ export type Database = {
           allow_custom_discount: boolean
           allow_price_override: boolean
           created_at: string
+          employee_number: number | null
           id: string
           max_discount_percent: number
+          staff_code: number | null
           updated_at: string
           user_id: string
         }
@@ -501,8 +524,10 @@ export type Database = {
           allow_custom_discount?: boolean
           allow_price_override?: boolean
           created_at?: string
+          employee_number?: number | null
           id?: string
           max_discount_percent?: number
+          staff_code?: number | null
           updated_at?: string
           user_id: string
         }
@@ -510,10 +535,36 @@ export type Database = {
           allow_custom_discount?: boolean
           allow_price_override?: boolean
           created_at?: string
+          employee_number?: number | null
           id?: string
           max_discount_percent?: number
+          staff_code?: number | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      store_settings: {
+        Row: {
+          card_color_palette: string
+          created_at: string
+          id: string
+          singleton: boolean
+          updated_at: string
+        }
+        Insert: {
+          card_color_palette?: string
+          created_at?: string
+          id?: string
+          singleton?: boolean
+          updated_at?: string
+        }
+        Update: {
+          card_color_palette?: string
+          created_at?: string
+          id?: string
+          singleton?: boolean
+          updated_at?: string
         }
         Relationships: []
       }
