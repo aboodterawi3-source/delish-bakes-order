@@ -119,10 +119,12 @@ function ImageField({
   value,
   folder,
   onChange,
+  note: hint,
 }: {
   value: string | null;
   folder: "banner" | "categories" | "products";
   onChange: (url: string | null) => void;
+  note?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const uploadFn = useServerFn(uploadSiteImage);
@@ -190,6 +192,7 @@ function ImageField({
         className={field}
       />
       {note && <p className="text-[11px] text-muted-foreground">{note}</p>}
+      {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
       {error && <p className="text-[11px] font-bold text-destructive">{error}</p>}
     </div>
   );
