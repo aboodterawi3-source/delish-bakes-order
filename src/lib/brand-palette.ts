@@ -191,7 +191,8 @@ export function useBrandPalette() {
     await queryClient.invalidateQueries({ queryKey: STORE_SETTINGS_KEY });
   };
 
-  const activePalette = BRAND_PALETTES[activePaletteId] || BRAND_PALETTES.gold;
+  const fallbackPalette = BRAND_PALETTES['gold'] as BrandPalette;
+  const activePalette: BrandPalette = BRAND_PALETTES[activePaletteId] ?? fallbackPalette;
 
   return {
     paletteId: activePaletteId,
