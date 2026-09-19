@@ -727,7 +727,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({ orders, onOpen }: O
                           right: `${rightPercent}%`,
                           width: `calc(${widthPercent}% - 4px)`,
                         }}
-                        className={`absolute rounded-xl border p-2.5 shadow-md cursor-pointer transition-all hover:scale-[1.01] hover:z-30 overflow-hidden flex flex-col justify-between ${cfg.bg} ${cfg.border} ${cfg.text}`}
+                        className={`order-item absolute rounded-xl border p-2.5 shadow-md cursor-pointer transition-all hover:scale-[1.01] hover:z-30 overflow-hidden flex flex-col justify-between ${cfg.bg} ${cfg.border} ${cfg.text}`}
                       >
                         {/* Card Header: Code + Status Badge */}
                         <div className="flex items-center justify-between gap-1">

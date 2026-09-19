@@ -309,3 +309,16 @@ h1, h2, h3, .font-display {
     }
   }
 }
+
+.order-item {
+  /* منع فتح القائمة المنبثقة عند الضغط المطول */
+  -webkit-touch-callout: none;
+  
+  /* منع تحديد النصوص داخل الطلب */
+  user-select: none;
+  -webkit-user-select: none;
+  
+  /* منع الصفحة من عمل Scroll أثناء محاولة السحب */
+  touch-action: none;
+}
+
