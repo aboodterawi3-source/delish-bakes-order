@@ -366,80 +366,202 @@ export function SocialPanel() {
           </p>
         ) : null}
 
-        <form onSubmit={onSubmit} className="grid min-w-0 gap-4 rounded-3xl border border-slate-100 bg-white p-4 shadow-[0_8px_24px_-8px_rgba(62,39,35,0.06)] sm:p-6">
-          <h2 className="font-serif text-lg font-bold text-[#3E2723]">طلب جديد · New order</h2>
+        <form onSubmit={onSubmit} className="space-y-6">
+          <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+            <h2 className="font-serif text-xl font-extrabold text-[#3E2723]">طلب جديد · New Social Order</h2>
+            <span className="rounded-full bg-[#8B4513]/10 px-3 py-1 text-xs font-black text-[#8B4513]">
+              بوابة إدخال السوشال ميديا
+            </span>
+          </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            {/* Delivery order: order name, sender phone, recipient phone, region. */}
-            <label className="block text-sm font-bold text-[#3E2723] sm:col-span-2">
-              اسم الطلب · Order name
-              <input
-                value={form.order_name}
-                onChange={(event) => set("order_name", event.target.value)}
-                placeholder="مثال: كيكة عيد ميلاد سارة"
-                className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
-              />
-              <span className="mt-1 block text-xs font-normal text-[#7A6458]">
-                يظهر في قائمة الطلبات بدل رقم الهاتف.
+          {/* STEP 1: CUSTOMER & DELIVERY INFO */}
+          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+            <div className="flex items-center gap-2 border-b border-slate-100 pb-2.5">
+              <span className="grid h-7 w-7 place-items-center rounded-full bg-[#8B4513] text-xs font-black text-white">
+                1
               </span>
-            </label>
-            <label className="block text-sm font-bold text-[#3E2723]">
-              رقم المرسل · Sender phone
-              <input
-                dir="ltr"
-                inputMode="tel"
-                value={form.sender_phone}
-                onChange={(event) => set("sender_phone", event.target.value)}
-                className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
-              />
-            </label>
-            <label className="block text-sm font-bold text-[#3E2723]">
-              رقم المستلم · Recipient phone
-              <input
-                dir="ltr"
-                inputMode="tel"
-                value={form.recipient_phone}
-                onChange={(event) => set("recipient_phone", event.target.value)}
-                className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
-              />
-            </label>
-            <label className="block text-sm font-bold text-[#3E2723]">
-              اسم العميل · Customer name
-              <input
-                required
-                value={form.customer_name}
-                onChange={(event) => set("customer_name", event.target.value)}
-                className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
-              />
-            </label>
-            <label className="block text-sm font-bold text-[#3E2723]">
-              رقم الهاتف · Phone
-              <input
-                required
-                dir="ltr"
-                inputMode="tel"
-                value={form.customer_phone}
-                onChange={(event) => set("customer_phone", event.target.value)}
-                className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
-              />
-            </label>
+              <h3 className="font-bold text-base text-[#3E2723]">بيانات العميل والتوصيل · Customer & Delivery</h3>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block text-xs font-bold text-[#3E2723] sm:col-span-2">
+                اسم الطلب (يظهر في القوائم والمطبخ)
+                <input
+                  value={form.order_name}
+                  onChange={(event) => set("order_name", event.target.value)}
+                  placeholder="مثال: كيكة عيد ميلاد سارة"
+                  className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                />
+              </label>
+
+              <label className="block text-xs font-bold text-[#3E2723]">
+                اسم العميل *
+                <input
+                  required
+                  value={form.customer_name}
+                  onChange={(event) => set("customer_name", event.target.value)}
+                  placeholder="الاسم الكامل"
+                  className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                />
+              </label>
+
+              <label className="block text-xs font-bold text-[#3E2723]">
+                رقم الهاتف الرئيسي *
+                <input
+                  required
+                  dir="ltr"
+                  inputMode="tel"
+                  value={form.customer_phone}
+                  onChange={(event) => set("customer_phone", event.target.value)}
+                  placeholder="079XXXXXXX"
+                  className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                />
+              </label>
+
+              <label className="block text-xs font-bold text-[#3E2723]">
+                رقم المرسل (اختياري)
+                <input
+                  dir="ltr"
+                  inputMode="tel"
+                  value={form.sender_phone}
+                  onChange={(event) => set("sender_phone", event.target.value)}
+                  className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                />
+              </label>
+
+              <label className="block text-xs font-bold text-[#3E2723]">
+                رقم المستلم (اختياري)
+                <input
+                  dir="ltr"
+                  inputMode="tel"
+                  value={form.recipient_phone}
+                  onChange={(event) => set("recipient_phone", event.target.value)}
+                  className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                />
+              </label>
+
+              <div className="sm:col-span-2 grid gap-3 sm:grid-cols-2 pt-1 border-t border-slate-100">
+                <fieldset className="text-xs font-bold text-[#3E2723]">
+                  <legend className="mb-1">طريقة التسليم</legend>
+                  <div className="flex gap-2">
+                    {(["pickup", "delivery"] as const).map((method) => (
+                      <button
+                        key={method}
+                        type="button"
+                        onClick={() => set("method", method)}
+                        className={`min-h-11 flex-1 rounded-xl px-4 text-xs font-bold transition-all ${
+                          form.method === method
+                            ? "bg-[#8B4513] text-white shadow-xs"
+                            : "border border-slate-200 bg-white text-[#5D2E17] hover:bg-slate-50"
+                        }`}
+                      >
+                        {method === "pickup" ? "🏬 استلام من المحل" : "🚀 توصيل"}
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+
+                <div className="flex items-end">
+                  <button
+                    type="button"
+                    onClick={() => set("is_urgent", !form.is_urgent)}
+                    className={`w-full min-h-11 inline-flex items-center justify-center gap-2 rounded-xl px-4 text-xs font-extrabold transition-all ${
+                      form.is_urgent
+                        ? "bg-red-600 text-white shadow-sm"
+                        : "border border-red-300 text-red-700 bg-red-50/60 hover:bg-red-100/60"
+                    }`}
+                  >
+                    <AlertTriangle className="h-4 w-4" /> 🚨 طلب مستعجل (Urgent)
+                  </button>
+                </div>
+              </div>
+
+              {form.method === "delivery" && (
+                <>
+                  <label className="block text-xs font-bold text-[#3E2723]">
+                    منطقة التوصيل *
+                    <select
+                      required
+                      value={form.area}
+                      onChange={(event) => set("area", event.target.value)}
+                      className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                    >
+                      <option value="">اختر المنطقة</option>
+                      {DELIVERY_ZONES.map((zone) => (
+                        <optgroup key={zone.labelEn} label={`${zone.labelAr} · ${zone.labelEn}`}>
+                          {zone.areas.map((area) => (
+                            <option key={`${zone.labelEn}-${area}`} value={area}>
+                              {area === OTHER_GOVERNORATES_AREA
+                                ? `${area} (٥–٨ د.أ)`
+                                : `${area} — ${zone.fee.toFixed(2)} د.أ`}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="block text-xs font-bold text-[#3E2723]">
+                    العنوان التفصيلي
+                    <input
+                      value={form.address}
+                      onChange={(event) => set("address", event.target.value)}
+                      placeholder="شارع، رقم العمارة، الطابق…"
+                      className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                    />
+                  </label>
+                </>
+              )}
+
+              <label className="block text-xs font-bold text-[#3E2723]">
+                تاريخ التسليم *
+                <input
+                  type="date"
+                  required
+                  value={form.requested_date}
+                  onChange={(event) => set("requested_date", event.target.value)}
+                  className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                />
+              </label>
+
+              <label className="block text-xs font-bold text-[#3E2723]">
+                وقت التسليم *
+                <input
+                  type="time"
+                  required
+                  value={form.requested_time}
+                  onChange={(event) => set("requested_time", event.target.value)}
+                  className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                />
+              </label>
+            </div>
+          </div>
+
+          {/* STEP 2: PRODUCTS, FILLINGS & CUSTOMIZATION */}
+          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+            <div className="flex items-center gap-2 border-b border-slate-100 pb-2.5">
+              <span className="grid h-7 w-7 place-items-center rounded-full bg-[#8B4513] text-xs font-black text-white">
+                2
+              </span>
+              <h3 className="font-bold text-base text-[#3E2723]">المنتجات، الحشوات والتجهيز الخاص · Products & Fillings</h3>
+            </div>
 
             {/* STOREFRONT MENU / CATALOG SELECTOR */}
-            <div className="sm:col-span-2 rounded-2xl border border-[#B8860B]/30 bg-[#FFFDF9] p-3.5 space-y-3 shadow-xs">
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#B8860B]/20 pb-2">
+            <div className="rounded-2xl border border-[#B8860B]/30 bg-[#FFFDF9] p-3.5 space-y-3 shadow-2xs">
+              <div className="flex items-center justify-between gap-2 border-b border-[#B8860B]/20 pb-2">
                 <div className="flex items-center gap-2">
-                  <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#8B4513] text-white">
-                    <Store className="h-5 w-5" />
+                  <span className="grid h-8 w-8 place-items-center rounded-xl bg-[#8B4513] text-white">
+                    <Store className="h-4 w-4" />
                   </span>
                   <div>
-                    <h3 className="text-sm font-bold text-[#3E2723]">منيو أصناف الموقع · Storefront Menu</h3>
-                    <p className="text-[11px] text-[#7A6458]">اختر أي منتج/حجم من قائمة الموقع لإضافته بضغطة واحدة</p>
+                    <h4 className="text-xs font-bold text-[#3E2723]">منيو المنتجات على الموقع</h4>
+                    <p className="text-[10px] text-[#7A6458]">اضغط على أي صنف لإضافته وتحديد السعر فوراً</p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowMenuPicker((v) => !v)}
-                  className="rounded-full bg-white px-3.5 py-1.5 text-xs font-bold text-[#8B4513] border border-[#B8860B]/40 hover:bg-[#FDE2CF]/30 transition shadow-2xs"
+                  className="rounded-full bg-white px-3 py-1 text-xs font-bold text-[#8B4513] border border-[#B8860B]/40 hover:bg-[#FDE2CF]/30 transition shadow-2xs"
                 >
                   {showMenuPicker ? "إخفاء المنيو ▲" : "عرض منيو المنتجات ▼"}
                 </button>
@@ -447,28 +569,27 @@ export function SocialPanel() {
 
               {showMenuPicker && (
                 <div className="space-y-3 pt-1">
-                  {/* Search and Category Filter */}
                   <div className="flex flex-wrap items-center gap-2">
-                    <div className="relative flex-1 min-w-[200px]">
-                      <Search className="absolute right-3 top-2.5 h-4 w-4 text-slate-400" />
+                    <div className="relative flex-1 min-w-[180px]">
+                      <Search className="absolute right-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
                       <input
                         type="text"
                         value={menuSearch}
                         onChange={(e) => setMenuSearch(e.target.value)}
-                        placeholder="بحث بالاسم أو الحشوة في المنيو…"
-                        className="w-full rounded-xl border border-slate-200 bg-white pr-9 pl-3 py-2 text-xs font-semibold text-[#3E2723] focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                        placeholder="بحث بالاسم أو الحشوة…"
+                        className="w-full rounded-xl border border-slate-200 bg-white pr-8 pl-3 py-1.5 text-xs font-semibold text-[#3E2723] focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
                       />
                     </div>
 
-                    <div className="no-scrollbar flex gap-1 overflow-x-auto max-w-full py-1">
+                    <div className="no-scrollbar flex gap-1 overflow-x-auto max-w-full py-0.5">
                       {categoriesList.map((cat) => (
                         <button
                           key={cat}
                           type="button"
                           onClick={() => setMenuCategory(cat)}
-                          className={`rounded-full px-3 py-1 text-xs font-bold whitespace-nowrap transition-all ${
+                          className={`rounded-full px-2.5 py-1 text-[11px] font-bold whitespace-nowrap transition-all ${
                             menuCategory === cat
-                              ? "bg-[#8B4513] text-white shadow-xs"
+                              ? "bg-[#8B4513] text-white shadow-2xs"
                               : "bg-white text-[#5D2E17] border border-slate-200 hover:bg-slate-100"
                           }`}
                         >
@@ -478,33 +599,32 @@ export function SocialPanel() {
                     </div>
                   </div>
 
-                  {/* Products Grid */}
                   {storefront.isLoading ? (
-                    <div className="flex items-center justify-center py-6 text-xs text-[#7A6458]">
+                    <div className="flex items-center justify-center py-4 text-xs text-[#7A6458]">
                       <Loader2 className="h-4 w-4 animate-spin ml-2 text-[#8B4513]" />
                       جاري تحميل المنيو…
                     </div>
                   ) : filteredMenuProducts.length === 0 ? (
-                    <div className="text-center py-4 text-xs font-bold text-[#7A6458]">
+                    <div className="text-center py-3 text-xs font-bold text-[#7A6458]">
                       لا توجد نتائج مطابقة في المنيو
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-72 overflow-y-auto pr-1">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-64 overflow-y-auto pr-1">
                       {filteredMenuProducts.map((prod) => (
                         <div
                           key={prod.id}
-                          className="group flex flex-col justify-between rounded-xl bg-white p-2.5 border border-slate-200 shadow-xs hover:border-[#B8860B] transition-all"
+                          className="group flex flex-col justify-between rounded-xl bg-white p-2 border border-slate-200 shadow-2xs hover:border-[#B8860B] transition-all"
                         >
                           <div className="flex items-start gap-2">
                             {prod.image_url ? (
                               <img
                                 src={prod.image_url}
                                 alt={prod.name_ar}
-                                className="h-12 w-12 rounded-lg object-cover shrink-0 border border-slate-100"
+                                className="h-10 w-10 rounded-lg object-cover shrink-0 border border-slate-100"
                               />
                             ) : (
-                              <div className="h-12 w-12 rounded-lg bg-[#FDE2CF]/40 flex items-center justify-center shrink-0 text-[#8B4513]">
-                                <Utensils className="h-5 w-5" />
+                              <div className="h-10 w-10 rounded-lg bg-[#FDE2CF]/40 flex items-center justify-center shrink-0 text-[#8B4513]">
+                                <Utensils className="h-4 w-4" />
                               </div>
                             )}
                             <div className="min-w-0 flex-1">
@@ -512,22 +632,17 @@ export function SocialPanel() {
                               <p className="text-[11px] font-extrabold text-[#8B4513] mt-0.5">
                                 {prod.price_on_request ? "حسب الطلب" : `${prod.price.toFixed(2)} د.أ`}
                               </p>
-                              {prod.filling_ar && (
-                                <span className="inline-block mt-1 text-[10px] font-bold text-[#7B3F00] bg-[#FDE2CF]/50 px-1.5 py-0.5 rounded">
-                                  حشوة: {prod.filling_ar}
-                                </span>
-                              )}
                             </div>
                           </div>
 
-                          <div className="mt-2 pt-1 border-t border-slate-100 flex flex-wrap gap-1">
+                          <div className="mt-1.5 pt-1 border-t border-slate-100 flex flex-wrap gap-1">
                             {prod.sizes && prod.sizes.length > 0 ? (
                               prod.sizes.map((sz) => (
                                 <button
                                   key={sz.label}
                                   type="button"
                                   onClick={() => selectProductFromMenu(prod, sz)}
-                                  className="flex-1 min-w-[60px] rounded-lg bg-[#F9FBFC] hover:bg-[#8B4513] hover:text-white px-1.5 py-1 text-[10px] font-bold border border-slate-200 transition-all text-center"
+                                  className="flex-1 min-w-[55px] rounded-lg bg-[#F9FBFC] hover:bg-[#8B4513] hover:text-white px-1 py-0.5 text-[10px] font-bold border border-slate-200 transition-all text-center"
                                 >
                                   {sz.label} ({sz.price} د.أ)
                                 </button>
@@ -536,9 +651,9 @@ export function SocialPanel() {
                               <button
                                 type="button"
                                 onClick={() => selectProductFromMenu(prod)}
-                                className="w-full rounded-lg bg-[#8B4513] hover:bg-[#5D2E17] text-white px-2 py-1 text-xs font-bold shadow-xs transition-all flex items-center justify-center gap-1"
+                                className="w-full rounded-lg bg-[#8B4513] hover:bg-[#5D2E17] text-white px-2 py-0.5 text-[11px] font-bold shadow-2xs transition-all flex items-center justify-center gap-1"
                               >
-                                <PlusCircle className="h-3.5 w-3.5" />
+                                <PlusCircle className="h-3 w-3" />
                                 اختيار المنتج
                               </button>
                             )}
@@ -551,25 +666,25 @@ export function SocialPanel() {
               )}
             </div>
 
-            <label className="block text-sm font-bold text-[#3E2723] sm:col-span-2">
-              تفاصيل طلب الزبون · Customer Order Details
+            <label className="block text-xs font-bold text-[#3E2723]">
+              تفاصيل طلب الزبون *
               <textarea
                 required
-                rows={4}
+                rows={3}
                 maxLength={2000}
                 value={form.order_details}
                 onChange={(event) => set("order_details", event.target.value)}
                 placeholder="اكتب تفاصيل الطلب كاملة أو اختر صنفاً من منيو الموقع أعلاه…"
-                className="mt-1 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] p-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                className="mt-1 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
               />
             </label>
 
-            {/* Cake Filling explicit selector for manual entry */}
-            <div className="block text-sm font-bold text-[#3E2723] sm:col-span-2 rounded-xl bg-[#FDE2CF]/20 border border-[#FDE2CF] p-3">
-              <span className="block text-xs font-bold text-[#5D2E17] mb-1.5">
+            {/* CAKE FILLING SELECTION */}
+            <div className="rounded-xl bg-[#FDE2CF]/20 border border-[#FDE2CF] p-3 space-y-2">
+              <span className="block text-xs font-bold text-[#5D2E17]">
                 نوع الحشوة (اختر أو اكتب) · Cake Filling Selection
               </span>
-              <div className="flex flex-wrap gap-1.5 mb-2">
+              <div className="flex flex-wrap gap-1">
                 {[
                   "نوتيلا وبندق",
                   "لوتس كراميل",
@@ -589,7 +704,7 @@ export function SocialPanel() {
                         filling: curr.filling === f ? "" : f,
                       }))
                     }
-                    className={`rounded-full px-3 py-1 text-xs font-bold border transition-all ${
+                    className={`rounded-full px-2.5 py-0.5 text-xs font-bold border transition-all ${
                       customization.filling === f
                         ? "bg-[#8B4513] text-white border-[#8B4513] shadow-xs"
                         : "bg-white text-[#5D2E17] border-slate-200 hover:bg-amber-50"
@@ -606,59 +721,74 @@ export function SocialPanel() {
                   setCustomization((curr) => ({ ...curr, filling: event.target.value }))
                 }
                 placeholder="اكتب نوع الحشوة هنا (مثال: نوتيلا ولوتس أو حسب الطلب)"
-                className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-[#3E2723] focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-[#3E2723] focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
               />
             </div>
 
-            <label className="block text-sm font-bold text-[#3E2723]">
-              الكمية · Quantity
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block text-xs font-bold text-[#3E2723]">
+                الكمية *
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  required
+                  value={form.quantity}
+                  onChange={(event) => set("quantity", Math.max(1, Number(event.target.value) || 1))}
+                  className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                />
+              </label>
+
+              <label className="block text-xs font-bold text-[#3E2723]">
+                السعر الأصلي للحبة (د.أ)
+                <input
+                  type="number"
+                  min="0"
+                  step="0.25"
+                  value={form.unit_price}
+                  onChange={(event) => set("unit_price", event.target.value)}
+                  placeholder="0.00"
+                  className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                />
+              </label>
+            </div>
+
+            <div className="rounded-2xl border border-[#FDE2CF] bg-[#FDE2CF]/20 p-3 sm:p-4">
+              <CakeCustomizationPanel value={customization} onChange={setCustomization} />
+              {extras.ar.length ? (
+                <ul className="mt-2 space-y-0.5 rounded-xl bg-white/80 p-2.5 text-xs font-bold text-[#5D2E17]">
+                  {extras.ar.map((line) => (
+                    <li key={line}>• {line}</li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+
+            <label className="block text-xs font-bold text-[#3E2723]">
+              الكتابة على الكرت (رسالة الكرت)
               <input
-                type="number"
-                min="1"
-                step="1"
-                required
-                value={form.quantity}
-                onChange={(event) => set("quantity", Math.max(1, Number(event.target.value) || 1))}
-                className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                type="text"
+                maxLength={1000}
+                value={form.card_note}
+                onChange={(event) => set("card_note", event.target.value)}
+                placeholder="اكتب عبارة الإهداء المعروضة على الكرت هنا…"
+                className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
               />
             </label>
-            <label className="block text-sm font-bold text-[#3E2723]">
-              السعر الأصلي للحبة (د.أ) · Original price
-              <input
-                type="number"
-                min="0"
-                step="0.25"
-                value={form.unit_price}
-                onChange={(event) => set("unit_price", event.target.value)}
-                placeholder="0.00"
-                className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
-              />
-            </label>
+          </div>
 
-            <fieldset className="text-sm font-bold text-[#3E2723]">
-              <legend>طريقة التسليم · Fulfilment</legend>
-              <div className="mt-1 flex flex-wrap gap-2">
-                {(["pickup", "delivery"] as const).map((method) => (
-                  <button
-                    key={method}
-                    type="button"
-                    onClick={() => set("method", method)}
-                    aria-pressed={form.method === method}
-                    className={`min-h-11 flex-1 rounded-xl px-4 text-xs font-bold transition-all ${
-                      form.method === method
-                        ? "bg-[#8B4513] text-white shadow-sm"
-                        : "border border-slate-200 bg-white text-[#5D2E17] hover:bg-slate-50"
-                    }`}
-                  >
-                    {method === "pickup" ? "استلام من المحل" : "توصيل"}
-                  </button>
-                ))}
-              </div>
-            </fieldset>
+          {/* STEP 3: PAYMENT, SUMMARY & WHATSAPP CONFIRMATION */}
+          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+            <div className="flex items-center gap-2 border-b border-slate-100 pb-2.5">
+              <span className="grid h-7 w-7 place-items-center rounded-full bg-[#8B4513] text-xs font-black text-white">
+                3
+              </span>
+              <h3 className="font-bold text-base text-[#3E2723]">طريقة الدفع والحساب وتأكيد الطلب · Payment & Confirmation</h3>
+            </div>
 
-            <fieldset className="text-sm font-bold text-[#3E2723] sm:col-span-2">
-              <legend>طريقة الدفع · Payment method</legend>
-              <div className="mt-1 flex flex-wrap gap-2">
+            <fieldset className="text-xs font-bold text-[#3E2723]">
+              <legend className="mb-1">طريقة الدفع</legend>
+              <div className="flex flex-wrap gap-2">
                 {(
                   [
                     { value: "cash", label: "كاش عند الاستلام" },
@@ -670,10 +800,9 @@ export function SocialPanel() {
                     key={option.value}
                     type="button"
                     onClick={() => set("payment_option", option.value)}
-                    aria-pressed={form.payment_option === option.value}
-                    className={`min-h-11 flex-[1_1_9rem] rounded-xl px-4 text-xs font-bold transition-all ${
+                    className={`min-h-11 flex-1 rounded-xl px-3 text-xs font-bold transition-all ${
                       form.payment_option === option.value
-                        ? "bg-[#8B4513] text-white shadow-sm"
+                        ? "bg-[#8B4513] text-white shadow-xs"
                         : "border border-slate-200 bg-white text-[#5D2E17] hover:bg-slate-50"
                     }`}
                   >
@@ -693,212 +822,89 @@ export function SocialPanel() {
                     dir="ltr"
                     value={form.deposit_paid}
                     onChange={(event) => set("deposit_paid", event.target.value)}
-                    className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                    className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
                   />
                 </label>
               ) : null}
             </fieldset>
 
-            {form.method === "delivery" ? (
-              <>
-                <label className="block text-sm font-bold text-[#3E2723]">
-                  منطقة التوصيل · Delivery area
-                  <select
-                    required
-                    value={form.area}
-                    onChange={(event) => set("area", event.target.value)}
-                    className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
-                  >
-                    <option value="">اختر المنطقة</option>
-                    {DELIVERY_ZONES.map((zone) => (
-                      <optgroup key={zone.labelEn} label={`${zone.labelAr} · ${zone.labelEn}`}>
-                        {zone.areas.map((area) => (
-                          <option key={`${zone.labelEn}-${area}`} value={area}>
-                            {area === OTHER_GOVERNORATES_AREA
-                              ? `${area} (٥–٨ د.أ)`
-                              : `${area} — ${zone.fee.toFixed(2)} د.أ`}
-                          </option>
-                        ))}
-                      </optgroup>
-                    ))}
-                  </select>
-                  <span className="mt-1 block text-xs font-normal text-[#7A6458]">
-                    {form.area === OTHER_GOVERNORATES_AREA
-                      ? "أجرة التوصيل للمحافظات الأخرى من ٥ إلى ٨ د.أ — يحددها الفريق عند تأكيد العنوان."
-                      : areaFee !== null
-                        ? `أجرة التوصيل لهذه المنطقة: ${areaFee.toFixed(2)} د.أ`
-                        : "تُحسب الأجرة تلقائياً بعد اختيار المنطقة."}
-                  </span>
-                </label>
+            {/* Live Financial Calculator */}
+            <div className="rounded-2xl border border-[#B8860B]/30 bg-[#FFF8EE] p-4">
+              <h4 className="text-xs font-bold text-[#5D2E17] border-b border-[#B8860B]/20 pb-1.5">
+                الحساب المالي للطلب
+              </h4>
+              <dl className="mt-2 space-y-1.5 text-xs text-[#3E2723]">
+                <div className="flex justify-between gap-2">
+                  <dt>ثمن الأصناف ({form.quantity} × {(Number(form.unit_price) || 0).toFixed(2)})</dt>
+                  <dd className="font-bold">{originalPrice.toFixed(2)} د.أ</dd>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <dt>أجرة التوصيل</dt>
+                  <dd className="font-bold">{deliveryFee.toFixed(2)} د.أ</dd>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <dt>إجمالي الطلب</dt>
+                  <dd className="font-bold">{grandTotal.toFixed(2)} د.أ</dd>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <dt>المدفوع (عربون/كليك)</dt>
+                  <dd className="font-bold">{paidAmount.toFixed(2)} د.أ</dd>
+                </div>
+                <div className="flex justify-between gap-2 border-t border-[#B8860B]/30 pt-1.5 text-[#8B4513] font-bold text-sm">
+                  <dt>المبلغ المتبقي</dt>
+                  <dd>{remaining.toFixed(2)} د.أ</dd>
+                </div>
+              </dl>
+            </div>
 
-                <label className="block text-sm font-bold text-[#3E2723]">
-                  العنوان التفصيلي (اختياري)
-                  <input
-                    value={form.address}
-                    onChange={(event) => set("address", event.target.value)}
-                    className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
-                  />
-                </label>
-              </>
-            ) : null}
-
-
-            <label className="block text-sm font-bold text-[#3E2723]">
-              تاريخ التسليم · Date
-              <input
-                type="date"
-                required
-                value={form.requested_date}
-                onChange={(event) => set("requested_date", event.target.value)}
-                className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+            <label className="block text-xs font-bold text-[#3E2723]">
+              ملاحظات داخلية للموظفين (خاص بالمبيعات والإدارة)
+              <textarea
+                rows={2}
+                value={form.staff_notes}
+                onChange={(event) => set("staff_notes", event.target.value)}
+                placeholder="ملاحظات سرية لا تظهر على شاشة المطبخ ولا للزبون…"
+                className="mt-1 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
               />
             </label>
 
-            <label className="block text-sm font-bold text-[#3E2723]">
-              وقت التسليم · Time
-              <input
-                type="time"
-                required
-                value={form.requested_time}
-                onChange={(event) => set("requested_time", event.target.value)}
-                className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
-              />
-            </label>
-
-            <label className="block text-sm font-bold text-[#3E2723]">
-              تاريخ المناسبة (اختياري)
-              <input
-                type="date"
-                value={form.event_date}
-                onChange={(event) => set("event_date", event.target.value)}
-                className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
-              />
-            </label>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => set("is_urgent", !form.is_urgent)}
-            aria-pressed={form.is_urgent}
-            className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 text-xs font-bold transition-all ${
-              form.is_urgent ? "bg-red-600 text-white shadow-sm" : "border border-red-300 text-red-700 bg-red-50/50 hover:bg-red-50"
-            }`}
-          >
-            <AlertTriangle className="h-4 w-4" aria-hidden="true" /> 🚨 مستعجل · Urgent
-          </button>
-
-          <label className="block text-sm font-bold text-[#3E2723]">
-            ملاحظات التصميم الخاص · Special custom design notes
-            <textarea
-              rows={3}
-              value={form.design_notes}
-              onChange={(event) => set("design_notes", event.target.value)}
-              className="mt-1 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
-            />
-          </label>
-
-          <div className="min-w-0 rounded-2xl border border-[#FDE2CF] bg-[#FDE2CF]/20 p-3 sm:p-4">
-            <CakeCustomizationPanel value={customization} onChange={setCustomization} />
-            {extras.ar.length ? (
-              <ul className="mt-3 space-y-1 rounded-xl bg-white/80 p-3 text-xs font-bold text-[#5D2E17]">
-                {extras.ar.map((line) => (
-                  <li key={line}>• {line}</li>
-                ))}
-              </ul>
-            ) : null}
-          </div>
-
-
-
-          <label className="block text-sm font-bold text-[#3E2723]">
-            الكتابة على الكرت · Card note
-            <input
-              type="text"
-              maxLength={1000}
-              value={form.card_note}
-              onChange={(event) => set("card_note", event.target.value)}
-              className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
-            />
-          </label>
-
-
-          {/* Financial calculator — updates live as staff type. */}
-          <div className="rounded-2xl border border-[#B8860B]/40 bg-[#FFF8EE] p-4">
-            <h3 className="text-sm font-bold text-[#5D2E17]">الحساب · السعر، العربون، المتبقي</h3>
-            <dl className="mt-2 space-y-1 text-sm text-[#3E2723]">
-              <div className="flex justify-between gap-2">
-                <dt>المبلغ ({form.quantity} × {(Number(form.unit_price) || 0).toFixed(2)})</dt>
-                <dd className="font-bold">{originalPrice.toFixed(2)} د.أ</dd>
-              </div>
-              <div className="flex justify-between gap-2">
-                <dt>التوصيل</dt>
-                <dd className="font-bold">{deliveryFee.toFixed(2)} د.أ</dd>
-              </div>
-              <div className="flex justify-between gap-2">
-                <dt>الحساب كامل</dt>
-                <dd className="font-bold">{grandTotal.toFixed(2)} د.أ</dd>
-              </div>
-              <div className="flex justify-between gap-2">
-                <dt>المبلغ المدفوع</dt>
-                <dd className="font-bold">{paidAmount.toFixed(2)} د.أ</dd>
-              </div>
-              <div className="flex justify-between gap-2 border-t border-[#B8860B]/30 pt-1 text-[#8B4513]">
-                <dt className="font-bold">المبلغ المتبقي</dt>
-                <dd className="font-bold">{remaining.toFixed(2)} د.أ</dd>
-              </div>
-            </dl>
-          </div>
-
-          <label className="block text-sm font-bold text-[#3E2723]">
-            ملاحظات داخلية للموظفين · Internal staff notes
-            <textarea
-              rows={3}
-              value={form.staff_notes}
-              onChange={(event) => set("staff_notes", event.target.value)}
-              className="mt-1 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
-            />
-            <span className="mt-1 block text-xs font-normal text-[#7A6458]">
-              خاصة بالمبيعات والإدارة فقط — لا تظهر على شاشة المطبخ ولا في رسالة واتساب.
-            </span>
-          </label>
-
-          <div className="flex flex-wrap gap-2 pt-2">
             <button
               type="submit"
               disabled={submit.isPending}
-              className="inline-flex min-h-12 min-w-0 flex-[1_1_12rem] items-center justify-center gap-2 rounded-full bg-[#8B4513] px-4 text-center text-sm font-bold text-white shadow-sm hover:bg-[#5D2E17] disabled:opacity-60 transition sm:px-6"
+              className="w-full min-h-12 inline-flex items-center justify-center gap-2 rounded-full bg-[#8B4513] text-white font-extrabold text-sm shadow-md hover:bg-[#5D2E17] active:scale-95 disabled:opacity-60 transition"
             >
-              {submit.isPending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Send className="h-4 w-4" aria-hidden="true" />}
-              إرسال فوري للطلب
+              {submit.isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+              حفظ وإرسال الطلب فوراً (إلى المطبخ والمبيعات) ✅
             </button>
           </div>
-        </form>
 
-        {/* One ready-to-use confirmation message: copy it, or send it compactly. */}
-        <section className="mt-5 rounded-3xl border border-[#B8860B]/40 bg-card p-5">
-          <h2 className="font-display text-base font-bold text-foreground">👑 رسالة تأكيد الطلب (Delish Cake)</h2>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => void copy(confirmationPreview, "confirmation")}
-              className="inline-flex min-h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-full border border-[#B8860B] bg-white px-4 text-sm font-bold text-[#8B4513] hover:bg-[#FDE2CF]/30 transition"
-            >
-              {copied === "confirmation" ? <Check className="h-4 w-4" aria-hidden="true" /> : <ClipboardCopy className="h-4 w-4" aria-hidden="true" />}
-              {copied === "confirmation" ? "تم النسخ" : "نسخ رسالة التأكيد"}
-            </button>
-            <a
-              href={whatsappUrl(confirmationPreview)}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="إرسال رسالة التأكيد على واتساب"
-              title="إرسال على واتساب"
-              className="inline-flex min-h-12 min-w-12 items-center justify-center rounded-full bg-[#25D366] text-white shadow-sm hover:brightness-95 transition"
-            >
-              <MessageCircle className="h-5 w-5" aria-hidden="true" />
-            </a>
-          </div>
-          <pre className="mt-3 max-h-96 overflow-y-auto whitespace-pre-wrap break-words rounded-xl bg-secondary/60 p-3 text-sm text-foreground">{confirmationPreview}</pre>
-        </section>
+          {/* Live WhatsApp Confirmation Message Box */}
+          <section className="rounded-3xl border border-[#B8860B]/40 bg-white p-5 shadow-xs space-y-3">
+            <h3 className="font-display text-sm font-bold text-[#3E2723]">👑 رسالة تأكيد الطلب للواتساب (Delish Cake)</h3>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void copy(confirmationPreview, "confirmation")}
+                className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full border border-[#B8860B] bg-white px-4 text-xs font-bold text-[#8B4513] hover:bg-[#FDE2CF]/30 transition"
+              >
+                {copied === "confirmation" ? <Check className="h-4 w-4" /> : <ClipboardCopy className="h-4 w-4" />}
+                {copied === "confirmation" ? "تم النسخ" : "نسخ رسالة التأكيد"}
+              </button>
+              <a
+                href={whatsappUrl(confirmationPreview)}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="إرسال على واتساب"
+                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full bg-[#25D366] text-white shadow-xs hover:brightness-95 transition"
+              >
+                <MessageCircle className="h-5 w-5" />
+              </a>
+            </div>
+            <pre className="max-h-72 overflow-y-auto whitespace-pre-wrap break-words rounded-xl bg-[#F9FBFC] p-3 text-xs text-[#3E2723] border border-slate-200">
+              {confirmationPreview}
+            </pre>
+          </section>
+        </form>
         </>
         ) : view === "modifications" ? (
           <ModificationsPanel />
