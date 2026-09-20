@@ -241,7 +241,7 @@ export type Database = {
           last_edited_at: string | null
           last_edited_by: string | null
           method: Database["public"]["Enums"]["order_method"]
-          modifications: Json | null
+          modifications: Json
           notes: string | null
           order_name: string | null
           order_number: string
@@ -291,7 +291,7 @@ export type Database = {
           last_edited_at?: string | null
           last_edited_by?: string | null
           method?: Database["public"]["Enums"]["order_method"]
-          modifications?: Json | null
+          modifications?: Json
           notes?: string | null
           order_name?: string | null
           order_number?: string
@@ -341,7 +341,7 @@ export type Database = {
           last_edited_at?: string | null
           last_edited_by?: string | null
           method?: Database["public"]["Enums"]["order_method"]
-          modifications?: Json | null
+          modifications?: Json
           notes?: string | null
           order_name?: string | null
           order_number?: string
