@@ -399,6 +399,14 @@ const buildOrderPatch = (input: OrderPatch): Record<string, unknown> => {
   return patch;
 };
 
+export type OrderModification = {
+  field: string;
+  oldValue: string;
+  newValue: string;
+  updatedAt: string;
+  acknowledgedAt?: string | null;
+};
+
 export const updateSalesOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: OrderPatch) => {
@@ -414,6 +422,80 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
     if (Object.keys(clean).length === 0) {
       throw new Error("لا يوجد تغيير · Nothing to update");
     }
+
+    // Fetch existing order details to compute modification diffs for KDS
+    const { data: existing } = await context.supabase
+      .from("orders")
+      .select("requested_date, requested_time, notes, inscription, modifications")
+      .eq("id", data.orderId)
+      .single();
+
+    if (existing) {
+      const currentMods = (existing.modifications as OrderModification[] | null) ?? [];
+      const newDiffs: OrderModification[] = [];
+      const nowIso = new Date().toISOString();
+
+      if (clean['requested_time'] !== undefined) {
+        const oldVal = (existing.requested_time ?? "").slice(0, 5);
+        const newVal = String(clean['requested_time']).slice(0, 5);
+        if (oldVal !== newVal) {
+          newDiffs.push({
+            field: "وقت التسليم",
+            oldValue: oldVal || "غير محدد",
+            newValue: newVal || "غير محدد",
+            updatedAt: nowIso,
+            acknowledgedAt: null,
+          });
+        }
+      }
+
+      if (clean['requested_date'] !== undefined) {
+        const oldVal = existing.requested_date ?? "";
+        const newVal = String(clean['requested_date']);
+        if (oldVal !== newVal) {
+          newDiffs.push({
+            field: "تاريخ التسليم",
+            oldValue: oldVal || "غير محدد",
+            newValue: newVal || "غير محدد",
+            updatedAt: nowIso,
+            acknowledgedAt: null,
+          });
+        }
+      }
+
+      if (clean['notes'] !== undefined) {
+        const oldVal = (existing.notes ?? "").trim();
+        const newVal = String(clean['notes'] ?? "").trim();
+        if (oldVal !== newVal) {
+          newDiffs.push({
+            field: "الملاحظات",
+            oldValue: oldVal || "بدون ملاحظات",
+            newValue: newVal || "بدون ملاحظات",
+            updatedAt: nowIso,
+            acknowledgedAt: null,
+          });
+        }
+      }
+
+      if (clean['inscription'] !== undefined) {
+        const oldVal = (existing.inscription ?? "").trim();
+        const newVal = String(clean['inscription'] ?? "").trim();
+        if (oldVal !== newVal) {
+          newDiffs.push({
+            field: "الكتابة على الكيك",
+            oldValue: oldVal || "بدون كتابة",
+            newValue: newVal || "بدون كتابة",
+            updatedAt: nowIso,
+            acknowledgedAt: null,
+          });
+        }
+      }
+
+      if (newDiffs.length > 0) {
+        clean['modifications'] = [...currentMods, ...newDiffs].slice(-20);
+      }
+    }
+
     // Every desk edit is stamped so the list and printouts show the edit badge.
     clean['last_edited_at'] = new Date().toISOString();
     clean['last_edited_by'] = context.userId;
@@ -632,10 +714,38 @@ export const replaceSalesOrderItems = createServerFn({ method: "POST" })
 
     const { data: existing, error: readError } = await context.supabase
       .from("orders")
-      .select("id, order_number, method, delivery_fee, discount_amount, subtotal")
+      .select("id, order_number, method, delivery_fee, discount_amount, subtotal, modifications")
       .eq("id", data.orderId)
       .single();
     if (readError || !existing) throw new Error("طلب غير موجود · Order not found");
+
+    const { data: oldItemsData } = await context.supabase
+      .from("order_items")
+      .select("name_ar, quantity, options_ar")
+      .eq("order_id", data.orderId);
+
+    const oldSummary = (oldItemsData ?? [])
+      .map((it: any) => `${it.quantity}× ${it.name_ar}${it.options_ar?.length ? ` (${it.options_ar.join(" ، ")})` : ""}`)
+      .join(" + ") || "بدون أصناف";
+
+    const newSummary = data.lines
+      .map((line) => `${line.quantity}× ${line.name}${line.options?.length ? ` (${line.options.join(" ، ")})` : ""}`)
+      .join(" + ") || "بدون أصناف";
+
+    const currentMods = (existing.modifications as OrderModification[] | null) ?? [];
+    const nowIso = new Date().toISOString();
+    const updatedMods = oldSummary !== newSummary
+      ? [
+          ...currentMods,
+          {
+            field: "أصناف الطلب / الحشوة",
+            oldValue: oldSummary,
+            newValue: newSummary,
+            updatedAt: nowIso,
+            acknowledgedAt: null,
+          },
+        ].slice(-20)
+      : currentMods;
 
     // Per-product price lock: staff denied repricing must keep the catalog price.
     const { canEditProductPrice } = await import("@/lib/permissions.functions");
@@ -698,6 +808,7 @@ export const replaceSalesOrderItems = createServerFn({ method: "POST" })
         total,
         last_edited_at: new Date().toISOString(),
         last_edited_by: context.userId,
+        modifications: updatedMods as any,
       } as never)
       .eq("id", data.orderId)
       .select(SELECT)

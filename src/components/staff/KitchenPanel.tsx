@@ -24,6 +24,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useOrdersRealtime } from "@/hooks/use-orders-realtime";
 import {
+  acknowledgeOrderModification,
   getKitchenAccess,
   getKitchenOrders,
   setKitchenStage,
@@ -36,6 +37,22 @@ import bellAsset from "@/assets/Bell.mp3.asset.json";
 import { orderLabel } from "@/lib/order-label";
 import { isoDay, matchesDateFilter, type CustomRange, type DateFilterKey } from "@/lib/date-filter";
 import { reorderRanks, setQueueRanks } from "@/lib/queue.functions";
+
+/** Formats relative time in Arabic (e.g., قبل 5 دقائق) */
+function formatRelativeTime(dateString: string) {
+  if (!dateString) return "";
+  try {
+    const diffMs = Date.now() - new Date(dateString).getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return "قبل لحظات";
+    if (diffMins < 60) return `قبل ${diffMins} دقيقة`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `قبل ${diffHours} ساعة`;
+    return `قبل ${Math.floor(diffHours / 24)} يوم`;
+  } catch {
+    return "";
+  }
+}
 
 /** Audio synth chime fallback to guarantee alert sound without browser block issues */
 function playKitchenChimeSound() {
@@ -156,6 +173,7 @@ export function KitchenPanel() {
   const fetchAccess = useServerFn(getKitchenAccess);
   const applyStage = useServerFn(setKitchenStage);
   const reorderFn = useServerFn(setQueueRanks);
+  const ackModFn = useServerFn(acknowledgeOrderModification);
 
   const [filter, setFilter] = useState<DateFilterKey>("today");
   const [custom] = useState<CustomRange>({ from: isoDay(0), to: isoDay(7) });
@@ -249,7 +267,8 @@ export function KitchenPanel() {
     const changed = list
       .filter((order) => {
         const previous = editStamps.current?.get(order.id);
-        return previous !== undefined && order.last_edited_at && order.last_edited_at !== previous;
+        const hasUnack = (order.modifications ?? []).some((m) => !m.acknowledgedAt);
+        return (previous !== undefined && order.last_edited_at && order.last_edited_at !== previous) || hasUnack;
       })
       .map((order) => order.id);
     editStamps.current = stamps;
@@ -338,9 +357,30 @@ export function KitchenPanel() {
     [queryClient, reorderFn, visible],
   );
 
-  const acknowledge = useCallback((id: string) => {
-    setAlerts((current) => current.filter((value) => value !== id));
-  }, []);
+  const acknowledge = useCallback(
+    async (id: string) => {
+      setAlerts((current) => current.filter((value) => value !== id));
+      queryClient.setQueryData<KdsOrder[]>(ORDERS_KEY, (rows) =>
+        (rows ?? []).map((order) => {
+          if (order.id !== id) return order;
+          const now = new Date().toISOString();
+          return {
+            ...order,
+            modifications: (order.modifications ?? []).map((m) => ({
+              ...m,
+              acknowledgedAt: m.acknowledgedAt || now,
+            })),
+          };
+        }),
+      );
+      try {
+        await ackModFn({ data: { orderId: id } });
+      } catch (err) {
+        console.error("Failed to acknowledge order modification:", err);
+      }
+    },
+    [ackModFn, queryClient],
+  );
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -624,6 +664,10 @@ const KdsCleanCard = memo(function KdsCleanCard({
     [order.requested_date, order.requested_time],
   );
 
+  const unackMods = (order.modifications ?? []).filter((m) => !m.acknowledgedAt);
+  const hasUnack = unackMods.length > 0;
+  const isEdited = hasUnack || alerted || Boolean(order.last_edited_at || order.schedule_updated_at);
+
   return (
     <article
       className={`relative flex flex-col justify-between rounded-2xl p-4.5 shadow-md hover:shadow-lg transition-all ${stageBorder}`}
@@ -641,6 +685,18 @@ const KdsCleanCard = memo(function KdsCleanCard({
               <h2 className="font-black text-lg leading-tight" style={{ color: priorityMeta.fg }}>
                 {orderLabel(order.order_number, order.staff_code)}
               </h2>
+              {isEdited && (
+                <span
+                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-black shadow-xs border ${
+                    hasUnack
+                      ? "bg-amber-500 text-white border-amber-300 animate-pulse"
+                      : "bg-amber-600/40 text-current border-amber-500/50"
+                  }`}
+                >
+                  <PencilLine className="h-3 w-3" />
+                  طلب معدّل
+                </span>
+              )}
               <span
                 className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-black bg-black/25 shadow-xs"
                 style={{ color: priorityMeta.fg }}
@@ -674,7 +730,7 @@ const KdsCleanCard = memo(function KdsCleanCard({
         </div>
 
         {/* Alert badge if edited/new */}
-        {alerted && (
+        {alerted && !hasUnack && (
           <div className="flex items-center justify-between rounded-xl bg-amber-500 p-2.5 text-white shadow-sm">
             <span className="inline-flex items-center gap-1 text-xs font-black">
               <PencilLine className="h-4 w-4" /> تم تعديل الطلب مؤخراً
@@ -757,6 +813,57 @@ const KdsCleanCard = memo(function KdsCleanCard({
                   اضغط للتكبير 🔍
                 </button>
               </div>
+            </div>
+          ) : null}
+
+          {/* DEDICATED ORDER UPDATES / MODIFICATIONS SECTION */}
+          {order.modifications && order.modifications.length > 0 ? (
+            <div className="mt-3 rounded-2xl bg-amber-500/20 border-2 border-amber-400 p-3 text-slate-900 shadow-sm space-y-2">
+              <div className="flex items-center justify-between gap-2 border-b border-amber-500/30 pb-1.5">
+                <span className="inline-flex items-center gap-1.5 font-black text-xs text-amber-950">
+                  <PencilLine className="h-4 w-4 text-amber-800" />
+                  التعديلات الجديدة: (Order Updates)
+                </span>
+                {hasUnack ? (
+                  <span className="text-[10px] font-black bg-amber-600 text-white px-2 py-0.5 rounded-full animate-pulse">
+                    تعديل جديد
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-black bg-emerald-700 text-white px-2 py-0.5 rounded-full">
+                    تمت المراجعة ✓
+                  </span>
+                )}
+              </div>
+
+              <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                {order.modifications.map((mod, idx) => (
+                  <div key={idx} className="rounded-xl bg-white/95 p-2.5 text-xs border border-amber-300 shadow-xs">
+                    <div className="flex items-center justify-between gap-1 text-[11px] font-bold text-slate-600 mb-1">
+                      <span className="font-black text-amber-900">تم تعديل {mod.field}:</span>
+                      <span className="text-[10px] font-extrabold text-slate-500">{formatRelativeTime(mod.updatedAt)}</span>
+                    </div>
+                    <div className="font-extrabold text-slate-900 leading-snug space-y-0.5">
+                      <p dir="rtl" className="text-slate-700">
+                        من: <span className="line-through text-red-700 bg-red-50 px-1 py-0.5 rounded">{mod.oldValue}</span>
+                      </p>
+                      <p dir="rtl" className="text-slate-950">
+                        ⬅️ إلى: <span className="text-emerald-950 bg-emerald-100 px-1.5 py-0.5 rounded font-black border border-emerald-300">{mod.newValue}</span>
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {hasUnack && (
+                <button
+                  type="button"
+                  onClick={() => onAck(order.id)}
+                  className="mt-1 w-full min-h-10 inline-flex items-center justify-center gap-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-black text-xs shadow-sm transition-all"
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  تمت مراجعة التعديل
+                </button>
+              )}
             </div>
           ) : null}
         </div>

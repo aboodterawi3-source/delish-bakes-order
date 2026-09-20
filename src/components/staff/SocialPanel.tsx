@@ -2,7 +2,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, Check, ClipboardCopy, Loader2, LogOut, MessageCircle, Send, Sparkles } from "lucide-react";
+import { AlertTriangle, BookOpen, Check, ClipboardCopy, Loader2, LogOut, MessageCircle, PlusCircle, Search, Send, Sparkles, Store, Utensils } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   createSocialOrder,
@@ -11,6 +11,8 @@ import {
 } from "@/lib/social.functions";
 import { DELIVERY_ZONES, OTHER_GOVERNORATES_AREA, feeForArea } from "@/lib/delivery-zones";
 import { buildConfirmationMessage, remainingBalance } from "@/lib/confirmation-message";
+import { useStorefrontContent } from "@/hooks/use-storefront-content";
+import type { StorefrontProduct, SizePrice } from "@/lib/storefront-content";
 import {
   CakeCustomizationPanel,
   customizationSummary,
@@ -57,6 +59,7 @@ export function SocialPanel() {
   const navigate = useNavigate();
   const accessFn = useServerFn(getSocialAccess);
   const createFn = useServerFn(createSocialOrder);
+  const storefront = useStorefrontContent();
 
   const [view, setView] = useState<"new" | "orders" | "modifications">("new");
   const [form, setForm] = useState(emptyForm);
@@ -66,6 +69,48 @@ export function SocialPanel() {
   /** Confirmation message returned with the created order (real order number). */
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Storefront Menu picker state
+  const [showMenuPicker, setShowMenuPicker] = useState(true);
+  const [menuSearch, setMenuSearch] = useState("");
+  const [menuCategory, setMenuCategory] = useState("all");
+
+  const catalogProducts = useMemo(() => storefront.data?.products ?? [], [storefront.data]);
+  const categoriesList = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of catalogProducts) if (p.category?.trim()) set.add(p.category.trim());
+    return ["all", ...Array.from(set)];
+  }, [catalogProducts]);
+
+  const filteredMenuProducts = useMemo(() => {
+    const q = menuSearch.trim().toLowerCase();
+    return catalogProducts.filter((p) => {
+      const matchCat = menuCategory === "all" || p.category === menuCategory;
+      const matchQuery =
+        !q ||
+        p.name_ar.toLowerCase().includes(q) ||
+        p.name_en.toLowerCase().includes(q) ||
+        (p.filling_ar && p.filling_ar.toLowerCase().includes(q));
+      return matchCat && matchQuery;
+    });
+  }, [catalogProducts, menuSearch, menuCategory]);
+
+  const selectProductFromMenu = (product: StorefrontProduct, size?: SizePrice) => {
+    const priceToSet = size ? size.price : product.price;
+    const sizeLabel = size ? ` (${size.label})` : "";
+    const fillingText = product.filling_ar ? ` — حشوة: ${product.filling_ar}` : "";
+    const nameToSet = `${product.name_ar}${sizeLabel}${fillingText}`;
+
+    setForm((current) => ({
+      ...current,
+      order_details: nameToSet,
+      unit_price: String(priceToSet),
+    }));
+
+    if (product.filling_ar) {
+      setCustomization((current) => ({ ...current, filling: product.filling_ar || "" }));
+    }
+  };
 
   const access = useQuery({ queryKey: ["social-access"], queryFn: () => accessFn({}) });
 
@@ -364,18 +409,192 @@ export function SocialPanel() {
               />
             </label>
 
+            {/* STOREFRONT MENU / CATALOG SELECTOR */}
+            <div className="sm:col-span-2 rounded-2xl border border-[#B8860B]/30 bg-[#FFFDF9] p-3.5 space-y-3 shadow-xs">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#B8860B]/20 pb-2">
+                <div className="flex items-center gap-2">
+                  <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#8B4513] text-white">
+                    <Store className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <h3 className="text-sm font-bold text-[#3E2723]">منيو أصناف الموقع · Storefront Menu</h3>
+                    <p className="text-[11px] text-[#7A6458]">اختر أي منتج/حجم من قائمة الموقع لإضافته بضغطة واحدة</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowMenuPicker((v) => !v)}
+                  className="rounded-full bg-white px-3.5 py-1.5 text-xs font-bold text-[#8B4513] border border-[#B8860B]/40 hover:bg-[#FDE2CF]/30 transition shadow-2xs"
+                >
+                  {showMenuPicker ? "إخفاء المنيو ▲" : "عرض منيو المنتجات ▼"}
+                </button>
+              </div>
+
+              {showMenuPicker && (
+                <div className="space-y-3 pt-1">
+                  {/* Search and Category Filter */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="relative flex-1 min-w-[200px]">
+                      <Search className="absolute right-3 top-2.5 h-4 w-4 text-slate-400" />
+                      <input
+                        type="text"
+                        value={menuSearch}
+                        onChange={(e) => setMenuSearch(e.target.value)}
+                        placeholder="بحث بالاسم أو الحشوة في المنيو…"
+                        className="w-full rounded-xl border border-slate-200 bg-white pr-9 pl-3 py-2 text-xs font-semibold text-[#3E2723] focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                      />
+                    </div>
+
+                    <div className="no-scrollbar flex gap-1 overflow-x-auto max-w-full py-1">
+                      {categoriesList.map((cat) => (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => setMenuCategory(cat)}
+                          className={`rounded-full px-3 py-1 text-xs font-bold whitespace-nowrap transition-all ${
+                            menuCategory === cat
+                              ? "bg-[#8B4513] text-white shadow-xs"
+                              : "bg-white text-[#5D2E17] border border-slate-200 hover:bg-slate-100"
+                          }`}
+                        >
+                          {cat === "all" ? "الكل" : cat}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Products Grid */}
+                  {storefront.isLoading ? (
+                    <div className="flex items-center justify-center py-6 text-xs text-[#7A6458]">
+                      <Loader2 className="h-4 w-4 animate-spin ml-2 text-[#8B4513]" />
+                      جاري تحميل المنيو…
+                    </div>
+                  ) : filteredMenuProducts.length === 0 ? (
+                    <div className="text-center py-4 text-xs font-bold text-[#7A6458]">
+                      لا توجد نتائج مطابقة في المنيو
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-72 overflow-y-auto pr-1">
+                      {filteredMenuProducts.map((prod) => (
+                        <div
+                          key={prod.id}
+                          className="group flex flex-col justify-between rounded-xl bg-white p-2.5 border border-slate-200 shadow-xs hover:border-[#B8860B] transition-all"
+                        >
+                          <div className="flex items-start gap-2">
+                            {prod.image_url ? (
+                              <img
+                                src={prod.image_url}
+                                alt={prod.name_ar}
+                                className="h-12 w-12 rounded-lg object-cover shrink-0 border border-slate-100"
+                              />
+                            ) : (
+                              <div className="h-12 w-12 rounded-lg bg-[#FDE2CF]/40 flex items-center justify-center shrink-0 text-[#8B4513]">
+                                <Utensils className="h-5 w-5" />
+                              </div>
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <h4 className="text-xs font-bold text-[#3E2723] leading-snug truncate">{prod.name_ar}</h4>
+                              <p className="text-[11px] font-extrabold text-[#8B4513] mt-0.5">
+                                {prod.price_on_request ? "حسب الطلب" : `${prod.price.toFixed(2)} د.أ`}
+                              </p>
+                              {prod.filling_ar && (
+                                <span className="inline-block mt-1 text-[10px] font-bold text-[#7B3F00] bg-[#FDE2CF]/50 px-1.5 py-0.5 rounded">
+                                  حشوة: {prod.filling_ar}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="mt-2 pt-1 border-t border-slate-100 flex flex-wrap gap-1">
+                            {prod.sizes && prod.sizes.length > 0 ? (
+                              prod.sizes.map((sz) => (
+                                <button
+                                  key={sz.label}
+                                  type="button"
+                                  onClick={() => selectProductFromMenu(prod, sz)}
+                                  className="flex-1 min-w-[60px] rounded-lg bg-[#F9FBFC] hover:bg-[#8B4513] hover:text-white px-1.5 py-1 text-[10px] font-bold border border-slate-200 transition-all text-center"
+                                >
+                                  {sz.label} ({sz.price} د.أ)
+                                </button>
+                              ))
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => selectProductFromMenu(prod)}
+                                className="w-full rounded-lg bg-[#8B4513] hover:bg-[#5D2E17] text-white px-2 py-1 text-xs font-bold shadow-xs transition-all flex items-center justify-center gap-1"
+                              >
+                                <PlusCircle className="h-3.5 w-3.5" />
+                                اختيار المنتج
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             <label className="block text-sm font-bold text-[#3E2723] sm:col-span-2">
               تفاصيل طلب الزبون · Customer Order Details
               <textarea
                 required
-                rows={5}
+                rows={4}
                 maxLength={2000}
                 value={form.order_details}
                 onChange={(event) => set("order_details", event.target.value)}
-                placeholder="اكتب تفاصيل الطلب كاملة: التصميم، الألوان، الكتابة، المكونات…"
+                placeholder="اكتب تفاصيل الطلب كاملة أو اختر صنفاً من منيو الموقع أعلاه…"
                 className="mt-1 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] p-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
               />
             </label>
+
+            {/* Cake Filling explicit selector for manual entry */}
+            <div className="block text-sm font-bold text-[#3E2723] sm:col-span-2 rounded-xl bg-[#FDE2CF]/20 border border-[#FDE2CF] p-3">
+              <span className="block text-xs font-bold text-[#5D2E17] mb-1.5">
+                نوع الحشوة (اختر أو اكتب) · Cake Filling Selection
+              </span>
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {[
+                  "نوتيلا وبندق",
+                  "لوتس كراميل",
+                  "فستق حلبي",
+                  "شوكولاتة بلجيكية",
+                  "فراولة طازجة وكريمة",
+                  "فانيلا كلاسيك",
+                  "كراميل مملح",
+                  "أوريو وكريمة",
+                ].map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() =>
+                      setCustomization((curr) => ({
+                        ...curr,
+                        filling: curr.filling === f ? "" : f,
+                      }))
+                    }
+                    className={`rounded-full px-3 py-1 text-xs font-bold border transition-all ${
+                      customization.filling === f
+                        ? "bg-[#8B4513] text-white border-[#8B4513] shadow-xs"
+                        : "bg-white text-[#5D2E17] border-slate-200 hover:bg-amber-50"
+                    }`}
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
+              <input
+                type="text"
+                value={customization.filling}
+                onChange={(event) =>
+                  setCustomization((curr) => ({ ...curr, filling: event.target.value }))
+                }
+                placeholder="اكتب نوع الحشوة هنا (مثال: نوتيلا ولوتس أو حسب الطلب)"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-[#3E2723] focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+              />
+            </div>
+
             <label className="block text-sm font-bold text-[#3E2723]">
               الكمية · Quantity
               <input

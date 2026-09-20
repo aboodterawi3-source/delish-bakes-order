@@ -22,6 +22,14 @@ const stripPhones = (text: string | null): string | null =>
   text ? text.replace(PHONE_LIKE, "—") : text;
 
 
+export type OrderModification = {
+  field: string;
+  oldValue: string;
+  newValue: string;
+  updatedAt: string;
+  acknowledgedAt?: string | null;
+};
+
 export type KdsItem = {
   id: string;
   name_ar: string;
@@ -59,6 +67,8 @@ export type KdsOrder = {
   items: KdsItem[];
   /** Most urgent priority across the order's lines; drives the card colour. */
   priority_color: PriorityColor;
+  /** Audit log of modifications made to the order */
+  modifications: OrderModification[];
 };
 
 /** Confirms the signed-in user may use the kitchen display. */
@@ -183,6 +193,7 @@ export const getKitchenOrders = createServerFn({ method: "GET" })
       priority_color: highestPriority(
         (itemsByOrder.get(order.id) ?? []).map((item) => item.priority_color),
       ),
+      modifications: (order.modifications ?? []) as OrderModification[],
     }));
   });
 
@@ -198,6 +209,37 @@ export const markOrderReady = createServerFn({ method: "POST" })
     const { error } = await context.supabase
       .from("orders")
       .update({ status: "ready" })
+      .eq("id", data.orderId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/** Kitchen staff acknowledges modifications on an order */
+export const acknowledgeOrderModification = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { orderId: string }) => {
+    if (!input?.orderId) throw new Error("orderId is required");
+    return input;
+  })
+  .handler(async ({ data, context }) => {
+    await assertRole(context, KITCHEN_ROLES);
+    const { data: order } = await context.supabase
+      .from("orders")
+      .select("modifications")
+      .eq("id", data.orderId)
+      .single();
+    if (!order) return { ok: true };
+
+    const currentMods = (order.modifications as OrderModification[] | null) ?? [];
+    const nowIso = new Date().toISOString();
+    const updatedMods = currentMods.map((mod) => ({
+      ...mod,
+      acknowledgedAt: mod.acknowledgedAt || nowIso,
+    }));
+
+    const { error } = await context.supabase
+      .from("orders")
+      .update({ modifications: updatedMods as any })
       .eq("id", data.orderId);
     if (error) throw new Error(error.message);
     return { ok: true };

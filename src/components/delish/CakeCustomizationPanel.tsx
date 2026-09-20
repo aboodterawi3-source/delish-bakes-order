@@ -9,6 +9,8 @@ import { uploadDesignImage } from "@/lib/design-upload.functions";
 export type BalloonPick = { id: string; label: string; qty: number };
 
 export type Customization = {
+  /** Chosen cake filling (e.g. Nutella, Lotus, Pistachio). */
+  filling: string;
   /** Both candle kinds may be chosen at the same time, each with its own input. */
   standardCandles: boolean;
   candleQty: number;
@@ -29,6 +31,7 @@ export type Customization = {
 };
 
 export const emptyCustomization: Customization = {
+  filling: "",
   standardCandles: false,
   candleQty: 1,
   numberCandles: false,
@@ -46,6 +49,18 @@ export const emptyCustomization: Customization = {
   designImageUrl: null,
 };
 
+const POPULAR_FILLINGS = [
+  "نوتيلا وبندق",
+  "لوتس كراميل",
+  "فستق حلبي",
+  "شوكولاتة بلجيكية",
+  "فراولة طازجة وكريمة",
+  "فانيلا كلاسيك",
+  "كراميل مملح",
+  "أوريو وكريمة",
+  "رد فيلفت وجبنة",
+];
+
 const BALLOON_COLORS = [
   { id: "gold", ar: "ذهبي", en: "Gold", swatch: "#B8860B" },
   { id: "peach", ar: "خوخي", en: "Peach", swatch: "#FDE2CF" },
@@ -60,6 +75,10 @@ export function customizationSummary(c: Customization) {
   const ar: string[] = [];
   const en: string[] = [];
 
+  if (c.filling && c.filling.trim()) {
+    ar.push(`الحشوة: ${c.filling.trim()}`);
+    en.push(`Filling: ${c.filling.trim()}`);
+  }
   if (c.standardCandles) {
     ar.push(`شموع عادية: ${c.candleQty}`);
     en.push(`Standard candles: ${c.candleQty}`);
@@ -254,6 +273,49 @@ export function CakeCustomizationPanel({
       <h2 className="text-xs font-bold uppercase tracking-wider text-[#5D2E17]">
         Customize your cake · تخصيص الكيكة
       </h2>
+
+      <Section
+        title="Cake Filling · نوع الحشوة"
+        subtitle="Choose from popular fillings or type custom filling"
+        active={Boolean(value.filling?.trim())}
+      >
+        <div className="space-y-2">
+          <label className="block text-xs font-bold text-[#3E2723]">
+            اختيار حشوة سريعة · Quick filling selection
+          </label>
+          <div className="flex flex-wrap gap-1.5">
+            {POPULAR_FILLINGS.map((fill) => {
+              const selected = value.filling === fill;
+              return (
+                <button
+                  key={fill}
+                  type="button"
+                  onClick={() => set("filling", selected ? "" : fill)}
+                  aria-pressed={selected}
+                  className={`rounded-full border px-3 py-1 text-xs font-bold transition-all ${
+                    selected
+                      ? "border-[#8B4513] bg-[#8B4513] text-white shadow-xs"
+                      : "border-slate-200 bg-white text-[#5D2E17] hover:bg-amber-50"
+                  }`}
+                >
+                  {fill}
+                </button>
+              );
+            })}
+          </div>
+
+          <label className="block space-y-1 pt-1">
+            <span className="text-xs font-bold text-[#3E2723]">حشوة مخصصة / تفاصيل أخرى · Custom filling</span>
+            <input
+              type="text"
+              value={value.filling}
+              onChange={(e) => set("filling", e.target.value)}
+              placeholder="مثال: نوتيلا مع قطع فستق حلبي وجوز"
+              className={inputClass}
+            />
+          </label>
+        </div>
+      </Section>
 
       <Section
         title="Candles · الشموع"
