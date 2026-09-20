@@ -37,6 +37,7 @@ import {
   type SalesStatus,
   type ShiftReport,
 } from "@/lib/sales.functions";
+import { ModificationsHistoryBox } from "@/components/staff/ModificationsPanel";
 import { buildConfirmationMessage } from "@/lib/confirmation-message";
 import { esc, printDocument } from "@/lib/print";
 import { orderLabel } from "@/lib/order-label";
@@ -233,7 +234,13 @@ function applyPatch(order: SalesOrder, input: OrderPatch): SalesOrder {
  * Shared by the sales screen and the social-media screen so both teams work on
  * the exact same orders with the exact same abilities.
  */
-export function OrdersWorkspace({ showShiftReport = false }: { showShiftReport?: boolean }) {
+export function OrdersWorkspace({
+  showShiftReport = false,
+  onEditOrder,
+}: {
+  showShiftReport?: boolean;
+  onEditOrder?: ((orderId: string) => void) | undefined;
+}) {
   const queryClient = useQueryClient();
   const ordersFn = useServerFn(getSalesOrders);
   const updateFn = useServerFn(updateSalesOrder);
@@ -467,7 +474,14 @@ export function OrdersWorkspace({ showShiftReport = false }: { showShiftReport?:
       ) : (
         <ul className="mt-4 grid gap-3">
           {list.map((order) => (
-            <OrderCard key={order.id} order={order} onOpen={openOrder} onZoom={setZoomImage} onMove={onMove} />
+            <OrderCard
+              key={order.id}
+              order={order}
+              onOpen={openOrder}
+              onZoom={setZoomImage}
+              onMove={onMove}
+              onEditOrder={onEditOrder}
+            />
           ))}
         </ul>
       )}
@@ -478,6 +492,7 @@ export function OrdersWorkspace({ showShiftReport = false }: { showShiftReport?:
           authorization={authorization.data ?? null}
           moneyError={moneyError}
           editLink={editLink}
+          onEditOrder={onEditOrder}
           onApplyDiscount={(percent, reason) =>
             discount.mutate({ orderId: selected.id, percent, reason })
           }
@@ -610,12 +625,14 @@ const OrderCard = memo(function OrderCard({
   onOpen,
   onZoom,
   onMove,
+  onEditOrder,
 }: {
   order: SalesOrder;
   onOpen: (id: string) => void;
   onZoom: (url: string) => void;
   /** Manual priority move: -1 = up, 1 = down. */
   onMove: (id: string, direction: -1 | 1) => void;
+  onEditOrder?: ((id: string) => void) | undefined;
 }) {
   const remaining = Math.max(order.total - order.deposit_paid, 0);
   return (
@@ -672,6 +689,21 @@ const OrderCard = memo(function OrderCard({
             </span>
             {order.payment_method ? <span className="text-muted-foreground">{payMeta[order.payment_method].ar}</span> : null}
           </div>
+
+          {order.modifications && order.modifications.length > 0 ? (
+            (() => {
+              const lastMod = order.modifications[order.modifications.length - 1];
+              if (!lastMod) return null;
+              return (
+                <div className="mt-2.5 rounded-xl bg-amber-50 p-2 text-[11px] border border-amber-200 text-amber-900 flex flex-wrap items-center gap-1.5">
+                  <span className="font-bold">📝 آخر تعديل:</span>
+                  <span>{lastMod.field}</span>
+                  <span className="line-through text-amber-700/80">{lastMod.oldValue}</span>
+                  <span className="font-bold text-emerald-800">← {lastMod.newValue}</span>
+                </div>
+              );
+            })()
+          ) : null}
         </div>
       </div>
 
@@ -683,6 +715,15 @@ const OrderCard = memo(function OrderCard({
         >
           إدارة الطلب
         </button>
+        {onEditOrder ? (
+          <button
+            type="button"
+            onClick={() => onEditOrder(order.id)}
+            className="inline-flex min-h-12 items-center justify-center gap-1.5 rounded-full border border-primary bg-primary/10 px-4 text-xs font-bold text-primary hover:bg-primary/20 active:scale-95 transition"
+          >
+            <Pencil className="h-3.5 w-3.5" /> ✏️ تعديل الطلب
+          </button>
+        ) : null}
         {order.schedule_updated_at ? (
           <button
             type="button"
@@ -728,6 +769,7 @@ function OrderPanel({
   authorization,
   moneyError,
   editLink,
+  onEditOrder,
   onApplyDiscount,
   onIssueEditLink,
   onZoom,
@@ -739,6 +781,7 @@ function OrderPanel({
   authorization?: (StaffAuthorization & { isAdmin: boolean }) | null;
   moneyError?: string | null;
   editLink?: string | null;
+  onEditOrder?: ((orderId: string) => void) | undefined;
   onApplyDiscount?: (percent: number, reason: string) => void;
   onIssueEditLink?: () => void;
   onZoom: (url: string) => void;
@@ -941,13 +984,18 @@ function OrderPanel({
           <section className="rounded-2xl border border-border bg-background p-3.5">
             <div className="flex items-center justify-between border-b border-border/60 pb-2 mb-2">
               <h3 className="text-sm font-bold text-foreground">تفاصيل المنتجات المطلوبة</h3>
-              <button
-                type="button"
-                onClick={onClose}
-                className="text-xs font-bold text-primary hover:underline"
-              >
-                ✏️ تعديل الأصناف
-              </button>
+              {onEditOrder ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onEditOrder(order.id);
+                  }}
+                  className="text-xs font-bold text-primary hover:underline flex items-center gap-1"
+                >
+                  <Pencil className="h-3.5 w-3.5" /> ✏️ تعديل الطلب (سوشيال ميديا)
+                </button>
+              ) : null}
             </div>
 
             <div className="space-y-2">
@@ -980,6 +1028,14 @@ function OrderPanel({
                   <span className="font-bold text-foreground">📝 ملاحظات إضافية:</span> {order.notes}
                 </div>
               ) : null}
+            </div>
+
+            {/* Audit Log Box Below Items */}
+            <div className="mt-3">
+              <ModificationsHistoryBox
+                modifications={order.modifications}
+                lastEditedAt={order.last_edited_at}
+              />
             </div>
           </section>
 

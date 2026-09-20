@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Loader2, Plus, Search, Trash2 } from "lucide-react";
+import { CheckCircle2, Loader2, Plus, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
@@ -17,6 +17,7 @@ import {
   type OrderItemPatch,
   type OrderPatch,
   type SalesOrder,
+  type OrderModification,
 } from "@/lib/sales.functions";
 import { applyOrderDiscount, getMyAuthorization } from "@/lib/authorization.functions";
 import { DELIVERY_ZONES, OTHER_GOVERNORATES_AREA, feeForArea } from "@/lib/delivery-zones";
@@ -44,12 +45,72 @@ const withLabel = (list: string[], label: string, value: string) => {
 const field = "mt-1 min-h-12 w-full rounded-xl border border-input bg-background px-3 text-sm";
 const boxed = "mt-1 w-full rounded-xl border border-input bg-background p-3 text-sm";
 
+/** Displays order modification logs cleanly under order details. */
+export function ModificationsHistoryBox({
+  modifications,
+  lastEditedAt,
+}: {
+  modifications?: OrderModification[] | null | undefined;
+  lastEditedAt?: string | null | undefined;
+}) {
+  if ((!modifications || modifications.length === 0) && !lastEditedAt) {
+    return (
+      <div className="rounded-2xl border border-dashed border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+        ℹ️ لا توجد تعديلات سابقة مسجلة على هذا الطلب.
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border border-amber-300 bg-amber-50/80 p-3.5 space-y-2 text-xs text-amber-950">
+      <div className="flex flex-wrap items-center justify-between font-bold border-b border-amber-200/80 pb-2 gap-1">
+        <span className="flex items-center gap-1.5 text-sm">
+          <span>📝</span>
+          <span>تفاصيل التعديلات على الطلب (Modifications Audit Log)</span>
+        </span>
+        {lastEditedAt && (
+          <span className="text-[11px] font-normal text-amber-800" dir="ltr">
+            آخر تعديل: {new Date(lastEditedAt).toLocaleTimeString("ar-JO", { hour: "2-digit", minute: "2-digit" })}
+          </span>
+        )}
+      </div>
+
+      {modifications && modifications.length > 0 ? (
+        <ul className="space-y-1.5 divide-y divide-amber-200/60 pt-1">
+          {modifications.map((mod, idx) => (
+            <li key={idx} className="pt-1.5 first:pt-0 flex flex-wrap items-center justify-between gap-1">
+              <div>
+                <span className="font-bold text-amber-950">{mod.field}:</span>{" "}
+                <span className="line-through text-amber-700/80 me-1">{mod.oldValue}</span>
+                <span className="font-bold text-emerald-800">← {mod.newValue}</span>
+              </div>
+              {mod.updatedAt && (
+                <span className="text-[10px] text-amber-700" dir="ltr">
+                  {new Date(mod.updatedAt).toLocaleTimeString("ar-JO", { hour: "2-digit", minute: "2-digit" })}
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-[11px] text-amber-800">تم حفظ وتأكيد التعديلات على هذا الطلب ✅</p>
+      )}
+    </div>
+  );
+}
+
 /**
  * The single place where staff may change anything on an order: identity,
  * schedule, delivery, prices, quantities, fillings, candles, balloons, acrylic
  * items and every custom request the customer asked for.
  */
-export function ModificationsPanel() {
+export function ModificationsPanel({
+  initialSelectedId = null,
+  onCloseEdit,
+}: {
+  initialSelectedId?: string | null;
+  onCloseEdit?: () => void;
+}) {
   const queryClient = useQueryClient();
   const ordersFn = useServerFn(getSalesOrders);
   const updateFn = useServerFn(updateSalesOrder);
@@ -60,7 +121,13 @@ export function ModificationsPanel() {
 
   const [term, setTerm] = useState("");
   const search = useDebouncedValue(term, 180);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId);
+
+  useEffect(() => {
+    if (initialSelectedId) {
+      setSelectedId(initialSelectedId);
+    }
+  }, [initialSelectedId]);
 
   const orders = useQuery({ queryKey: ORDERS_KEY, queryFn: () => ordersFn({}) });
   const authorization = useQuery({
@@ -102,7 +169,8 @@ export function ModificationsPanel() {
       queryClient.setQueryData<SalesOrder[]>(ORDERS_KEY, (current) =>
         (current ?? []).map((row) => (row.id === order.id ? order : row)),
       );
-      toast.success("تم حفظ التعديل ✅");
+      void queryClient.invalidateQueries({ queryKey: ORDERS_KEY });
+      void queryClient.invalidateQueries({ queryKey: ["kds-orders"] });
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -113,6 +181,7 @@ export function ModificationsPanel() {
       queryClient.setQueryData<SalesOrder[]>(ORDERS_KEY, (current) =>
         (current ?? []).map((row) => (row.id === order.id ? order : row)),
       );
+      void queryClient.invalidateQueries({ queryKey: ["kds-orders"] });
       toast.success("تم حفظ تعديل الصنف ✅");
     },
     onError: (error: Error) => toast.error(error.message),
@@ -125,6 +194,7 @@ export function ModificationsPanel() {
       queryClient.setQueryData<SalesOrder[]>(ORDERS_KEY, (current) =>
         (current ?? []).map((row) => (row.id === order.id ? order : row)),
       );
+      void queryClient.invalidateQueries({ queryKey: ["kds-orders"] });
       toast.success("تم استبدال أصناف الطلب ✅ — تم تنبيه المطبخ");
     },
     onError: (error: Error) => toast.error(error.message),
@@ -139,6 +209,18 @@ export function ModificationsPanel() {
     },
     onError: (error: Error) => toast.error(error.message),
   });
+
+  const handleFinishEdit = async (patchPayload: Omit<OrderPatch, "orderId">) => {
+    if (!selectedId) return;
+    try {
+      await save.mutateAsync({ orderId: selectedId, ...patchPayload });
+      toast.success("تم التعديل على الطلب بنجاح ✅");
+      setSelectedId(null);
+      onCloseEdit?.();
+    } catch (err) {
+      toast.error((err as Error).message || "حدث خطأ أثناء حفظ التعديل");
+    }
+  };
 
   if (orders.isPending) {
     return (
@@ -214,6 +296,7 @@ export function ModificationsPanel() {
           onDiscount={(percent, reason) =>
             discount.mutate({ orderId: selected.id, percent, reason })
           }
+          onFinishEdit={handleFinishEdit}
         />
       ) : null}
     </div>
@@ -230,6 +313,7 @@ function OrderEditor({
   onItemPatch,
   onReplaceItems,
   onDiscount,
+  onFinishEdit,
 }: {
   order: SalesOrder;
   busy: boolean;
@@ -240,10 +324,12 @@ function OrderEditor({
   onItemPatch: (patch: Omit<OrderItemPatch, "orderId">) => void;
   onReplaceItems: (lines: RebuildLine[]) => void;
   onDiscount: (percent: number, reason: string) => void;
+  onFinishEdit: (patch: Omit<OrderPatch, "orderId">) => Promise<void> | void;
 }) {
   const [itemsMode, setItemsMode] = useState<"builder" | "lines">("builder");
   const [activeSheetItem, setActiveSheetItem] = useState<SalesOrder["items"][number] | null | undefined>(undefined);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [isFinishing, setIsFinishing] = useState(false);
   const [orderName, setOrderName] = useState(order.order_name ?? "");
   const [customerName, setCustomerName] = useState(order.customer_name);
   const [customerPhone, setCustomerPhone] = useState(order.customer_phone);
@@ -264,16 +350,95 @@ function OrderEditor({
     setDeposit(String(order.deposit_paid));
   }, [order.deposit_paid]);
 
+  const handleFinish = async () => {
+    setIsFinishing(true);
+    try {
+      await onFinishEdit({
+        order_name: orderName.trim() || null,
+        customer_name: customerName.trim() || order.customer_name,
+        customer_phone: customerPhone.trim() || order.customer_phone,
+        sender_phone: senderPhone.trim() || null,
+        recipient_phone: recipientPhone.trim() || null,
+        requested_date: date,
+        requested_time: time,
+        address: address.trim() || null,
+        inscription: inscription.trim() || null,
+        card_note: cardNote.trim() || null,
+        notes: notes.trim() || null,
+        staff_notes: staffNotes.trim() || null,
+        deposit_paid: Number(deposit) || 0,
+      });
+    } finally {
+      setIsFinishing(false);
+    }
+  };
+
   const remaining = Math.max(order.total - (Number(deposit) || 0), 0);
 
   return (
-    <section className="min-w-0 space-y-4 rounded-2xl border border-primary/40 bg-card p-3">
-      <header className="flex flex-wrap items-center gap-2">
-        <h3 className="me-auto font-display text-base font-bold text-foreground">
-          تعديل الطلب {orderLabel(order.order_number, order.staff_code)}
-        </h3>
-        {busy ? <Loader2 className="h-4 w-4 animate-spin text-primary" aria-label="جار الحفظ" /> : null}
+    <section className="min-w-0 space-y-4 rounded-2xl border border-primary/40 bg-card p-3 sm:p-4 shadow-sm">
+      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border/80 pb-3">
+        <div>
+          <h3 className="font-display text-base font-bold text-foreground">
+            تعديل الطلب {orderLabel(order.order_number, order.staff_code)}
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            قم بإجراء التعديلات المطلوبة، ثم انقر على "تم التعديل على الطلب" للحفظ والإغلاق.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {busy || isFinishing ? <Loader2 className="h-4 w-4 animate-spin text-primary" aria-label="جار الحفظ" /> : null}
+          <button
+            type="button"
+            onClick={handleFinish}
+            disabled={busy || isFinishing}
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-emerald-600 px-5 text-sm font-bold text-white shadow-md hover:bg-emerald-700 active:scale-95 disabled:opacity-50 transition cursor-pointer"
+          >
+            {busy || isFinishing ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <CheckCircle2 className="h-4 w-4" />
+            )}
+            <span>تم التعديل على الطلب ✅</span>
+          </button>
+        </div>
       </header>
+
+      {/* Original Order Summary & Audit Trail Box */}
+      <div className="space-y-3 rounded-2xl border border-amber-300/80 bg-amber-50/40 p-3.5">
+        <div className="flex flex-wrap items-center justify-between gap-1 border-b border-amber-200/80 pb-2">
+          <h4 className="font-display text-xs font-bold text-amber-950">
+            📦 تفاصيل الطلب الأصلي · Original Order Details
+          </h4>
+          <span className="rounded-full bg-amber-200/90 px-2.5 py-0.5 text-[11px] font-bold text-amber-900">
+            {orderLabel(order.order_number, order.staff_code)}
+          </span>
+        </div>
+
+        <div className="grid gap-2 text-xs text-amber-950 sm:grid-cols-2">
+          <div>
+            <span className="text-amber-800">اسم الطلب / العميل:</span>{" "}
+            <strong>{order.order_name?.trim() || order.customer_name}</strong> ({order.customer_phone})
+          </div>
+          <div>
+            <span className="text-amber-800">موعد التسليم الأصلي:</span>{" "}
+            <strong>{order.requested_date}</strong> ⏰ <strong>{order.requested_time.slice(0, 5)}</strong>
+          </div>
+          <div>
+            <span className="text-amber-800">الطريقة والعنوان:</span>{" "}
+            <strong>{order.method === "delivery" ? `توصيل (${order.area || "—"})` : "استلام محلي"}</strong>
+          </div>
+          <div>
+            <span className="text-amber-800">إجمالي الطلب:</span> <strong>{jd(order.total)}</strong> (المدفوع: {jd(order.deposit_paid)})
+          </div>
+        </div>
+
+        {/* Audit Log Box Below Original Details */}
+        <ModificationsHistoryBox
+          modifications={order.modifications}
+          lastEditedAt={order.last_edited_at}
+        />
+      </div>
 
       {/* Identity and schedule */}
               <div className="grid gap-2 sm:grid-cols-2">
@@ -656,6 +821,23 @@ function OrderEditor({
             الخصم الخاص يحتاج تصريح المدير على هذا الحساب.
           </p>
         )}
+      </div>
+
+      {/* Primary Action Button: Save & Finish Editing */}
+      <div className="sticky bottom-2 z-10 pt-3">
+        <button
+          type="button"
+          onClick={handleFinish}
+          disabled={busy || isFinishing}
+          className="inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-full bg-emerald-600 px-6 text-base font-extrabold text-white shadow-xl hover:bg-emerald-700 active:scale-95 disabled:opacity-50 transition cursor-pointer"
+        >
+          {busy || isFinishing ? (
+            <Loader2 className="h-5 w-5 animate-spin" />
+          ) : (
+            <CheckCircle2 className="h-5 w-5" />
+          )}
+          <span>تم التعديل على الطلب (حفظ وإغلاق التعديل) ✅</span>
+        </button>
       </div>
     </section>
   );
