@@ -385,14 +385,14 @@ export const OrdersCalendar = memo(function OrdersCalendar({ orders, onOpen, onP
         currentY: startY,
         targetHour: clampedHour,
       });
-    }, 300);
+    }, 250);
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!isDraggingActive.current && longPressTimer.current) {
       const dx = Math.abs(e.clientX - startPos.current.x);
       const dy = Math.abs(e.clientY - startPos.current.y);
-      if (dx > 6 || dy > 6) {
+      if (dx > 5 || dy > 5) {
         clearTimeout(longPressTimer.current);
         longPressTimer.current = null;
       }
