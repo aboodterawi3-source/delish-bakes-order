@@ -637,7 +637,7 @@ export function KitchenPanel() {
   );
 }
 
-/** Modern Full Solid Priority Color KDS Card Component */
+/** Clean, Highly Organized & Elegant KDS Card Component */
 const KdsCleanCard = memo(function KdsCleanCard({
   order,
   stageBorder,
@@ -670,19 +670,20 @@ const KdsCleanCard = memo(function KdsCleanCard({
 
   return (
     <article
-      className={`relative flex flex-col justify-between rounded-2xl p-4.5 shadow-md hover:shadow-lg transition-all ${stageBorder}`}
-      style={{
-        backgroundColor: priorityMeta.bg,
-        color: priorityMeta.fg,
-        boxShadow: priorityMeta.glow,
-      }}
+      className="relative flex flex-col justify-between rounded-2xl bg-white border border-slate-200/90 p-4 shadow-sm hover:shadow-md transition-all overflow-hidden text-slate-900"
     >
-      {/* CARD HEADER */}
-      <div className="space-y-2.5">
-        <div className="flex items-start justify-between gap-2 border-b border-white/20 pb-3">
+      {/* Top Priority Accent Strip */}
+      <div
+        className="absolute top-0 inset-x-0 h-1.5"
+        style={{ backgroundColor: priorityMeta.swatch || priorityMeta.bg }}
+      />
+
+      <div className="space-y-3 pt-1">
+        {/* CARD HEADER */}
+        <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-3">
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="font-black text-lg leading-tight" style={{ color: priorityMeta.fg }}>
+              <h2 className="font-extrabold text-lg text-slate-900 leading-tight">
                 {orderLabel(order.order_number, order.staff_code)}
               </h2>
               {isEdited && (
@@ -690,7 +691,7 @@ const KdsCleanCard = memo(function KdsCleanCard({
                   className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-black shadow-xs border ${
                     hasUnack
                       ? "bg-amber-500 text-white border-amber-300 animate-pulse"
-                      : "bg-amber-600/40 text-current border-amber-500/50"
+                      : "bg-amber-100 text-amber-900 border-amber-300"
                   }`}
                 >
                   <PencilLine className="h-3 w-3" />
@@ -698,80 +699,84 @@ const KdsCleanCard = memo(function KdsCleanCard({
                 </span>
               )}
               <span
-                className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-black bg-black/25 shadow-xs"
-                style={{ color: priorityMeta.fg }}
+                className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-200"
               >
-                {priorityMeta.ar}
+                {(priorityMeta.ar.split("·")[0] ?? priorityMeta.ar).trim()}
               </span>
             </div>
-            <p className="text-xs font-bold truncate mt-1 opacity-90" style={{ color: priorityMeta.fg }}>
-              {order.customer_name}
+            <p className="text-xs font-extrabold text-slate-600 truncate mt-1">
+              العميل: {order.customer_name}
             </p>
           </div>
 
-          {/* Countdown & Deadline Badge */}
-          <div className="flex flex-col items-end gap-1">
+          {/* Countdown & Fulfilment Badge */}
+          <div className="flex flex-col items-end gap-1 shrink-0">
             <span
               className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-black border ${
                 countdown.status === "urgent"
                   ? "bg-red-600 text-white border-red-400 animate-pulse"
                   : countdown.status === "warning"
                     ? "bg-amber-400 text-amber-950 border-amber-300"
-                    : "bg-black/25 text-current border-white/20"
+                    : "bg-slate-100 text-slate-800 border-slate-200"
               }`}
             >
               <Clock3 className="h-3 w-3" />
               {countdown.text}
             </span>
-            <span className="text-[11px] font-bold opacity-80" style={{ color: priorityMeta.fg }}>
-              {order.method === "delivery" ? "توصيل" : "استلام"} · {(order.requested_time ?? "").slice(0, 5)}
+            <span className="text-[11px] font-bold text-slate-500">
+              {order.method === "delivery" ? "🚀 توصيل" : "🏬 استلام"} · {(order.requested_time ?? "").slice(0, 5)}
             </span>
           </div>
         </div>
 
         {/* Alert badge if edited/new */}
         {alerted && !hasUnack && (
-          <div className="flex items-center justify-between rounded-xl bg-amber-500 p-2.5 text-white shadow-sm">
-            <span className="inline-flex items-center gap-1 text-xs font-black">
-              <PencilLine className="h-4 w-4" /> تم تعديل الطلب مؤخراً
+          <div className="flex items-center justify-between rounded-xl bg-amber-50 border border-amber-200 p-2.5 text-amber-950 shadow-2xs">
+            <span className="inline-flex items-center gap-1 text-xs font-bold">
+              <PencilLine className="h-4 w-4 text-amber-700" /> تم تعديل تفاصيل الطلب مؤخراً
             </span>
             <button
               type="button"
               onClick={() => onAck(order.id)}
-              className="rounded-lg bg-white px-3 py-1 text-xs font-black text-amber-950 hover:bg-amber-50 shadow-xs"
+              className="rounded-lg bg-amber-600 px-3 py-1 text-xs font-black text-white hover:bg-amber-700 shadow-2xs"
             >
               تم الاطلاع ✓
             </button>
           </div>
         )}
 
-        {/* ITEMS & CAKE SPECIFICATIONS - HIGH CONTRAST INNER CONTAINERS */}
-        <div className="space-y-2 pt-1">
-          {order.items.map((item) => (
-            <div key={item.id} className="rounded-xl bg-white/95 text-slate-900 p-3 border border-white/40 shadow-xs">
-              <p className="font-extrabold text-sm leading-snug">
-                <span className="text-amber-700 font-black">{item.quantity}×</span> {item.name_ar}
-              </p>
-              {item.options_ar.length > 0 ? (
-                <div className="mt-1 space-y-0.5">
-                  {item.options_ar.map((option) => (
-                    <p key={option} className="text-xs text-slate-700 font-bold">
-                      • {option}
-                    </p>
-                  ))}
-                </div>
-              ) : null}
-              {item.notes ? (
-                <p className="mt-1.5 rounded-lg bg-amber-50 p-1.5 text-xs font-black text-amber-900 border border-amber-200">
-                  ملاحظة: {item.notes}
+        {/* ORIGINAL ORDER ITEMS & SPECIFICATIONS */}
+        <div className="space-y-2">
+          <div className="rounded-xl bg-[#F8FAFC] p-3 border border-slate-100 space-y-2">
+            <p className="text-[11px] font-black text-slate-600 uppercase tracking-wider">
+              📦 تفاصيل الطلب الأصلية:
+            </p>
+            {order.items.map((item) => (
+              <div key={item.id} className="border-b border-slate-200/60 last:border-0 pb-1.5 last:pb-0">
+                <p className="font-extrabold text-sm text-slate-900 leading-snug">
+                  <span className="text-amber-700 font-black">{item.quantity}×</span> {item.name_ar}
                 </p>
-              ) : null}
-            </div>
-          ))}
+                {item.options_ar.length > 0 ? (
+                  <div className="mt-0.5 space-y-0.5">
+                    {item.options_ar.map((option) => (
+                      <p key={option} className="text-xs text-slate-700 font-bold">
+                        • {option}
+                      </p>
+                    ))}
+                  </div>
+                ) : null}
+                {item.notes ? (
+                  <p className="mt-1 rounded-md bg-amber-50 p-1 text-[11px] font-bold text-amber-900 border border-amber-200">
+                    ملاحظة الصنف: {item.notes}
+                  </p>
+                ) : null}
+              </div>
+            ))}
+          </div>
 
-          {/* HIGHLIGHTED CAKE WRITING BOX (CRITICAL KITCHEN READABILITY) */}
+          {/* HIGHLIGHTED CAKE WRITING BOX */}
           {order.inscription ? (
-            <div className="rounded-xl bg-[#FFF3CD] text-[#5C3C00] p-3 border-2 border-amber-400 shadow-sm">
+            <div className="rounded-xl bg-[#FFFBEB] text-[#5C3C00] p-3 border border-amber-300 shadow-2xs">
               <span className="block text-[11px] font-black text-amber-800 uppercase tracking-wider">
                 ✍️ الكتابة على الكيك:
               </span>
@@ -783,7 +788,7 @@ const KdsCleanCard = memo(function KdsCleanCard({
 
           {/* Special Order Notes */}
           {order.notes ? (
-            <div className="rounded-xl bg-white/90 text-slate-900 p-2.5 border border-white/30 text-xs font-bold shadow-xs">
+            <div className="rounded-xl bg-slate-50 text-slate-800 p-2.5 border border-slate-200/80 text-xs font-bold">
               <span className="text-slate-950 font-black">ملاحظات إضافية:</span> {order.notes}
             </div>
           ) : null}
@@ -794,7 +799,7 @@ const KdsCleanCard = memo(function KdsCleanCard({
               <button
                 type="button"
                 onClick={() => onZoom(order.design_image_url as string)}
-                className="relative grid h-16 w-16 shrink-0 overflow-hidden rounded-xl border-2 border-white/80 hover:opacity-90 active:scale-95 shadow-xs"
+                className="relative grid h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-slate-300 hover:opacity-90 active:scale-95 shadow-2xs"
               >
                 <img
                   src={order.design_image_url}
@@ -803,12 +808,11 @@ const KdsCleanCard = memo(function KdsCleanCard({
                 />
               </button>
               <div className="text-xs">
-                <span className="font-black block" style={{ color: priorityMeta.fg }}>صورة التصميم المرفقة</span>
+                <span className="font-bold text-slate-700 block">صورة التصميم المرفقة</span>
                 <button
                   type="button"
                   onClick={() => onZoom(order.design_image_url as string)}
-                  className="font-black underline hover:opacity-80"
-                  style={{ color: priorityMeta.fg }}
+                  className="font-extrabold text-amber-800 underline hover:text-amber-900"
                 >
                   اضغط للتكبير 🔍
                 </button>
@@ -816,13 +820,13 @@ const KdsCleanCard = memo(function KdsCleanCard({
             </div>
           ) : null}
 
-          {/* DEDICATED ORDER UPDATES / MODIFICATIONS SECTION */}
+          {/* DEDICATED ORDER UPDATES / MODIFICATIONS SECTION (UNDERNEATH ORIGINAL DETAILS) */}
           {order.modifications && order.modifications.length > 0 ? (
-            <div className="mt-3 rounded-2xl bg-amber-500/20 border-2 border-amber-400 p-3 text-slate-900 shadow-sm space-y-2">
-              <div className="flex items-center justify-between gap-2 border-b border-amber-500/30 pb-1.5">
+            <div className="mt-3 rounded-xl bg-[#FFF9F0] border-2 border-amber-400/90 p-3 text-slate-900 shadow-2xs space-y-2">
+              <div className="flex items-center justify-between gap-2 border-b border-amber-300/60 pb-1.5">
                 <span className="inline-flex items-center gap-1.5 font-black text-xs text-amber-950">
                   <PencilLine className="h-4 w-4 text-amber-800" />
-                  التعديلات الجديدة: (Order Updates)
+                  تعديلات الطلب (Order Updates):
                 </span>
                 {hasUnack ? (
                   <span className="text-[10px] font-black bg-amber-600 text-white px-2 py-0.5 rounded-full animate-pulse">
@@ -837,7 +841,7 @@ const KdsCleanCard = memo(function KdsCleanCard({
 
               <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
                 {order.modifications.map((mod, idx) => (
-                  <div key={idx} className="rounded-xl bg-white/95 p-2.5 text-xs border border-amber-300 shadow-xs">
+                  <div key={idx} className="rounded-lg bg-white p-2.5 text-xs border border-amber-200/80 shadow-2xs">
                     <div className="flex items-center justify-between gap-1 text-[11px] font-bold text-slate-600 mb-1">
                       <span className="font-black text-amber-900">تم تعديل {mod.field}:</span>
                       <span className="text-[10px] font-extrabold text-slate-500">{formatRelativeTime(mod.updatedAt)}</span>
@@ -870,13 +874,13 @@ const KdsCleanCard = memo(function KdsCleanCard({
       </div>
 
       {/* FOOTER & ACTIONS */}
-      <div className="mt-4 pt-3 border-t border-white/20 space-y-2">
+      <div className="mt-4 pt-3 border-t border-slate-100 space-y-2">
         <div className="flex items-center gap-1.5">
           <button
             type="button"
             onClick={() => printKitchenTicket(order)}
             title="طباعة تذكرة المطبخ"
-            className="flex-1 inline-flex min-h-10 items-center justify-center gap-1 rounded-xl bg-white/90 text-slate-900 border border-white/40 text-xs font-black shadow-xs hover:bg-white active:scale-95"
+            className="flex-1 inline-flex min-h-10 items-center justify-center gap-1 rounded-xl bg-slate-100 text-slate-800 border border-slate-200 text-xs font-black shadow-2xs hover:bg-slate-200 active:scale-95"
           >
             <Printer className="h-3.5 w-3.5" /> 🖨️ تذكرة
           </button>
@@ -886,7 +890,7 @@ const KdsCleanCard = memo(function KdsCleanCard({
               type="button"
               onClick={() => void downloadDesignImage(order.design_image_url as string, order.order_number)}
               title="تحميل صورة التصميم"
-              className="inline-flex min-h-10 px-3 items-center justify-center gap-1 rounded-xl bg-white/90 text-slate-900 border border-white/40 text-xs font-black shadow-xs hover:bg-white active:scale-95"
+              className="inline-flex min-h-10 px-3 items-center justify-center gap-1 rounded-xl bg-slate-100 text-slate-800 border border-slate-200 text-xs font-black shadow-2xs hover:bg-slate-200 active:scale-95"
             >
               <Download className="h-3.5 w-3.5" />
             </button>
@@ -898,7 +902,7 @@ const KdsCleanCard = memo(function KdsCleanCard({
               type="button"
               onClick={() => onMove(order.id, -1)}
               title="تقديم الطلب"
-              className="grid h-10 w-9 place-items-center rounded-xl bg-white/90 text-slate-900 border border-white/40 shadow-xs hover:bg-white active:scale-95"
+              className="grid h-10 w-9 place-items-center rounded-xl bg-slate-100 text-slate-800 border border-slate-200 shadow-2xs hover:bg-slate-200 active:scale-95"
             >
               <ArrowUp className="h-3.5 w-3.5" />
             </button>
@@ -906,7 +910,7 @@ const KdsCleanCard = memo(function KdsCleanCard({
               type="button"
               onClick={() => onMove(order.id, 1)}
               title="تأخير الطلب"
-              className="grid h-10 w-9 place-items-center rounded-xl bg-white/90 text-slate-900 border border-white/40 shadow-xs hover:bg-white active:scale-95"
+              className="grid h-10 w-9 place-items-center rounded-xl bg-slate-100 text-slate-800 border border-slate-200 shadow-2xs hover:bg-slate-200 active:scale-95"
             >
               <ArrowDown className="h-3.5 w-3.5" />
             </button>
@@ -919,7 +923,7 @@ const KdsCleanCard = memo(function KdsCleanCard({
             type="button"
             onClick={() => void onStage(order.id, "baking")}
             disabled={busy}
-            className="w-full min-h-11 inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 text-white font-black text-sm shadow-md hover:bg-slate-900 active:scale-95 disabled:opacity-60"
+            className="w-full min-h-11 inline-flex items-center justify-center gap-2 rounded-xl bg-amber-600 text-white font-black text-sm shadow-md hover:bg-amber-700 active:scale-95 disabled:opacity-60"
           >
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
             👨‍🍳 بدء التجهيز / Start
@@ -931,7 +935,7 @@ const KdsCleanCard = memo(function KdsCleanCard({
             type="button"
             onClick={() => void onStage(order.id, "ready")}
             disabled={busy}
-            className="w-full min-h-11 inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 text-white font-black text-sm shadow-md hover:bg-slate-900 active:scale-95 disabled:opacity-60"
+            className="w-full min-h-11 inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 text-white font-black text-sm shadow-md hover:bg-blue-700 active:scale-95 disabled:opacity-60"
           >
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
             ✅ تم التجهيز / Ready
@@ -940,15 +944,15 @@ const KdsCleanCard = memo(function KdsCleanCard({
 
         {stage === "ready" && (
           <div className="flex gap-2">
-            <span className="flex-1 min-h-11 inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-950 text-white font-black text-xs shadow-xs">
-              <CheckCircle2 className="h-4 w-4 text-emerald-400" /> جاهز بالمحل ✓
+            <span className="flex-1 min-h-11 inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 text-white font-black text-xs shadow-xs">
+              <CheckCircle2 className="h-4 w-4" /> جاهز بالمحل ✓
             </span>
             <button
               type="button"
               onClick={() => void onStage(order.id, "baking")}
               disabled={busy}
               title="تراجع إلى قيد التجهيز"
-              className="min-h-11 px-3 inline-flex items-center justify-center rounded-xl bg-white/90 text-slate-900 border border-white/40 text-xs font-black hover:bg-white"
+              className="min-h-11 px-3 inline-flex items-center justify-center rounded-xl bg-slate-100 text-slate-800 border border-slate-200 text-xs font-black hover:bg-slate-200"
             >
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Undo2 className="h-4 w-4" />}
             </button>
