@@ -31,7 +31,7 @@ import {
   type KdsOrder,
   type KitchenStage,
 } from "@/lib/kds.functions";
-import { PRIORITY_META } from "@/lib/priority";
+import { PRIORITY_META, type PriorityColor } from "@/lib/priority";
 import { esc, printDocument } from "@/lib/print";
 import bellAsset from "@/assets/Bell.mp3.asset.json";
 import { orderLabel } from "@/lib/order-label";
@@ -637,6 +637,53 @@ export function KitchenPanel() {
   );
 }
 
+/** Map priority tier to clean background, border, and badge styles */
+function getPriorityStyles(color: PriorityColor = "soft_green") {
+  switch (color) {
+    case "dark_red":
+      return {
+        cardBg: "bg-[#FFF1F2] border-rose-300/80 shadow-rose-100",
+        badgeBg: "bg-rose-600 text-white border-rose-400",
+        badgeText: "أحمر · أولوية قصوى",
+        itemBg: "bg-rose-100/70 border-rose-200 text-rose-950",
+        itemBadge: "bg-rose-600 text-white",
+      };
+    case "warm_orange":
+      return {
+        cardBg: "bg-[#FFF7ED] border-orange-300/80 shadow-orange-100",
+        badgeBg: "bg-orange-600 text-white border-orange-400",
+        badgeText: "برتقالي · أولوية عالية",
+        itemBg: "bg-orange-100/70 border-orange-200 text-orange-950",
+        itemBadge: "bg-orange-600 text-white",
+      };
+    case "golden_yellow":
+      return {
+        cardBg: "bg-[#FEFCE8] border-amber-300/80 shadow-amber-100",
+        badgeBg: "bg-amber-500 text-amber-950 border-amber-300",
+        badgeText: "أصفر · أولوية متوسطة",
+        itemBg: "bg-amber-100/70 border-amber-200 text-amber-950",
+        itemBadge: "bg-amber-500 text-amber-950",
+      };
+    case "sky_blue":
+      return {
+        cardBg: "bg-[#F0F9FF] border-sky-300/80 shadow-sky-100",
+        badgeBg: "bg-sky-600 text-white border-sky-300",
+        badgeText: "أزرق · أولوية رابعة",
+        itemBg: "bg-sky-100/70 border-sky-200 text-sky-950",
+        itemBadge: "bg-sky-600 text-white",
+      };
+    case "soft_green":
+    default:
+      return {
+        cardBg: "bg-[#ECFDF5] border-emerald-300/80 shadow-emerald-100",
+        badgeBg: "bg-emerald-700 text-white border-emerald-400",
+        badgeText: "أخضر · أولوية أساسية",
+        itemBg: "bg-white/90 border-emerald-200 text-emerald-950",
+        itemBadge: "bg-emerald-700 text-white",
+      };
+  }
+}
+
 /** Clean, Highly Organized & Elegant KDS Card Component */
 const KdsCleanCard = memo(function KdsCleanCard({
   order,
@@ -659,6 +706,7 @@ const KdsCleanCard = memo(function KdsCleanCard({
 }) {
   const stage = stageOf(order.status);
   const priorityMeta = PRIORITY_META[order.priority_color ?? "soft_green"] || PRIORITY_META["soft_green"];
+  const orderPrio = getPriorityStyles(order.priority_color ?? "soft_green");
   const countdown = useMemo(
     () => getCountdownText(order.requested_date, order.requested_time),
     [order.requested_date, order.requested_time],
@@ -670,7 +718,7 @@ const KdsCleanCard = memo(function KdsCleanCard({
 
   return (
     <article
-      className="relative flex flex-col justify-between rounded-2xl bg-white border border-slate-200/90 p-4 shadow-sm hover:shadow-md transition-all overflow-hidden text-slate-900"
+      className={`relative flex flex-col justify-between rounded-2xl border p-4 shadow-sm hover:shadow-md transition-all overflow-hidden text-slate-900 ${orderPrio.cardBg}`}
     >
       {/* Top Priority Accent Strip */}
       <div
@@ -680,7 +728,7 @@ const KdsCleanCard = memo(function KdsCleanCard({
 
       <div className="space-y-3 pt-1">
         {/* CARD HEADER */}
-        <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-3">
+        <div className="flex items-start justify-between gap-2 border-b border-slate-200/60 pb-3">
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="font-extrabold text-lg text-slate-900 leading-tight">
@@ -699,12 +747,12 @@ const KdsCleanCard = memo(function KdsCleanCard({
                 </span>
               )}
               <span
-                className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-200"
+                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-black border ${orderPrio.badgeBg}`}
               >
-                {(priorityMeta.ar.split("·")[0] ?? priorityMeta.ar).trim()}
+                {(orderPrio.badgeText.split("·")[0] ?? orderPrio.badgeText).trim()}
               </span>
             </div>
-            <p className="text-xs font-extrabold text-slate-600 truncate mt-1">
+            <p className="text-xs font-extrabold text-slate-700 truncate mt-1">
               العميل: {order.customer_name}
             </p>
           </div>
@@ -717,13 +765,13 @@ const KdsCleanCard = memo(function KdsCleanCard({
                   ? "bg-red-600 text-white border-red-400 animate-pulse"
                   : countdown.status === "warning"
                     ? "bg-amber-400 text-amber-950 border-amber-300"
-                    : "bg-slate-100 text-slate-800 border-slate-200"
+                    : "bg-white/90 text-slate-800 border-slate-200"
               }`}
             >
               <Clock3 className="h-3 w-3" />
               {countdown.text}
             </span>
-            <span className="text-[11px] font-bold text-slate-500">
+            <span className="text-[11px] font-bold text-slate-600">
               {order.method === "delivery" ? "🚀 توصيل" : "🏬 استلام"} · {(order.requested_time ?? "").slice(0, 5)}
             </span>
           </div>
@@ -747,31 +795,46 @@ const KdsCleanCard = memo(function KdsCleanCard({
 
         {/* ORIGINAL ORDER ITEMS & SPECIFICATIONS */}
         <div className="space-y-2">
-          <div className="rounded-xl bg-[#F8FAFC] p-3 border border-slate-100 space-y-2">
+          <div className="rounded-xl bg-white/80 p-3 border border-slate-200/70 space-y-2">
             <p className="text-[11px] font-black text-slate-600 uppercase tracking-wider">
               📦 تفاصيل الطلب الأصلية:
             </p>
-            {order.items.map((item) => (
-              <div key={item.id} className="border-b border-slate-200/60 last:border-0 pb-1.5 last:pb-0">
-                <p className="font-extrabold text-sm text-slate-900 leading-snug">
-                  <span className="text-amber-700 font-black">{item.quantity}×</span> {item.name_ar}
-                </p>
-                {item.options_ar.length > 0 ? (
-                  <div className="mt-0.5 space-y-0.5">
-                    {item.options_ar.map((option) => (
-                      <p key={option} className="text-xs text-slate-700 font-bold">
-                        • {option}
-                      </p>
-                    ))}
+            {order.items.map((item) => {
+              const itemPrio = item.priority_color ? getPriorityStyles(item.priority_color) : null;
+              return (
+                <div
+                  key={item.id}
+                  className={`rounded-xl p-2.5 border transition-all ${
+                    itemPrio ? itemPrio.itemBg : "bg-white/90 border-slate-200/80 text-slate-900"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-1">
+                    <p className="font-extrabold text-sm text-slate-900 leading-snug">
+                      <span className="text-amber-800 font-black">{item.quantity}×</span> {item.name_ar}
+                    </p>
+                    {itemPrio && (
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-black border ${itemPrio.itemBadge}`}>
+                        {(itemPrio.badgeText.split("·")[0] ?? itemPrio.badgeText).trim()}
+                      </span>
+                    )}
                   </div>
-                ) : null}
-                {item.notes ? (
-                  <p className="mt-1 rounded-md bg-amber-50 p-1 text-[11px] font-bold text-amber-900 border border-amber-200">
-                    ملاحظة الصنف: {item.notes}
-                  </p>
-                ) : null}
-              </div>
-            ))}
+                  {item.options_ar.length > 0 ? (
+                    <div className="mt-1 space-y-0.5">
+                      {item.options_ar.map((option) => (
+                        <p key={option} className="text-xs text-slate-700 font-bold">
+                          • {option}
+                        </p>
+                      ))}
+                    </div>
+                  ) : null}
+                  {item.notes ? (
+                    <p className="mt-1.5 rounded-md bg-amber-50 p-1 text-[11px] font-bold text-amber-900 border border-amber-200">
+                      ملاحظة الصنف: {item.notes}
+                    </p>
+                  ) : null}
+                </div>
+              );
+            })}
           </div>
 
           {/* HIGHLIGHTED CAKE WRITING BOX */}
@@ -788,7 +851,7 @@ const KdsCleanCard = memo(function KdsCleanCard({
 
           {/* Special Order Notes */}
           {order.notes ? (
-            <div className="rounded-xl bg-slate-50 text-slate-800 p-2.5 border border-slate-200/80 text-xs font-bold">
+            <div className="rounded-xl bg-white/80 text-slate-800 p-2.5 border border-slate-200/80 text-xs font-bold">
               <span className="text-slate-950 font-black">ملاحظات إضافية:</span> {order.notes}
             </div>
           ) : null}
@@ -874,13 +937,13 @@ const KdsCleanCard = memo(function KdsCleanCard({
       </div>
 
       {/* FOOTER & ACTIONS */}
-      <div className="mt-4 pt-3 border-t border-slate-100 space-y-2">
+      <div className="mt-4 pt-3 border-t border-slate-200/60 space-y-2">
         <div className="flex items-center gap-1.5">
           <button
             type="button"
             onClick={() => printKitchenTicket(order)}
             title="طباعة تذكرة المطبخ"
-            className="flex-1 inline-flex min-h-10 items-center justify-center gap-1 rounded-xl bg-slate-100 text-slate-800 border border-slate-200 text-xs font-black shadow-2xs hover:bg-slate-200 active:scale-95"
+            className="flex-1 inline-flex min-h-10 items-center justify-center gap-1 rounded-xl bg-white/90 text-slate-800 border border-slate-200 text-xs font-black shadow-2xs hover:bg-white active:scale-95"
           >
             <Printer className="h-3.5 w-3.5" /> 🖨️ تذكرة
           </button>
@@ -890,7 +953,7 @@ const KdsCleanCard = memo(function KdsCleanCard({
               type="button"
               onClick={() => void downloadDesignImage(order.design_image_url as string, order.order_number)}
               title="تحميل صورة التصميم"
-              className="inline-flex min-h-10 px-3 items-center justify-center gap-1 rounded-xl bg-slate-100 text-slate-800 border border-slate-200 text-xs font-black shadow-2xs hover:bg-slate-200 active:scale-95"
+              className="inline-flex min-h-10 px-3 items-center justify-center gap-1 rounded-xl bg-white/90 text-slate-800 border border-slate-200 text-xs font-black shadow-2xs hover:bg-white active:scale-95"
             >
               <Download className="h-3.5 w-3.5" />
             </button>
@@ -902,7 +965,7 @@ const KdsCleanCard = memo(function KdsCleanCard({
               type="button"
               onClick={() => onMove(order.id, -1)}
               title="تقديم الطلب"
-              className="grid h-10 w-9 place-items-center rounded-xl bg-slate-100 text-slate-800 border border-slate-200 shadow-2xs hover:bg-slate-200 active:scale-95"
+              className="grid h-10 w-9 place-items-center rounded-xl bg-white/90 text-slate-800 border border-slate-200 shadow-2xs hover:bg-white active:scale-95"
             >
               <ArrowUp className="h-3.5 w-3.5" />
             </button>
@@ -910,7 +973,7 @@ const KdsCleanCard = memo(function KdsCleanCard({
               type="button"
               onClick={() => onMove(order.id, 1)}
               title="تأخير الطلب"
-              className="grid h-10 w-9 place-items-center rounded-xl bg-slate-100 text-slate-800 border border-slate-200 shadow-2xs hover:bg-slate-200 active:scale-95"
+              className="grid h-10 w-9 place-items-center rounded-xl bg-white/90 text-slate-800 border border-slate-200 shadow-2xs hover:bg-white active:scale-95"
             >
               <ArrowDown className="h-3.5 w-3.5" />
             </button>
@@ -952,7 +1015,7 @@ const KdsCleanCard = memo(function KdsCleanCard({
               onClick={() => void onStage(order.id, "baking")}
               disabled={busy}
               title="تراجع إلى قيد التجهيز"
-              className="min-h-11 px-3 inline-flex items-center justify-center rounded-xl bg-slate-100 text-slate-800 border border-slate-200 text-xs font-black hover:bg-slate-200"
+              className="min-h-11 px-3 inline-flex items-center justify-center rounded-xl bg-white/90 text-slate-800 border border-slate-200 text-xs font-black hover:bg-white"
             >
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Undo2 className="h-4 w-4" />}
             </button>
