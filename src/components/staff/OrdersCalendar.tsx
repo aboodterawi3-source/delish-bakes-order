@@ -129,10 +129,10 @@ const PAYMENT_METHOD_MAP: Record<string, string> = {
 function parseTimeInMinutes(timeStr: string): number {
   if (!timeStr) return 9 * 60; // default 9:00 AM
   const parts = timeStr.split(":").map(Number);
-  const h = parts[0];
-  const m = parts[1];
-  if (h === undefined || isNaN(h)) return 9 * 60;
-  return h * 60 + (m === undefined || isNaN(m) ? 0 : m);
+  const h = parts[0] ?? Number.NaN;
+  const m = parts[1] ?? 0;
+  if (Number.isNaN(h)) return 9 * 60;
+  return h * 60 + (Number.isNaN(m) ? 0 : m);
 }
 
 /** Format time in minutes to 12-hour Arabic format (e.g. 9:00 ص) */
