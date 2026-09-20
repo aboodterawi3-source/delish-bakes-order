@@ -1,6 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { AlertTriangle, BookOpen, Check, ClipboardCopy, Loader2, LogOut, MessageCircle, PlusCircle, Search, Send, Sparkles, Store, Utensils } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,9 +22,19 @@ import {
 import { OrdersWorkspace } from "@/components/staff/OrdersWorkspace";
 import { ModificationsPanel } from "@/components/staff/ModificationsPanel";
 
+const todayIso = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+};
 
+const defaultTimeSlot = () => {
+  const now = new Date();
+  now.setHours(now.getHours() + 2);
+  const h = String(now.getHours()).padStart(2, "0");
+  return `${h}:00`;
+};
 
-const emptyForm = {
+const getEmptyForm = () => ({
   /** Delivery order: label, sender and recipient. */
   order_name: "",
   sender_phone: "",
@@ -42,13 +52,15 @@ const emptyForm = {
   address: "",
   payment_option: "cash" as "cash" | "cliq_full" | "cliq_deposit",
   deposit_paid: "",
-  requested_date: "",
-  requested_time: "",
+  requested_date: todayIso(),
+  requested_time: defaultTimeSlot(),
   event_date: "",
   is_urgent: false,
   design_notes: "",
   staff_notes: "",
-};
+});
+
+const emptyForm = getEmptyForm();
 
 /** Official Delish store WhatsApp number (international format, no "+"). */
 const WHATSAPP_NUMBER = "962779179995";
@@ -57,12 +69,13 @@ const whatsappUrl = (text: string) => `https://wa.me/${WHATSAPP_NUMBER}?text=${e
 
 export function SocialPanel() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const accessFn = useServerFn(getSocialAccess);
   const createFn = useServerFn(createSocialOrder);
   const storefront = useStorefrontContent();
 
   const [view, setView] = useState<"new" | "orders" | "modifications">("new");
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState(getEmptyForm);
   const [customization, setCustomization] = useState<Customization>(emptyCustomization);
   const [copied, setCopied] = useState<"summary" | "confirmation" | null>(null);
   const [done, setDone] = useState<string | null>(null);
@@ -179,8 +192,10 @@ export function SocialPanel() {
       setDone(order.order_number);
       setError(null);
       setSavedMessage(order.confirmation_message ?? null);
-      setForm(emptyForm);
+      setForm(getEmptyForm());
       setCustomization(emptyCustomization);
+      void queryClient.invalidateQueries({ queryKey: ["kds-orders"] });
+      void queryClient.invalidateQueries({ queryKey: ["sales-orders"] });
     },
 
     onError: (mutationError: Error) => setError(mutationError.message),
