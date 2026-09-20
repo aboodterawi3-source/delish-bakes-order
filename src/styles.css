@@ -322,3 +322,24 @@ h1, h2, h3, .font-display {
   touch-action: none;
 }
 
+
+/* Global Mobile & Touch Standards (Delish UX Rule 0) */
+* {
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+input, textarea, [contenteditable="true"] {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+}
+
+.touch-target {
+  min-height: 48px;
+  min-width: 48px;
+}
+
+.pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom), 1rem);
+}

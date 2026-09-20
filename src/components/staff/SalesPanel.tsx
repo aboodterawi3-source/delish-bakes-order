@@ -1,4 +1,4 @@
-import { useNavigate } from "@tanstack/react-router";
+﻿import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -6,7 +6,6 @@ import { Loader2, LogOut } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { getSalesAccess } from "@/lib/sales.functions";
-import { CmsPanel } from "@/components/delish/CmsPanel";
 import { OrdersWorkspace } from "@/components/staff/OrdersWorkspace";
 import { ModificationsPanel } from "@/components/staff/ModificationsPanel";
 import { PosOrderEntry } from "@/components/staff/PosOrderEntry";
@@ -15,7 +14,7 @@ import { MessagesPanel } from "@/components/staff/MessagesPanel";
 export function SalesPanel() {
   const navigate = useNavigate();
   const accessFn = useServerFn(getSalesAccess);
-  const [view, setView] = useState<"pos" | "orders" | "modifications" | "messages" | "site">("pos");
+  const [view, setView] = useState<"pos" | "orders" | "modifications" | "messages">("pos");
 
   const access = useQuery({
     queryKey: ["sales-access"],
@@ -77,18 +76,17 @@ export function SalesPanel() {
       <div className="mx-auto w-full max-w-7xl min-w-0 px-4 py-5">
         <nav className="no-scrollbar mb-5 flex max-w-full gap-2 overflow-x-auto" aria-label="أقسام واجهة المبيعات">
           {([
-            { value: "pos" as const, ar: "إنشاء طلب جديد", en: "POS Entry" },
+            { value: "pos" as const, ar: "المبيعات POS", en: "POS Entry" },
             { value: "orders" as const, ar: "جدول الطلبات", en: "Orders" },
             { value: "modifications" as const, ar: "تعديلات", en: "Modifications" },
             { value: "messages" as const, ar: "رسائل العملاء", en: "Messages" },
-            { value: "site" as const, ar: "إدارة الموقع", en: "Website" },
           ]).map((item) => (
             <button
               key={item.value}
               type="button"
               aria-current={view === item.value}
               onClick={() => setView(item.value)}
-              className={`min-h-12 shrink-0 whitespace-nowrap rounded-full px-6 text-sm font-bold transition ${
+              className={`min-h-12 shrink-0 whitespace-nowrap rounded-full px-6 text-sm font-bold transition cursor-pointer ${
                 view === item.value
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "border border-border bg-card text-foreground hover:bg-secondary/40"
@@ -103,8 +101,6 @@ export function SalesPanel() {
           <PosOrderEntry />
         ) : view === "messages" ? (
           <MessagesPanel />
-        ) : view === "site" ? (
-          <CmsPanel />
         ) : view === "modifications" ? (
           <ModificationsPanel />
         ) : (

@@ -885,8 +885,16 @@ function OrderPanel({
   };
 
   return (
-    <div className="fixed inset-0 z-30 flex max-w-full justify-start overflow-x-hidden bg-foreground/50" role="dialog" aria-modal="true" aria-label={`إدارة الطلب ${order.order_number}`}>
-      <div className="ms-auto flex h-full w-full max-w-lg min-w-0 flex-col overflow-x-hidden bg-card p-4 sm:p-5">
+    <div
+      className="fixed inset-0 z-40 flex max-w-full justify-start overflow-x-hidden bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`إدارة الطلب ${order.order_number}`}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="ms-auto flex h-full w-full max-w-lg min-w-0 flex-col overflow-x-hidden bg-card p-4 sm:p-5 shadow-2xl animate-in slide-in-from-right duration-250 border-s border-border">
         
         {/* HEADER: Quick Info & Immediate Actions */}
         <div className="border-b border-border pb-3">
