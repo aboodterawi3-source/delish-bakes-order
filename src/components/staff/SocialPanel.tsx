@@ -1,4 +1,4 @@
-﻿import { useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -27,7 +27,7 @@ import {
   getSocialAccess,
   type SocialOrderInput,
 } from "@/lib/social.functions";
-import { DELIVERY_ZONES, feeForArea } from "@/lib/delivery-zones";
+import { DELIVERY_ZONES, OTHER_GOVERNORATES_AREA, feeForArea } from "@/lib/delivery-zones";
 import { buildConfirmationMessage, remainingBalance } from "@/lib/confirmation-message";
 import { useStorefrontContent } from "@/hooks/use-storefront-content";
 import type { StorefrontProduct, SizePrice } from "@/lib/storefront-content";
@@ -553,11 +553,24 @@ export function SocialPanel() {
                           >
                             <option value="">— اختر المنطقة —</option>
                             {DELIVERY_ZONES.map((zone) => (
-                              <option key={zone.name} value={zone.name}>
-                                {zone.name} ({zone.fee.toFixed(2)} د.أ)
-                              </option>
+                              <optgroup key={zone.labelAr} label={zone.labelAr}>
+                                {zone.areas.map((area) => (
+                                  <option key={`${zone.labelAr}-${area}`} value={area}>
+                                    {area === OTHER_GOVERNORATES_AREA
+                                      ? `${area} (٥–٨ د.أ)`
+                                      : `${area} (${zone.fee.toFixed(2)} د.أ)`}
+                                  </option>
+                                ))}
+                              </optgroup>
                             ))}
                           </select>
+                          {form.area && (
+                            <span className="mt-1 block text-[11px] font-bold text-[#8B4513]">
+                              {form.area === OTHER_GOVERNORATES_AREA
+                                ? "أجرة التوصيل ٥–٨ د.أ (تحدد حسب العنوان)"
+                                : `أجرة التوصيل: ${(areaFee ?? 0).toFixed(2)} د.أ`}
+                            </span>
+                          )}
                         </label>
 
                         <label className="block text-xs font-bold text-[#3E2723]">

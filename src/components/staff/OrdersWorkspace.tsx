@@ -191,6 +191,14 @@ function sendScheduleConfirmation(order: SalesOrder) {
   toast("تم تجهيز رسالة التأكيد للواتساب 📲");
 }
 
+/** Opens customer chat directly with full order confirmation text. */
+function sendCustomerWhatsApp(order: SalesOrder) {
+  const message = buildConfirmationMessage(order);
+  void navigator.clipboard?.writeText(message).catch(() => undefined);
+  window.open(`https://wa.me/${waNumber(order.customer_phone)}?text=${encodeURIComponent(message)}`, "_blank", "noopener");
+  toast("تم فتح محادثة الواتساب مع العميل 📲");
+}
+
 /** Mirrors the server update locally so the card repaints in the same frame. */
 function applyPatch(order: SalesOrder, input: OrderPatch): SalesOrder {
   const next: SalesOrder = { ...order };
@@ -263,6 +271,7 @@ export function OrdersWorkspace({
   const [report, setReport] = useState<ShiftReport | null>(null);
   const [mode, setMode] = useState<"list" | "calendar">("list");
   const [dateKey, setDateKey] = useState<DateFilterKey>("all");
+  const [methodFilter, setMethodFilter] = useState<"all" | "pickup" | "delivery">("all");
   const [custom, setCustom] = useState<CustomRange>({ from: isoDay(0), to: isoDay(7) });
   const reorderFn = useServerFn(setQueueRanks);
 
@@ -288,14 +297,14 @@ export function OrdersWorkspace({
       );
       return { previous };
     },
-    onError: (error: Error, _input, ctx) => {
-      if (ctx?.previous) queryClient.setQueryData(ORDERS_KEY, ctx.previous);
-      setMoneyError(error.message);
+    onError: (err: Error) => {
+      setMoneyError(err.message);
+      void queryClient.invalidateQueries({ queryKey: ORDERS_KEY });
     },
-    onSuccess: (row) => {
+    onSuccess: (updated) => {
       setMoneyError(null);
       queryClient.setQueryData<SalesOrder[]>(ORDERS_KEY, (rows) =>
-        (rows ?? []).map((order) => (order.id === row.id ? row : order)),
+        (rows ?? []).map((order) => (order.id === updated.id ? updated : order)),
       );
     },
   });
@@ -304,26 +313,25 @@ export function OrdersWorkspace({
   const discount = useMutation({
     mutationFn: (input: { orderId: string; percent: number; reason: string }) =>
       discountFn({ data: input }),
-    onSuccess: () => {
+    onError: (err: Error) => setMoneyError(err.message),
+    onSuccess: (updated) => {
       setMoneyError(null);
-      void queryClient.invalidateQueries({ queryKey: ORDERS_KEY });
+      queryClient.setQueryData<SalesOrder[]>(ORDERS_KEY, (rows) =>
+        (rows ?? []).map((order) => (order.id === updated.id ? updated : order)),
+      );
     },
-    onError: (error: Error) => setMoneyError(error.message),
   });
 
   const issueEditLink = useMutation({
     mutationFn: (orderId: string) => editLinkFn({ data: { orderId } }),
-    onSuccess: (result) => {
-      setMoneyError(null);
-      setEditLink(result.url ?? `${window.location.origin}/edit-order?token=${result.token}`);
-    },
-    onError: (error: Error) => setMoneyError(error.message),
+    onSuccess: ({ url }) => setEditLink(url),
+    onError: (err: Error) => setMoneyError(err.message),
   });
 
   useOrdersRealtime(ORDERS_KEY, true, "orders-workspace-live");
 
+  // Closes dialogs on Escape so cashiers never get trapped in a modal.
   useEffect(() => {
-    if (!cancelFor && !shiftOpen && !selectedId && !zoomImage) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       if (zoomImage) setZoomImage(null);
@@ -337,9 +345,9 @@ export function OrdersWorkspace({
 
   const list = useMemo(() => {
     const needle = search.trim().toLowerCase();
-    const rows = (orders.data ?? []).filter((order) =>
-      matchesDateFilter(order.requested_date, dateKey, custom),
-    );
+    const rows = (orders.data ?? [])
+      .filter((order) => matchesDateFilter(order.requested_date, dateKey, custom))
+      .filter((order) => (methodFilter === "all" ? true : order.method === methodFilter));
     const filtered = !needle
       ? rows
       : rows.filter((order) =>
@@ -450,17 +458,40 @@ export function OrdersWorkspace({
         {/* Universal date filter occupies its own responsive row. */}
         <DateFilterBar value={dateKey} onChange={setDateKey} custom={custom} onCustom={setCustom} />
 
-        {showShiftReport ? (
-          <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={() => setShiftOpen(true)}
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-bold text-primary-foreground"
-          >
-            <BadgeDollarSign className="h-4 w-4" aria-hidden="true" /> إغلاق الشيفت
-          </button>
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+          {/* Quick Fulfillment Method Filter (All, Delivery, Pickup) */}
+          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-secondary/40 border border-border">
+            {[
+              { id: "all" as const, label: "جميع الطلبات" },
+              { id: "delivery" as const, label: "🛵 توصيل منازل" },
+              { id: "pickup" as const, label: "🏪 استلام محلي" },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setMethodFilter(tab.id)}
+                className={`min-h-[36px] px-3.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  methodFilter === tab.id
+                    ? "bg-primary text-primary-foreground shadow-2xs font-black"
+                    : "text-muted-foreground hover:text-foreground hover:bg-background"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
-        ) : null}
+
+          {showShiftReport ? (
+            <button
+              type="button"
+              onClick={() => setShiftOpen(true)}
+              className="inline-flex min-h-[38px] items-center justify-center gap-1.5 rounded-xl bg-primary px-3.5 text-xs font-bold text-primary-foreground shadow-xs cursor-pointer hover:opacity-90 transition"
+            >
+              <BadgeDollarSign className="h-4 w-4" aria-hidden="true" />
+              <span>إغلاق الشيفت المالي</span>
+            </button>
+          ) : null}
+        </div>
       </div>
 
       {orders.isPending ? (
@@ -707,39 +738,63 @@ const OrderCard = memo(function OrderCard({
         </div>
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => onOpen(order.id)}
-          className="min-h-12 rounded-full bg-primary px-5 text-sm font-bold text-primary-foreground"
-        >
-          إدارة الطلب
-        </button>
-        {onEditOrder ? (
+      <div className="mt-3.5 pt-3 border-t border-border/80 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            onClick={() => onEditOrder(order.id)}
-            className="inline-flex min-h-12 items-center justify-center gap-1.5 rounded-full border border-primary bg-primary/10 px-4 text-xs font-bold text-primary hover:bg-primary/20 active:scale-95 transition"
+            onClick={() => onOpen(order.id)}
+            className="min-h-[42px] rounded-xl bg-primary px-4 text-xs font-black text-primary-foreground shadow-xs hover:opacity-90 active:scale-95 transition cursor-pointer"
           >
-            <Pencil className="h-3.5 w-3.5" /> ✏️ تعديل الطلب
+            إدارة الطلب
           </button>
-        ) : null}
-        {order.schedule_updated_at ? (
+          {onEditOrder ? (
+            <button
+              type="button"
+              onClick={() => onEditOrder(order.id)}
+              className="inline-flex min-h-[42px] items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-3 text-xs font-bold text-foreground hover:bg-secondary/60 active:scale-95 transition cursor-pointer"
+            >
+              <Pencil className="h-3.5 w-3.5 text-primary" />
+              <span>تعديل</span>
+            </button>
+          ) : null}
           <button
             type="button"
-            onClick={() => sendScheduleConfirmation(order)}
-            className="inline-flex min-h-12 max-w-full items-center justify-center gap-2 rounded-full bg-[#166534] px-4 text-center text-sm font-bold text-white transition-transform hover:scale-[1.02] active:scale-95"
+            onClick={() => sendCustomerWhatsApp(order)}
+            title="إرسال رسالة واتساب للعميل"
+            className="inline-flex min-h-[42px] items-center justify-center gap-1.5 rounded-xl border border-emerald-600/30 bg-emerald-50 px-3 text-xs font-bold text-emerald-800 hover:bg-emerald-100 active:scale-95 transition cursor-pointer"
           >
-            <MessageCircle className="h-4 w-4" aria-hidden="true" /> إرسال تأكيد التعديل للواتساب
+            <MessageCircle className="h-4 w-4 text-emerald-600" />
+            <span>واتساب</span>
           </button>
-        ) : null}
-        {/* Manual priority ordering (up / down). */}
-        <div className="ms-auto flex gap-2">
+          <button
+            type="button"
+            onClick={() => printReceipt(order)}
+            title="طباعة الفاتورة الحرارية"
+            className="inline-flex min-h-[42px] items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-3 text-xs font-bold text-foreground hover:bg-secondary/60 active:scale-95 transition cursor-pointer"
+          >
+            <Printer className="h-3.5 w-3.5" />
+            <span>فاتورة</span>
+          </button>
+          {order.schedule_updated_at ? (
+            <button
+              type="button"
+              onClick={() => sendScheduleConfirmation(order)}
+              className="inline-flex min-h-[42px] items-center justify-center gap-1.5 rounded-xl bg-amber-600 px-3 text-xs font-black text-white hover:bg-amber-700 active:scale-95 transition cursor-pointer"
+            >
+              <MessageCircle className="h-3.5 w-3.5" />
+              <span>تأكيد الموعد المعدل 🔄</span>
+            </button>
+          ) : null}
+        </div>
+
+        {/* Priority queue reorder controls */}
+        <div className="flex items-center gap-1 rounded-xl border border-border bg-secondary/30 p-0.5">
           <button
             type="button"
             onClick={() => onMove(order.id, -1)}
             aria-label="رفع أولوية الطلب"
-            className="grid min-h-12 min-w-12 place-items-center rounded-full border border-border text-foreground"
+            title="تقديم في الطابور"
+            className="grid h-9 w-9 place-items-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-card active:scale-90 transition cursor-pointer"
           >
             <ArrowUp className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -747,7 +802,8 @@ const OrderCard = memo(function OrderCard({
             type="button"
             onClick={() => onMove(order.id, 1)}
             aria-label="تنزيل أولوية الطلب"
-            className="grid min-h-12 min-w-12 place-items-center rounded-full border border-border text-foreground"
+            title="تأخير في الطابور"
+            className="grid h-9 w-9 place-items-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-card active:scale-90 transition cursor-pointer"
           >
             <ArrowDown className="h-4 w-4" aria-hidden="true" />
           </button>

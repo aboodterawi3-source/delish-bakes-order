@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -526,54 +526,109 @@ ${notes ? `<div style="border-top:2px dashed #000;margin:8px 0;padding-top:4px;"
       </div>
 
       <div className="border-t border-border bg-card/95 p-3 space-y-3 pb-safe">
+        {/* Quick Discount & Deposit Practical Controls */}
+        <div className="rounded-xl bg-secondary/40 p-2.5 border border-border/80 space-y-2">
+          <div className="flex items-center justify-between gap-1">
+            <span className="text-[11px] font-bold text-muted-foreground shrink-0">الخصم:</span>
+            <div className="flex items-center gap-1 overflow-x-auto">
+              {["0", "5", "10", "15"].map((pct) => (
+                <button
+                  key={pct}
+                  type="button"
+                  onClick={() => setDiscountPercent(pct)}
+                  className={`min-h-[28px] px-2.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                    discountPercent === pct
+                      ? "bg-primary text-primary-foreground shadow-2xs font-black"
+                      : "bg-card border border-border text-foreground hover:bg-secondary"
+                  }`}
+                >
+                  {pct}%
+                </button>
+              ))}
+              <input
+                type="number"
+                min="0"
+                max="100"
+                value={discountPercent}
+                onChange={(e) => setDiscountPercent(e.target.value)}
+                placeholder="%"
+                aria-label="نسبة الخصم المخصصة"
+                className="h-7 w-12 rounded-lg border border-input bg-card px-1.5 text-center text-xs font-bold text-foreground"
+              />
+            </div>
+          </div>
+          <div className="flex items-center justify-between pt-1.5 border-t border-border/50">
+            <span className="text-[11px] font-bold text-muted-foreground">الدفعة الأولى (عربون):</span>
+            <div className="flex items-center gap-1">
+              <input
+                type="number"
+                min="0"
+                step="0.5"
+                value={depositPaid}
+                onChange={(e) => setDepositPaid(e.target.value)}
+                placeholder="0"
+                aria-label="الدفعة الأولى"
+                className="h-7 w-20 rounded-lg border border-input bg-card px-2 text-start text-xs font-bold text-foreground"
+              />
+              <span className="text-[11px] text-muted-foreground font-bold">د.أ</span>
+            </div>
+          </div>
+        </div>
+
         <div className="space-y-1.5 text-xs text-muted-foreground">
           <div className="flex justify-between">
             <span>المجموع الفرعي:</span>
             <span className="font-bold text-foreground">{jd(subtotal)}</span>
           </div>
           {deliveryFee > 0 && (
-            <div className="flex justify-between text-amber-700 dark:text-amber-400">
+            <div className="flex justify-between text-amber-700 dark:text-amber-400 font-bold">
               <span>أجور التوصيل:</span>
-              <span className="font-bold">{jd(deliveryFee)}</span>
+              <span>+{jd(deliveryFee)}</span>
             </div>
           )}
           {discountAmount > 0 && (
-            <div className="flex justify-between text-emerald-700 dark:text-emerald-400">
+            <div className="flex justify-between text-emerald-700 dark:text-emerald-400 font-bold">
               <span>الخصم ({discountPercent}%):</span>
-              <span className="font-bold">- {jd(discountAmount)}</span>
+              <span>- {jd(discountAmount)}</span>
             </div>
           )}
           <div className="flex items-center justify-between border-t border-border pt-1.5 text-base font-black text-foreground">
             <span>الإجمالي النهائي:</span>
             <span className="text-primary font-display text-lg">{jd(grandTotal)}</span>
           </div>
+          {depositVal > 0 && depositVal < grandTotal && (
+            <div className="flex justify-between text-xs text-rose-600 font-bold pt-0.5">
+              <span>المتبقي عند الاستلام:</span>
+              <span>{jd(grandTotal - depositVal)}</span>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
             onClick={() => setPaymentMethod("cash")}
-            className={`min-h-[50px] rounded-xl font-black text-xs transition-all flex items-center justify-center gap-2 cursor-pointer border ${
+            className={`min-h-[48px] rounded-xl font-black text-xs transition-all flex items-center justify-center gap-2 cursor-pointer border ${
               paymentMethod === "cash"
                 ? "bg-emerald-600 text-white border-emerald-700 shadow-sm"
                 : "bg-background border-border text-foreground hover:bg-secondary/60"
             }`}
           >
             <Store className="h-4 w-4" />
-            [ كاش نقد ]
+            <span>كاش نقد</span>
             {paymentMethod === "cash" && <Check className="h-4 w-4" />}
           </button>
           <button
             type="button"
             onClick={() => setPaymentMethod("cliq")}
-            className={`min-h-[50px] rounded-xl font-black text-xs transition-all flex items-center justify-center gap-2 cursor-pointer border ${
+            className={`min-h-[48px] rounded-xl font-black text-xs transition-all flex items-center justify-center gap-2 cursor-pointer border ${
               paymentMethod === "cliq" || paymentMethod === "visa"
                 ? "bg-blue-600 text-white border-blue-700 shadow-sm"
                 : "bg-background border-border text-foreground hover:bg-secondary/60"
             }`}
           >
             <CreditCard className="h-4 w-4" />
-            [ كليك / فيزا ]
+            <span>كليك / فيزا</span>
             {(paymentMethod === "cliq" || paymentMethod === "visa") && <Check className="h-4 w-4" />}
           </button>
         </div>
@@ -583,14 +638,14 @@ ${notes ? `<div style="border-top:2px dashed #000;margin:8px 0;padding-top:4px;"
             type="button"
             disabled={cart.length === 0 || createOrder.isPending}
             onClick={() => handleSubmitOrder(true)}
-            className="w-full min-h-[52px] rounded-2xl bg-primary text-primary-foreground font-black text-sm shadow-md hover:opacity-95 active:scale-98 transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40"
+            className="w-full min-h-[50px] rounded-2xl bg-primary text-primary-foreground font-black text-sm shadow-md hover:opacity-95 active:scale-98 transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40"
           >
             {createOrder.isPending ? (
               <Loader2 className="h-5 w-5 animate-spin" />
             ) : (
               <Printer className="h-5 w-5" />
             )}
-            [ تأكيد وطباعة الفاتورة ]
+            <span>تأكيد وطباعة الفاتورة</span>
           </button>
 
           <div className="flex gap-2">
@@ -815,10 +870,10 @@ ${notes ? `<div style="border-top:2px dashed #000;margin:8px 0;padding-top:4px;"
         </div>
       )}
 
-      {/* PRE-ORDER & DELIVERY MODAL (Only when preorder/delivery is needed) */}
+      {/* PRE-ORDER & DELIVERY MODAL (Organized into 3 ergonomic, practical cards) */}
       {showPreorderModal && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4 animate-in fade-in duration-150">
-          <div className="w-full max-w-lg rounded-3xl border border-border bg-card p-5 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-3 sm:p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-xl rounded-3xl border border-border bg-card p-4 sm:p-5 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-border pb-3">
               <div className="flex items-center gap-2">
                 <Bike className="h-5 w-5 text-primary" />
@@ -830,152 +885,281 @@ ${notes ? `<div style="border-top:2px dashed #000;margin:8px 0;padding-top:4px;"
                 type="button"
                 onClick={() => setShowPreorderModal(false)}
                 className="grid h-10 w-10 place-items-center rounded-full border border-border text-foreground hover:bg-secondary cursor-pointer"
+                aria-label="إغلاق"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="space-y-3">
-              <div className="relative">
-                <label className="block text-xs font-bold text-foreground mb-1">
-                  رقم هاتف العميل *
-                </label>
-                <input
-                  dir="ltr"
-                  type="tel"
-                  inputMode="tel"
-                  value={customerPhone}
-                  onChange={(e) => setCustomerPhone(e.target.value)}
-                  placeholder="079XXXXXXX"
-                  className="min-h-[48px] w-full rounded-xl border border-input bg-background px-3 text-sm font-bold text-foreground outline-none focus:border-primary"
-                />
-                {customerSuggestions.length > 0 && (
-                  <div className="absolute z-20 mt-1 w-full rounded-xl border border-border bg-card p-1 shadow-lg">
-                    <p className="px-2 py-1 text-[11px] font-bold text-muted-foreground">عملاء سابقون:</p>
-                    {customerSuggestions.map((sug) => (
-                      <button
-                        key={sug.phone}
-                        type="button"
-                        onClick={() => selectCustomerSuggestion(sug)}
-                        className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-xs hover:bg-secondary cursor-pointer"
-                      >
-                        <span className="font-bold">{sug.name}</span>
-                        <span dir="ltr">{sug.phone}</span>
-                      </button>
-                    ))}
+            <div className="space-y-4">
+              {/* CARD 1: Customer & Gift Details */}
+              <div className="rounded-2xl border border-border bg-secondary/20 p-3.5 space-y-3">
+                <div className="flex items-center gap-2 text-xs font-black text-primary border-b border-border/60 pb-1.5">
+                  <span>👤</span>
+                  <span>1. بيانات العميل والإهداء</span>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="relative">
+                    <label className="block text-xs font-bold text-foreground mb-1">
+                      رقم هاتف العميل *
+                    </label>
+                    <input
+                      dir="ltr"
+                      type="tel"
+                      inputMode="tel"
+                      value={customerPhone}
+                      onChange={(e) => setCustomerPhone(e.target.value)}
+                      placeholder="079XXXXXXX"
+                      className="min-h-[46px] w-full rounded-xl border border-input bg-card px-3 text-sm font-bold text-foreground outline-none focus:border-primary"
+                    />
+                    {customerSuggestions.length > 0 && (
+                      <div className="absolute z-20 mt-1 w-full rounded-xl border border-border bg-card p-1 shadow-lg">
+                        <p className="px-2 py-1 text-[11px] font-bold text-muted-foreground">عملاء سابقون:</p>
+                        {customerSuggestions.map((sug) => (
+                          <button
+                            key={sug.phone}
+                            type="button"
+                            onClick={() => selectCustomerSuggestion(sug)}
+                            className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-xs hover:bg-secondary cursor-pointer"
+                          >
+                            <span className="font-bold">{sug.name}</span>
+                            <span dir="ltr">{sug.phone}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
 
-              <div>
-                <label className="block text-xs font-bold text-foreground mb-1">اسم العميل *</label>
-                <input
-                  type="text"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  placeholder="مثال: أم أحمد"
-                  className="min-h-[48px] w-full rounded-xl border border-input bg-background px-3 text-sm font-bold text-foreground outline-none focus:border-primary"
-                />
-              </div>
+                  <div>
+                    <label className="block text-xs font-bold text-foreground mb-1">اسم العميل *</label>
+                    <input
+                      type="text"
+                      value={customerName}
+                      onChange={(e) => setCustomerName(e.target.value)}
+                      placeholder="مثال: أم أحمد / رانيا"
+                      className="min-h-[46px] w-full rounded-xl border border-input bg-card px-3 text-sm font-bold text-foreground outline-none focus:border-primary"
+                    />
+                  </div>
+                </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setMethod("pickup")}
-                  className={`min-h-[48px] rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 border cursor-pointer ${
-                    method === "pickup"
-                      ? "bg-primary text-primary-foreground border-primary shadow-xs"
-                      : "bg-background border-border text-foreground hover:bg-secondary"
-                  }`}
-                >
-                  <Store className="h-4 w-4" />
-                  استلام من المحل
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMethod("delivery")}
-                  className={`min-h-[48px] rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 border cursor-pointer ${
-                    method === "delivery"
-                      ? "bg-primary text-primary-foreground border-primary shadow-xs"
-                      : "bg-background border-border text-foreground hover:bg-secondary"
-                  }`}
-                >
-                  <Bike className="h-4 w-4" />
-                  توصيل لمنزل العميل
-                </button>
-              </div>
-
-              {method === "delivery" && (
-                <div className="space-y-2 rounded-xl bg-secondary/30 p-3 border border-border">
-                  <label className="block text-xs font-bold text-foreground">منطقة التوصيل *</label>
-                  <select
-                    value={area}
-                    onChange={(e) => setArea(e.target.value)}
-                    className="min-h-[48px] w-full rounded-xl border border-input bg-background px-3 text-sm font-bold text-foreground outline-none"
-                  >
-                    <option value="">اختر المنطقة...</option>
-                    {DELIVERY_ZONES.map((zone) => (
-                      <option key={zone.name} value={zone.name}>
-                        {zone.name} (+{zone.fee} د.أ)
-                      </option>
-                    ))}
-                    <option value={OTHER_GOVERNORATES_AREA.name}>
-                      {OTHER_GOVERNORATES_AREA.name} (+{OTHER_GOVERNORATES_AREA.fee} د.أ)
-                    </option>
-                  </select>
-
-                  <label className="block text-xs font-bold text-foreground pt-1">العنوان التفصيلي</label>
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1">اسم أو تصنيف الطلب (اختياري)</label>
                   <input
                     type="text"
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    placeholder="الشارع، البناية، رقم الشقة..."
-                    className="min-h-[48px] w-full rounded-xl border border-input bg-background px-3 text-sm font-bold text-foreground outline-none"
+                    value={orderName}
+                    onChange={(e) => setOrderName(e.target.value)}
+                    placeholder="مثال: كيكة تخرج دانة / عيد ميلاد تميم"
+                    className="min-h-[46px] w-full rounded-xl border border-input bg-card px-3 text-sm font-bold text-foreground outline-none focus:border-primary"
                   />
                 </div>
-              )}
 
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-xs font-bold text-foreground mb-1">تاريخ التسليم</label>
-                  <input
-                    type="date"
-                    value={requestedDate}
-                    onChange={(e) => setRequestedDate(e.target.value)}
-                    className="min-h-[48px] w-full rounded-xl border border-input bg-background px-3 text-sm font-bold text-foreground outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-foreground mb-1">وقت التسليم</label>
-                  <input
-                    type="time"
-                    value={requestedTime}
-                    onChange={(e) => setRequestedTime(e.target.value)}
-                    className="min-h-[48px] w-full rounded-xl border border-input bg-background px-3 text-sm font-bold text-foreground outline-none"
-                  />
+                {/* Gift Option Toggle */}
+                <div className="pt-1 border-t border-border/40">
+                  <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-bold text-foreground py-1">
+                    <input
+                      type="checkbox"
+                      checked={isGift}
+                      onChange={(e) => setIsGift(e.target.checked)}
+                      className="h-4 w-4 rounded border-input text-primary accent-primary"
+                    />
+                    <span>🎁 هذا الطلب إهداء لشخص آخر (بيانات مستلم مختلفة)</span>
+                  </label>
+
+                  {isGift && (
+                    <div className="mt-2 grid gap-2.5 sm:grid-cols-3 rounded-xl bg-card p-2.5 border border-border animate-in fade-in duration-150">
+                      <div>
+                        <label className="block text-[11px] font-bold text-muted-foreground mb-1">اسم المستلم</label>
+                        <input
+                          type="text"
+                          value={recipientName}
+                          onChange={(e) => setRecipientName(e.target.value)}
+                          placeholder="اسم المستلم"
+                          className="min-h-[40px] w-full rounded-lg border border-input bg-background px-2.5 text-xs font-bold"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-muted-foreground mb-1">هاتف المستلم</label>
+                        <input
+                          dir="ltr"
+                          type="tel"
+                          value={recipientPhone}
+                          onChange={(e) => setRecipientPhone(e.target.value)}
+                          placeholder="07XXXXXXXX"
+                          className="min-h-[40px] w-full rounded-lg border border-input bg-background px-2.5 text-xs font-bold"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-muted-foreground mb-1">هاتف المرسل (المشتري)</label>
+                        <input
+                          dir="ltr"
+                          type="tel"
+                          value={senderPhone}
+                          onChange={(e) => setSenderPhone(e.target.value)}
+                          placeholder="هاتف المشتري"
+                          className="min-h-[40px] w-full rounded-lg border border-input bg-background px-2.5 text-xs font-bold"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-foreground mb-1">الكتابة على الكيك</label>
-                <input
-                  type="text"
-                  value={inscription}
-                  onChange={(e) => setInscription(e.target.value)}
-                  placeholder="مثال: Happy Birthday Sarah"
-                  className="min-h-[48px] w-full rounded-xl border border-input bg-background px-3 text-sm font-bold text-foreground outline-none"
-                />
+              {/* CARD 2: Fulfillment, Area & Schedule */}
+              <div className="rounded-2xl border border-border bg-secondary/20 p-3.5 space-y-3">
+                <div className="flex items-center gap-2 text-xs font-black text-primary border-b border-border/60 pb-1.5">
+                  <span>🛵</span>
+                  <span>2. طريقة الاستلام وموعد التسليم</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setMethod("pickup")}
+                    className={`min-h-[46px] rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 border cursor-pointer transition-all ${
+                      method === "pickup"
+                        ? "bg-primary text-primary-foreground border-primary shadow-xs font-black"
+                        : "bg-card border-border text-foreground hover:bg-secondary"
+                    }`}
+                  >
+                    <Store className="h-4 w-4" />
+                    <span>استلام من المحل</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMethod("delivery")}
+                    className={`min-h-[46px] rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 border cursor-pointer transition-all ${
+                      method === "delivery"
+                        ? "bg-primary text-primary-foreground border-primary shadow-xs font-black"
+                        : "bg-card border-border text-foreground hover:bg-secondary"
+                    }`}
+                  >
+                    <Bike className="h-4 w-4" />
+                    <span>توصيل لمنزل العميل</span>
+                  </button>
+                </div>
+
+                {method === "delivery" && (
+                  <div className="space-y-2 rounded-xl bg-card p-3 border border-border">
+                    <label className="block text-xs font-bold text-foreground">منطقة التوصيل *</label>
+                    <select
+                      value={area}
+                      onChange={(e) => setArea(e.target.value)}
+                      className="min-h-[46px] w-full rounded-xl border border-input bg-background px-3 text-sm font-bold text-foreground outline-none focus:border-primary"
+                    >
+                      <option value="">اختر المنطقة لحساب الأجرة تلقائياً...</option>
+                      {DELIVERY_ZONES.map((zone) => (
+                        <optgroup key={zone.labelEn} label={zone.labelAr}>
+                          {zone.areas.map((a) => (
+                            <option key={a} value={a}>
+                              {a} — {zone.fee} د.أ
+                            </option>
+                          ))}
+                        </optgroup>
+                      ))}
+                      <option value={OTHER_GOVERNORATES_AREA}>
+                        {OTHER_GOVERNORATES_AREA} (٥–٨ د.أ)
+                      </option>
+                    </select>
+
+                    <label className="block text-xs font-bold text-foreground pt-1">العنوان التفصيلي</label>
+                    <input
+                      type="text"
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
+                      placeholder="الشارع، البناية، الطابق، رقم الشقة أو علامة مميزة..."
+                      className="min-h-[46px] w-full rounded-xl border border-input bg-background px-3 text-sm font-bold text-foreground outline-none focus:border-primary"
+                    />
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs font-bold text-foreground mb-1">تاريخ التسليم</label>
+                    <input
+                      type="date"
+                      value={requestedDate}
+                      onChange={(e) => setRequestedDate(e.target.value)}
+                      className="min-h-[46px] w-full rounded-xl border border-input bg-card px-3 text-sm font-bold text-foreground outline-none focus:border-primary"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-foreground mb-1">وقت التسليم</label>
+                    <input
+                      type="time"
+                      value={requestedTime}
+                      onChange={(e) => setRequestedTime(e.target.value)}
+                      className="min-h-[46px] w-full rounded-xl border border-input bg-card px-3 text-sm font-bold text-foreground outline-none focus:border-primary"
+                    />
+                  </div>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-foreground mb-1">ملاحظات عامة</label>
-                <input
-                  type="text"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="أي تفاصيل إضافية للطلب..."
-                  className="min-h-[48px] w-full rounded-xl border border-input bg-background px-3 text-sm font-bold text-foreground outline-none"
-                />
+              {/* CARD 3: Customization, Notes & Inscription */}
+              <div className="rounded-2xl border border-border bg-secondary/20 p-3.5 space-y-3">
+                <div className="flex items-center gap-2 text-xs font-black text-primary border-b border-border/60 pb-1.5">
+                  <span>🎂</span>
+                  <span>3. تفاصيل الكيك والكتابة والملاحظات</span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1">
+                    ✍️ الكتابة على الكيك (Inscription)
+                  </label>
+                  <input
+                    type="text"
+                    value={inscription}
+                    onChange={(e) => setInscription(e.target.value)}
+                    placeholder="مثال: Happy Birthday Sarah / مبروك التخرج"
+                    className="min-h-[46px] w-full rounded-xl border-2 border-amber-300 bg-amber-50/70 px-3 text-sm font-black text-foreground outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div className="grid gap-2.5 sm:grid-cols-2">
+                  <div>
+                    <label className="block text-xs font-bold text-foreground mb-1">💌 عبارة كرت الإهداء (Card Note)</label>
+                    <input
+                      type="text"
+                      value={cardNote}
+                      onChange={(e) => setCardNote(e.target.value)}
+                      placeholder="نص بطاقة المعايدة المرفقة..."
+                      className="min-h-[44px] w-full rounded-xl border border-input bg-card px-3 text-xs font-bold text-foreground outline-none focus:border-primary"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-foreground mb-1">🖼️ رابط صورة التصميم (Design URL)</label>
+                    <input
+                      type="url"
+                      value={designImageUrl || ""}
+                      onChange={(e) => setDesignImageUrl(e.target.value || null)}
+                      placeholder="https://..."
+                      className="min-h-[44px] w-full rounded-xl border border-input bg-card px-3 text-xs font-bold text-foreground outline-none focus:border-primary"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid gap-2.5 sm:grid-cols-2">
+                  <div>
+                    <label className="block text-xs font-bold text-foreground mb-1">💬 ملاحظات العميل للطلب</label>
+                    <input
+                      type="text"
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      placeholder="أي طلبات خاصة بالعميل..."
+                      className="min-h-[44px] w-full rounded-xl border border-input bg-card px-3 text-xs font-bold text-foreground outline-none focus:border-primary"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-foreground mb-1">🔒 ملاحظات الكادر الداخلية</label>
+                    <input
+                      type="text"
+                      value={staffNotes}
+                      onChange={(e) => setStaffNotes(e.target.value)}
+                      placeholder="ملاحظة خاصة للمطبخ أو الكاشير..."
+                      className="min-h-[44px] w-full rounded-xl border border-input bg-card px-3 text-xs font-bold text-foreground outline-none focus:border-primary"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -983,9 +1167,9 @@ ${notes ? `<div style="border-top:2px dashed #000;margin:8px 0;padding-top:4px;"
               <button
                 type="button"
                 onClick={() => setShowPreorderModal(false)}
-                className="flex-1 min-h-[48px] rounded-xl bg-primary text-primary-foreground font-black text-sm shadow-xs hover:opacity-90 cursor-pointer"
+                className="flex-1 min-h-[48px] rounded-xl bg-primary text-primary-foreground font-black text-sm shadow-xs hover:opacity-90 cursor-pointer transition"
               >
-                حفظ بيانات الحجز والتوصيل
+                حفظ بيانات الحجز والتوصيل ✓
               </button>
             </div>
           </div>

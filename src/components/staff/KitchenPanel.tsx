@@ -1,4 +1,4 @@
-﻿import { useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -411,9 +411,17 @@ const KdsCleanCard = memo(function KdsCleanCard({
 
           {/* INSCRIPTION / CAKE WRITING: Prominent Highlighted Box Under Cake Name */}
           {order.inscription && (
-            <div className="rounded-xl border-2 border-amber-400 bg-amber-100/80 p-2 text-xs shadow-2xs">
-              <span className="font-black text-amber-950 block mb-0.5">✍️ الكتابة على الكيك:</span>
-              <p className="font-black text-slate-950 bg-white p-2 rounded-lg border border-amber-300 text-sm sm:text-base leading-snug">
+            <div className="rounded-2xl border-2 border-amber-500 bg-amber-100/90 p-3 text-xs shadow-xs">
+              <div className="flex items-center justify-between text-amber-950 font-black mb-1">
+                <span className="flex items-center gap-1.5 text-xs sm:text-sm">
+                  <span>✍️</span>
+                  <span>الكتابة المطلوبة على الكيك:</span>
+                </span>
+                <span className="bg-amber-600 text-white text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">
+                  هام جداً
+                </span>
+              </div>
+              <p className="font-black text-slate-950 bg-white p-2.5 rounded-xl border border-amber-400 text-base sm:text-lg leading-relaxed select-all">
                 "{order.inscription}"
               </p>
             </div>
