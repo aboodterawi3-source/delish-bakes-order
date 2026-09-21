@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   Bell,
   BellRing,
+  Cake,
   Calendar,
   CheckCircle2,
   ChefHat,
@@ -25,10 +26,12 @@ import {
   Printer,
   RefreshCw,
   Sparkles,
+  Timer,
   Undo2,
   Volume2,
   VolumeX,
   X,
+  Zap,
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -159,9 +162,9 @@ ${order.notes ? `<div style="margin-top:6px;font-size:13px;background:#f5f5f5;pa
 const ORDERS_KEY = ["kds-orders"] as const;
 
 const STAGES: { key: KitchenStage; ar: string; en: string; icon: string; border: string; bgBadge: string }[] = [
-  { key: "new", ar: "طلبات جديدة", en: "New Queue", icon: "🆕", border: "border-t-4 border-t-amber-500", bgBadge: "bg-amber-100 text-amber-900 border-amber-300" },
-  { key: "baking", ar: "قيد التجهيز والكريمة", en: "In Baking / Decorating", icon: "👩‍🍳", border: "border-t-4 border-t-blue-500", bgBadge: "bg-blue-100 text-blue-900 border-blue-300" },
-  { key: "ready", ar: "جاهزة للتسليم", en: "Ready for Pickup", icon: "✨", border: "border-t-4 border-t-emerald-500", bgBadge: "bg-emerald-100 text-emerald-900 border-emerald-300" },
+  { key: "new", ar: "طلبات جديدة بانتظار البدء", en: "Incoming Queue", icon: "🆕", border: "border-t-4 border-t-amber-500", bgBadge: "bg-amber-100 text-amber-900 border-amber-300" },
+  { key: "baking", ar: "قيد الخبز والتزيين والكريمة", en: "In Baking / Decorating", icon: "👩‍🍳", border: "border-t-4 border-t-blue-500", bgBadge: "bg-blue-100 text-blue-900 border-blue-300" },
+  { key: "ready", ar: "جاهزة ومكتملة للتسليم", en: "Ready for Handover", icon: "✨", border: "border-t-4 border-t-emerald-500", bgBadge: "bg-emerald-100 text-emerald-900 border-emerald-300" },
 ];
 
 const stageOf = (status: string): KitchenStage =>
@@ -205,32 +208,32 @@ function getPriorityStyles(color: PriorityColor) {
   switch (color) {
     case "deep_orange":
       return {
-        cardBg: "bg-card border-orange-300",
+        cardBg: "bg-card border-orange-400/80 shadow-xs",
         badgeBg: "bg-orange-100 text-orange-950 border-orange-300",
         badgeText: "أولوية قصوى",
       };
     case "warm_amber":
       return {
-        cardBg: "bg-card border-amber-300",
+        cardBg: "bg-card border-amber-400/80 shadow-xs",
         badgeBg: "bg-amber-100 text-amber-950 border-amber-300",
         badgeText: "توصيل سريع",
       };
     case "fresh_mint":
       return {
-        cardBg: "bg-card border-emerald-300",
+        cardBg: "bg-card border-emerald-400/80 shadow-xs",
         badgeBg: "bg-emerald-100 text-emerald-950 border-emerald-300",
         badgeText: "تجهيز عادي",
       };
     case "royal_gold":
       return {
-        cardBg: "bg-card border-yellow-400",
+        cardBg: "bg-card border-yellow-400 shadow-xs",
         badgeBg: "bg-yellow-100 text-yellow-950 border-yellow-400",
         badgeText: "VIP خاص",
       };
     case "soft_green":
     default:
       return {
-        cardBg: "bg-card border-border/80",
+        cardBg: "bg-card border-border/80 shadow-xs",
         badgeBg: "bg-secondary text-foreground border-border",
         badgeText: "طلب عادي",
       };
@@ -276,20 +279,20 @@ const KdsCleanCard = memo(function KdsCleanCard({
 
   return (
     <article
-      className={`relative flex flex-col justify-between rounded-3xl border p-3.5 shadow-xs hover:shadow-md transition-all ${orderPrio.cardBg}`}
+      className={`relative flex flex-col justify-between rounded-3xl border p-4 shadow-sm hover:shadow-md transition-all ${orderPrio.cardBg}`}
     >
       {/* Top Priority Accent Strip */}
       <div
-        className="absolute top-0 inset-x-0 h-1.5 rounded-t-3xl"
+        className="absolute top-0 inset-x-0 h-2 rounded-t-3xl"
         style={{ backgroundColor: priorityMeta.swatch || priorityMeta.bg }}
       />
 
-      <div className="space-y-2.5 pt-1">
-        {/* Card Header: Order Label, SLA countdown, Delivery Time */}
-        <div className="flex items-center justify-between gap-2 border-b border-border/80 pb-2.5">
+      <div className="space-y-3 pt-1.5">
+        {/* Card Header: Order Number, Method, SLA countdown, Delivery Time */}
+        <div className="flex items-start justify-between gap-2 border-b border-border/80 pb-3">
           <div className="min-w-0">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <h2 className="font-black text-base sm:text-lg text-foreground leading-tight">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="font-black text-lg sm:text-xl text-foreground leading-tight">
                 {orderLabel(order.order_number, order.staff_code)}
               </h2>
               {isEdited && (
@@ -305,18 +308,23 @@ const KdsCleanCard = memo(function KdsCleanCard({
                 </span>
               )}
             </div>
-            <p className="text-xs font-bold text-muted-foreground truncate mt-0.5">
-              العميل: <strong className="text-foreground">{order.customer_name}</strong>
-              {order.method === "delivery" ? " • توصيل 🛵" : " • استلام 🏪"}
-            </p>
+
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-xs font-bold text-muted-foreground">
+                العميل: <strong className="text-foreground">{order.customer_name}</strong>
+              </span>
+              <span className="text-[11px] font-black px-2 py-0.5 rounded-lg bg-secondary text-foreground border border-border/70">
+                {order.method === "delivery" ? "توصيل 🛵" : "استلام 🏪"}
+              </span>
+            </div>
           </div>
 
           {/* Delivery Time & SLA Countdown Badge */}
           <div className="flex flex-col items-end gap-1 shrink-0">
             <span
-              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-black border shadow-2xs ${
+              className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-black border shadow-2xs ${
                 countdown.status === "overdue"
-                  ? "bg-red-600 text-white border-red-500 animate-pulse"
+                  ? "bg-red-600 text-white border-red-500 animate-pulse text-sm"
                   : countdown.status === "urgent"
                     ? "bg-amber-500 text-white border-amber-400 animate-pulse"
                     : countdown.status === "safe"
@@ -335,7 +343,7 @@ const KdsCleanCard = memo(function KdsCleanCard({
 
         {/* MODIFICATIONS DIFF ALERT BOX */}
         {order.modifications && order.modifications.length > 0 && (
-          <div className="rounded-2xl border-2 border-amber-400 bg-amber-500/10 p-2.5 text-xs space-y-2 shadow-xs animate-in fade-in duration-150">
+          <div className="rounded-2xl border-2 border-amber-400 bg-amber-500/10 p-3 text-xs space-y-2 shadow-xs animate-in fade-in duration-150">
             <div className="flex items-center justify-between font-black">
               <span className="flex items-center gap-1 text-amber-700 dark:text-amber-400">
                 <AlertTriangle className="h-4 w-4 shrink-0" />
@@ -343,7 +351,7 @@ const KdsCleanCard = memo(function KdsCleanCard({
               </span>
               {hasUnack ? (
                 <span className="bg-red-600 text-white text-[10px] px-2 py-0.5 rounded-full font-black animate-pulse">
-                  تعديل جديد غير مؤكد
+                  تعديل غير مؤكد بالمطبخ
                 </span>
               ) : (
                 <span className="bg-emerald-600 text-white text-[10px] px-2 py-0.5 rounded-full font-black">
@@ -382,36 +390,36 @@ const KdsCleanCard = memo(function KdsCleanCard({
                 className="w-full min-h-[44px] rounded-xl bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-black text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <CheckCircle2 className="h-4 w-4" />
-                [ تمت مراجعة التعديل بالمطبخ ✓ ]
+                [ تمت مراجعة التعديل في المطبخ ✓ ]
               </button>
             )}
           </div>
         )}
 
-        {/* ORDER ITEMS: Cake Name, Options, Fillings (Large font legible from a distance) */}
-        <div className="space-y-1.5">
+        {/* ORDER ITEMS: Cake Name, Options, Fillings (Large font legible from 2 meters) */}
+        <div className="space-y-2">
           {(mainItems.length > 0 ? mainItems : order.items).map((item) => (
             <div
               key={item.id}
-              className="rounded-2xl bg-secondary/30 p-2.5 border border-border/70 shadow-2xs space-y-1"
+              className="rounded-2xl bg-secondary/40 p-3 border border-border/80 shadow-2xs space-y-1.5"
             >
               <div className="flex items-baseline justify-between gap-1">
-                <span className="font-black text-base sm:text-lg text-foreground leading-snug">
+                <span className="font-black text-lg sm:text-xl text-foreground leading-snug">
                   {item.quantity} × {item.name_ar}
                 </span>
                 {item.category && (
-                  <span className="text-[10px] font-bold text-muted-foreground bg-card px-2 py-0.5 rounded-full border border-border/60">
+                  <span className="text-[11px] font-bold text-muted-foreground bg-card px-2.5 py-0.5 rounded-full border border-border/60">
                     {item.category}
                   </span>
                 )}
               </div>
 
               {item.options_ar.length > 0 && (
-                <div className="flex flex-wrap gap-1 pt-0.5">
+                <div className="flex flex-wrap gap-1.5 pt-0.5">
                   {item.options_ar.map((option, idx) => (
                     <span
                       key={idx}
-                      className="inline-flex items-center rounded-lg bg-amber-500/10 px-2 py-0.5 text-xs font-black text-amber-800 dark:text-amber-300 border border-amber-500/20"
+                      className="inline-flex items-center rounded-xl bg-amber-500/15 px-2.5 py-1 text-xs font-black text-amber-900 dark:text-amber-200 border border-amber-500/30"
                     >
                       {option}
                     </span>
@@ -420,26 +428,26 @@ const KdsCleanCard = memo(function KdsCleanCard({
               )}
 
               {item.notes && (
-                <p className="text-xs font-black text-amber-800 dark:text-amber-300 bg-amber-500/10 p-1.5 rounded-lg border border-amber-500/20">
+                <p className="text-xs font-black text-amber-900 dark:text-amber-200 bg-amber-500/10 p-2 rounded-xl border border-amber-500/20">
                   ملاحظة الصنف: {item.notes}
                 </p>
               )}
             </div>
           ))}
 
-          {/* INSCRIPTION / CAKE WRITING: Prominent Amber Highlighted Box Under Cake */}
+          {/* THE GOLDEN CAKE RIBBON: Highlighted Inscription Banner */}
           {order.inscription && (
-            <div className="rounded-2xl border-2 border-amber-400 bg-amber-500/10 p-3 text-xs shadow-xs">
-              <div className="flex items-center justify-between text-amber-900 dark:text-amber-200 font-black mb-1">
-                <span className="flex items-center gap-1.5 text-xs sm:text-sm">
-                  <span>✍️</span>
-                  <span>الكتابة المطلوبة على الكيك:</span>
+            <div className="rounded-2xl border-2 border-amber-400 bg-gradient-to-r from-amber-500/20 via-amber-400/10 to-amber-500/20 p-3.5 text-xs shadow-xs space-y-1.5">
+              <div className="flex items-center justify-between text-amber-950 dark:text-amber-100 font-black">
+                <span className="flex items-center gap-1.5 text-sm">
+                  <span>🎂</span>
+                  <span>الكتابة المطلوبة على الكيكة:</span>
                 </span>
-                <span className="bg-amber-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
-                  هام للكيك
+                <span className="bg-amber-600 text-white text-[10px] px-2.5 py-0.5 rounded-full font-black uppercase">
+                  مهم جداً للكريمة
                 </span>
               </div>
-              <p className="font-black text-foreground bg-card p-2.5 rounded-xl border border-amber-400 text-base sm:text-lg leading-relaxed select-all">
+              <p className="font-black text-foreground bg-card p-3 rounded-xl border-2 border-amber-400 text-lg sm:text-xl leading-relaxed select-all shadow-xs text-center">
                 "{order.inscription}"
               </p>
             </div>
@@ -447,32 +455,32 @@ const KdsCleanCard = memo(function KdsCleanCard({
 
           {/* PACKAGING ACCESSORIES SUMMARY (Candles, Toppers, Balloons) */}
           {accessoryItems.length > 0 && (
-            <div className="text-[11px] font-bold text-muted-foreground bg-secondary/40 p-2 rounded-xl border border-border/60">
-              <span className="font-black text-foreground">ملحقات التغليف: </span>
+            <div className="text-xs font-bold text-muted-foreground bg-secondary/50 p-2.5 rounded-2xl border border-border/70">
+              <span className="font-black text-foreground">ملحقات التغليف والشموع: </span>
               {accessoryItems.map((acc) => `${acc.quantity} × ${acc.name_ar}`).join(" • ")}
             </div>
           )}
 
           {/* REFERENCE DESIGN IMAGE THUMBNAIL */}
           {order.design_image_url && (
-            <div className="flex items-center justify-between gap-2 rounded-2xl bg-card p-2 border border-border shadow-2xs">
+            <div className="flex items-center justify-between gap-2 rounded-2xl bg-card p-2.5 border border-border shadow-2xs">
               <button
                 type="button"
                 onClick={() => onZoom(order.design_image_url as string)}
-                className="flex items-center gap-2 text-xs font-black text-primary hover:underline cursor-pointer min-h-[44px]"
+                className="flex items-center gap-2.5 text-xs font-black text-primary hover:underline cursor-pointer min-h-[46px]"
               >
                 <img
                   src={order.design_image_url}
                   alt="تصميم الكيك"
-                  className="h-10 w-10 rounded-xl object-cover border border-border shrink-0"
+                  className="h-11 w-11 rounded-xl object-cover border border-border shrink-0 shadow-xs"
                 />
-                <span>صورة التصميم المرجعية (عرض كامل) 🔍</span>
+                <span>صورة التصميم المرجعية (عرض وتكبير كامل) 🔍</span>
               </button>
               <button
                 type="button"
                 onClick={() => void downloadDesignImage(order.design_image_url as string, order.order_number)}
-                title="تحميل الصورة للطباعة الغذائية"
-                className="grid h-10 w-10 place-items-center rounded-xl border border-border text-foreground hover:bg-secondary cursor-pointer"
+                title="تنزيل للطباعة الغذائية"
+                className="grid h-11 w-11 place-items-center rounded-xl border border-border text-foreground hover:bg-secondary cursor-pointer"
               >
                 <Download className="h-4 w-4" />
               </button>
@@ -480,16 +488,16 @@ const KdsCleanCard = memo(function KdsCleanCard({
           )}
 
           {order.notes && (
-            <div className="text-[11px] text-muted-foreground bg-secondary/30 p-2 rounded-xl border border-border/50">
-              <span className="font-bold text-foreground">ملاحظات عامة: </span>
+            <div className="text-xs text-muted-foreground bg-secondary/40 p-2.5 rounded-xl border border-border/60">
+              <span className="font-black text-foreground">ملاحظات العميل: </span>
               <span>{order.notes}</span>
             </div>
           )}
         </div>
       </div>
 
-      {/* FOOTER & ACTIONS */}
-      <div className="mt-3 pt-2.5 border-t border-border/80 space-y-2">
+      {/* FOOTER & ACTIONS (Large tactile touch buttons) */}
+      <div className="mt-4 pt-3 border-t border-border/80 space-y-2">
         <button
           type="button"
           onClick={() => printKitchenTicket(order)}
@@ -497,19 +505,19 @@ const KdsCleanCard = memo(function KdsCleanCard({
           className="w-full min-h-[44px] inline-flex items-center justify-center gap-1.5 rounded-xl bg-secondary/70 text-foreground border border-border text-xs font-black shadow-2xs hover:bg-secondary active:scale-95 cursor-pointer"
         >
           <Printer className="h-4 w-4" />
-          🖨️ طباعة تذكرة مطبخ حرارية
+          🖨️ طباعة تذكرة حرارية للمطبخ
         </button>
 
-        {/* Stage Transition Action Button */}
+        {/* Stage Transition Action Button (52px high) */}
         {stage === "new" && (
           <button
             type="button"
             onClick={() => void onStage(order.id, "baking")}
             disabled={busy}
-            className="w-full min-h-[50px] inline-flex items-center justify-center gap-2 rounded-2xl bg-amber-600 text-white font-black text-sm shadow-md hover:bg-amber-700 active:scale-95 disabled:opacity-60 cursor-pointer"
+            className="w-full min-h-[52px] inline-flex items-center justify-center gap-2 rounded-2xl bg-amber-600 text-white font-black text-sm shadow-md hover:bg-amber-700 active:scale-95 disabled:opacity-60 cursor-pointer"
           >
             {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <Play className="h-5 w-5" />}
-            [ بدء التحضير والكريمة 👩‍🍳 ]
+            [ بدء الخبز والتزيين والكريمة 👩‍🍳 ]
           </button>
         )}
 
@@ -518,16 +526,16 @@ const KdsCleanCard = memo(function KdsCleanCard({
             type="button"
             onClick={() => void onStage(order.id, "ready")}
             disabled={busy}
-            className="w-full min-h-[50px] inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 text-white font-black text-sm shadow-md hover:bg-blue-700 active:scale-95 disabled:opacity-60 cursor-pointer"
+            className="w-full min-h-[52px] inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 text-white font-black text-sm shadow-md hover:bg-blue-700 active:scale-95 disabled:opacity-60 cursor-pointer"
           >
             {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle2 className="h-5 w-5" />}
-            [ جاهز للتسليم ✨ ]
+            [ تم الانتهاء وجاهز للتسليم ✨ ]
           </button>
         )}
 
         {stage === "ready" && (
           <div className="flex gap-2">
-            <span className="flex-1 min-h-[50px] inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 text-white font-black text-xs shadow-xs">
+            <span className="flex-1 min-h-[52px] inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 text-white font-black text-xs shadow-xs">
               <CheckCircle2 className="h-4 w-4" /> جاهز للتسليم بالمحل ✓
             </span>
             <button
@@ -535,7 +543,7 @@ const KdsCleanCard = memo(function KdsCleanCard({
               onClick={() => void onStage(order.id, "baking")}
               disabled={busy}
               title="تراجع إلى قيد التجهيز"
-              className="min-h-[50px] px-4 inline-flex items-center justify-center rounded-2xl bg-card text-foreground border border-border text-xs font-black hover:bg-secondary cursor-pointer"
+              className="min-h-[52px] px-4 inline-flex items-center justify-center rounded-2xl bg-card text-foreground border border-border text-xs font-black hover:bg-secondary cursor-pointer"
             >
               <Undo2 className="h-4 w-4" />
             </button>
@@ -689,42 +697,48 @@ export function KitchenPanel() {
   }
 
   return (
-    <div dir="rtl" className="min-h-screen bg-background text-foreground pb-16 font-sans">
-      {/* Top Header Bar */}
+    <div dir="rtl" className="min-h-screen w-full bg-background text-foreground pb-20 font-sans select-none">
+      {/* 1. MASTER PRODUCTION COMMAND BAR */}
       <header className="sticky top-0 z-30 border-b border-border/80 bg-card/95 backdrop-blur-md px-4 py-3 shadow-xs">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-2xl bg-amber-500 text-white shadow-sm">
-              <ChefHat className="h-5 w-5" />
+            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-amber-500 text-white shadow-sm shrink-0">
+              <ChefHat className="h-6 w-6" />
             </div>
             <div>
-              <h1 className="font-black text-base text-foreground flex items-center gap-1.5 leading-none">
-                شاشة المطبخ والتحضير • Delish KDS
-              </h1>
-              <p className="text-[11px] font-bold text-muted-foreground mt-1">
-                ترتيب زمني تلقائي (FIFO) • موعد التسليم الأقرب دائماً في الصدارة
+              <div className="flex items-center gap-2">
+                <h1 className="font-black text-lg text-foreground leading-none">
+                  شاشة المطبخ والإنتاج • Delish Bakery KDS
+                </h1>
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-black text-amber-600 border border-amber-500/20">
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                  مباشر FIFO
+                </span>
+              </div>
+              <p className="text-xs font-bold text-muted-foreground mt-1">
+                ترتيب زمني تلقائي • الأقرب موعداً في الصدارة دائماً • إبراز فوري للعبارة المكتوبة
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Quick Date Filters */}
-            <div className="hidden sm:flex rounded-2xl bg-secondary/60 p-1 border border-border/70">
+            {/* Quick Date Filter Chips */}
+            <div className="flex rounded-2xl bg-secondary/60 p-1 border border-border/70">
               <button
                 type="button"
                 onClick={() => setFilter("today")}
-                className={`min-h-[38px] px-3 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                className={`min-h-[38px] px-3.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
                   filter === "today"
                     ? "bg-card text-foreground shadow-xs border border-border/80"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                اليوم
+                طلبات اليوم
               </button>
               <button
                 type="button"
                 onClick={() => setFilter("tomorrow")}
-                className={`min-h-[38px] px-3 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                className={`min-h-[38px] px-3.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
                   filter === "tomorrow"
                     ? "bg-card text-foreground shadow-xs border border-border/80"
                     : "text-muted-foreground hover:text-foreground"
@@ -735,13 +749,13 @@ export function KitchenPanel() {
               <button
                 type="button"
                 onClick={() => setFilter("all")}
-                className={`min-h-[38px] px-3 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                className={`min-h-[38px] px-3.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
                   filter === "all"
                     ? "bg-card text-foreground shadow-xs border border-border/80"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                الكل
+                جميع الطلبات
               </button>
             </div>
 
@@ -756,7 +770,7 @@ export function KitchenPanel() {
               }`}
             >
               {soundEnabled ? <BellRing className="h-4 w-4 text-amber-500" /> : <Bell className="h-4 w-4" />}
-              <span>{soundEnabled ? "صوت التنبيه فعال" : "صامت"}</span>
+              <span>{soundEnabled ? "رنين التنبيهات شغال" : "صامت"}</span>
             </button>
 
             {/* Refresh Button */}
@@ -772,7 +786,7 @@ export function KitchenPanel() {
         </div>
       </header>
 
-      {/* 3-Column Kanban Board */}
+      {/* 2. THREE-STAGE PRODUCTION BOARD */}
       <main className="mx-auto max-w-7xl px-3 sm:px-4 py-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
           {STAGES.map((stage) => {
@@ -787,7 +801,7 @@ export function KitchenPanel() {
                   <div className="flex items-center gap-2">
                     <span className="text-base">{stage.icon}</span>
                     <h3 className="font-black text-sm text-foreground">{stage.ar}</h3>
-                    <span className="grid h-6 min-w-6 place-items-center px-1.5 rounded-full bg-primary text-[11px] font-black text-primary-foreground shadow-2xs">
+                    <span className="grid h-6 min-w-6 place-items-center px-2 rounded-full bg-primary text-[11px] font-black text-primary-foreground shadow-2xs">
                       {list.length}
                     </span>
                   </div>
@@ -795,7 +809,7 @@ export function KitchenPanel() {
                 </div>
 
                 {/* Orders Column List */}
-                <div className="p-3 space-y-3 min-h-[55vh]">
+                <div className="p-3 space-y-3.5 min-h-[58vh]">
                   {list.length > 0 ? (
                     list.map((order) => (
                       <KdsCleanCard
@@ -810,7 +824,7 @@ export function KitchenPanel() {
                       />
                     ))
                   ) : (
-                    <div className="grid h-44 place-items-center rounded-2xl border border-dashed border-border/80 text-center text-xs font-bold text-muted-foreground/60 p-4">
+                    <div className="grid h-48 place-items-center rounded-2xl border border-dashed border-border/80 text-center text-xs font-bold text-muted-foreground/60 p-4">
                       لا توجد طلبات في هذه المرحلة حالياً
                     </div>
                   )}
@@ -821,7 +835,7 @@ export function KitchenPanel() {
         </div>
       </main>
 
-      {/* Fullscreen Modal Zoom for Reference Design Image */}
+      {/* 3. FULLSCREEN REFERENCE DESIGN IMAGE MODAL */}
       {zoom && (
         <div
           onClick={() => setZoom(null)}
@@ -834,7 +848,7 @@ export function KitchenPanel() {
             <img
               src={zoom}
               alt="صورة التصميم المرجعية بملء الشاشة"
-              className="max-h-[80vh] max-w-full rounded-2xl object-contain shadow-2xl border border-white/20"
+              className="max-h-[80vh] max-w-full rounded-3xl object-contain shadow-2xl border border-white/20"
             />
             <button
               type="button"
@@ -842,7 +856,7 @@ export function KitchenPanel() {
               className="mt-4 min-h-[50px] px-8 rounded-full bg-white text-slate-950 font-black text-sm shadow-2xl hover:bg-slate-100 active:scale-95 transition cursor-pointer flex items-center gap-2"
             >
               <X className="h-5 w-5" />
-              إغلاق وتكبير الشاشة (العودة للمطبخ)
+              إغلاق العرض (العودة إلى شاشة المطبخ)
             </button>
           </div>
         </div>
