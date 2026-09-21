@@ -136,8 +136,8 @@ function parseTimeInMinutes(timeStr: string): number {
   const match = clean.match(/(\d{1,2}):(\d{2})/);
   if (!match) return 9 * 60;
 
-  let h = parseInt(match[1], 10);
-  const m = parseInt(match[2], 10) || 0;
+  let h = parseInt(match[1] ?? "", 10) || 0;
+  const m = parseInt(match[2] ?? "", 10) || 0;
 
   if (isPM) {
     if (h < 12) h += 12;

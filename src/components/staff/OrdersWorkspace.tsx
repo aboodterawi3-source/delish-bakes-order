@@ -19,6 +19,7 @@ import {
   Filter,
   Layers,
   Link2,
+  Loader2,
   Lock,
   MessageCircle,
   Pencil,
@@ -179,7 +180,28 @@ function sendScheduleConfirmation(order: SalesOrder) {
 }
 
 function sendCustomerWhatsApp(order: SalesOrder) {
-  const message = buildConfirmationMessage(order);
+  const message =
+    order.confirmation_message ??
+    buildConfirmationMessage({
+      orderNumber: order.order_number,
+      customerName: order.customer_name,
+      when: `${order.requested_date} ${order.requested_time.slice(0, 5)}`,
+      fulfilment:
+        order.method === "delivery"
+          ? `توصيل · ${order.area ?? ""}${order.address ? ` — ${order.address}` : ""}`
+          : "استلام من المحل",
+      items: order.items.map((it) => `${it.quantity} × ${it.name_ar}`),
+      cakeWriting: order.inscription ?? "",
+      cardWriting: order.card_note ?? "",
+      notes: order.notes ?? "",
+      price: order.subtotal - order.discount_amount,
+      deliveryFee: order.delivery_fee,
+      total: order.total,
+      paid: order.deposit_paid,
+      paymentMethod: order.payment_method ?? "",
+      recipientPhone: order.recipient_phone ?? order.customer_phone,
+      senderPhone: order.sender_phone ?? order.customer_phone,
+    });
   void navigator.clipboard?.writeText(message).catch(() => undefined);
   window.open(`https://wa.me/${waNumber(order.customer_phone)}?text=${encodeURIComponent(message)}`, "_blank", "noopener");
   toast.success("تم فتح محادثة الواتساب مع العميل 📲");
@@ -295,9 +317,7 @@ export function OrdersWorkspace({
     onError: (err: Error) => setMoneyError(err.message),
     onSuccess: (updated) => {
       setMoneyError(null);
-      queryClient.setQueryData<SalesOrder[]>(ORDERS_KEY, (rows) =>
-        (rows ?? []).map((order) => (order.id === updated.id ? updated : order)),
-      );
+      void queryClient.invalidateQueries({ queryKey: ORDERS_KEY });
     },
   });
 
@@ -857,7 +877,7 @@ const OrderRowCard = memo(function OrderRowCard({
           {/* Modifications alert banner if any */}
           {order.modifications && order.modifications.length > 0 && (
             <div className="text-[11px] font-bold text-amber-800 dark:text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-xl border border-amber-500/20">
-              آخر تعديل: {order.modifications[order.modifications.length - 1].field}
+              آخر تعديل: {order.modifications[order.modifications.length - 1]?.field ?? "—"}
             </div>
           )}
         </div>
