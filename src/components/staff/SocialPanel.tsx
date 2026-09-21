@@ -304,7 +304,7 @@ export function SocialPanel() {
       unit_price: unitPrice,
       payment_option: form.payment_option,
       deposit_paid: form.payment_option === "cash" ? 0 : Number(form.deposit_paid) || 0,
-      customer_notes: form.customer_notes.trim() || undefined,
+      design_notes: form.customer_notes.trim() || undefined,
       staff_notes: form.staff_notes.trim() || undefined,
       design_image_url: form.design_image_url || undefined,
       is_urgent: form.is_urgent,

@@ -19,6 +19,7 @@ import {
   Filter,
   Layers,
   Link2,
+  Loader2,
   Lock,
   MessageCircle,
   Pencil,
@@ -316,9 +317,7 @@ export function OrdersWorkspace({
     onError: (err: Error) => setMoneyError(err.message),
     onSuccess: (updated) => {
       setMoneyError(null);
-      queryClient.setQueryData<SalesOrder[]>(ORDERS_KEY, (rows) =>
-        (rows ?? []).map((order) => (order.id === updated.id ? updated : order)),
-      );
+      void queryClient.invalidateQueries({ queryKey: ORDERS_KEY });
     },
   });
 
