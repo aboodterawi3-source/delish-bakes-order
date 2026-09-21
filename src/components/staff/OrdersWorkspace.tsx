@@ -877,7 +877,7 @@ const OrderRowCard = memo(function OrderRowCard({
           {/* Modifications alert banner if any */}
           {order.modifications && order.modifications.length > 0 && (
             <div className="text-[11px] font-bold text-amber-800 dark:text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-xl border border-amber-500/20">
-              آخر تعديل: {order.modifications[order.modifications.length - 1].field}
+              آخر تعديل: {order.modifications[order.modifications.length - 1]?.field ?? "—"}
             </div>
           )}
         </div>
