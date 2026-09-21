@@ -159,7 +159,7 @@ export function PosOrderEntry() {
   const customerSuggestions = useMemo(() => {
     const q = phoneSearch.trim().toLowerCase();
     if (q.length < 3 || !existingOrders.data) return [];
-    const map = new Map<string, { name: string; phone: string; address?: string; area?: string }>();
+    const map = new Map<string, { name: string; phone: string; address?: string | undefined; area?: string | undefined }>();
     for (const order of existingOrders.data) {
       if (order.customer_phone?.toLowerCase().includes(q)) {
         if (!map.has(order.customer_phone)) {

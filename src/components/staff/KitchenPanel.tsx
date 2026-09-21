@@ -71,7 +71,7 @@ function formatTimeSlotArabic(timeStr: string): string {
   if (!timeStr) return "";
   try {
     const parts = timeStr.slice(0, 5).split(":");
-    let h = parseInt(parts[0], 10);
+    let h = parseInt(parts[0] ?? "", 10);
     const m = parts[1] || "00";
     if (isNaN(h)) return timeStr.slice(0, 5);
     const period = h >= 12 ? "م" : "ص";
@@ -206,25 +206,25 @@ function getCountdownText(requestedDate: string, requestedTime: string) {
 /** Resolves visual priority styles for cards */
 function getPriorityStyles(color: PriorityColor) {
   switch (color) {
-    case "deep_orange":
+    case "dark_red":
       return {
         cardBg: "bg-card border-orange-400/80 shadow-xs",
         badgeBg: "bg-orange-100 text-orange-950 border-orange-300",
         badgeText: "أولوية قصوى",
       };
-    case "warm_amber":
+    case "warm_orange":
       return {
         cardBg: "bg-card border-amber-400/80 shadow-xs",
         badgeBg: "bg-amber-100 text-amber-950 border-amber-300",
         badgeText: "توصيل سريع",
       };
-    case "fresh_mint":
+    case "sky_blue":
       return {
         cardBg: "bg-card border-emerald-400/80 shadow-xs",
         badgeBg: "bg-emerald-100 text-emerald-950 border-emerald-300",
         badgeText: "تجهيز عادي",
       };
-    case "royal_gold":
+    case "golden_yellow":
       return {
         cardBg: "bg-card border-yellow-400 shadow-xs",
         badgeBg: "bg-yellow-100 text-yellow-950 border-yellow-400",
@@ -573,7 +573,7 @@ export function KitchenPanel() {
 
   useEffect(() => {
     try {
-      const audio = new Audio(bellAsset.dataUri);
+      const audio = new Audio(bellAsset.url);
       audio.preload = "auto";
       audioRef.current = audio;
     } catch {
@@ -598,24 +598,26 @@ export function KitchenPanel() {
   });
 
   // Realtime subscription
-  useOrdersRealtime({
-    queryKey: ORDERS_KEY,
-    filter: (payload) => {
-      const status = payload.new?.status ?? payload.old?.status;
-      return ["new", "baking", "ready"].includes(status);
-    },
-    onInsert: (row) => {
-      if (soundEnabled) {
-        if (audioRef.current) audioRef.current.play().catch(() => playKitchenChimeSound());
-        else playKitchenChimeSound();
-      }
-      setAlerts((curr) => (curr.includes(row.id) ? curr : [...curr, row.id]));
-    },
-    onUpdate: (row) => {
-      if (soundEnabled) playKitchenChimeSound();
-      setAlerts((curr) => (curr.includes(row.id) ? curr : [...curr, row.id]));
-    },
-  });
+  useOrdersRealtime(ORDERS_KEY, true, "kitchen-orders-live");
+
+  // Raise the visual + audible alert whenever a new or edited order arrives.
+  const seenStamps = useRef<Map<string, string>>(new Map());
+  useEffect(() => {
+    const rows = orders.data ?? [];
+    const fresh: string[] = [];
+    for (const row of rows) {
+      const stamp = `${row.last_edited_at ?? ""}|${(row.modifications ?? []).length}`;
+      const previous = seenStamps.current.get(row.id);
+      seenStamps.current.set(row.id, stamp);
+      if (previous !== undefined && previous !== stamp) fresh.push(row.id);
+    }
+    if (fresh.length === 0) return;
+    if (soundEnabled) {
+      if (audioRef.current) audioRef.current.play().catch(() => playKitchenChimeSound());
+      else playKitchenChimeSound();
+    }
+    setAlerts((curr) => [...new Set([...curr, ...fresh])]);
+  }, [orders.data, soundEnabled]);
 
   const rawOrdersList = useMemo(() => orders.data ?? [], [orders.data]);
 
