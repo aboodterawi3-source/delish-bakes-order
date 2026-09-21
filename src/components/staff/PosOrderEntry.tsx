@@ -175,7 +175,7 @@ export function PosOrderEntry() {
     return Array.from(map.values()).slice(0, 5);
   }, [existingOrders.data, phoneSearch]);
 
-  const selectCustomerSuggestion = (sug: { name: string; phone: string; address?: string; area?: string }) => {
+  const selectCustomerSuggestion = (sug: { name: string; phone: string; address?: string | undefined; area?: string | undefined }) => {
     setCustomerName(sug.name);
     setCustomerPhone(sug.phone);
     if (sug.address) setAddress(sug.address);
