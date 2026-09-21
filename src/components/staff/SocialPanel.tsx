@@ -292,7 +292,6 @@ export function SocialPanel() {
       customer_name: form.customer_name.trim(),
       customer_phone: form.customer_phone.trim(),
       sender_phone: form.is_recipient_different ? form.customer_phone.trim() : undefined,
-      recipient_name: form.is_recipient_different ? form.recipient_name.trim() : undefined,
       recipient_phone: form.is_recipient_different ? form.recipient_phone.trim() : undefined,
       requested_date: form.requested_date,
       requested_time: form.requested_time,
