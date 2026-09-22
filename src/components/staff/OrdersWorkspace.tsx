@@ -1123,6 +1123,7 @@ function OrderPanelDrawer({
   onClose,
   onPatch,
   onCancel,
+  onDeletePermanent,
 }: {
   order: SalesOrder;
   authorization?: (StaffAuthorization & { isAdmin: boolean }) | null;
