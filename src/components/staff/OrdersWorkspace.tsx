@@ -19,6 +19,7 @@ import {
   Filter,
   Layers,
   Link2,
+  Loader2,
   Lock,
   MessageCircle,
   Pencil,
