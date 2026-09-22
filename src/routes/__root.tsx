@@ -11,6 +11,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { Toaster } from "@/components/ui/sonner";
+import { AppErrorBoundary } from "@/components/AppErrorBoundary";
 import { LangProvider } from "../lib/i18n";
 import { CartProvider } from "../lib/cart";
 import { reportLovableError } from "../lib/lovable-error-reporting";
