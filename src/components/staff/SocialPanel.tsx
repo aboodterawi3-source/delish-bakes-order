@@ -198,7 +198,7 @@ export function SocialPanel() {
             : "استلام من المحل",
         items: [`${form.quantity} × ${finalOrderDetails}`],
         cakeWriting: form.customer_notes.trim(),
-        cardWriting: form.card_note?.trim() ?? "",
+        cardWriting: "",
         paymentMethod:
           form.payment_option === "cliq_full"
             ? `دفع كامل كليك (${paidAmount.toFixed(2)} د.أ)`
