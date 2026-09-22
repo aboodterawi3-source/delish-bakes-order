@@ -360,10 +360,24 @@ export function OrdersWorkspace({
     mutationFn: (input: { orderId: string; percent: number; reason: string }) =>
       discountFn({ data: input }),
     onError: (err: Error) => setMoneyError(err.message),
-    onSuccess: (updated) => {
+    onSuccess: (updated, variables) => {
       setMoneyError(null);
       queryClient.setQueryData<SalesOrder[]>(ORDERS_KEY, (rows) =>
-        (rows ?? []).map((order) => (order.id === updated.id ? updated : order)),
+        (rows ?? []).map((order) =>
+          order.id === variables.orderId
+            ? {
+                ...order,
+                discount_amount: updated.discount_amount,
+                discount_percent: updated.discount_percent,
+                total: Math.max(
+                  order.subtotal +
+                    (order.method === "delivery" ? order.delivery_fee : 0) -
+                    updated.discount_amount,
+                  0,
+                ),
+              }
+            : order,
+        ),
       );
     },
   });
