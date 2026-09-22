@@ -1364,6 +1364,14 @@ function OrderPanelDrawer({
             )}
           </div>
 
+          {/* Audit Log & Baseline Snapshot */}
+          {(order.modifications?.length || order.last_edited_at) && (
+            <ModificationsHistoryBox
+              modifications={order.modifications}
+              lastEditedAt={order.last_edited_at}
+            />
+          )}
+
           {/* Delivery & Driver Dispatch */}
           {order.method === "delivery" && (
             <div className="rounded-2xl border border-border bg-card p-3.5 space-y-2.5">

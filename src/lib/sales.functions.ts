@@ -409,6 +409,24 @@ export type OrderModification = {
   acknowledgedAt?: string | null;
 };
 
+export function buildOriginalOrderBaseline(order: any, items: any[]): string {
+  const itemsText = (items ?? [])
+    .map((it: any) => `${it.quantity}× ${it.name_ar || it.name_en || "صنف"}${it.options_ar?.length ? ` (${it.options_ar.join(" ، ")})` : ""}`)
+    .join(" + ") || "بدون تفاصيل أصناف";
+  const fulfText = order.method === "delivery"
+    ? `توصيل دليفري (${order.area || "عمان"}${order.address ? ` - ${order.address}` : ""})`
+    : "استلام من المحل";
+  const giftText = (order.sender_phone || order.recipient_phone || order.order_name)
+    ? ` [هدية: ${order.order_name ? `المستلم: ${order.order_name} ` : ""}(هاتف: ${order.recipient_phone || "—"}) / هاتف المرسل: ${order.sender_phone || "—"}]`
+    : "";
+  const inscText = order.inscription ? `الكتابة: "${order.inscription}"` : "";
+  const notesText = order.notes ? `الملاحظات: "${order.notes}"` : "";
+  const timeText = order.requested_time ? String(order.requested_time).slice(0, 5) : "";
+  const extras = [inscText, notesText].filter(Boolean).join(" | ");
+
+  return `الأصناف الأصلية: ${itemsText}\nالعميل: ${order.customer_name} (${order.customer_phone})${giftText}\nموعد التسليم الأصلي: ${order.requested_date} ${timeText} (${fulfText})${extras ? `\n${extras}` : ""}\nالحساب عند الإنشاء: الإجمالي ${Number(order.total ?? 0).toFixed(2)} د.أ (العربون: ${Number(order.deposit_paid ?? 0).toFixed(2)} د.أ)`;
+}
+
 export const updateSalesOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: OrderPatch) => {
@@ -425,10 +443,10 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
       throw new Error("لا يوجد تغيير · Nothing to update");
     }
 
-    // Fetch existing order details to compute modification diffs for KDS
+    // Fetch existing order details to compute modification diffs for KDS and audit
     const { data: existing } = await context.supabase
       .from("orders")
-      .select("requested_date, requested_time, notes, inscription, modifications")
+      .select("id, order_number, customer_name, customer_phone, requested_date, requested_time, method, area, address, order_name, sender_phone, recipient_phone, deposit_paid, notes, inscription, staff_notes, card_note, total, modifications")
       .eq("id", data.orderId)
       .single();
 
@@ -437,12 +455,85 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
       const newDiffs: OrderModification[] = [];
       const nowIso = new Date().toISOString();
 
-      if (clean['requested_time'] !== undefined) {
-        const oldVal = (existing.requested_time ?? "").slice(0, 5);
-        const newVal = String(clean['requested_time']).slice(0, 5);
+      // If this is the FIRST modification on this order, preserve the original order baseline!
+      const hasBaseline = currentMods.some((m) => m.field.includes("الطلب الأساسي") || m.field.includes("النسخة الأصلية"));
+      if (!hasBaseline) {
+        const { data: existingItems } = await context.supabase
+          .from("order_items")
+          .select("name_ar, name_en, quantity, unit_price, options_ar, notes")
+          .eq("order_id", data.orderId);
+        const baselineSummary = buildOriginalOrderBaseline(existing, existingItems ?? []);
+        newDiffs.push({
+          field: "الطلب الأساسي (النسخة الأصلية عند الإنشاء)",
+          oldValue: baselineSummary,
+          newValue: "تم إجراء أول تعديل على هذا الطلب",
+          updatedAt: nowIso,
+          acknowledgedAt: null,
+        });
+      }
+
+      if (clean['customer_name'] !== undefined) {
+        const oldVal = (existing.customer_name ?? "").trim();
+        const newVal = String(clean['customer_name'] ?? "").trim();
+        if (oldVal && newVal && oldVal !== newVal) {
+          newDiffs.push({
+            field: "اسم العميل",
+            oldValue: oldVal,
+            newValue: newVal,
+            updatedAt: nowIso,
+            acknowledgedAt: null,
+          });
+        }
+      }
+
+      if (clean['customer_phone'] !== undefined) {
+        const oldVal = (existing.customer_phone ?? "").trim();
+        const newVal = String(clean['customer_phone'] ?? "").trim();
+        if (oldVal && newVal && oldVal !== newVal) {
+          newDiffs.push({
+            field: "رقم هاتف العميل",
+            oldValue: oldVal,
+            newValue: newVal,
+            updatedAt: nowIso,
+            acknowledgedAt: null,
+          });
+        }
+      }
+
+      if (clean['order_name'] !== undefined) {
+        const oldVal = (existing.order_name ?? "").trim();
+        const newVal = String(clean['order_name'] ?? "").trim();
         if (oldVal !== newVal) {
           newDiffs.push({
-            field: "وقت التسليم",
+            field: "اسم المستلم / الطلب",
+            oldValue: oldVal || "غير محدد",
+            newValue: newVal || "غير محدد",
+            updatedAt: nowIso,
+            acknowledgedAt: null,
+          });
+        }
+      }
+
+      if (clean['sender_phone'] !== undefined) {
+        const oldVal = (existing.sender_phone ?? "").trim();
+        const newVal = String(clean['sender_phone'] ?? "").trim();
+        if (oldVal !== newVal) {
+          newDiffs.push({
+            field: "هاتف المرسل",
+            oldValue: oldVal || "غير محدد",
+            newValue: newVal || "غير محدد",
+            updatedAt: nowIso,
+            acknowledgedAt: null,
+          });
+        }
+      }
+
+      if (clean['recipient_phone'] !== undefined) {
+        const oldVal = (existing.recipient_phone ?? "").trim();
+        const newVal = String(clean['recipient_phone'] ?? "").trim();
+        if (oldVal !== newVal) {
+          newDiffs.push({
+            field: "هاتف المستلم",
             oldValue: oldVal || "غير محدد",
             newValue: newVal || "غير محدد",
             updatedAt: nowIso,
@@ -459,6 +550,37 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
             field: "تاريخ التسليم",
             oldValue: oldVal || "غير محدد",
             newValue: newVal || "غير محدد",
+            updatedAt: nowIso,
+            acknowledgedAt: null,
+          });
+        }
+      }
+
+      if (clean['requested_time'] !== undefined) {
+        const oldVal = (existing.requested_time ?? "").slice(0, 5);
+        const newVal = String(clean['requested_time']).slice(0, 5);
+        if (oldVal !== newVal) {
+          newDiffs.push({
+            field: "وقت التسليم",
+            oldValue: oldVal || "غير محدد",
+            newValue: newVal || "غير محدد",
+            updatedAt: nowIso,
+            acknowledgedAt: null,
+          });
+        }
+      }
+
+      if (clean['method'] !== undefined || clean['area'] !== undefined || clean['address'] !== undefined) {
+        const oldMethod = existing.method === "delivery" ? `توصيل (${existing.area || "عمان"}${existing.address ? ` - ${existing.address}` : ""})` : "استلام من المحل";
+        const newM = clean['method'] !== undefined ? clean['method'] : existing.method;
+        const newArea = clean['area'] !== undefined ? clean['area'] : existing.area;
+        const newAddr = clean['address'] !== undefined ? clean['address'] : existing.address;
+        const newMethod = newM === "delivery" ? `توصيل (${newArea || "عمان"}${newAddr ? ` - ${newAddr}` : ""})` : "استلام من المحل";
+        if (oldMethod !== newMethod) {
+          newDiffs.push({
+            field: "طريقة الاستلام / العنوان",
+            oldValue: oldMethod,
+            newValue: newMethod,
             updatedAt: nowIso,
             acknowledgedAt: null,
           });
@@ -493,8 +615,36 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
         }
       }
 
+      if (clean['staff_notes'] !== undefined) {
+        const oldVal = (existing.staff_notes ?? "").trim();
+        const newVal = String(clean['staff_notes'] ?? "").trim();
+        if (oldVal !== newVal) {
+          newDiffs.push({
+            field: "ملاحظات الموظفين",
+            oldValue: oldVal || "بدون ملاحظات",
+            newValue: newVal || "بدون ملاحظات",
+            updatedAt: nowIso,
+            acknowledgedAt: null,
+          });
+        }
+      }
+
+      if (clean['deposit_paid'] !== undefined) {
+        const oldVal = Number(existing.deposit_paid ?? 0);
+        const newVal = Number(clean['deposit_paid'] ?? 0);
+        if (oldVal !== newVal) {
+          newDiffs.push({
+            field: "العربون المدفوع",
+            oldValue: `${oldVal.toFixed(2)} د.أ`,
+            newValue: `${newVal.toFixed(2)} د.أ`,
+            updatedAt: nowIso,
+            acknowledgedAt: null,
+          });
+        }
+      }
+
       if (newDiffs.length > 0) {
-        clean['modifications'] = [...currentMods, ...newDiffs].slice(-20);
+        clean['modifications'] = [...currentMods, ...newDiffs].slice(-30);
       }
     }
 
@@ -716,14 +866,14 @@ export const replaceSalesOrderItems = createServerFn({ method: "POST" })
 
     const { data: existing, error: readError } = await context.supabase
       .from("orders")
-      .select("id, order_number, method, delivery_fee, discount_amount, subtotal, modifications")
+      .select("id, order_number, customer_name, customer_phone, requested_date, requested_time, method, area, address, order_name, sender_phone, recipient_phone, deposit_paid, notes, inscription, staff_notes, card_note, total, delivery_fee, discount_amount, subtotal, modifications")
       .eq("id", data.orderId)
       .single();
     if (readError || !existing) throw new Error("طلب غير موجود · Order not found");
 
     const { data: oldItemsData } = await context.supabase
       .from("order_items")
-      .select("name_ar, quantity, options_ar")
+      .select("name_ar, name_en, quantity, unit_price, options_ar, notes")
       .eq("order_id", data.orderId);
 
     const oldSummary = (oldItemsData ?? [])
@@ -736,18 +886,34 @@ export const replaceSalesOrderItems = createServerFn({ method: "POST" })
 
     const currentMods = (existing.modifications as OrderModification[] | null) ?? [];
     const nowIso = new Date().toISOString();
-    const updatedMods = oldSummary !== newSummary
-      ? [
-          ...currentMods,
-          {
-            field: "أصناف الطلب / الحشوة",
-            oldValue: oldSummary,
-            newValue: newSummary,
-            updatedAt: nowIso,
-            acknowledgedAt: null,
-          },
-        ].slice(-20)
-      : currentMods;
+    const hasBaseline = currentMods.some((m) => m.field.includes("الطلب الأساسي") || m.field.includes("النسخة الأصلية"));
+    const baselineDiffs: OrderModification[] = [];
+    if (!hasBaseline) {
+      const baselineSummary = buildOriginalOrderBaseline(existing, oldItemsData ?? []);
+      baselineDiffs.push({
+        field: "الطلب الأساسي (النسخة الأصلية عند الإنشاء)",
+        oldValue: baselineSummary,
+        newValue: "تم إجراء أول تعديل على هذا الطلب",
+        updatedAt: nowIso,
+        acknowledgedAt: null,
+      });
+    }
+
+    const updatedMods = [
+      ...currentMods,
+      ...baselineDiffs,
+      ...(oldSummary !== newSummary
+        ? [
+            {
+              field: "أصناف الطلب / الحشوة",
+              oldValue: oldSummary,
+              newValue: newSummary,
+              updatedAt: nowIso,
+              acknowledgedAt: null,
+            },
+          ]
+        : []),
+    ].slice(-30);
 
     // Per-product price lock: staff denied repricing must keep the catalog price.
     const { canEditProductPrice } = await import("@/lib/permissions.functions");

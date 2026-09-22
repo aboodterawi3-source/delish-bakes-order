@@ -361,26 +361,38 @@ const KdsCleanCard = memo(function KdsCleanCard({
             </div>
 
             <div className="space-y-1.5">
-              {order.modifications.map((mod, idx) => (
-                <div key={idx} className="rounded-xl bg-card p-2 border border-border/80 text-[11px]">
-                  <div className="flex justify-between font-bold text-muted-foreground mb-1">
-                    <span>{mod.field}:</span>
-                    <span>{formatRelativeTime(mod.updatedAt)}</span>
+              {order.modifications.map((mod, idx) =>
+                mod.field.includes("الطلب الأساسي") || mod.field.includes("النسخة الأصلية") ? (
+                  <div key={idx} className="rounded-xl bg-amber-500/10 p-2.5 border border-amber-400/40 text-[11px] text-amber-950 dark:text-amber-200">
+                    <div className="font-black text-amber-900 dark:text-amber-300 mb-1 flex items-center justify-between">
+                      <span className="flex items-center gap-1">📌 {mod.field}</span>
+                      <span className="text-[10px] font-mono text-amber-800">{formatRelativeTime(mod.updatedAt)}</span>
+                    </div>
+                    <div className="whitespace-pre-line text-xs font-bold leading-relaxed bg-background/70 p-2 rounded-lg border border-amber-300/40 me-0">
+                      {mod.oldValue}
+                    </div>
                   </div>
-                  {mod.oldValue && (
-                    <div className="flex items-center gap-1 text-red-600 bg-red-500/10 p-1 rounded-lg font-bold">
-                      <span className="shrink-0">❌ السابق:</span>
-                      <span className="line-through">{mod.oldValue}</span>
+                ) : (
+                  <div key={idx} className="rounded-xl bg-card p-2 border border-border/80 text-[11px]">
+                    <div className="flex justify-between font-bold text-muted-foreground mb-1">
+                      <span>{mod.field}:</span>
+                      <span>{formatRelativeTime(mod.updatedAt)}</span>
                     </div>
-                  )}
-                  {mod.newValue && (
-                    <div className="flex items-center gap-1 text-emerald-700 bg-emerald-500/10 p-1 rounded-lg font-black mt-0.5">
-                      <span className="shrink-0">➕ الجديد:</span>
-                      <span>{mod.newValue}</span>
-                    </div>
-                  )}
-                </div>
-              ))}
+                    {mod.oldValue && (
+                      <div className="flex items-center gap-1 text-red-600 bg-red-500/10 p-1 rounded-lg font-bold">
+                        <span className="shrink-0">❌ السابق:</span>
+                        <span className="line-through">{mod.oldValue}</span>
+                      </div>
+                    )}
+                    {mod.newValue && (
+                      <div className="flex items-center gap-1 text-emerald-700 bg-emerald-500/10 p-1 rounded-lg font-black mt-0.5">
+                        <span className="shrink-0">➕ الجديد:</span>
+                        <span>{mod.newValue}</span>
+                      </div>
+                    )}
+                  </div>
+                )
+              )}
             </div>
 
             {hasUnack && (

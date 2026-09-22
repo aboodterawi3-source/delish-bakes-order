@@ -97,7 +97,7 @@ export function ModificationsHistoryBox({
   modifications?: OrderModification[] | null | undefined;
   lastEditedAt?: string | null | undefined;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
 
   if ((!modifications || modifications.length === 0) && !lastEditedAt) {
     return (
@@ -108,17 +108,24 @@ export function ModificationsHistoryBox({
     );
   }
 
+  const baselineMod = (modifications ?? []).find((m) =>
+    m.field.includes("الطلب الأساسي") || m.field.includes("النسخة الأصلية")
+  );
+  const regularMods = (modifications ?? []).filter(
+    (m) => !m.field.includes("الطلب الأساسي") && !m.field.includes("النسخة الأصلية")
+  );
+
   return (
     <div className="rounded-2xl border border-amber-300/80 bg-amber-50/70 p-3.5 text-xs text-amber-950 shadow-xs">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-200/80 pb-2">
         <button
           type="button"
           onClick={() => setOpen((prev) => !prev)}
-          className="flex items-center gap-2 font-bold text-amber-950 hover:underline cursor-pointer"
+          className="flex items-center gap-2 font-black text-amber-950 hover:underline cursor-pointer"
         >
           <History className="h-4 w-4 text-amber-700" />
-          <span>سجل التعديلات والتدقيق ({modifications?.length ?? 0} تعديلات)</span>
-          <span className="text-[10px] text-amber-700 bg-amber-200/70 px-2 py-0.5 rounded-full">
+          <span>سجل الطلب التعديلات والتدقيق ({modifications?.length ?? 0} سجلات)</span>
+          <span className="text-[10px] text-amber-800 bg-amber-200/80 px-2 py-0.5 rounded-full font-bold">
             {open ? "إخفاء التفاصيل ▲" : "عرض التفاصيل ▼"}
           </span>
         </button>
@@ -136,37 +143,72 @@ export function ModificationsHistoryBox({
       </div>
 
       {open && (
-        <div className="mt-2.5 space-y-2">
-          {modifications && modifications.length > 0 ? (
-            <ul className="space-y-1.5 divide-y divide-amber-200/60 pt-1">
-              {modifications.map((mod, idx) => (
-                <li
-                  key={idx}
-                  className="flex flex-wrap items-center justify-between gap-1 pt-1.5 first:pt-0"
-                >
-                  <div className="min-w-0 flex-1">
-                    <span className="font-bold text-amber-950">{mod.field}:</span>{" "}
-                    <span className="line-through text-amber-700/80 me-1">
-                      {mod.oldValue || "—"}
-                    </span>
-                    <span className="font-bold text-emerald-800">
-                      ← {mod.newValue || "—"}
-                    </span>
-                  </div>
-                  {mod.updatedAt && (
-                    <span className="text-[10px] text-amber-700 shrink-0" dir="ltr">
-                      {new Date(mod.updatedAt).toLocaleTimeString("ar-JO", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-[11px] text-amber-800">تم حفظ وتأكيد التعديلات على هذا الطلب ✅</p>
+        <div className="mt-3 space-y-3">
+          {/* ORIGINAL ORDER BASELINE BANNER */}
+          {baselineMod && (
+            <div className="rounded-xl border border-amber-400 bg-amber-100/90 p-3 text-xs text-amber-950 shadow-2xs space-y-1.5">
+              <div className="flex items-center justify-between font-black text-amber-900 border-b border-amber-300/80 pb-1.5">
+                <span className="flex items-center gap-1.5">
+                  <span>📌</span>
+                  <span>الطلب الأساسي الأصلي (عند الإنشاء من السوشيل ميديا / النظام):</span>
+                </span>
+                {baselineMod.updatedAt && (
+                  <span className="text-[10px] font-mono text-amber-800 shrink-0" dir="ltr">
+                    {new Date(baselineMod.updatedAt).toLocaleTimeString("ar-JO", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                )}
+              </div>
+              <div className="whitespace-pre-line text-xs font-bold leading-relaxed text-amber-950 bg-white/70 p-2.5 rounded-lg border border-amber-200/90">
+                {baselineMod.oldValue}
+              </div>
+            </div>
           )}
+
+          {/* SUBSEQUENT MODIFICATIONS LIST */}
+          {regularMods.length > 0 ? (
+            <div className="space-y-2 pt-1">
+              <div className="font-black text-xs text-amber-950 flex items-center gap-1">
+                <span>📝</span>
+                <span>التعديلات والتغييرات التي جرت عليه ({regularMods.length}):</span>
+              </div>
+              <ul className="space-y-2 divide-y divide-amber-200/60">
+                {regularMods.map((mod, idx) => (
+                  <li key={idx} className="pt-2 first:pt-0 space-y-1">
+                    <div className="flex flex-wrap items-center justify-between gap-1">
+                      <span className="font-black text-amber-950 text-xs">{mod.field}</span>
+                      {mod.updatedAt && (
+                        <span className="text-[10px] text-amber-800 shrink-0 font-mono" dir="ltr">
+                          {new Date(mod.updatedAt).toLocaleTimeString("ar-JO", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[11px]">
+                      {mod.oldValue && (
+                        <div className="rounded-lg bg-rose-500/10 p-2 text-rose-900 border border-rose-400/30">
+                          <span className="font-bold block text-[10px] text-rose-700">❌ القيمة الأصلية:</span>
+                          <span className="line-through font-semibold">{mod.oldValue}</span>
+                        </div>
+                      )}
+                      {mod.newValue && (
+                        <div className="rounded-lg bg-emerald-500/10 p-2 text-emerald-950 font-black border border-emerald-400/30">
+                          <span className="font-bold block text-[10px] text-emerald-700">✨ القيمة المعدلة (الجديدة):</span>
+                          <span>{mod.newValue}</span>
+                        </div>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : !baselineMod ? (
+            <p className="text-[11px] text-amber-800">تم حفظ وتأكيد التعديلات على هذا الطلب ✅</p>
+          ) : null}
         </div>
       )}
     </div>
