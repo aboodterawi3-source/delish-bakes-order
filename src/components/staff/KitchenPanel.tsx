@@ -71,7 +71,7 @@ function formatTimeSlotArabic(timeStr: string): string {
   if (!timeStr) return "";
   try {
     const parts = timeStr.slice(0, 5).split(":");
-    let h = parseInt(parts[0], 10);
+    let h = parseInt(parts[0] ?? "", 10);
     const m = parts[1] || "00";
     if (isNaN(h)) return timeStr.slice(0, 5);
     const period = h >= 12 ? "م" : "ص";
