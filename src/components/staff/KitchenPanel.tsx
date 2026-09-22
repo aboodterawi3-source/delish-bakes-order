@@ -597,25 +597,28 @@ export function KitchenPanel() {
     refetchInterval: 10000,
   });
 
-  // Realtime subscription
-  useOrdersRealtime({
-    queryKey: ORDERS_KEY,
-    filter: (payload) => {
-      const status = payload.new?.status ?? payload.old?.status;
-      return ["new", "baking", "ready"].includes(status);
-    },
-    onInsert: (row) => {
-      if (soundEnabled) {
-        if (audioRef.current) audioRef.current.play().catch(() => playKitchenChimeSound());
-        else playKitchenChimeSound();
-      }
-      setAlerts((curr) => (curr.includes(row.id) ? curr : [...curr, row.id]));
-    },
-    onUpdate: (row) => {
-      if (soundEnabled) playKitchenChimeSound();
-      setAlerts((curr) => (curr.includes(row.id) ? curr : [...curr, row.id]));
-    },
-  });
+  // Realtime subscription (refetches the kitchen queue on any order change)
+  useOrdersRealtime(ORDERS_KEY, true, "kitchen-live");
+
+  // Any newly appearing order raises a visual alert and rings the bell.
+  const knownIds = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    const rows = orders.data;
+    if (!rows) return;
+    const ids = rows.map((row) => row.id);
+    if (!knownIds.current) {
+      knownIds.current = new Set(ids);
+      return;
+    }
+    const fresh = ids.filter((id) => !knownIds.current!.has(id));
+    knownIds.current = new Set(ids);
+    if (fresh.length === 0) return;
+    if (soundEnabled) {
+      if (audioRef.current) audioRef.current.play().catch(() => playKitchenChimeSound());
+      else playKitchenChimeSound();
+    }
+    setAlerts((curr) => [...curr, ...fresh.filter((id) => !curr.includes(id))]);
+  }, [orders.data, soundEnabled]);
 
   const rawOrdersList = useMemo(() => orders.data ?? [], [orders.data]);
 
