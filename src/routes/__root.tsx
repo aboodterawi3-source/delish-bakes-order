@@ -157,7 +157,9 @@ function RootComponent() {
         <CartProvider>
           <AuthSync queryClient={queryClient} />
           {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-          <Outlet />
+          <AppErrorBoundary>
+            <Outlet />
+          </AppErrorBoundary>
           <Toaster />
         </CartProvider>
       </LangProvider>
