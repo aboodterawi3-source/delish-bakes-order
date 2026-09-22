@@ -38,11 +38,15 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
-  console.error(error);
+function ErrorComponent({ error, reset }: { error: unknown; reset: () => void }) {
   const router = useRouter();
   useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
+    // The thrown value can be anything — including a bare `undefined` — so never
+    // touch its properties directly here or this screen itself goes blank.
+    console.error("[route-error]", error ?? "undefined thrown value");
+    reportLovableError(error ?? new Error("Undefined value thrown"), {
+      boundary: "tanstack_root_error_component",
+    });
   }, [error]);
 
   return (
