@@ -198,14 +198,19 @@ export function SocialPanel() {
             : "استلام من المحل",
         items: [`${form.quantity} × ${finalOrderDetails}`],
         cakeWriting: form.customer_notes.trim(),
-        paymentLabel:
+        cardWriting: "",
+        paymentMethod:
           form.payment_option === "cliq_full"
             ? `دفع كامل كليك (${paidAmount.toFixed(2)} د.أ)`
             : form.payment_option === "cliq_deposit"
               ? `عربون كليك (${paidAmount.toFixed(2)} د.أ)`
               : "كاش عند الاستلام",
+        price: grandTotal - (form.method === "delivery" ? deliveryFee : 0),
+        deliveryFee: form.method === "delivery" ? deliveryFee : 0,
         total: grandTotal,
-        remaining,
+        paid: paidAmount,
+        recipientPhone: form.recipient_phone?.trim() || form.customer_phone.trim(),
+        senderPhone: form.customer_phone.trim(),
         notes: form.customer_notes.trim(),
       }),
     [form, finalOrderDetails, paidAmount, grandTotal, remaining],
@@ -286,23 +291,23 @@ export function SocialPanel() {
     const payload: SocialOrderInput = {
       customer_name: form.customer_name.trim(),
       customer_phone: form.customer_phone.trim(),
-      sender_phone: form.is_recipient_different ? form.customer_phone.trim() : undefined,
-      recipient_name: form.is_recipient_different ? form.recipient_name.trim() : undefined,
-      recipient_phone: form.is_recipient_different ? form.recipient_phone.trim() : undefined,
+      sender_phone: form.is_recipient_different ? form.customer_phone.trim() : null,
+      order_name: form.is_recipient_different ? form.recipient_name.trim() : null,
+      recipient_phone: form.is_recipient_different ? form.recipient_phone.trim() : null,
       requested_date: form.requested_date,
       requested_time: form.requested_time,
-      event_date: form.event_date || undefined,
+      event_date: form.event_date || null,
       method: form.method,
-      area: form.method === "delivery" ? form.area : undefined,
-      address: form.method === "delivery" ? form.address.trim() : undefined,
+      area: form.method === "delivery" ? form.area : null,
+      address: form.method === "delivery" ? form.address.trim() : null,
       order_details: finalOrderDetails,
       quantity: form.quantity,
       unit_price: unitPrice,
       payment_option: form.payment_option,
       deposit_paid: form.payment_option === "cash" ? 0 : Number(form.deposit_paid) || 0,
-      customer_notes: form.customer_notes.trim() || undefined,
-      staff_notes: form.staff_notes.trim() || undefined,
-      design_image_url: form.design_image_url || undefined,
+      design_notes: form.customer_notes.trim() || null,
+      staff_notes: form.staff_notes.trim() || null,
+      design_image_url: form.design_image_url || null,
       is_urgent: form.is_urgent,
     };
 

@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AdminSetupRouteImport } from './routes/admin-setup'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as CleanOrdersRouteImport } from './routes/clean-orders'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as DiscoverRouteImport } from './routes/discover'
 import { Route as EditOrderRouteImport } from './routes/edit-order'
@@ -45,6 +46,11 @@ const AdminSetupRoute = AdminSetupRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CleanOrdersRoute = CleanOrdersRouteImport.update({
+  id: '/clean-orders',
+  path: '/clean-orders',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -122,6 +128,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin-setup': typeof AdminSetupRoute
   '/auth': typeof AuthRoute
+  '/clean-orders': typeof CleanOrdersRoute
   '/dashboard': typeof DashboardRoute
   '/discover': typeof DiscoverRoute
   '/edit-order': typeof EditOrderRoute
@@ -141,6 +148,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin-setup': typeof AdminSetupRoute
   '/auth': typeof AuthRoute
+  '/clean-orders': typeof CleanOrdersRoute
   '/dashboard': typeof DashboardRoute
   '/discover': typeof DiscoverRoute
   '/edit-order': typeof EditOrderRoute
@@ -162,6 +170,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/admin-setup': typeof AdminSetupRoute
   '/auth': typeof AuthRoute
+  '/clean-orders': typeof CleanOrdersRoute
   '/dashboard': typeof DashboardRoute
   '/discover': typeof DiscoverRoute
   '/edit-order': typeof EditOrderRoute
@@ -183,6 +192,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin-setup'
     | '/auth'
+    | '/clean-orders'
     | '/dashboard'
     | '/discover'
     | '/edit-order'
@@ -202,6 +212,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin-setup'
     | '/auth'
+    | '/clean-orders'
     | '/dashboard'
     | '/discover'
     | '/edit-order'
@@ -222,6 +233,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/admin-setup'
     | '/auth'
+    | '/clean-orders'
     | '/dashboard'
     | '/discover'
     | '/edit-order'
@@ -243,6 +255,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AdminSetupRoute: typeof AdminSetupRoute
   AuthRoute: typeof AuthRoute
+  CleanOrdersRoute: typeof CleanOrdersRoute
   DashboardRoute: typeof DashboardRoute
   DiscoverRoute: typeof DiscoverRoute
   EditOrderRoute: typeof EditOrderRoute
@@ -283,6 +296,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/clean-orders': {
+      id: '/clean-orders'
+      path: '/clean-orders'
+      fullPath: '/clean-orders'
+      preLoaderRoute: typeof CleanOrdersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -408,6 +428,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AdminSetupRoute: AdminSetupRoute,
   AuthRoute: AuthRoute,
+  CleanOrdersRoute: CleanOrdersRoute,
   DashboardRoute: DashboardRoute,
   DiscoverRoute: DiscoverRoute,
   EditOrderRoute: EditOrderRoute,
