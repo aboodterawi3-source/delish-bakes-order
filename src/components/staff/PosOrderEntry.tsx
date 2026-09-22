@@ -6,29 +6,17 @@ import {
   Check,
   CheckCircle2,
   Clock,
-  Coins,
   CreditCard,
   FileText,
-  Gift,
-  HelpCircle,
-  Image as ImageIcon,
-  Info,
-  Layers,
   Loader2,
   Minus,
-  Percent,
   Plus,
   Printer,
-  Receipt,
-  RotateCcw,
   Search,
   ShoppingBag,
   ShoppingCart,
-  Sparkles,
   Store,
-  Tag,
   Trash2,
-  UserCheck,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -81,12 +69,12 @@ export type PosCartItem = {
 
 // Touch Category Tab Presets
 const STANDARD_CATEGORIES = [
-  { id: "all", label: "الكل", icon: "✨", keywords: [] },
-  { id: "cakes", label: "كيك جاهز", icon: "🎂", keywords: ["كيك", "cake", "جاتو"] },
-  { id: "cupcakes", label: "كب كيك", icon: "🧁", keywords: ["كب كيك", "cupcake"] },
-  { id: "pastries", label: "معجنات", icon: "🥐", keywords: ["معجنات", "pastry", "كرواسون", "croissant"] },
-  { id: "donuts", label: "دونات", icon: "🍩", keywords: ["دونات", "donut", "doughnut"] },
-  { id: "drinks", label: "مشروبات", icon: "☕", keywords: ["مشروب", "عصير", "قهوة", "شاي", "drink", "coffee", "latte"] },
+  { id: "all", label: "الكل", keywords: [] },
+  { id: "cakes", label: "كيك جاهز", keywords: ["كيك", "cake", "جاتو"] },
+  { id: "cupcakes", label: "كب كيك", keywords: ["كب كيك", "cupcake"] },
+  { id: "pastries", label: "معجنات", keywords: ["معجنات", "pastry", "كرواسون", "croissant"] },
+  { id: "donuts", label: "دونات", keywords: ["دونات", "donut", "doughnut"] },
+  { id: "drinks", label: "مشروبات", keywords: ["مشروب", "عصير", "قهوة", "شاي", "drink", "coffee", "latte"] },
 ];
 
 export function PosOrderEntry() {
@@ -100,16 +88,11 @@ export function PosOrderEntry() {
     queryFn: () => ordersFn({}),
   });
 
-  // Mode: "takeaway" (Instant cashier) vs "preorder" (Reservation / Delivery)
+  // Mode: "takeaway" (Default instant cashier) vs "preorder" (Reservation / Delivery)
   const [orderMode, setOrderMode] = useState<"takeaway" | "preorder">("takeaway");
   const [showPreorderModal, setShowPreorderModal] = useState(false);
   const [showMobileCartSheet, setShowMobileCartSheet] = useState(false);
   const [shouldPrintAfterCreate, setShouldPrintAfterCreate] = useState(false);
-
-  // Quick custom item on-the-fly
-  const [showCustomItemBox, setShowCustomItemBox] = useState(false);
-  const [customItemName, setCustomItemName] = useState("");
-  const [customItemPrice, setCustomItemPrice] = useState("");
 
   // Customer & Fulfillment Form State
   const [customerPhone, setCustomerPhone] = useState("");
@@ -180,8 +163,8 @@ export function PosOrderEntry() {
   );
 
   const deliveryFee = useMemo(
-    () => (orderMode === "preorder" && method === "delivery" && area ? (feeForArea(area) ?? 0) : 0),
-    [orderMode, method, area],
+    () => (method === "delivery" && area ? (feeForArea(area) ?? 0) : 0),
+    [method, area],
   );
 
   const discountAmount = useMemo(() => {
@@ -196,15 +179,8 @@ export function PosOrderEntry() {
 
   const depositVal = Number(depositPaid) || 0;
   const totalCartCount = useMemo(() => cart.reduce((sum, it) => sum + it.quantity, 0), [cart]);
-  const remainingBalance = Math.max(grandTotal - depositVal, 0);
 
-  // Quick cash payment denomination buttons helper
-  const handleQuickCash = (amount: number) => {
-    setPaymentMethod("cash");
-    setDepositPaid(String(amount));
-  };
-
-  // Instant Add to Cart
+  // Instant Add to Cart (Click increments count, no modals)
   const addToCart = (product: StorefrontProduct) => {
     setCart((prev) => {
       const existingIndex = prev.findIndex((item) => item.productId === product.id);
@@ -224,31 +200,9 @@ export function PosOrderEntry() {
       };
       return [...prev, newItem];
     });
-
     if (typeof window !== "undefined" && window.navigator?.vibrate) {
       try { window.navigator.vibrate(25); } catch { /* ignore */ }
     }
-  };
-
-  const addCustomItemToCart = () => {
-    const name = customItemName.trim();
-    const price = Math.max(Number(customItemPrice) || 0, 0);
-    if (!name) {
-      toast.error("يرجى إدخال اسم البند");
-      return;
-    }
-    const newItem: PosCartItem = {
-      id: `pos-custom-${Date.now()}`,
-      name,
-      quantity: 1,
-      unitPrice: price,
-      options: ["بند يدوي مخصص"],
-    };
-    setCart((prev) => [...prev, newItem]);
-    setCustomItemName("");
-    setCustomItemPrice("");
-    setShowCustomItemBox(false);
-    toast.success(`تمت إضافة: ${name}`);
   };
 
   const updateCartItemQuantity = (id: string, delta: number) => {
@@ -278,8 +232,8 @@ export function PosOrderEntry() {
     mutationFn: (input: CreateSalesOrderInput) => createOrderFn({ data: input }),
     onSuccess: (newOrder) => {
       queryClient.setQueryData<SalesOrder[]>(ORDERS_KEY, (curr) => [newOrder, ...(curr ?? [])]);
-      toast.success(`تم حفظ وإنشاء الطلب بنجاح ✅ (${orderLabel(newOrder.order_number, newOrder.staff_code)})`);
-
+      toast.success(`تم إنشاء الطلب بنجاح ✅ (${orderLabel(newOrder.order_number, newOrder.staff_code)})`);
+      
       if (shouldPrintAfterCreate) {
         try {
           printReceipt(newOrder);
@@ -319,7 +273,7 @@ export function PosOrderEntry() {
 
   const handleSubmitOrder = (andPrint = false) => {
     if (cart.length === 0) {
-      toast.error("السلة فارغة! اختر أي صنف من القائمة لإضافته.");
+      toast.error("السلة فارغة! اضغط على أي صنف لإضافته.");
       return;
     }
 
@@ -346,7 +300,7 @@ export function PosOrderEntry() {
       }
       if (method === "delivery" && !area) {
         setShowPreorderModal(true);
-        toast.error("يرجى اختيار منطقة التوصيل لحساب الأجرة");
+        toast.error("يرجى اختيار منطقة التوصيل");
         return;
       }
     }
@@ -385,7 +339,6 @@ export function PosOrderEntry() {
 
     createOrder.mutate(payload);
   };
-
   // Catalog products filtering
   const catalogProducts = storefront.data?.products ?? [];
 
@@ -417,8 +370,7 @@ export function PosOrderEntry() {
     });
   }, [catalogProducts, catalogQuery, selectedCategoryTab]);
 
-  const getItemQtyInCart = (productId?: string | null) => {
-    if (!productId) return 0;
+  const getItemQtyInCart = (productId: string) => {
     const item = cart.find((it) => it.productId === productId);
     return item ? item.quantity : 0;
   };
@@ -431,47 +383,34 @@ export function PosOrderEntry() {
     const itemRows = cart
       .map(
         (it) =>
-          `<tr><td style="padding:6px 0;border-bottom:1px dashed #ccc;"><b>${it.quantity} × ${esc(it.name)}</b>${it.options.length ? `<br><small style="color:#555;">${esc(it.options.join(" • "))}</small>` : ""}${it.notes ? `<br><small style="color:#8b4513;">ملاحظة: ${esc(it.notes)}</small>` : ""}</td></tr>`,
+          `<tr><td style="padding:6px 0;border-bottom:1px dashed #ccc;"><b>${it.quantity} × ${esc(it.name)}</b>${it.options.length ? `<br><small>${esc(it.options.join(" • "))}</small>` : ""}${it.notes ? `<br><small>ملاحظة: ${esc(it.notes)}</small>` : ""}</td></tr>`,
       )
       .join("");
-    const body = `<h1 style="text-align:center;font-size:20px;margin-bottom:6px;font-weight:900;">Delish Bakery • بون المطبخ</h1>
-<div style="text-align:center;font-size:13px;margin-bottom:8px;font-weight:bold;">التاريخ: ${requestedDate} | الوقت: ${requestedTime}</div>
-<div style="border-top:2px dashed #000;margin:6px 0;"></div>
-<div style="font-size:14px;margin-bottom:4px;"><b>النوع:</b> ${orderMode === "takeaway" ? "طلب محلي فوري (Takeaway)" : (method === "delivery" ? `توصيل منازل (${esc(area || "عمان")})` : "حجز مسبق واستلام")}</div>
-<div style="font-size:14px;margin-bottom:4px;"><b>العميل:</b> ${esc(customerName || (orderMode === "takeaway" ? "زبون محلي" : "بدون اسم"))}</div>
-${orderName ? `<div style="font-size:13px;margin-bottom:4px;"><b>اسم الطلب:</b> ${esc(orderName)}</div>` : ""}
-${inscription ? `<div style="font-size:16px;font-weight:bold;margin:8px 0;padding:6px;border:2px solid #000;background:#fff9e6;border-radius:4px;">الكتابة على الكيك: ${esc(inscription)}</div>` : ""}
-<div style="border-top:2px dashed #000;margin:6px 0;"></div>
+    const body = `<h1 style="text-align:center;font-size:20px;margin-bottom:8px;">Delish Bakery • بون المطبخ</h1>
+<div style="text-align:center;font-size:13px;margin-bottom:8px;">التاريخ: ${requestedDate} | الوقت: ${requestedTime}</div>
+<div style="border-top:2px dashed #000;margin:8px 0;"></div>
+<div><b>النوع:</b> ${orderMode === "takeaway" ? "طلب محلي Takeaway" : (method === "delivery" ? `توصيل (${esc(area || "عمان")})` : "استلام مسبق")}</div>
+<div><b>العميل:</b> ${esc(customerName || (orderMode === "takeaway" ? "زبون محلي" : "بدون اسم"))}</div>
+${inscription ? `<div style="font-size:16px;font-weight:bold;margin:8px 0;padding:6px;border:2px solid #000;border-radius:4px;">الكتابة: ${esc(inscription)}</div>` : ""}
+<div style="border-top:2px dashed #000;margin:8px 0;"></div>
 <table style="width:100%;font-size:15px;border-collapse:collapse;">${itemRows}</table>
-${notes ? `<div style="border-top:2px dashed #000;margin:6px 0;padding-top:4px;"><b>ملاحظات:</b> ${esc(notes)}</div>` : ""}
-${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:4px;color:#444;font-size:12px;"><b>ملاحظات الفريق:</b> ${esc(staffNotes)}</div>` : ""}`;
+${notes ? `<div style="border-top:2px dashed #000;margin:8px 0;padding-top:4px;"><b>ملاحظات:</b> ${esc(notes)}</div>` : ""}`;
     printDocument("بون المطبخ", body);
   };
 
-  // Sticky Cart Content Component
   const CartContent = ({ isMobileSheet = false }: { isMobileSheet?: boolean }) => (
-    <div className="flex h-full flex-col justify-between select-none">
-      {/* Top Header inside Cart */}
-      <div className="border-b border-border/70 p-3.5 bg-card/60 backdrop-blur-sm">
-        <div className="flex items-center justify-between gap-2 mb-3">
-          <div className="flex items-center gap-2">
-            <div className="grid h-8 w-8 place-items-center rounded-xl bg-primary/10 text-primary">
-              <ShoppingCart className="h-4 w-4" />
-            </div>
-            <div>
-              <span className="font-black text-sm text-foreground flex items-center gap-1.5 leading-none">
-                سلة الطلب والدفع
-              </span>
-              <span className="text-[11px] font-bold text-muted-foreground">
-                {totalCartCount} قطعة مُختارة
-              </span>
-            </div>
-          </div>
+    <div className="flex h-full flex-col justify-between">
+      <div className="border-b border-border p-3">
+        <div className="flex items-center justify-between gap-2 mb-2.5">
+          <span className="font-extrabold text-sm text-foreground flex items-center gap-1.5">
+            <ShoppingCart className="h-4 w-4 text-primary" />
+            سلة الطلب ({totalCartCount})
+          </span>
           {cart.length > 0 && (
             <button
               type="button"
               onClick={clearCart}
-              className="text-xs text-rose-600 hover:text-rose-700 font-black inline-flex items-center gap-1 cursor-pointer py-1 px-2.5 rounded-lg hover:bg-rose-50 transition-colors"
+              className="text-xs text-rose-600 hover:text-rose-700 font-bold inline-flex items-center gap-1 cursor-pointer py-1 px-2 rounded-lg hover:bg-rose-50"
             >
               <Trash2 className="h-3.5 w-3.5" />
               تفريغ
@@ -479,22 +418,21 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
           )}
         </div>
 
-        {/* Order Mode Switch: Instant Takeaway vs Pre-order */}
-        <div className="grid grid-cols-2 gap-1.5 p-1 bg-secondary/70 rounded-2xl border border-border/60">
+        <div className="grid grid-cols-2 gap-1.5 p-1 bg-secondary/50 rounded-xl">
           <button
             type="button"
             onClick={() => {
               setOrderMode("takeaway");
               setMethod("pickup");
             }}
-            className={`min-h-[44px] rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            className={`min-h-[48px] rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               orderMode === "takeaway"
-                ? "bg-card text-foreground shadow-sm border border-border/80"
+                ? "bg-card text-foreground shadow-xs border border-border/80"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <Store className="h-4 w-4 text-emerald-600 shrink-0" />
-            طلب كاشير محلي
+            <Store className="h-4 w-4 text-emerald-600" />
+            طلب محلي Takeaway
           </button>
           <button
             type="button"
@@ -502,74 +440,55 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
               setOrderMode("preorder");
               setShowPreorderModal(true);
             }}
-            className={`min-h-[44px] rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            className={`min-h-[48px] rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               orderMode === "preorder"
-                ? "bg-card text-primary shadow-sm border border-border/80"
+                ? "bg-card text-primary shadow-xs border border-border/80"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <Bike className="h-4 w-4 text-amber-600 shrink-0" />
+            <Bike className="h-4 w-4 text-amber-600" />
             حجز مسبق / توصيل
             {customerName && <span className="h-2 w-2 rounded-full bg-emerald-500" />}
           </button>
         </div>
 
-        {/* Pre-order banner details summary if filled */}
-        {orderMode === "preorder" && (
-          <div className="mt-2.5 flex items-center justify-between rounded-xl bg-amber-500/10 p-2.5 text-xs border border-amber-500/20 animate-in fade-in duration-150">
-            <div className="min-w-0 pr-1">
-              <span className="font-black text-foreground block truncate">
-                {customerName ? `${customerName} • ` : "عميل غير محدد • "}
-                {method === "delivery" ? `توصيل (${area || "عمان"})` : "استلام من المحل"}
-              </span>
-              <span className="text-[10px] text-muted-foreground font-bold">
-                ⏰ {requestedDate} | {requestedTime}
-              </span>
-            </div>
+        {orderMode === "preorder" && customerName && (
+          <div className="mt-2 flex items-center justify-between rounded-lg bg-primary/5 p-2 text-xs border border-primary/20">
+            <span className="font-bold text-foreground truncate">
+              {customerName} {method === "delivery" ? "(توصيل)" : "(استلام)"}
+            </span>
             <button
               type="button"
               onClick={() => setShowPreorderModal(true)}
-              className="text-primary font-black hover:underline cursor-pointer shrink-0 text-[11px] px-2 py-1 rounded-lg bg-card border border-border/60"
+              className="text-primary font-black hover:underline cursor-pointer"
             >
-              تعديل ✏️
+              تعديل
             </button>
           </div>
         )}
       </div>
 
-      {/* Cart Items List */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-2 max-h-[36vh] lg:max-h-[38vh]">
+      <div className="flex-1 overflow-y-auto p-3 space-y-2 max-h-[38vh] lg:max-h-[42vh]">
         {cart.length === 0 ? (
-          <div className="grid h-44 place-items-center text-center p-4">
+          <div className="grid h-36 place-items-center text-center p-4">
             <div>
-              <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-secondary/80 text-muted-foreground/50 mb-2">
-                <ShoppingBag className="h-6 w-6" />
-              </div>
-              <p className="text-xs font-black text-foreground">السلة فارغة حالياً</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">
-                المس أي صنف من القائمة لإضافته بنقرة واحدة
-              </p>
+              <ShoppingBag className="mx-auto h-8 w-8 text-muted-foreground/40 mb-1" />
+              <p className="text-xs font-bold text-muted-foreground">السلة فارغة</p>
+              <p className="text-[11px] text-muted-foreground/70">المس أي صنف من القائمة لإضافته فوراً</p>
             </div>
           </div>
         ) : (
           cart.map((item) => (
             <div
               key={item.id}
-              className="flex items-center justify-between gap-2 rounded-2xl border border-border/80 bg-card p-2.5 shadow-2xs transition-all hover:border-primary/40"
+              className="flex items-center justify-between gap-2 rounded-xl border border-border/80 bg-card p-2.5 shadow-2xs transition-all"
             >
               <div className="min-w-0 flex-1">
-                <h4 className="font-black text-xs text-foreground truncate leading-tight">
-                  {item.name}
-                </h4>
+                <h4 className="font-black text-xs text-foreground truncate">{item.name}</h4>
                 <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-0.5">
                   <span className="font-bold text-primary">{jd(item.unitPrice)}</span>
-                  <span>• الإجمالي: <strong>{jd(item.unitPrice * item.quantity)}</strong></span>
+                  <span>• الإجمالي: {jd(item.unitPrice * item.quantity)}</span>
                 </div>
-                {item.options.length > 0 && (
-                  <p className="text-[10px] text-muted-foreground/80 truncate mt-0.5">
-                    {item.options.join(" • ")}
-                  </p>
-                )}
               </div>
 
               <div className="flex items-center gap-1.5 shrink-0">
@@ -577,9 +496,9 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
                   type="button"
                   onClick={() => updateCartItemQuantity(item.id, -1)}
                   aria-label="إنقاص"
-                  className="grid h-9 w-9 place-items-center rounded-xl border border-border bg-secondary/60 text-foreground hover:bg-secondary active:scale-90 transition cursor-pointer"
+                  className="grid h-12 w-12 place-items-center rounded-xl border border-border bg-secondary/50 text-foreground hover:bg-secondary active:scale-90 transition cursor-pointer"
                 >
-                  <Minus className="h-3.5 w-3.5" />
+                  <Minus className="h-4 w-4" />
                 </button>
                 <span className="w-6 text-center font-black text-sm text-foreground">
                   {item.quantity}
@@ -588,17 +507,17 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
                   type="button"
                   onClick={() => updateCartItemQuantity(item.id, 1)}
                   aria-label="زيادة"
-                  className="grid h-9 w-9 place-items-center rounded-xl bg-primary/10 text-primary hover:bg-primary/20 active:scale-90 transition cursor-pointer font-black"
+                  className="grid h-12 w-12 place-items-center rounded-xl bg-primary/10 text-primary hover:bg-primary/20 active:scale-90 transition cursor-pointer"
                 >
-                  <Plus className="h-3.5 w-3.5" />
+                  <Plus className="h-4 w-4" />
                 </button>
                 <button
                   type="button"
                   onClick={() => removeCartItem(item.id)}
                   aria-label="حذف"
-                  className="grid h-9 w-8 place-items-center rounded-xl text-rose-500 hover:bg-rose-50 active:scale-90 transition cursor-pointer"
+                  className="grid h-12 w-10 place-items-center rounded-xl text-rose-500 hover:bg-rose-50 active:scale-90 transition cursor-pointer"
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
+                  <Trash2 className="h-4 w-4" />
                 </button>
               </div>
             </div>
@@ -606,23 +525,18 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
         )}
       </div>
 
-      {/* Financials, Discounts, Payment & Action Buttons */}
-      <div className="border-t border-border/80 bg-card p-3 space-y-3 pb-safe">
-        {/* Quick Discount & Deposit controls */}
-        <div className="rounded-2xl bg-secondary/40 p-2.5 border border-border/80 space-y-2">
-          {/* Discount Selector */}
+      <div className="border-t border-border bg-card/95 p-3 space-y-3 pb-safe">
+        {/* Quick Discount & Deposit Practical Controls */}
+        <div className="rounded-xl bg-secondary/40 p-2.5 border border-border/80 space-y-2">
           <div className="flex items-center justify-between gap-1">
-            <span className="text-[11px] font-bold text-muted-foreground shrink-0 flex items-center gap-1">
-              <Percent className="h-3 w-3 text-primary" />
-              الخصم:
-            </span>
+            <span className="text-[11px] font-bold text-muted-foreground shrink-0">الخصم:</span>
             <div className="flex items-center gap-1 overflow-x-auto">
               {["0", "5", "10", "15"].map((pct) => (
                 <button
                   key={pct}
                   type="button"
                   onClick={() => setDiscountPercent(pct)}
-                  className={`min-h-[28px] px-2 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                  className={`min-h-[28px] px-2.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
                     discountPercent === pct
                       ? "bg-primary text-primary-foreground shadow-2xs font-black"
                       : "bg-card border border-border text-foreground hover:bg-secondary"
@@ -639,17 +553,12 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
                 onChange={(e) => setDiscountPercent(e.target.value)}
                 placeholder="%"
                 aria-label="نسبة الخصم المخصصة"
-                className="h-7 w-12 rounded-lg border border-input bg-card px-1 text-center text-xs font-black text-foreground"
+                className="h-7 w-12 rounded-lg border border-input bg-card px-1.5 text-center text-xs font-bold text-foreground"
               />
             </div>
           </div>
-
-          {/* Deposit & Cash Quick Buttons */}
           <div className="flex items-center justify-between pt-1.5 border-t border-border/50">
-            <span className="text-[11px] font-bold text-muted-foreground flex items-center gap-1">
-              <Coins className="h-3 w-3 text-amber-500" />
-              المدفوع / العربون:
-            </span>
+            <span className="text-[11px] font-bold text-muted-foreground">الدفعة الأولى (عربون):</span>
             <div className="flex items-center gap-1">
               <input
                 type="number"
@@ -659,81 +568,47 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
                 onChange={(e) => setDepositPaid(e.target.value)}
                 placeholder="0"
                 aria-label="الدفعة الأولى"
-                className="h-7 w-20 rounded-lg border border-input bg-card px-2 text-start text-xs font-black text-foreground"
+                className="h-7 w-20 rounded-lg border border-input bg-card px-2 text-start text-xs font-bold text-foreground"
               />
               <span className="text-[11px] text-muted-foreground font-bold">د.أ</span>
             </div>
           </div>
-
-          {/* Fast Cash Note Shortcut Pills */}
-          <div className="flex items-center justify-end gap-1 pt-1 border-t border-border/40">
-            <button
-              type="button"
-              onClick={() => handleQuickCash(grandTotal)}
-              className="text-[10px] font-black px-2 py-0.5 rounded-md bg-card border border-border hover:bg-primary/10 hover:text-primary transition-colors cursor-pointer"
-            >
-              كامل المبلغ ({jd(grandTotal)})
-            </button>
-            <button
-              type="button"
-              onClick={() => handleQuickCash(10)}
-              className="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-card border border-border hover:bg-secondary cursor-pointer"
-            >
-              10 د.أ
-            </button>
-            <button
-              type="button"
-              onClick={() => handleQuickCash(20)}
-              className="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-card border border-border hover:bg-secondary cursor-pointer"
-            >
-              20 د.أ
-            </button>
-            <button
-              type="button"
-              onClick={() => handleQuickCash(50)}
-              className="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-card border border-border hover:bg-secondary cursor-pointer"
-            >
-              50 د.أ
-            </button>
-          </div>
         </div>
 
-        {/* Invoice Summary Figures */}
-        <div className="space-y-1 text-xs text-muted-foreground">
+        <div className="space-y-1.5 text-xs text-muted-foreground">
           <div className="flex justify-between">
             <span>المجموع الفرعي:</span>
             <span className="font-bold text-foreground">{jd(subtotal)}</span>
           </div>
           {deliveryFee > 0 && (
-            <div className="flex justify-between text-amber-600 font-bold">
+            <div className="flex justify-between text-amber-700 dark:text-amber-400 font-bold">
               <span>أجور التوصيل:</span>
               <span>+{jd(deliveryFee)}</span>
             </div>
           )}
           {discountAmount > 0 && (
-            <div className="flex justify-between text-emerald-600 font-bold">
+            <div className="flex justify-between text-emerald-700 dark:text-emerald-400 font-bold">
               <span>الخصم ({discountPercent}%):</span>
               <span>- {jd(discountAmount)}</span>
             </div>
           )}
-          <div className="flex items-center justify-between border-t border-border/80 pt-1.5 text-base font-black text-foreground">
+          <div className="flex items-center justify-between border-t border-border pt-1.5 text-base font-black text-foreground">
             <span>الإجمالي النهائي:</span>
-            <span className="text-primary text-xl font-black">{jd(grandTotal)}</span>
+            <span className="text-primary font-display text-lg">{jd(grandTotal)}</span>
           </div>
           {depositVal > 0 && depositVal < grandTotal && (
-            <div className="flex justify-between text-xs text-rose-600 font-black pt-0.5">
+            <div className="flex justify-between text-xs text-rose-600 font-bold pt-0.5">
               <span>المتبقي عند الاستلام:</span>
-              <span>{jd(remainingBalance)}</span>
+              <span>{jd(grandTotal - depositVal)}</span>
             </div>
           )}
         </div>
 
-        {/* Payment Method Selector */}
         <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
             onClick={() => setPaymentMethod("cash")}
-            className={`min-h-[46px] rounded-xl font-black text-xs transition-all flex items-center justify-center gap-2 cursor-pointer border ${
+            className={`min-h-[48px] rounded-xl font-black text-xs transition-all flex items-center justify-center gap-2 cursor-pointer border ${
               paymentMethod === "cash"
                 ? "bg-emerald-600 text-white border-emerald-700 shadow-sm"
                 : "bg-background border-border text-foreground hover:bg-secondary/60"
@@ -746,7 +621,7 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
           <button
             type="button"
             onClick={() => setPaymentMethod("cliq")}
-            className={`min-h-[46px] rounded-xl font-black text-xs transition-all flex items-center justify-center gap-2 cursor-pointer border ${
+            className={`min-h-[48px] rounded-xl font-black text-xs transition-all flex items-center justify-center gap-2 cursor-pointer border ${
               paymentMethod === "cliq" || paymentMethod === "visa"
                 ? "bg-blue-600 text-white border-blue-700 shadow-sm"
                 : "bg-background border-border text-foreground hover:bg-secondary/60"
@@ -758,7 +633,6 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
           </button>
         </div>
 
-        {/* Checkout Execution Buttons */}
         <div className="space-y-2">
           <button
             type="button"
@@ -771,7 +645,7 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
             ) : (
               <Printer className="h-5 w-5" />
             )}
-            <span>تأكيد وطباعة الفاتورة 🖨️</span>
+            <span>تأكيد وطباعة الفاتورة</span>
           </button>
 
           <div className="flex gap-2">
@@ -779,7 +653,7 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
               type="button"
               disabled={cart.length === 0 || createOrder.isPending}
               onClick={() => handleSubmitOrder(false)}
-              className="flex-1 min-h-[46px] rounded-xl border border-border bg-card text-foreground font-bold text-xs hover:bg-secondary/60 active:scale-98 transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40"
+              className="flex-1 min-h-[48px] rounded-xl border border-border bg-card text-foreground font-bold text-xs hover:bg-secondary/60 active:scale-98 transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40"
             >
               <CheckCircle2 className="h-4 w-4 text-emerald-600" />
               تأكيد فقط
@@ -788,10 +662,10 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
               type="button"
               disabled={cart.length === 0}
               onClick={printKitchenSlipCurrent}
-              title="طباعة بون المطبخ"
-              className="min-h-[46px] px-3.5 rounded-xl border border-border bg-card text-foreground font-bold text-xs hover:bg-secondary/60 active:scale-98 transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40"
+              title="طباعة بون المطبخ قبل الإنشاء"
+              className="min-h-[48px] px-3 rounded-xl border border-border bg-card text-foreground font-bold text-xs hover:bg-secondary/60 active:scale-98 transition flex items-center justify-center gap-1 cursor-pointer disabled:opacity-40"
             >
-              <FileText className="h-4 w-4 text-amber-600" />
+              <FileText className="h-4 w-4" />
               بون مطبخ
             </button>
           </div>
@@ -799,108 +673,50 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
       </div>
     </div>
   );
-
   return (
     <div dir="rtl" className="min-h-screen min-w-0 bg-background pb-24 lg:pb-12 font-sans">
       <div className="mx-auto max-w-7xl px-2 sm:px-4">
-        {/* Top POS Header Strip */}
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2.5 rounded-2xl border border-border/80 bg-card p-3 shadow-xs">
-          <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary text-primary-foreground shadow-sm">
-              <Store className="h-5 w-5" />
-            </div>
-            <div>
-              <h2 className="font-black text-base text-foreground sm:text-lg flex items-center gap-2">
-                نقطة البيع والكاشير • Delish POS
-              </h2>
-              <p className="text-[11px] font-bold text-muted-foreground">
-                شاشة لمس سريعة ومريحة • إضافة بنقرة واحدة وحساب فوري
-              </p>
-            </div>
+        {/* Top POS Header */}
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border bg-card p-3 shadow-xs">
+          <div>
+            <h2 className="font-display text-base font-black text-foreground sm:text-lg flex items-center gap-2">
+              <Store className="h-5 w-5 text-primary" />
+              نقطة البيع السريعة • Delish POS
+            </h2>
+            <p className="text-[11px] text-muted-foreground">
+              واجهة لمس مخصصة للتابلت والهاتف • إضافة بنقرة واحدة وحساب فوري
+            </p>
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setShowCustomItemBox((v) => !v)}
-              className="min-h-[44px] px-3.5 rounded-xl border border-border bg-secondary/50 text-foreground text-xs font-bold hover:bg-secondary transition flex items-center gap-1.5 cursor-pointer"
-            >
-              <Plus className="h-4 w-4 text-primary" />
-              <span>+ بند مخصص سريع</span>
-            </button>
-
             <button
               type="button"
               onClick={() => {
                 setOrderMode("preorder");
                 setShowPreorderModal(true);
               }}
-              className="min-h-[44px] px-3.5 rounded-xl border border-primary/40 bg-primary/10 text-primary text-xs font-black hover:bg-primary/20 transition flex items-center gap-1.5 cursor-pointer"
+              className="min-h-[48px] px-4 rounded-xl border border-border bg-secondary/50 text-foreground text-xs font-bold hover:bg-secondary transition flex items-center gap-1.5 cursor-pointer"
             >
-              <Bike className="h-4 w-4" />
+              <Bike className="h-4 w-4 text-primary" />
               {orderMode === "preorder" ? "تعديل الحجز والتوصيل ✏️" : "+ حجز مسبق / توصيل"}
             </button>
           </div>
         </div>
 
-        {/* Quick Custom Item Drawer/Box if toggled */}
-        {showCustomItemBox && (
-          <div className="mb-3 rounded-2xl border border-primary/30 bg-primary/5 p-3 animate-in fade-in duration-150">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-black text-primary flex items-center gap-1.5">
-                <Sparkles className="h-4 w-4" />
-                إضافة بند يدوي مخصص للسلة (كيك تفصيل خاص، رسوم إضافية، صندوق هدية)
-              </span>
-              <button
-                type="button"
-                onClick={() => setShowCustomItemBox(false)}
-                className="text-muted-foreground hover:text-foreground p-1"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
-              <input
-                type="text"
-                value={customItemName}
-                onChange={(e) => setCustomItemName(e.target.value)}
-                placeholder="اسم البند أو التفصيل..."
-                className="sm:col-span-7 min-h-[44px] rounded-xl border border-input bg-card px-3 text-xs font-bold text-foreground outline-none focus:border-primary"
-              />
-              <input
-                type="number"
-                min="0"
-                step="0.1"
-                value={customItemPrice}
-                onChange={(e) => setCustomItemPrice(e.target.value)}
-                placeholder="السعر (د.أ)..."
-                className="sm:col-span-3 min-h-[44px] rounded-xl border border-input bg-card px-3 text-xs font-bold text-foreground outline-none focus:border-primary"
-              />
-              <button
-                type="button"
-                onClick={addCustomItemToCart}
-                className="sm:col-span-2 min-h-[44px] rounded-xl bg-primary text-primary-foreground text-xs font-black shadow-xs hover:opacity-90 cursor-pointer transition"
-              >
-                إضافة للسلة ✓
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* 2-Column Split: Landscape Tablet & Desktop (Right: 65% Catalog | Left: 35% Sticky Cart) */}
         <div className="grid gap-4 lg:grid-cols-12">
-          {/* RIGHT COLUMN: Fast Touch Register Catalog */}
+          {/* RIGHT COLUMN (65% on Tablet Landscape - lg:col-span-8) */}
           <div className="min-w-0 lg:col-span-7 xl:col-span-8 space-y-3">
             {/* Search & Horizontal Touch-Scroll Category Tabs */}
-            <div className="rounded-2xl border border-border/80 bg-card p-3 shadow-xs space-y-2.5">
+            <div className="rounded-2xl border border-border bg-card p-3 shadow-xs space-y-2.5">
               <div className="relative flex items-center">
                 <input
                   type="search"
                   inputMode="search"
                   value={catalogQuery}
                   onChange={(e) => setCatalogQuery(e.target.value)}
-                  placeholder="ابحث عن كيكة، صنف، نكهة، أو قسم..."
-                  className="min-h-[46px] w-full rounded-xl border border-input bg-background pe-10 ps-3 text-sm font-bold text-foreground outline-none focus:border-primary"
+                  placeholder="ابحث عن صنف، نكهة، أو كيك..."
+                  className="min-h-[48px] w-full rounded-xl border border-input bg-background pe-10 ps-3 text-sm font-bold text-foreground outline-none focus:border-primary"
                 />
                 <Search className="absolute end-3 h-5 w-5 text-muted-foreground pointer-events-none" />
                 {catalogQuery && (
@@ -928,14 +744,13 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
                       role="tab"
                       aria-selected={isActive}
                       onClick={() => setSelectedCategoryTab(cat.id)}
-                      className={`min-h-[44px] px-4 rounded-xl text-xs font-black shrink-0 whitespace-nowrap transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      className={`min-h-[48px] px-5 rounded-xl text-xs font-black shrink-0 whitespace-nowrap transition-all flex items-center justify-center cursor-pointer ${
                         isActive
                           ? "bg-primary text-primary-foreground shadow-sm scale-102"
-                          : "border border-border/80 bg-background text-foreground hover:bg-secondary/70"
+                          : "border border-border bg-background text-foreground hover:bg-secondary/60"
                       }`}
                     >
-                      <span>{cat.icon}</span>
-                      <span>{cat.label}</span>
+                      {cat.label}
                     </button>
                   );
                 })}
@@ -945,29 +760,11 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
             {/* Product Cards Grid */}
             {storefront.isLoading ? (
               <div className="grid h-64 place-items-center rounded-2xl border border-border bg-card">
-                <div className="flex flex-col items-center gap-2">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  <p className="text-xs font-bold text-muted-foreground">جاري تحميل قائمة المنتجات...</p>
-                </div>
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
             ) : filteredProducts.length === 0 ? (
               <div className="grid h-52 place-items-center rounded-2xl border border-border bg-card p-6 text-center">
-                <div>
-                  <Search className="mx-auto h-8 w-8 text-muted-foreground/40 mb-2" />
-                  <p className="font-black text-sm text-muted-foreground">
-                    لا توجد أصناف مطابقة للبحث أو القسم المختار
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCatalogQuery("");
-                      setSelectedCategoryTab("all");
-                    }}
-                    className="mt-2 text-xs text-primary font-bold hover:underline cursor-pointer"
-                  >
-                    إعادة ضبط الفلتر
-                  </button>
-                </div>
+                <p className="font-bold text-sm text-muted-foreground">لا توجد أصناف مطابقة للبحث أو القسم المختار</p>
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-3">
@@ -978,10 +775,10 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
                       key={prod.id}
                       type="button"
                       onClick={() => addToCart(prod)}
-                      className={`group relative min-h-[118px] rounded-2xl border p-3 text-start transition-all duration-150 flex flex-col justify-between cursor-pointer active:scale-96 ${
+                      className={`group relative min-h-[110px] rounded-2xl border p-3 text-start transition-all duration-150 flex flex-col justify-between cursor-pointer active:scale-96 ${
                         qty > 0
                           ? "border-primary bg-primary/5 shadow-xs"
-                          : "border-border/80 bg-card hover:border-primary/40 hover:bg-secondary/20 shadow-2xs"
+                          : "border-border bg-card hover:border-primary/40 hover:bg-secondary/20 shadow-2xs"
                       }`}
                     >
                       {qty > 0 && (
@@ -990,33 +787,22 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
                         </span>
                       )}
 
-                      <div className="space-y-1">
-                        <div className="flex items-start justify-between gap-1">
-                          <h3 className="font-black text-xs text-foreground line-clamp-2 leading-tight">
-                            {prod.name_ar}
-                          </h3>
-                          {prod.image_url ? (
-                            <img
-                              src={prod.image_url}
-                              alt={prod.name_ar}
-                              className="h-8 w-8 rounded-lg object-cover border border-border/60 shrink-0"
-                            />
-                          ) : (
-                            <span className="text-base shrink-0">🍰</span>
-                          )}
-                        </div>
+                      <div>
+                        <h3 className="font-black text-xs text-foreground line-clamp-2 leading-tight">
+                          {prod.name_ar}
+                        </h3>
                         {prod.filling_ar && (
-                          <p className="text-[10px] text-muted-foreground truncate">
-                            حشوة: {prod.filling_ar}
+                          <p className="text-[10px] text-muted-foreground truncate mt-0.5">
+                            {prod.filling_ar}
                           </p>
                         )}
                       </div>
 
-                      <div className="mt-2 flex items-center justify-between pt-1.5 border-t border-border/40">
-                        <span className="font-black text-sm text-primary">
+                      <div className="mt-2 flex items-center justify-between pt-1 border-t border-border/40">
+                        <span className="font-display font-black text-sm text-primary">
                           {jd(prod.price || 0)}
                         </span>
-                        <span className="grid h-8 w-8 place-items-center rounded-xl bg-secondary/80 text-foreground group-hover:bg-primary group-hover:text-primary-foreground transition-colors shadow-2xs">
+                        <span className="grid h-8 w-8 place-items-center rounded-lg bg-secondary/80 group-hover:bg-primary group-hover:text-white transition-colors">
                           <Plus className="h-4 w-4" />
                         </span>
                       </div>
@@ -1027,16 +813,16 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
             )}
           </div>
 
-          {/* LEFT COLUMN: Sticky Cart Container (Desktop & Tablet Landscape) */}
+          {/* LEFT COLUMN (35% on Tablet Landscape - lg:col-span-4): Sticky Cart Container */}
           <div className="hidden lg:block lg:col-span-5 xl:col-span-4">
-            <div className="sticky top-16 rounded-3xl border border-border/80 bg-card shadow-sm overflow-hidden">
+            <div className="sticky top-16 rounded-2xl border border-border bg-card shadow-xs overflow-hidden">
               <CartContent />
             </div>
           </div>
         </div>
       </div>
 
-      {/* MOBILE & PORTRAIT TABLET STICKY BOTTOM BAR */}
+      {/* MOBILE & PORTRAIT TABLET STICKY BOTTOM BAR (Always in thumb reach) */}
       <div className="lg:hidden fixed bottom-0 inset-x-0 z-30 border-t border-border bg-card/95 backdrop-blur-md p-3 shadow-2xl pb-safe">
         <button
           type="button"
@@ -1046,16 +832,16 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
           <div className="flex items-center gap-2">
             <ShoppingCart className="h-5 w-5" />
             <span>{totalCartCount} أصناف</span>
-            <span className="opacity-60">|</span>
+            <span className="opacity-70">|</span>
             <span>{jd(grandTotal)}</span>
           </div>
-          <span className="inline-flex items-center gap-1 text-xs font-black">
+          <span className="inline-flex items-center gap-1 text-xs font-bold">
             الدفع والسلة ⬅️
           </span>
         </button>
       </div>
 
-      {/* MOBILE BOTTOM SHEET FOR CART */}
+      {/* MOBILE BOTTOM SHEET (Smooth slide-up sheet on tap) */}
       {showMobileCartSheet && (
         <div className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end bg-black/60 animate-in fade-in duration-200">
           <div
@@ -1084,23 +870,16 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
         </div>
       )}
 
-      {/* PRE-ORDER & DELIVERY MODAL (3 Structured Ergonomic Cards) */}
+      {/* PRE-ORDER & DELIVERY MODAL (Organized into 3 ergonomic, practical cards) */}
       {showPreorderModal && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-3 sm:p-4 animate-in fade-in duration-150 backdrop-blur-xs">
-          <div className="w-full max-w-2xl rounded-3xl border border-border bg-card p-4 sm:p-5 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-border/80 pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="grid h-9 w-9 place-items-center rounded-xl bg-primary/10 text-primary">
-                  <Bike className="h-5 w-5" />
-                </div>
-                <div>
-                  <h3 className="font-black text-base text-foreground">
-                    تفاصيل الحجز المسبق والتوصيل
-                  </h3>
-                  <p className="text-[11px] font-bold text-muted-foreground">
-                    بيانات العميل، المنطقة، موعد التسليم، وتفاصيل الكيكة
-                  </p>
-                </div>
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-3 sm:p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-xl rounded-3xl border border-border bg-card p-4 sm:p-5 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2">
+                <Bike className="h-5 w-5 text-primary" />
+                <h3 className="font-display text-base font-black text-foreground">
+                  تفاصيل الحجز المسبق والتوصيل
+                </h3>
               </div>
               <button
                 type="button"
@@ -1112,10 +891,10 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
               </button>
             </div>
 
-            <div className="space-y-3.5">
+            <div className="space-y-4">
               {/* CARD 1: Customer & Gift Details */}
-              <div className="rounded-2xl border border-border/80 bg-secondary/20 p-3.5 space-y-3">
-                <div className="flex items-center gap-2 text-xs font-black text-primary border-b border-border/60 pb-2">
+              <div className="rounded-2xl border border-border bg-secondary/20 p-3.5 space-y-3">
+                <div className="flex items-center gap-2 text-xs font-black text-primary border-b border-border/60 pb-1.5">
                   <span>👤</span>
                   <span>1. بيانات العميل والإهداء</span>
                 </div>
@@ -1176,7 +955,7 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
                 </div>
 
                 {/* Gift Option Toggle */}
-                <div className="pt-1.5 border-t border-border/40">
+                <div className="pt-1 border-t border-border/40">
                   <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-bold text-foreground py-1">
                     <input
                       type="checkbox"
@@ -1184,11 +963,11 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
                       onChange={(e) => setIsGift(e.target.checked)}
                       className="h-4 w-4 rounded border-input text-primary accent-primary"
                     />
-                    <span>🎁 هذا الطلب إهداء لطرف آخر (بيانات مستلم ومشتري مختلفة)</span>
+                    <span>🎁 هذا الطلب إهداء لشخص آخر (بيانات مستلم مختلفة)</span>
                   </label>
 
                   {isGift && (
-                    <div className="mt-2 grid gap-2.5 sm:grid-cols-3 rounded-xl bg-card p-3 border border-border animate-in fade-in duration-150">
+                    <div className="mt-2 grid gap-2.5 sm:grid-cols-3 rounded-xl bg-card p-2.5 border border-border animate-in fade-in duration-150">
                       <div>
                         <label className="block text-[11px] font-bold text-muted-foreground mb-1">اسم المستلم</label>
                         <input
@@ -1211,7 +990,7 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
                         />
                       </div>
                       <div>
-                        <label className="block text-[11px] font-bold text-muted-foreground mb-1">هاتف المشتري (المرسل)</label>
+                        <label className="block text-[11px] font-bold text-muted-foreground mb-1">هاتف المرسل (المشتري)</label>
                         <input
                           dir="ltr"
                           type="tel"
@@ -1227,8 +1006,8 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
               </div>
 
               {/* CARD 2: Fulfillment, Area & Schedule */}
-              <div className="rounded-2xl border border-border/80 bg-secondary/20 p-3.5 space-y-3">
-                <div className="flex items-center gap-2 text-xs font-black text-primary border-b border-border/60 pb-2">
+              <div className="rounded-2xl border border-border bg-secondary/20 p-3.5 space-y-3">
+                <div className="flex items-center gap-2 text-xs font-black text-primary border-b border-border/60 pb-1.5">
                   <span>🛵</span>
                   <span>2. طريقة الاستلام وموعد التسليم</span>
                 </div>
@@ -1317,8 +1096,8 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
               </div>
 
               {/* CARD 3: Customization, Notes & Inscription */}
-              <div className="rounded-2xl border border-border/80 bg-secondary/20 p-3.5 space-y-3">
-                <div className="flex items-center gap-2 text-xs font-black text-primary border-b border-border/60 pb-2">
+              <div className="rounded-2xl border border-border bg-secondary/20 p-3.5 space-y-3">
+                <div className="flex items-center gap-2 text-xs font-black text-primary border-b border-border/60 pb-1.5">
                   <span>🎂</span>
                   <span>3. تفاصيل الكيك والكتابة والملاحظات</span>
                 </div>
@@ -1332,7 +1111,7 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
                     value={inscription}
                     onChange={(e) => setInscription(e.target.value)}
                     placeholder="مثال: Happy Birthday Sarah / مبروك التخرج"
-                    className="min-h-[46px] w-full rounded-xl border-2 border-amber-300 bg-amber-50/80 px-3 text-sm font-black text-amber-950 outline-none focus:border-amber-500"
+                    className="min-h-[46px] w-full rounded-xl border-2 border-amber-300 bg-amber-50/70 px-3 text-sm font-black text-foreground outline-none focus:border-amber-500"
                   />
                 </div>
 
