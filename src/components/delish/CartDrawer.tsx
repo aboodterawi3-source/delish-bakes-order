@@ -328,38 +328,29 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
             ))}
 
           {stage === "checkout" && (
-            <div className="space-y-3.5">
-              {/* Card 1: Customer Contact Info */}
-              <div className="rounded-2xl border border-border/80 bg-card/70 p-3.5 space-y-3 shadow-2xs">
-                <p className="text-xs font-black text-foreground flex items-center gap-1.5 border-b border-border/50 pb-2">
-                  <span>👤</span>
-                  <span>{lang === "ar" ? "بيانات التواصل" : "Contact details"}</span>
-                </p>
-                <Field label={t("name")} error={errors["name"]} errText={t("required")}>
-                  {(p) => <input className={inputCls} autoComplete="name" value={form.name} onChange={(e) => set("name", e.target.value)} {...p} />}
-                </Field>
-                <Field label={t("phone")} error={errors["phone"]} errText={t("required")}>
-                  {(p) => (
-                    <input
-                      className={inputCls}
-                      inputMode="tel"
-                      autoComplete="tel"
-                      dir="ltr"
-                      placeholder="07 9999 9999"
-                      value={form.phone}
-                      onChange={(e) => set("phone", e.target.value)}
-                      {...p}
-                    />
-                  )}
-                </Field>
-              </div>
+            <div className="space-y-4">
+              <Field label={t("name")} error={errors["name"]} errText={t("required")}>
+                {(p) => <input className={inputCls} autoComplete="name" value={form.name} onChange={(e) => set("name", e.target.value)} {...p} />}
+              </Field>
+              <Field label={t("phone")} error={errors["phone"]} errText={t("required")}>
+                {(p) => (
+                  <input
+                    className={inputCls}
+                    inputMode="tel"
+                    autoComplete="tel"
+                    dir="ltr"
+                    placeholder="07 9999 9999"
+                    value={form.phone}
+                    onChange={(e) => set("phone", e.target.value)}
+                    {...p}
+                  />
+                )}
+              </Field>
 
-              {/* Card 2: Fulfilment Method & Address */}
-              <div className="rounded-2xl border border-border/80 bg-card/70 p-3.5 space-y-3 shadow-2xs">
-                <p className="text-xs font-black text-foreground flex items-center gap-1.5 border-b border-border/50 pb-2">
-                  <span>🚗</span>
-                  <span>{t("method")}</span>
-                </p>
+              <fieldset>
+                <legend className="mb-2 text-xs font-bold tracking-wide text-muted-foreground uppercase">
+                  {t("method")}
+                </legend>
                 <div className="grid gap-2 min-[360px]:grid-cols-2">
                   {(["delivery", "pickup"] as const).map((m) => (
                     <button
@@ -379,139 +370,132 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                     </button>
                   ))}
                 </div>
+              </fieldset>
 
-                {form.method === "delivery" && (
-                  <div className="space-y-3 pt-1">
-                    <Field label={t("area")} error={errors["area"]} errText={t("required")}>
-                      {(p) => (
-                        <select
-                          className={inputCls}
-                          value={form.area}
-                          onChange={(e) => set("area", e.target.value)}
-                          {...p}
-                        >
-                          <option value="">{lang === "ar" ? "اختر المنطقة" : "Select your area"}</option>
-                          {DELIVERY_ZONES.map((zone) => (
-                            <optgroup key={zone.labelEn} label={lang === "ar" ? zone.labelAr : zone.labelEn}>
-                              {zone.areas.map((area) => (
-                                <option key={`${zone.labelEn}-${area}`} value={area}>
-                                  {area === OTHER_GOVERNORATES_AREA
-                                    ? lang === "ar"
-                                      ? `${area} (٥–٨ د.أ)`
-                                      : `Other governorates (5–8 JOD)`
-                                    : `${area} — ${zone.fee.toFixed(2)} ${t("jod")}`}
-                                </option>
-                              ))}
-                            </optgroup>
-                          ))}
-                        </select>
-                      )}
-                    </Field>
-                    {form.area.trim() === OTHER_GOVERNORATES_AREA ? (
-                      <p className="-mt-1 text-xs font-semibold text-muted-foreground">
-                        {lang === "ar"
-                          ? "أجرة التوصيل للمحافظات الأخرى من ٥ إلى ٨ د.أ — يحددها فريقنا عند تأكيد الطلب حسب العنوان."
-                          : "Delivery to other governorates is 5–8 JOD — our team confirms the exact fee based on your address."}
-                      </p>
-                    ) : (
-                      areaFee !== null && (
-                        <p className="-mt-1 text-xs font-semibold text-muted-foreground">
-                          {lang === "ar"
-                            ? `أجرة التوصيل لهذه المنطقة: ${areaFee.toFixed(2)} د.أ`
-                            : `Delivery fee for this area: ${areaFee.toFixed(2)} JOD`}
-                        </p>
-                      )
-                    )}
-                    <Field label={t("address")} error={errors["address"]} errText={t("required")}>
-                      {(p) => (
-                        <textarea
-                          rows={2}
-                          className={inputCls}
-                          value={form.address}
-                          onChange={(e) => set("address", e.target.value)}
-                          {...p}
-                        />
-                      )}
-                    </Field>
+              <fieldset>
+                <legend className="mb-2 text-xs font-bold tracking-wide text-muted-foreground uppercase">
+                  {lang === "ar" ? "طريقة الدفع" : "Payment method"}
+                </legend>
+                <div className="grid gap-2 min-[360px]:grid-cols-2">
+                  {(["cash", "cliq"] as const).map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      aria-pressed={form.pay === option}
+                      onClick={() => set("pay", option)}
+                      style={{
+                        borderColor: form.pay === option ? palette.main : undefined,
+                        backgroundColor: form.pay === option ? palette.cardBg : undefined,
+                      }}
+                      className={`min-h-12 rounded-2xl border px-3 py-2.5 text-sm cursor-pointer transition-all ${
+                        form.pay === option ? "font-semibold shadow-xs" : "border-border text-foreground hover:bg-secondary/20"
+                      }`}
+                    >
+                      {option === "cash"
+                        ? lang === "ar"
+                          ? "نقداً عند التسليم"
+                          : "Cash on delivery"
+                        : lang === "ar"
+                          ? "كليك CliQ"
+                          : "CliQ transfer"}
+                    </button>
+                  ))}
+                </div>
+                {form.pay === "cliq" && (
+                  <div
+                    style={{ borderColor: palette.border, backgroundColor: palette.cardBg }}
+                    className="mt-2 rounded-2xl border p-3.5 space-y-2 text-xs transition-colors"
+                  >
+                    <p className="text-muted-foreground leading-relaxed">
+                      {lang === "ar"
+                        ? "الدفع عبر كليك · يرجى إرسال صورة إشعار التحويل عبر الواتساب بعد إتمام العملية لتأكيد طلبك."
+                        : "CliQ transfer · Please share your transfer receipt on WhatsApp after completing the payment."}
+                    </p>
                   </div>
                 )}
-              </div>
+              </fieldset>
 
-              {/* Card 3: Payment, Schedule & Notes */}
-              <div className="rounded-2xl border border-border/80 bg-card/70 p-3.5 space-y-3 shadow-2xs">
-                <p className="text-xs font-black text-foreground flex items-center gap-1.5 border-b border-border/50 pb-2">
-                  <span>💳</span>
-                  <span>{lang === "ar" ? "الدفع والموعد والملاحظات" : "Payment & Schedule"}</span>
-                </p>
-                <fieldset>
-                  <legend className="mb-2 text-xs font-bold tracking-wide text-muted-foreground uppercase">
-                    {lang === "ar" ? "طريقة الدفع" : "Payment method"}
-                  </legend>
-                  <div className="grid gap-2 min-[360px]:grid-cols-2">
-                    {(["cash", "cliq"] as const).map((option) => (
-                      <button
-                        key={option}
-                        type="button"
-                        aria-pressed={form.pay === option}
-                        onClick={() => set("pay", option)}
-                        style={{
-                          borderColor: form.pay === option ? palette.main : undefined,
-                          backgroundColor: form.pay === option ? palette.cardBg : undefined,
-                        }}
-                        className={`min-h-12 rounded-2xl border px-3 py-2.5 text-sm cursor-pointer transition-all ${
-                          form.pay === option ? "font-semibold shadow-xs" : "border-border text-foreground hover:bg-secondary/20"
-                        }`}
+              {form.method === "delivery" && (
+                <>
+                  <Field label={t("area")} error={errors["area"]} errText={t("required")}>
+                    {(p) => (
+                      <select
+                        className={inputCls}
+                        value={form.area}
+                        onChange={(e) => set("area", e.target.value)}
+                        {...p}
                       >
-                        {option === "cash"
-                          ? lang === "ar"
-                            ? "نقداً عند التسليم"
-                            : "Cash on delivery"
-                          : lang === "ar"
-                            ? "كليك CliQ"
-                            : "CliQ transfer"}
-                      </button>
-                    ))}
-                  </div>
-                  {form.pay === "cliq" && (
-                    <div
-                      style={{ borderColor: palette.border, backgroundColor: palette.cardBg }}
-                      className="mt-2 rounded-2xl border p-3.5 space-y-2 text-xs transition-colors"
-                    >
-                      <p className="text-muted-foreground leading-relaxed">
+                        <option value="">{lang === "ar" ? "اختر المنطقة" : "Select your area"}</option>
+                        {DELIVERY_ZONES.map((zone) => (
+                          <optgroup key={zone.labelEn} label={lang === "ar" ? zone.labelAr : zone.labelEn}>
+                            {zone.areas.map((area) => (
+                              <option key={`${zone.labelEn}-${area}`} value={area}>
+                                {area === OTHER_GOVERNORATES_AREA
+                                  ? lang === "ar"
+                                    ? `${area} (٥–٨ د.أ)`
+                                    : `Other governorates (5–8 JOD)`
+                                  : `${area} — ${zone.fee.toFixed(2)} ${t("jod")}`}
+                              </option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
+                    )}
+                  </Field>
+                  {form.area.trim() === OTHER_GOVERNORATES_AREA ? (
+                    <p className="-mt-2 text-xs font-semibold text-muted-foreground">
+                      {lang === "ar"
+                        ? "أجرة التوصيل للمحافظات الأخرى من ٥ إلى ٨ د.أ — يحددها فريقنا عند تأكيد الطلب حسب العنوان."
+                        : "Delivery to other governorates is 5–8 JOD — our team confirms the exact fee based on your address."}
+                    </p>
+                  ) : (
+                    areaFee !== null && (
+                      <p className="-mt-2 text-xs font-semibold text-muted-foreground">
                         {lang === "ar"
-                          ? "الدفع عبر كليك · يرجى إرسال صورة إشعار التحويل عبر الواتساب بعد إتمام العملية لتأكيد طلبك."
-                          : "CliQ transfer · Please share your transfer receipt on WhatsApp after completing the payment."}
+                          ? `أجرة التوصيل لهذه المنطقة: ${areaFee.toFixed(2)} د.أ`
+                          : `Delivery fee for this area: ${areaFee.toFixed(2)} JOD`}
                       </p>
-                    </div>
+                    )
                   )}
-                </fieldset>
-
-                <div className="grid gap-3 min-[360px]:grid-cols-2">
-                  <Field label={t("date")} error={errors["date"]} errText={t("required")}>
+                  <Field label={t("address")} error={errors["address"]} errText={t("required")}>
                     {(p) => (
-                      <input type="date" className={inputCls} value={form.date} onChange={(e) => set("date", e.target.value)} {...p} />
+                      <textarea
+                        rows={2}
+                        className={inputCls}
+                        value={form.address}
+                        onChange={(e) => set("address", e.target.value)}
+                        {...p}
+                      />
                     )}
                   </Field>
-                  <Field label={t("time")} error={errors["time"]} errText={t("required")}>
-                    {(p) => (
-                      <input type="time" className={inputCls} value={form.time} onChange={(e) => set("time", e.target.value)} {...p} />
-                    )}
-                  </Field>
-                </div>
+                </>
+              )}
 
-                <Field label={t("orderNotes")}>
+              <div className="grid gap-3 min-[360px]:grid-cols-2">
+                <Field label={t("date")} error={errors["date"]} errText={t("required")}>
                   {(p) => (
-                    <textarea
-                      rows={2}
-                      className={inputCls}
-                      placeholder={t("notesPh")}
-                      value={form.notes}
-                      onChange={(e) => set("notes", e.target.value)}
-                      {...p}
-                    />
+                    <input type="date" className={inputCls} value={form.date} onChange={(e) => set("date", e.target.value)} {...p} />
+                  )}
+                </Field>
+                <Field label={t("time")} error={errors["time"]} errText={t("required")}>
+                  {(p) => (
+                    <input type="time" className={inputCls} value={form.time} onChange={(e) => set("time", e.target.value)} {...p} />
                   )}
                 </Field>
               </div>
+
+              <Field label={t("orderNotes")}>
+                {(p) => (
+                  <textarea
+                    rows={2}
+                    className={inputCls}
+                    placeholder={t("notesPh")}
+                    value={form.notes}
+                    onChange={(e) => set("notes", e.target.value)}
+                    {...p}
+                  />
+                )}
+              </Field>
             </div>
           )}
         </div>

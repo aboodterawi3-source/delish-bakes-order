@@ -220,30 +220,28 @@ export function ProductDetailsView({
 
               {/* Size Selector */}
               {sizes.length > 0 && (
-                <div className="space-y-2">
-                  <label htmlFor="cake-size-select" className="text-xs font-bold text-foreground block">
+                <div className="space-y-1.5">
+                  <label htmlFor="cake-size-select" className="text-xs font-bold text-foreground">
                     {t("size")}
                   </label>
-                  <div className="flex flex-wrap gap-2">
-                    {sizes.map((option) => {
-                      const isSelected = (activeSize === option.label);
-                      return (
-                        <button
-                          key={option.label}
-                          type="button"
-                          onClick={() => setSize(option.label)}
-                          className={`min-h-[44px] px-3.5 py-2 rounded-2xl border text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                            isSelected
-                              ? "bg-primary text-primary-foreground border-primary shadow-xs font-black"
-                              : "bg-card border-border text-foreground hover:bg-secondary/40"
-                          }`}
-                        >
-                          <span>{option.label}</span>
-                          <span className="opacity-85 text-[11px]">({formatJod(option.price, lang)})</span>
-                          {isSelected && <Check className="h-3.5 w-3.5 ms-0.5" />}
-                        </button>
-                      );
-                    })}
+                  <div className="relative">
+                    <select
+                      id="cake-size-select"
+                      value={activeSize ?? ""}
+                      onChange={(event) => setSize(event.target.value)}
+                      className="w-full appearance-none rounded-2xl border border-input bg-card px-4 py-3 text-xs font-semibold text-foreground shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:text-sm"
+                    >
+                      {sizes.map((option) => (
+                        <option key={option.label} value={option.label}>
+                          {`${option.label} — ${formatJod(option.price, lang)}`}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown
+                      className={`pointer-events-none absolute top-1/2 h-4 w-4 -translate-y-1/2 text-primary ${
+                        ar ? "left-4" : "right-4"
+                      }`}
+                    />
                   </div>
                 </div>
               )}

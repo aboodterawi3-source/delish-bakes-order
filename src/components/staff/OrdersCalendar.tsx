@@ -126,26 +126,13 @@ const PAYMENT_METHOD_MAP: Record<string, string> = {
 };
 
 /** Parse HH:mm time string to minutes from midnight */
-/** Robust 24-hour time parser: handles HH:mm:ss, HH:mm, and 12-hour Arabic/English (ص/م, AM/PM) seamlessly */
 function parseTimeInMinutes(timeStr: string): number {
   if (!timeStr) return 9 * 60; // default 9:00 AM
-  const clean = timeStr.trim();
-  const isPM = clean.includes("م") || clean.toLowerCase().includes("pm");
-  const isAM = clean.includes("ص") || clean.toLowerCase().includes("am");
-
-  const match = clean.match(/(\d{1,2}):(\d{2})/);
-  if (!match) return 9 * 60;
-
-  let h = parseInt(match[1], 10);
-  const m = parseInt(match[2], 10) || 0;
-
-  if (isPM) {
-    if (h < 12) h += 12;
-  } else if (isAM) {
-    if (h === 12) h = 0;
-  }
-
-  return Math.min(Math.max(h * 60 + m, 0), 1439);
+  const parts = timeStr.split(":").map(Number);
+  const h = parts[0] ?? Number.NaN;
+  const m = parts[1] ?? 0;
+  if (Number.isNaN(h)) return 9 * 60;
+  return h * 60 + (Number.isNaN(m) ? 0 : m);
 }
 
 /** Format time in minutes to 12-hour Arabic format (e.g. 9:00 ص) */
@@ -398,14 +385,14 @@ export const OrdersCalendar = memo(function OrdersCalendar({ orders, onOpen, onP
         currentY: startY,
         targetHour: clampedHour,
       });
-    }, 250);
+    }, 300);
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!isDraggingActive.current && longPressTimer.current) {
       const dx = Math.abs(e.clientX - startPos.current.x);
       const dy = Math.abs(e.clientY - startPos.current.y);
-      if (dx > 5 || dy > 5) {
+      if (dx > 6 || dy > 6) {
         clearTimeout(longPressTimer.current);
         longPressTimer.current = null;
       }

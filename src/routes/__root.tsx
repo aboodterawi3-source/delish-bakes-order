@@ -11,6 +11,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { Toaster } from "@/components/ui/sonner";
+import { AppErrorBoundary } from "@/components/AppErrorBoundary";
 import { LangProvider } from "../lib/i18n";
 import { CartProvider } from "../lib/cart";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -38,11 +39,15 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
-  console.error(error);
+function ErrorComponent({ error, reset }: { error: unknown; reset: () => void }) {
   const router = useRouter();
   useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
+    // The thrown value can be anything — including a bare `undefined` — so never
+    // touch its properties directly here or this screen itself goes blank.
+    console.error("[route-error]", error ?? "undefined thrown value");
+    reportLovableError(error ?? new Error("Undefined value thrown"), {
+      boundary: "tanstack_root_error_component",
+    });
   }, [error]);
 
   return (
@@ -153,7 +158,9 @@ function RootComponent() {
         <CartProvider>
           <AuthSync queryClient={queryClient} />
           {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-          <Outlet />
+          <AppErrorBoundary>
+            <Outlet />
+          </AppErrorBoundary>
           <Toaster />
         </CartProvider>
       </LangProvider>
