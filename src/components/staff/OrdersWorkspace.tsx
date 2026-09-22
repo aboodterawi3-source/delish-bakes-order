@@ -181,7 +181,29 @@ function sendScheduleConfirmation(order: SalesOrder) {
 }
 
 function sendCustomerWhatsApp(order: SalesOrder) {
-  const message = buildConfirmationMessage(order);
+  const message = buildConfirmationMessage({
+    orderNumber: orderLabel(order.order_number, order.staff_code),
+    customerName: order.order_name?.trim() || order.customer_name,
+    when: `${order.requested_date} ${order.requested_time}`.trim(),
+    fulfilment:
+      order.method === "delivery"
+        ? `توصيل · ${order.area || "—"}${order.address ? ` — ${order.address}` : ""}`
+        : "استلام من المحل",
+    items: order.items.flatMap((item) => [
+      `${item.quantity} × ${item.name_ar}`,
+      ...item.options_ar.map((option) => `— ${option}`),
+    ]),
+    cakeWriting: order.inscription ?? "",
+    cardWriting: order.card_note ?? "",
+    notes: order.notes ?? "",
+    price: order.subtotal,
+    deliveryFee: order.method === "delivery" ? order.delivery_fee : 0,
+    total: order.total,
+    paid: order.deposit_paid,
+    paymentMethod: payMeta[order.payment_method ?? "cash"].ar,
+    recipientPhone: order.recipient_phone || order.customer_phone,
+    senderPhone: order.sender_phone ?? "",
+  });
   void navigator.clipboard?.writeText(message).catch(() => undefined);
   window.open(`https://wa.me/${waNumber(order.customer_phone)}?text=${encodeURIComponent(message)}`, "_blank", "noopener");
   toast.success("تم فتح محادثة الواتساب مع العميل 📲");
