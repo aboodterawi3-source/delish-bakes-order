@@ -76,11 +76,10 @@ export type SalesOrder = {
   created_at: string;
   updated_at: string;
   items: SalesItem[];
-  modifications?: OrderModification[] | null;
 };
 
 const SELECT =
-  "id, order_number, staff_code, queue_rank, order_name, sender_phone, recipient_phone, last_edited_at, customer_name, customer_phone, method, area, address, requested_date, requested_time, notes, staff_notes, inscription, card_note, final_photo_requested, confirmation_message, design_image_url, subtotal, delivery_fee, discount_amount, discount_percent, total, deposit_paid, payment_method, driver_name, driver_phone, cancel_reason, status, schedule_updated_at, created_at, updated_at, modifications, order_items(id, name_ar, name_en, quantity, unit_price, options_ar, notes, product_id)";
+  "id, order_number, staff_code, queue_rank, order_name, sender_phone, recipient_phone, last_edited_at, customer_name, customer_phone, method, area, address, requested_date, requested_time, notes, staff_notes, inscription, card_note, final_photo_requested, confirmation_message, design_image_url, subtotal, delivery_fee, discount_amount, discount_percent, total, deposit_paid, payment_method, driver_name, driver_phone, cancel_reason, status, schedule_updated_at, created_at, updated_at, order_items(id, name_ar, name_en, quantity, unit_price, options_ar, notes, product_id)";
 
 type Row = Record<string, unknown> & { order_items?: unknown[] };
 
@@ -92,7 +91,6 @@ const toOrder = (row: Row): SalesOrder => ({
   discount_percent: Number(row['discount_percent'] ?? 0),
   total: Number(row['total'] ?? 0),
   deposit_paid: Number(row['deposit_paid'] ?? 0),
-  modifications: (row['modifications'] as OrderModification[] | null) ?? null,
   items: ((row.order_items ?? []) as Record<string, unknown>[]).map((item) => ({
     id: String(item['id']),
     name_ar: String(item['name_ar']),

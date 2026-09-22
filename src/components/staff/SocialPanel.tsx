@@ -75,7 +75,6 @@ export function SocialPanel() {
   const storefront = useStorefrontContent();
 
   const [view, setView] = useState<"new" | "orders" | "modifications">("new");
-  const [editOrderId, setEditOrderId] = useState<string | null>(null);
   const [form, setForm] = useState(getEmptyForm);
   const [customization, setCustomization] = useState<Customization>(emptyCustomization);
   const [copied, setCopied] = useState<"summary" | "confirmation" | null>(null);
@@ -908,17 +907,9 @@ export function SocialPanel() {
         </form>
         </>
         ) : view === "modifications" ? (
-          <ModificationsPanel
-            initialSelectedId={editOrderId}
-            onCloseEdit={() => setEditOrderId(null)}
-          />
+          <ModificationsPanel />
         ) : (
-          <OrdersWorkspace
-            onEditOrder={(orderId) => {
-              setEditOrderId(orderId);
-              setView("modifications");
-            }}
-          />
+          <OrdersWorkspace />
         )}
       </div>
     </main>
