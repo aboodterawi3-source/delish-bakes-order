@@ -807,6 +807,8 @@ export function OrdersWorkspace({
                 إلغاء وتراجع
               </button>
             </div>
+          </div>
+        </div>
       )}
 
       {/* 6. SHIFT FINANCIAL REPORT MODAL */}
