@@ -26,13 +26,15 @@ import {
   Palette,
   CheckCircle2,
   Layers,
-  Utensils,
-  Store,
+  AlertTriangle,
   Clock,
   Save,
+  Store,
+  Trash2,
   Check,
 } from "lucide-react";
 import { toast } from "sonner";
+import { clearAllSalesOrders } from "@/lib/sales.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrdersRealtime } from "@/hooks/use-orders-realtime";
 import { BRAND_PALETTES, useBrandPalette } from "@/lib/brand-palette";
@@ -1256,11 +1258,36 @@ function StoreCmsPanel() {
 /* ---------------------------------- Tab 4: Settings & Operations ---------------------------------- */
 
 function StoreOperationsPanel() {
+  const queryClient = useQueryClient();
+  const clearFn = useServerFn(clearAllSalesOrders);
   const [address, setAddress] = useState("عمّان - الشميساني الرئيسي، مقابل مجمع بنك الاتحاد");
   const [phone, setPhone] = useState("+962 7 9000 0000");
+  const [wiping, setWiping] = useState(false);
 
   const handleSaveSettings = () => {
     toast.success("تم حفظ بيانات الفرع الرئيسي بنجاح 🌸");
+  };
+
+  const handleWipeAllOrders = async () => {
+    if (
+      !window.confirm(
+        "تحذير أمني: هل أنت متأكد من مسح وتنظيف كافة الطلبات نهائياً من قاعدة البيانات؟ لا يمكن التراجع عن هذا الإجراء.",
+      )
+    ) {
+      return;
+    }
+    setWiping(true);
+    try {
+      await clearFn();
+      void queryClient.invalidateQueries({ queryKey: ["admin", "analytics"] });
+      void queryClient.invalidateQueries({ queryKey: ["sales-orders"] });
+      void queryClient.invalidateQueries({ queryKey: ["kds-orders"] });
+      toast.success("تم مسح وتنظيف كافة الطلبات من الموقع بنجاح ✅");
+    } catch (err) {
+      toast.error((err as Error).message || "فشل مسح الطلبات");
+    } finally {
+      setWiping(false);
+    }
   };
 
   return (
@@ -1327,6 +1354,33 @@ function StoreOperationsPanel() {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Danger Zone: Database Maintenance & Wiping Orders */}
+      <div className="rounded-3xl border-2 border-dashed border-rose-300 bg-rose-50/40 p-5 sm:p-6 shadow-xs space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-rose-200 pb-3">
+          <div>
+            <h3 className="text-base font-black text-rose-950 flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-rose-600" />
+              منطقة العمليات الحساسة: تنظيف ومسح كافة الطلبات (Database Reset)
+            </h3>
+            <p className="text-xs text-rose-900/80 mt-0.5">
+              مسح وتفريغ كافة الطلبات السابقة والتجريبية من قاعدة البيانات للبدء بسجل طلبات نظيف.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleWipeAllOrders}
+            disabled={wiping}
+            className="inline-flex min-h-11 items-center gap-2 rounded-2xl bg-rose-600 px-5 text-xs font-black text-white shadow-md hover:bg-rose-700 active:scale-95 disabled:opacity-50 transition cursor-pointer"
+          >
+            {wiping ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+            <span>{wiping ? "جار المسح..." : "مسح كافة الطلبات من السيرفر"}</span>
+          </button>
+        </div>
+        <p className="text-[11px] text-rose-800">
+          ⚠️ تحذير: هذا الإجراء يحذف جميع سجلات جدول الطلبات، بنود الأصناف، وتعديلات الطلبات بشكل دائم ولا يمكن التراجع عنه.
+        </p>
       </div>
     </section>
   );

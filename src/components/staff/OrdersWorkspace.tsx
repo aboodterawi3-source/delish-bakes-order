@@ -44,6 +44,8 @@ import { isoDay, matchesDateFilter, type CustomRange, type DateFilterKey } from 
 import { reorderRanks, setQueueRanks } from "@/lib/queue.functions";
 import { useOrdersRealtime } from "@/hooks/use-orders-realtime";
 import {
+  clearAllSalesOrders,
+  deleteSalesOrder,
   getSalesOrders,
   getShiftReport,
   updateSalesOrder,
@@ -254,6 +256,49 @@ export function OrdersWorkspace({
   const [report, setReport] = useState<ShiftReport | null>(null);
   const [editLink, setEditLink] = useState<string | null>(null);
   const [moneyError, setMoneyError] = useState<string | null>(null);
+
+  const clearAllFn = useServerFn(clearAllSalesOrders);
+  const deleteOrderFn = useServerFn(deleteSalesOrder);
+  const [wipeConfirmOpen, setWipeConfirmOpen] = useState(false);
+  const [wiping, setWiping] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const handleWipeAll = async () => {
+    setWiping(true);
+    try {
+      await clearAllFn();
+      queryClient.setQueryData<SalesOrder[]>(ORDERS_KEY, []);
+      void queryClient.invalidateQueries({ queryKey: ORDERS_KEY });
+      void queryClient.invalidateQueries({ queryKey: ["kds-orders"] });
+      void queryClient.invalidateQueries({ queryKey: ["admin-analytics"] });
+      setWipeConfirmOpen(false);
+      setSelectedId(null);
+      toast.success("تم مسح وتنظيف كافة الطلبات من الموقع بنجاح ✅");
+    } catch (err) {
+      toast.error((err as Error).message || "فشل مسح الطلبات");
+    } finally {
+      setWiping(false);
+    }
+  };
+
+  const handleDeleteSingle = async (orderId: string) => {
+    if (!window.confirm("هل أنت متأكد من حذف هذا الطلب نهائياً من قاعدة البيانات؟")) return;
+    setDeletingId(orderId);
+    try {
+      await deleteOrderFn({ data: { orderId } });
+      queryClient.setQueryData<SalesOrder[]>(ORDERS_KEY, (rows) =>
+        (rows ?? []).filter((o) => o.id !== orderId),
+      );
+      void queryClient.invalidateQueries({ queryKey: ORDERS_KEY });
+      void queryClient.invalidateQueries({ queryKey: ["kds-orders"] });
+      if (selectedId === orderId) setSelectedId(null);
+      toast.success("تم حذف الطلب نهائياً من قاعدة البيانات ✅");
+    } catch (err) {
+      toast.error((err as Error).message || "فشل حذف الطلب");
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const authorization = useQuery({
     queryKey: ["my-authorization"],
@@ -484,6 +529,17 @@ export function OrdersWorkspace({
               <RefreshCw className={`h-4 w-4 ${orders.isFetching ? "animate-spin text-primary" : ""}`} />
             </button>
 
+            {/* Clear All Orders Button */}
+            <button
+              type="button"
+              onClick={() => setWipeConfirmOpen(true)}
+              title="تنظيف ومسح كافة الطلبات"
+              className="min-h-[44px] px-3.5 rounded-2xl border border-rose-300 bg-rose-50 text-rose-800 hover:bg-rose-100 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-300 text-xs font-black shadow-2xs hover:opacity-95 active:scale-95 transition flex items-center gap-1.5 cursor-pointer shrink-0"
+            >
+              <Trash2 className="h-4 w-4 text-rose-600" />
+              <span className="hidden md:inline">تنظيف كافة الطلبات</span>
+            </button>
+
             {/* Shift Financial Report Button */}
             {showShiftReport && (
               <button
@@ -627,6 +683,7 @@ export function OrdersWorkspace({
             setCancelReason("");
             setCancelFor(selected);
           }}
+          onDeletePermanent={handleDeleteSingle}
         />
       ) : null}
 
@@ -704,6 +761,52 @@ export function OrdersWorkspace({
             </div>
           </div>
         </div>
+      )}
+
+      {/* 5.1 WIPE ALL ORDERS CONFIRMATION MODAL */}
+      {wipeConfirmOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-150"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !wiping) setWipeConfirmOpen(false);
+          }}
+        >
+          <div className="w-full max-w-md rounded-3xl border border-border bg-card p-6 shadow-2xl text-center space-y-4">
+            <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-rose-100 text-rose-700">
+              <AlertTriangle className="h-7 w-7" />
+            </div>
+            <div>
+              <h3 className="font-display text-lg font-black text-foreground">
+                تأكيد مسح وتنظيف كافة الطلبات
+              </h3>
+              <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
+                هل أنت متأكد من رغبتك في حذف وتنظيف جميع الطلبات المسجلة في الموقع؟
+                سيتم تفريغ جدول الطلبات وشاشات المطبخ والمبيعات بالكامل للبدء بسجل نظيف.
+                <br />
+                <strong className="text-rose-600 block mt-1">هذا الإجراء نهائي ولا يمكن التراجع عنه.</strong>
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2 pt-2">
+              <button
+                type="button"
+                onClick={handleWipeAll}
+                disabled={wiping}
+                className="flex-1 min-h-12 inline-flex items-center justify-center gap-2 rounded-2xl bg-rose-600 px-5 text-sm font-black text-white hover:bg-rose-700 disabled:opacity-50 transition cursor-pointer"
+              >
+                {wiping ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                <span>{wiping ? "جار التنظيف..." : "نعم، مسح كافة الطلبات فوراً"}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setWipeConfirmOpen(false)}
+                disabled={wiping}
+                className="min-h-12 rounded-2xl border border-border bg-background px-5 text-sm font-bold text-foreground hover:bg-secondary transition cursor-pointer"
+              >
+                إلغاء وتراجع
+              </button>
+            </div>
       )}
 
       {/* 6. SHIFT FINANCIAL REPORT MODAL */}
@@ -993,6 +1096,7 @@ function OrderPanelDrawer({
   onClose: () => void;
   onPatch: (input: Omit<OrderPatch, "orderId">) => void;
   onCancel: () => void;
+  onDeletePermanent?: (orderId: string) => void;
 }) {
   const [deposit, setDeposit] = useState(String(order.deposit_paid));
   const [driverName, setDriverName] = useState(order.driver_name ?? "");
@@ -1281,15 +1385,28 @@ function OrderPanelDrawer({
             <span>طباعة الإيصال الحراري 🖨️</span>
           </button>
 
-          {/* Cancel Order Action */}
-          <div className="pt-2 text-center">
+          {/* Cancel & Delete Order Actions */}
+          <div className="pt-2 flex items-center justify-center gap-4 text-xs">
             <button
               type="button"
               onClick={onCancel}
-              className="text-xs text-rose-600 font-bold hover:underline cursor-pointer"
+              className="text-amber-700 font-bold hover:underline cursor-pointer"
             >
               إلغاء هذا الطلب
             </button>
+            {onDeletePermanent && (
+              <>
+                <span className="text-muted-foreground">•</span>
+                <button
+                  type="button"
+                  onClick={() => onDeletePermanent(order.id)}
+                  className="text-rose-600 font-bold hover:underline cursor-pointer flex items-center gap-1"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  <span>حذف نهائي من السيرفر</span>
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
