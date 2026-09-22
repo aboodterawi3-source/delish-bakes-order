@@ -97,7 +97,7 @@ function CleanOrdersPage() {
             <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
               <Link
                 to="/staff"
-                search={{ tab: "orders" }}
+                search={{ tab: "sales" }}
                 className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-5 text-xs font-bold text-primary-foreground shadow-sm hover:opacity-90 transition"
               >
                 <ClipboardList className="h-4 w-4" />
@@ -147,7 +147,7 @@ function CleanOrdersPage() {
             <div>
               <Link
                 to="/staff"
-                search={{ tab: "orders" }}
+                search={{ tab: "sales" }}
                 className="text-xs text-muted-foreground hover:text-foreground font-bold underline"
               >
                 ← إلغاء والعودة لجدول الطلبات
