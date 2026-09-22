@@ -9,13 +9,13 @@ import { reportLovableError } from "@/lib/lovable-error-reporting";
  * any thrown value and always renders a readable retry screen.
  */
 export class AppErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
-  state = { failed: false };
+  override state = { failed: false };
 
   static getDerivedStateFromError() {
     return { failed: true };
   }
 
-  componentDidCatch(error: unknown, info: ErrorInfo) {
+  override componentDidCatch(error: unknown, info: ErrorInfo) {
     // eslint-disable-next-line no-console
     console.error("[app-error-boundary]", error ?? "undefined thrown value", info.componentStack);
     reportLovableError(error ?? new Error("Undefined value thrown during render"), {
@@ -23,7 +23,7 @@ export class AppErrorBoundary extends Component<{ children: ReactNode }, { faile
     });
   }
 
-  render() {
+  override render() {
     if (!this.state.failed) return this.props.children;
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
