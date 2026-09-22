@@ -206,7 +206,7 @@ function getCountdownText(requestedDate: string, requestedTime: string) {
 /** Resolves visual priority styles for cards */
 function getPriorityStyles(color: PriorityColor) {
   switch (color) {
-    case "deep_orange":
+    case "dark_red":
       return {
         cardBg: "bg-card border-orange-400/80 shadow-xs",
         badgeBg: "bg-orange-100 text-orange-950 border-orange-300",
