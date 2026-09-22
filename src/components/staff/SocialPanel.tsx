@@ -50,7 +50,7 @@ import { DELIVERY_ZONES, OTHER_GOVERNORATES_AREA, feeForArea } from "@/lib/deliv
 import { buildConfirmationMessage, remainingBalance } from "@/lib/confirmation-message";
 import { useStorefrontContent } from "@/hooks/use-storefront-content";
 import type { StorefrontProduct, SizePrice } from "@/lib/storefront-content";
-import { OrdersWorkspace } from "@/components/staff/OrdersWorkspace";
+import { OrdersWorkspace, waNumber } from "@/components/staff/OrdersWorkspace";
 import { ModificationsPanel } from "@/components/staff/ModificationsPanel";
 
 const jd = (val: number) => `${val.toFixed(2)} د.أ`;
@@ -71,6 +71,7 @@ const getEmptyForm = () => ({
   customer_name: "",
   customer_phone: "",
   is_recipient_different: false,
+  sender_phone: "",
   recipient_name: "",
   recipient_phone: "",
 
@@ -103,7 +104,10 @@ const getEmptyForm = () => ({
 const emptyForm = getEmptyForm();
 
 const WHATSAPP_NUMBER = "962779179995";
-const whatsappUrl = (text: string) => `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`;
+const whatsappUrl = (text: string, phone?: string) => {
+  const target = phone ? waNumber(phone) : WHATSAPP_NUMBER;
+  return `https://wa.me/${target}?text=${encodeURIComponent(text)}`;
+};
 
 export function SocialPanel() {
   const navigate = useNavigate();
@@ -173,6 +177,9 @@ export function SocialPanel() {
   const paidAmount = form.payment_option === "cash" ? 0 : Math.max(Number(form.deposit_paid) || 0, 0);
   const grandTotal = originalPrice + deliveryFee;
   const remaining = remainingBalance(grandTotal, paidAmount);
+  const activeCustomerPhone = form.is_recipient_different
+    ? (form.sender_phone || form.customer_phone)
+    : form.customer_phone;
 
   const finalOrderDetails = useMemo(() => {
     if (form.order_mode === "custom") {
@@ -199,21 +206,21 @@ export function SocialPanel() {
         items: [`${form.quantity} × ${finalOrderDetails}`],
         cakeWriting: form.customer_notes.trim(),
         cardWriting: "",
+        notes: form.customer_notes.trim(),
+        price: originalPrice,
+        deliveryFee,
+        total: grandTotal,
+        paid: paidAmount,
         paymentMethod:
           form.payment_option === "cliq_full"
             ? `دفع كامل كليك (${paidAmount.toFixed(2)} د.أ)`
             : form.payment_option === "cliq_deposit"
               ? `عربون كليك (${paidAmount.toFixed(2)} د.أ)`
               : "كاش عند الاستلام",
-        price: grandTotal - (form.method === "delivery" ? deliveryFee : 0),
-        deliveryFee: form.method === "delivery" ? deliveryFee : 0,
-        total: grandTotal,
-        paid: paidAmount,
-        recipientPhone: form.recipient_phone?.trim() || form.customer_phone.trim(),
-        senderPhone: form.customer_phone.trim(),
-        notes: form.customer_notes.trim(),
+        recipientPhone: form.is_recipient_different ? form.recipient_phone : form.customer_phone,
+        senderPhone: form.is_recipient_different ? (form.sender_phone || form.customer_phone) : "",
       }),
-    [form, finalOrderDetails, paidAmount, grandTotal, remaining],
+    [form, finalOrderDetails, paidAmount, grandTotal, remaining, deliveryFee, originalPrice],
   );
 
   const confirmationPreview = useMemo(
@@ -272,13 +279,26 @@ export function SocialPanel() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.customer_name.trim()) {
-      toast.error("يرجى إدخال اسم العميل");
+      toast.error(form.is_recipient_different ? "يرجى إدخال اسم المرسل / العميل" : "يرجى إدخال اسم العميل");
       return;
     }
-    if (!form.customer_phone.trim()) {
-      toast.error("يرجى إدخال رقم هاتف العميل");
-      return;
+
+    if (form.is_recipient_different) {
+      if (!form.sender_phone.trim() && !form.customer_phone.trim()) {
+        toast.error("يرجى إدخال رقم هاتف المرسل للتواصل والدفع");
+        return;
+      }
+      if (!form.recipient_phone.trim()) {
+        toast.error("يرجى إدخال رقم هاتف المستلم للتوصيل والمفاجأة");
+        return;
+      }
+    } else {
+      if (!form.customer_phone.trim()) {
+        toast.error("يرجى إدخال رقم هاتف العميل للتواصل والواتساب");
+        return;
+      }
     }
+
     if (form.method === "delivery" && !form.area) {
       toast.error("يرجى اختيار منطقة التوصيل");
       return;
@@ -288,12 +308,16 @@ export function SocialPanel() {
       return;
     }
 
+    const finalCustomerPhone = form.is_recipient_different
+      ? (form.sender_phone.trim() || form.customer_phone.trim())
+      : form.customer_phone.trim();
+
     const payload: SocialOrderInput = {
       customer_name: form.customer_name.trim(),
-      customer_phone: form.customer_phone.trim(),
-      sender_phone: form.is_recipient_different ? form.customer_phone.trim() : null,
-      order_name: form.is_recipient_different ? form.recipient_name.trim() : null,
-      recipient_phone: form.is_recipient_different ? form.recipient_phone.trim() : null,
+      customer_phone: finalCustomerPhone,
+      sender_phone: form.is_recipient_different ? (form.sender_phone.trim() || finalCustomerPhone) : null,
+      order_name: form.is_recipient_different ? (form.recipient_name.trim() || null) : null,
+      recipient_phone: form.is_recipient_different ? (form.recipient_phone.trim() || null) : null,
       requested_date: form.requested_date,
       requested_time: form.requested_time,
       event_date: form.event_date || null,
@@ -485,90 +509,167 @@ export function SocialPanel() {
                     </div>
                   </div>
 
-                  <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-black text-rose-600 bg-rose-500/10 px-3 py-1.5 rounded-xl border border-rose-500/20">
-                    <input
-                      type="checkbox"
-                      checked={form.is_urgent}
-                      onChange={(e) => set("is_urgent", e.target.checked)}
-                      className="h-4 w-4 rounded border-rose-300 text-rose-600 accent-rose-600"
-                    />
-                    <span>🚨 طلب مستعجل (Urgent)</span>
-                  </label>
+                  <div className="flex items-center gap-2 flex-wrap justify-end">
+                    <label
+                      className={`inline-flex items-center gap-2 cursor-pointer select-none text-xs font-black px-3 py-1.5 rounded-xl border transition-all ${
+                        form.is_recipient_different
+                          ? "bg-amber-500/15 text-amber-800 dark:text-amber-200 border-amber-500/40 shadow-2xs"
+                          : "bg-secondary/60 text-muted-foreground border-border/80 hover:text-foreground"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={form.is_recipient_different}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setForm((prev) => ({
+                            ...prev,
+                            is_recipient_different: checked,
+                            sender_phone: checked && !prev.sender_phone ? prev.customer_phone : prev.sender_phone,
+                          }));
+                        }}
+                        className="h-4 w-4 rounded border-input text-amber-600 accent-amber-600"
+                      />
+                      <Gift className="h-4 w-4 text-amber-600" />
+                      <span>🎁 هذا الطلب هدية</span>
+                    </label>
+
+                    <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-black text-rose-600 bg-rose-500/10 px-3 py-1.5 rounded-xl border border-rose-500/20">
+                      <input
+                        type="checkbox"
+                        checked={form.is_urgent}
+                        onChange={(e) => set("is_urgent", e.target.checked)}
+                        className="h-4 w-4 rounded border-rose-300 text-rose-600 accent-rose-600"
+                      />
+                      <span>🚨 طلب مستعجل (Urgent)</span>
+                    </label>
+                  </div>
                 </div>
 
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <label className="block text-xs font-bold text-foreground mb-1">
-                      اسم العميل *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={form.customer_name}
-                      onChange={(e) => set("customer_name", e.target.value)}
-                      placeholder="مثال: أم أحمد / د. رانيا"
-                      className="min-h-[44px] w-full rounded-xl border border-input bg-background px-3 text-sm font-bold text-foreground outline-none focus:border-primary"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-foreground mb-1">
-                      رقم هاتف الواتساب *
-                    </label>
-                    <div className="relative">
+                {!form.is_recipient_different ? (
+                  /* Personal Order: Single Customer Name & Single WhatsApp Phone */
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-xs font-bold text-foreground mb-1">
+                        اسم العميل *
+                      </label>
                       <input
-                        type="tel"
-                        inputMode="tel"
+                        type="text"
                         required
-                        dir="ltr"
-                        value={form.customer_phone}
-                        onChange={(e) => set("customer_phone", e.target.value)}
-                        placeholder="079XXXXXXX"
-                        className="min-h-[44px] w-full rounded-xl border border-input bg-background ps-3 pe-8 text-sm font-black text-foreground outline-none focus:border-primary"
+                        value={form.customer_name}
+                        onChange={(e) => set("customer_name", e.target.value)}
+                        placeholder="مثال: أم أحمد / د. رانيا"
+                        className="min-h-[44px] w-full rounded-xl border border-input bg-background px-3 text-sm font-bold text-foreground outline-none focus:border-primary"
                       />
-                      <MessageCircle className="absolute end-2.5 top-3.5 h-4 w-4 text-emerald-600 pointer-events-none" />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-foreground mb-1">
+                        رقم الهاتف (الواتساب) *
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="tel"
+                          inputMode="tel"
+                          required
+                          dir="ltr"
+                          value={form.customer_phone}
+                          onChange={(e) => set("customer_phone", e.target.value)}
+                          placeholder="079XXXXXXX"
+                          className="min-h-[44px] w-full rounded-xl border border-input bg-background ps-3 pe-8 text-sm font-black text-foreground outline-none focus:border-primary"
+                        />
+                        <MessageCircle className="absolute end-2.5 top-3.5 h-4 w-4 text-emerald-600 pointer-events-none" />
+                      </div>
                     </div>
                   </div>
-                </div>
+                ) : (
+                  /* Gift Order: Sender and Recipient separated, Single Phone hidden */
+                  <div className="space-y-3 rounded-2xl border border-amber-500/25 bg-amber-500/5 p-3.5 animate-in fade-in duration-150">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-xs font-black text-amber-800 dark:text-amber-200">
+                        <Gift className="h-4 w-4 text-amber-600" />
+                        <span>بيانات إرسال الهدية (المرسل والمستلم منفصلين)</span>
+                      </div>
+                      <span className="text-[11px] font-bold text-amber-700/80 dark:text-amber-300/80">
+                        مفاجأة 🎁
+                      </span>
+                    </div>
 
-                {/* Gift Recipient Toggle */}
-                <div className="rounded-2xl bg-secondary/40 p-3 border border-border/80">
-                  <label className="inline-flex items-center gap-2 cursor-pointer select-none text-xs font-black text-foreground">
-                    <input
-                      type="checkbox"
-                      checked={form.is_recipient_different}
-                      onChange={(e) => set("is_recipient_different", e.target.checked)}
-                      className="h-4 w-4 rounded border-input text-primary accent-primary"
-                    />
-                    <span>🎁 هذا الطلب هدية لطرف آخر (مستلم ومشتري منفصلين)</span>
-                  </label>
-
-                  {form.is_recipient_different && (
-                    <div className="mt-2.5 grid gap-2.5 sm:grid-cols-2 pt-2.5 border-t border-border/60 animate-in fade-in duration-150">
+                    <div className="grid gap-3 sm:grid-cols-2">
                       <div>
-                        <label className="block text-[11px] font-bold text-muted-foreground mb-1">اسم المستلم</label>
+                        <label className="block text-xs font-bold text-foreground mb-1">
+                          اسم المرسل (صاحب الطلب) *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={form.customer_name}
+                          onChange={(e) => set("customer_name", e.target.value)}
+                          placeholder="اسم المشتري / صاحب الإهداء"
+                          className="min-h-[44px] w-full rounded-xl border border-input bg-background px-3 text-sm font-bold text-foreground outline-none focus:border-primary"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-foreground mb-1">
+                          رقم هاتف المرسل (للتواصل والدفع) *
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="tel"
+                            inputMode="tel"
+                            required
+                            dir="ltr"
+                            value={form.sender_phone || form.customer_phone}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setForm((prev) => ({
+                                ...prev,
+                                sender_phone: val,
+                                customer_phone: val,
+                              }));
+                            }}
+                            placeholder="079XXXXXXX"
+                            className="min-h-[44px] w-full rounded-xl border border-input bg-background ps-3 pe-8 text-sm font-black text-foreground outline-none focus:border-primary"
+                          />
+                          <Phone className="absolute end-2.5 top-3.5 h-4 w-4 text-muted-foreground pointer-events-none" />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-foreground mb-1">
+                          اسم المستلم (المحتفى به)
+                        </label>
                         <input
                           type="text"
                           value={form.recipient_name}
                           onChange={(e) => set("recipient_name", e.target.value)}
-                          placeholder="اسم المستلم"
-                          className="min-h-[40px] w-full rounded-lg border border-input bg-card px-2.5 text-xs font-bold"
+                          placeholder="اسم الشخص المستلم للهدية"
+                          className="min-h-[44px] w-full rounded-xl border border-input bg-background px-3 text-sm font-bold text-foreground outline-none focus:border-primary"
                         />
                       </div>
+
                       <div>
-                        <label className="block text-[11px] font-bold text-muted-foreground mb-1">هاتف المستلم</label>
-                        <input
-                          dir="ltr"
-                          type="tel"
-                          value={form.recipient_phone}
-                          onChange={(e) => set("recipient_phone", e.target.value)}
-                          placeholder="07XXXXXXXX"
-                          className="min-h-[40px] w-full rounded-lg border border-input bg-card px-2.5 text-xs font-bold"
-                        />
+                        <label className="block text-xs font-bold text-foreground mb-1">
+                          رقم هاتف المستلم (للتوصيل والمفاجأة) *
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="tel"
+                            inputMode="tel"
+                            required
+                            dir="ltr"
+                            value={form.recipient_phone}
+                            onChange={(e) => set("recipient_phone", e.target.value)}
+                            placeholder="07XXXXXXXX"
+                            className="min-h-[44px] w-full rounded-xl border border-input bg-background ps-3 pe-8 text-sm font-black text-foreground outline-none focus:border-primary"
+                          />
+                          <Gift className="absolute end-2.5 top-3.5 h-4 w-4 text-amber-600 pointer-events-none" />
+                        </div>
                       </div>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
 
                 {/* Fulfillment Selection */}
                 <div className="space-y-3">
@@ -1105,7 +1206,7 @@ export function SocialPanel() {
                     </button>
 
                     <a
-                      href={whatsappUrl(confirmationPreview)}
+                      href={whatsappUrl(confirmationPreview, activeCustomerPhone)}
                       target="_blank"
                       rel="noopener noreferrer"
                       title="فتح محادثة واتساب"
