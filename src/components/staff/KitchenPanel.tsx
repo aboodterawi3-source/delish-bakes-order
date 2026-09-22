@@ -212,19 +212,19 @@ function getPriorityStyles(color: PriorityColor) {
         badgeBg: "bg-orange-100 text-orange-950 border-orange-300",
         badgeText: "أولوية قصوى",
       };
-    case "warm_amber":
+    case "warm_orange":
       return {
         cardBg: "bg-card border-amber-400/80 shadow-xs",
         badgeBg: "bg-amber-100 text-amber-950 border-amber-300",
         badgeText: "توصيل سريع",
       };
-    case "fresh_mint":
+    case "sky_blue":
       return {
         cardBg: "bg-card border-emerald-400/80 shadow-xs",
         badgeBg: "bg-emerald-100 text-emerald-950 border-emerald-300",
         badgeText: "تجهيز عادي",
       };
-    case "royal_gold":
+    case "golden_yellow":
       return {
         cardBg: "bg-card border-yellow-400 shadow-xs",
         badgeBg: "bg-yellow-100 text-yellow-950 border-yellow-400",
@@ -573,7 +573,7 @@ export function KitchenPanel() {
 
   useEffect(() => {
     try {
-      const audio = new Audio(bellAsset.dataUri);
+      const audio = new Audio(bellAsset.url);
       audio.preload = "auto";
       audioRef.current = audio;
     } catch {
