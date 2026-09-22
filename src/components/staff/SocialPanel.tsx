@@ -510,31 +510,7 @@ export function SocialPanel() {
                   </div>
 
                   <div className="flex items-center gap-2 flex-wrap justify-end">
-                    <label
-                      className={`inline-flex items-center gap-2 cursor-pointer select-none text-xs font-black px-3 py-1.5 rounded-xl border transition-all ${
-                        form.is_recipient_different
-                          ? "bg-amber-500/15 text-amber-800 dark:text-amber-200 border-amber-500/40 shadow-2xs"
-                          : "bg-secondary/60 text-muted-foreground border-border/80 hover:text-foreground"
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={form.is_recipient_different}
-                        onChange={(e) => {
-                          const checked = e.target.checked;
-                          setForm((prev) => ({
-                            ...prev,
-                            is_recipient_different: checked,
-                            sender_phone: checked && !prev.sender_phone ? prev.customer_phone : prev.sender_phone,
-                          }));
-                        }}
-                        className="h-4 w-4 rounded border-input text-amber-600 accent-amber-600"
-                      />
-                      <Gift className="h-4 w-4 text-amber-600" />
-                      <span>🎁 هذا الطلب هدية</span>
-                    </label>
-
-                    <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-black text-rose-600 bg-rose-500/10 px-3 py-1.5 rounded-xl border border-rose-500/20">
+                    <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-black text-rose-600 bg-rose-500/10 px-3 py-1.5 rounded-xl border border-rose-500/20 hover:bg-rose-500/15 transition">
                       <input
                         type="checkbox"
                         checked={form.is_urgent}
@@ -546,73 +522,67 @@ export function SocialPanel() {
                   </div>
                 </div>
 
-                {!form.is_recipient_different ? (
-                  /* Personal Order: Single Customer Name & Single WhatsApp Phone */
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div>
-                      <label className="block text-xs font-bold text-foreground mb-1">
-                        اسم العميل *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={form.customer_name}
-                        onChange={(e) => set("customer_name", e.target.value)}
-                        placeholder="مثال: أم أحمد / د. رانيا"
-                        className="min-h-[44px] w-full rounded-xl border border-input bg-background px-3 text-sm font-bold text-foreground outline-none focus:border-primary"
-                      />
-                    </div>
+                {/* Top Order Type Selector: Personal Order vs Gift Order */}
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-2 p-1 rounded-2xl bg-secondary/50 border border-border/80">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setForm((prev) => ({
+                          ...prev,
+                          is_recipient_different: false,
+                        }));
+                      }}
+                      className={`min-h-[44px] inline-flex items-center justify-center gap-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                        !form.is_recipient_different
+                          ? "bg-card text-foreground shadow-xs border border-border"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <User className="h-4 w-4 text-primary" />
+                      <span>👤 طلب شخصي (للزبون نفسه)</span>
+                    </button>
 
-                    <div>
-                      <label className="block text-xs font-bold text-foreground mb-1">
-                        رقم الهاتف (الواتساب) *
-                      </label>
-                      <div className="relative">
-                        <input
-                          type="tel"
-                          inputMode="tel"
-                          required
-                          dir="ltr"
-                          value={form.customer_phone}
-                          onChange={(e) => set("customer_phone", e.target.value)}
-                          placeholder="079XXXXXXX"
-                          className="min-h-[44px] w-full rounded-xl border border-input bg-background ps-3 pe-8 text-sm font-black text-foreground outline-none focus:border-primary"
-                        />
-                        <MessageCircle className="absolute end-2.5 top-3.5 h-4 w-4 text-emerald-600 pointer-events-none" />
-                      </div>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setForm((prev) => ({
+                          ...prev,
+                          is_recipient_different: true,
+                          sender_phone: prev.sender_phone || prev.customer_phone,
+                        }));
+                      }}
+                      className={`min-h-[44px] inline-flex items-center justify-center gap-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                        form.is_recipient_different
+                          ? "bg-amber-500/15 text-amber-900 dark:text-amber-100 border border-amber-500/40 shadow-xs"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <Gift className="h-4 w-4 text-amber-600" />
+                      <span>🎁 هذا الطلب هدية (مرسل ومستلم منفصلين)</span>
+                    </button>
                   </div>
-                ) : (
-                  /* Gift Order: Sender and Recipient separated, Single Phone hidden */
-                  <div className="space-y-3 rounded-2xl border border-amber-500/25 bg-amber-500/5 p-3.5 animate-in fade-in duration-150">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-xs font-black text-amber-800 dark:text-amber-200">
-                        <Gift className="h-4 w-4 text-amber-600" />
-                        <span>بيانات إرسال الهدية (المرسل والمستلم منفصلين)</span>
-                      </div>
-                      <span className="text-[11px] font-bold text-amber-700/80 dark:text-amber-300/80">
-                        مفاجأة 🎁
-                      </span>
-                    </div>
 
-                    <div className="grid gap-3 sm:grid-cols-2">
+                  {!form.is_recipient_different ? (
+                    /* Personal Order: Single Customer Name & Single WhatsApp Phone */
+                    <div className="grid gap-3 sm:grid-cols-2 animate-in fade-in duration-150">
                       <div>
                         <label className="block text-xs font-bold text-foreground mb-1">
-                          اسم المرسل (صاحب الطلب) *
+                          اسم العميل *
                         </label>
                         <input
                           type="text"
                           required
                           value={form.customer_name}
                           onChange={(e) => set("customer_name", e.target.value)}
-                          placeholder="اسم المشتري / صاحب الإهداء"
+                          placeholder="مثال: أم أحمد / د. رانيا"
                           className="min-h-[44px] w-full rounded-xl border border-input bg-background px-3 text-sm font-bold text-foreground outline-none focus:border-primary"
                         />
                       </div>
 
                       <div>
                         <label className="block text-xs font-bold text-foreground mb-1">
-                          رقم هاتف المرسل (للتواصل والدفع) *
+                          رقم الهاتف (الواتساب) *
                         </label>
                         <div className="relative">
                           <input
@@ -620,56 +590,104 @@ export function SocialPanel() {
                             inputMode="tel"
                             required
                             dir="ltr"
-                            value={form.sender_phone || form.customer_phone}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setForm((prev) => ({
-                                ...prev,
-                                sender_phone: val,
-                                customer_phone: val,
-                              }));
-                            }}
+                            value={form.customer_phone}
+                            onChange={(e) => set("customer_phone", e.target.value)}
                             placeholder="079XXXXXXX"
                             className="min-h-[44px] w-full rounded-xl border border-input bg-background ps-3 pe-8 text-sm font-black text-foreground outline-none focus:border-primary"
                           />
-                          <Phone className="absolute end-2.5 top-3.5 h-4 w-4 text-muted-foreground pointer-events-none" />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-foreground mb-1">
-                          اسم المستلم (المحتفى به)
-                        </label>
-                        <input
-                          type="text"
-                          value={form.recipient_name}
-                          onChange={(e) => set("recipient_name", e.target.value)}
-                          placeholder="اسم الشخص المستلم للهدية"
-                          className="min-h-[44px] w-full rounded-xl border border-input bg-background px-3 text-sm font-bold text-foreground outline-none focus:border-primary"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-foreground mb-1">
-                          رقم هاتف المستلم (للتوصيل والمفاجأة) *
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="tel"
-                            inputMode="tel"
-                            required
-                            dir="ltr"
-                            value={form.recipient_phone}
-                            onChange={(e) => set("recipient_phone", e.target.value)}
-                            placeholder="07XXXXXXXX"
-                            className="min-h-[44px] w-full rounded-xl border border-input bg-background ps-3 pe-8 text-sm font-black text-foreground outline-none focus:border-primary"
-                          />
-                          <Gift className="absolute end-2.5 top-3.5 h-4 w-4 text-amber-600 pointer-events-none" />
+                          <MessageCircle className="absolute end-2.5 top-3.5 h-4 w-4 text-emerald-600 pointer-events-none" />
                         </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    /* Gift Order: Sender and Recipient separated, Single Phone hidden */
+                    <div className="space-y-3 rounded-2xl border border-amber-500/25 bg-amber-500/5 p-3.5 animate-in fade-in duration-150">
+                      <div className="flex items-center justify-between border-b border-amber-500/20 pb-2">
+                        <div className="flex items-center gap-2 text-xs font-black text-amber-900 dark:text-amber-200">
+                          <Gift className="h-4 w-4 text-amber-600" />
+                          <span>بيانات الإهداء (تحديد هاتف المرسل والمستلم للمفاجأة)</span>
+                        </div>
+                        <span className="text-[11px] font-black text-amber-700 bg-amber-200/60 px-2 py-0.5 rounded-full">
+                          مفاجأة 🎁
+                        </span>
+                      </div>
+
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div>
+                          <label className="block text-xs font-bold text-foreground mb-1">
+                            اسم المرسل (صاحب الطلب) *
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            value={form.customer_name}
+                            onChange={(e) => set("customer_name", e.target.value)}
+                            placeholder="اسم المشتري / صاحب الإهداء"
+                            className="min-h-[44px] w-full rounded-xl border border-input bg-background px-3 text-sm font-bold text-foreground outline-none focus:border-primary"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-foreground mb-1">
+                            رقم هاتف المرسل (للتواصل والدفع) *
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="tel"
+                              inputMode="tel"
+                              required
+                              dir="ltr"
+                              value={form.sender_phone || form.customer_phone}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setForm((prev) => ({
+                                  ...prev,
+                                  sender_phone: val,
+                                  customer_phone: val,
+                                }));
+                              }}
+                              placeholder="079XXXXXXX"
+                              className="min-h-[44px] w-full rounded-xl border border-input bg-background ps-3 pe-8 text-sm font-black text-foreground outline-none focus:border-primary"
+                            />
+                            <Phone className="absolute end-2.5 top-3.5 h-4 w-4 text-muted-foreground pointer-events-none" />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-foreground mb-1">
+                            اسم المستلم (المحتفى به)
+                          </label>
+                          <input
+                            type="text"
+                            value={form.recipient_name}
+                            onChange={(e) => set("recipient_name", e.target.value)}
+                            placeholder="اسم الشخص المستلم للهدية"
+                            className="min-h-[44px] w-full rounded-xl border border-input bg-background px-3 text-sm font-bold text-foreground outline-none focus:border-primary"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-foreground mb-1">
+                            رقم هاتف المستلم (للتوصيل والمفاجأة) *
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="tel"
+                              inputMode="tel"
+                              required
+                              dir="ltr"
+                              value={form.recipient_phone}
+                              onChange={(e) => set("recipient_phone", e.target.value)}
+                              placeholder="07XXXXXXXX"
+                              className="min-h-[44px] w-full rounded-xl border border-input bg-background ps-3 pe-8 text-sm font-black text-foreground outline-none focus:border-primary"
+                            />
+                            <Gift className="absolute end-2.5 top-3.5 h-4 w-4 text-amber-600 pointer-events-none" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 {/* Fulfillment Selection */}
                 <div className="space-y-3">
