@@ -2,25 +2,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import {
-  AlertTriangle,
-  Check,
-  ChevronDown,
-  ChevronUp,
-  ClipboardCopy,
-  Image as ImageIcon,
-  Loader2,
-  LogOut,
-  MessageCircle,
-  Save,
-  Search,
-  Send,
-  Sparkles,
-  Store,
-  Truck,
-  Upload
-} from "lucide-react";
-import { toast } from "sonner";
+import { AlertTriangle, BookOpen, Check, ClipboardCopy, Loader2, LogOut, MessageCircle, PlusCircle, Search, Send, Sparkles, Store, Utensils } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   createSocialOrder,
@@ -31,6 +13,12 @@ import { DELIVERY_ZONES, OTHER_GOVERNORATES_AREA, feeForArea } from "@/lib/deliv
 import { buildConfirmationMessage, remainingBalance } from "@/lib/confirmation-message";
 import { useStorefrontContent } from "@/hooks/use-storefront-content";
 import type { StorefrontProduct, SizePrice } from "@/lib/storefront-content";
+import {
+  CakeCustomizationPanel,
+  customizationSummary,
+  emptyCustomization,
+  type Customization,
+} from "@/components/delish/CakeCustomizationPanel";
 import { OrdersWorkspace } from "@/components/staff/OrdersWorkspace";
 import { ModificationsPanel } from "@/components/staff/ModificationsPanel";
 
@@ -47,21 +35,17 @@ const defaultTimeSlot = () => {
 };
 
 const getEmptyForm = () => ({
+  /** Delivery order: label, sender and recipient. */
+  order_name: "",
+  sender_phone: "",
+  recipient_phone: "",
   customer_name: "",
   customer_phone: "",
-  is_recipient_different: false,
-  recipient_name: "",
-  recipient_phone: "",
-  
-  order_mode: "menu" as "menu" | "custom",
-  
-  custom_size: "",
-  custom_flavor: "",
-  custom_filling: "",
-  
   order_details: "",
   quantity: 1,
+  /** Original agreed price per unit (السعر الأصلي). */
   unit_price: "",
+  card_note: "",
   
   method: "pickup" as "pickup" | "delivery",
   area: "",
@@ -72,16 +56,15 @@ const getEmptyForm = () => ({
   requested_time: defaultTimeSlot(),
   event_date: "",
   is_urgent: false,
-  
-  customer_notes: "",
+  design_notes: "",
   staff_notes: "",
-  
-  design_image_url: "",
 });
 
 const emptyForm = getEmptyForm();
 
+/** Official Delish store WhatsApp number (international format, no "+"). */
 const WHATSAPP_NUMBER = "962779179995";
+/** Universal share link — uses wa.me directly, no API endpoints or iframes. */
 const whatsappUrl = (text: string) => `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`;
 
 export function SocialPanel() {
@@ -94,16 +77,15 @@ export function SocialPanel() {
   const [view, setView] = useState<"new" | "orders" | "modifications">("new");
   const [editOrderId, setEditOrderId] = useState<string | null>(null);
   const [form, setForm] = useState(getEmptyForm);
+  const [customization, setCustomization] = useState<Customization>(emptyCustomization);
   const [copied, setCopied] = useState<"summary" | "confirmation" | null>(null);
   const [done, setDone] = useState<string | null>(null);
+  /** Confirmation message returned with the created order (real order number). */
+  const [savedMessage, setSavedMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [uploadingImage, setUploadingImage] = useState(false);
 
-  // 3 Foldable Steps State
-  const [step1Open, setStep1Open] = useState(true);
-  const [step2Open, setStep2Open] = useState(true);
-  const [step3Open, setStep3Open] = useState(true);
-
+  // Storefront Menu picker state
+  const [showMenuPicker, setShowMenuPicker] = useState(true);
   const [menuSearch, setMenuSearch] = useState("");
   const [menuCategory, setMenuCategory] = useState("all");
 
@@ -120,8 +102,8 @@ export function SocialPanel() {
       const matchCat = menuCategory === "all" || p.category === menuCategory;
       const matchQuery =
         !q ||
-        p.name_ar?.toLowerCase().includes(q) ||
-        p.name_en?.toLowerCase().includes(q) ||
+        p.name_ar.toLowerCase().includes(q) ||
+        p.name_en.toLowerCase().includes(q) ||
         (p.filling_ar && p.filling_ar.toLowerCase().includes(q));
       return matchCat && matchQuery;
     });
@@ -130,7 +112,7 @@ export function SocialPanel() {
   const selectProductFromMenu = (product: StorefrontProduct, size?: SizePrice) => {
     const priceToSet = size ? size.price : product.price;
     const sizeLabel = size ? ` (${size.label})` : "";
-    const fillingText = product.filling_ar ? ` • حشوة: ${product.filling_ar}` : "";
+    const fillingText = product.filling_ar ? ` — حشوة: ${product.filling_ar}` : "";
     const nameToSet = `${product.name_ar}${sizeLabel}${fillingText}`;
 
     setForm((current) => ({
@@ -138,7 +120,10 @@ export function SocialPanel() {
       order_details: nameToSet,
       unit_price: String(priceToSet),
     }));
-    toast.success(`تم اختيار: ${product.name_ar}`);
+
+    if (product.filling_ar) {
+      setCustomization((current) => ({ ...current, filling: product.filling_ar || "" }));
+    }
   };
 
   const access = useQuery({ queryKey: ["social-access"], queryFn: () => accessFn({}) });
@@ -148,27 +133,27 @@ export function SocialPanel() {
     setCopied(null);
   }, []);
 
+  const extras = useMemo(() => customizationSummary(customization), [customization]);
+
   const areaFee = feeForArea(form.area);
   const deliveryFee = form.method === "delivery" ? areaFee ?? 0 : 0;
+  const paymentLabel =
+    form.payment_option === "cliq_full"
+      ? `كليك دفع كامل: ${(Number(form.deposit_paid) || 0).toFixed(2)} د.أ`
+      : form.payment_option === "cliq_deposit"
+        ? `عربون عبر كليك: ${(Number(form.deposit_paid) || 0).toFixed(2)} د.أ`
+        : "كاش عند الاستلام";
 
+  /** Live financial calculator: original price → delivery → total → paid → remaining. */
   const unitPrice = Math.max(Number(form.unit_price) || 0, 0);
   const originalPrice = unitPrice * form.quantity;
   const paidAmount = form.payment_option === "cash" ? 0 : Math.max(Number(form.deposit_paid) || 0, 0);
   const grandTotal = originalPrice + deliveryFee;
   const remaining = remainingBalance(grandTotal, paidAmount);
 
-  const finalOrderDetails = useMemo(() => {
-    if (form.order_mode === "custom") {
-      const parts = [];
-      if (form.custom_size) parts.push(`الحجم: ${form.custom_size}`);
-      if (form.custom_flavor) parts.push(`النكهة: ${form.custom_flavor}`);
-      if (form.custom_filling) parts.push(`الحشوة: ${form.custom_filling}`);
-      if (form.order_details.trim()) parts.push(form.order_details.trim());
-      return parts.join(" | ") || "كيك تفصيل مخصص";
-    }
-    return form.order_details.trim() || "صنف من المنيو";
-  }, [form.order_mode, form.custom_size, form.custom_flavor, form.custom_filling, form.order_details]);
 
+
+  /** Official confirmation message. The order number is filled in on the server. */
   const confirmationTemplate = useMemo(
     () =>
       buildConfirmationMessage({
@@ -177,844 +162,751 @@ export function SocialPanel() {
         when: `${form.requested_date} ${form.requested_time}`.trim(),
         fulfilment:
           form.method === "delivery"
-            ? `توصيل · ${form.area || "عمان"}${form.address.trim() ? ` — ${form.address.trim()}` : ""}`
+            ? `توصيل · ${form.area || "—"}${form.address.trim() ? ` — ${form.address.trim()}` : ""}`
             : "استلام من المحل",
-        items: [`${form.quantity} × ${finalOrderDetails}`],
-        cakeWriting: form.customer_notes.trim(),
-        paymentLabel:
-          form.payment_option === "cliq_full"
-            ? `دفع كامل كليك (${paidAmount.toFixed(2)} د.أ)`
-            : form.payment_option === "cliq_deposit"
-              ? `عربون كليك (${paidAmount.toFixed(2)} د.أ)`
-              : "كاش عند الاستلام",
+        items: [`${form.quantity} × ${form.order_details.trim() || "—"}`, ...extras.ar],
+        cakeWriting: form.design_notes || customization.topperText,
+        cardWriting: form.card_note,
+        extraNote: form.is_urgent ? "طلب مستعجل · Urgent" : "",
+        notes: customization.notes,
+        
+        price: originalPrice,
+        deliveryFee,
         total: grandTotal,
-        remaining,
-        notes: form.customer_notes.trim(),
+        paid: paidAmount,
+        paymentMethod: paymentLabel,
+        recipientPhone: form.recipient_phone || customization.recipientPhone || form.customer_phone,
+        senderPhone: form.sender_phone || customization.senderPhone,
       }),
-    [form, finalOrderDetails, paidAmount, grandTotal, remaining],
+    [form, extras.ar, customization, originalPrice, deliveryFee, grandTotal, paidAmount, paymentLabel],
   );
 
-  const confirmationPreview = useMemo(
-    () => confirmationTemplate.replace("{{ORDER_NUMBER}}", done ? `DL-${done}` : "DL-XXXX"),
-    [confirmationTemplate, done],
-  );
+  /** What staff see and copy: the placeholder is only meaningful after saving. */
+  const confirmationPreview = savedMessage
+    ? savedMessage
+    : confirmationTemplate.replace("{{ORDER_NUMBER}}", "(يُضاف تلقائياً عند الإرسال)");
 
-  const handleImageUpload = async (file: File) => {
-    try {
-      setUploadingImage(true);
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error("حجم الصورة كبير جداً (الأقصى 5 ميغابايت)");
-        return;
-      }
-      const ext = file.name.split(".").pop() || "jpg";
-      const fileName = `social-design-${Date.now()}.${ext}`;
-      const { data, error } = await supabase.storage
-        .from("cake-designs")
-        .upload(fileName, file, { cacheControl: "3600", upsert: true });
-
-      if (error) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          set("design_image_url", e.target?.result as string);
-          toast.success("تم إرفاق الصورة كمعاينة مباشرة 📸");
-        };
-        reader.readAsDataURL(file);
-      } else {
-        const { data: pubUrl } = supabase.storage.from("cake-designs").getPublicUrl(data.path);
-        set("design_image_url", pubUrl.publicUrl);
-        toast.success("تم رفع صورة التصميم بنجاح 📸");
-      }
-    } catch {
-      toast.error("تعذر رفع الصورة");
-    } finally {
-      setUploadingImage(false);
-    }
-  };
 
   const submit = useMutation({
-    mutationFn: async (payload: SocialOrderInput) => {
-      return createFn({ data: payload });
-    },
-    onSuccess: (data) => {
-      setDone(data.order_number);
-      toast.success(`تم حفظ الطلب بنجاح ✅ (DL-${data.order_number})`);
+    mutationFn: (input: SocialOrderInput) => createFn({ data: input }),
+    onSuccess: (order) => {
+      setDone(order.order_number);
+      setError(null);
+      setSavedMessage(order.confirmation_message ?? null);
       setForm(getEmptyForm());
-      void queryClient.invalidateQueries({ queryKey: ["social-orders"] });
+      setCustomization(emptyCustomization);
+      void queryClient.invalidateQueries({ queryKey: ["kds-orders"] });
+      void queryClient.invalidateQueries({ queryKey: ["sales-orders"] });
     },
-    onError: (err: Error) => {
-      setError(err.message);
-      toast.error(err.message || "حدث خطأ أثناء حفظ الطلب");
-    },
+
+    onError: (mutationError: Error) => setError(mutationError.message),
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.customer_name.trim()) {
-      toast.error("يرجى كتابة اسم العميل");
-      setStep1Open(true);
-      return;
-    }
-    if (!form.customer_phone.trim()) {
-      toast.error("يرجى كتابة رقم هاتف العميل");
-      setStep1Open(true);
-      return;
-    }
-    if (form.method === "delivery" && !form.area) {
-      toast.error("يرجى اختيار منطقة التوصيل");
-      setStep1Open(true);
-      return;
-    }
-    if (!finalOrderDetails.trim()) {
-      toast.error("يرجى اختيار أو كتابة تفاصيل الكيكة المطلوبة");
-      setStep2Open(true);
-      return;
-    }
-
-    const payload: SocialOrderInput = {
-      customer_name: form.customer_name.trim(),
-      customer_phone: form.customer_phone.trim(),
-      sender_phone: form.is_recipient_different ? form.customer_phone.trim() : undefined,
-      recipient_name: form.is_recipient_different ? form.recipient_name.trim() : undefined,
-      recipient_phone: form.is_recipient_different ? form.recipient_phone.trim() : undefined,
-      requested_date: form.requested_date,
-      requested_time: form.requested_time,
-      event_date: form.event_date || undefined,
-      method: form.method,
-      area: form.method === "delivery" ? form.area : undefined,
-      address: form.method === "delivery" ? form.address.trim() : undefined,
-      order_details: finalOrderDetails,
-      quantity: form.quantity,
-      unit_price: unitPrice,
-      payment_option: form.payment_option,
-      deposit_paid: form.payment_option === "cash" ? 0 : Number(form.deposit_paid) || 0,
-      customer_notes: form.customer_notes.trim() || undefined,
-      staff_notes: form.staff_notes.trim() || undefined,
-      design_image_url: form.design_image_url || undefined,
-      is_urgent: form.is_urgent,
+  const copy = useCallback(async (text: string, which: "summary" | "confirmation") => {
+    // Primary: async Clipboard API. Fallback: hidden textarea + execCommand
+    // for browsers/contexts where clipboard.writeText is blocked.
+    const legacyCopy = () => {
+      const area = document.createElement("textarea");
+      area.value = text;
+      area.setAttribute("readonly", "");
+      area.style.position = "fixed";
+      area.style.insetInlineStart = "-9999px";
+      document.body.appendChild(area);
+      area.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(area);
+      if (!ok) throw new Error("copy failed");
     };
-
-    submit.mutate(payload);
-  };
-
-  const copy = useCallback((text: string, which: "summary" | "confirmation") => {
-    if (navigator.clipboard?.writeText) {
-      navigator.clipboard.writeText(text).then(() => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        legacyCopy();
+      }
+      setCopied(which);
+      setError(null);
+      window.setTimeout(() => setCopied(null), 2500);
+    } catch {
+      try {
+        legacyCopy();
         setCopied(which);
-        toast.success("تم نسخ رسالة الواتساب بنجاح 📋");
+        setError(null);
         window.setTimeout(() => setCopied(null), 2500);
-      });
-    } else {
-      toast.info("تم تحديد النص للنسخ");
+      } catch {
+        setError("تعذّر النسخ · Copy failed — حدّد النص من المعاينة وانسخه يدوياً");
+      }
     }
   }, []);
+
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
     void navigate({ to: "/social-login", replace: true });
   }, [navigate]);
 
-  if (access.isLoading) {
+  useEffect(() => {
+    if (!done) return;
+    const timer = window.setTimeout(() => setDone(null), 6000);
+    return () => window.clearTimeout(timer);
+  }, [done]);
+
+  if (access.isPending) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#FAF6F0] p-4 text-[#5D2E17]">
-        <Loader2 className="h-8 w-8 animate-spin text-[#8B4513]" />
-      </div>
+      <main dir="rtl" className="grid min-h-dvh place-items-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" aria-label="جار التحميل" />
+      </main>
     );
   }
 
-  if (access.isError || !access.data?.allowed) {
+  if (!access.data?.allowed) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-[#FAF6F0] p-4 text-center text-[#5D2E17]">
-        <AlertTriangle className="h-12 w-12 text-rose-500 mb-2" />
-        <h2 className="font-bold text-lg mb-1">غير مصرح بالوصول</h2>
-        <p className="text-xs text-slate-600 mb-4">الحساب غير مخول لاستخدام شاشة السوشيال ميديا.</p>
-        <button
-          type="button"
-          onClick={() => void signOut()}
-          className="min-h-[48px] px-6 rounded-full bg-[#8B4513] text-white text-xs font-bold shadow-sm hover:bg-[#5D2E17] cursor-pointer"
-        >
-          تسجيل الخروج
-        </button>
-      </div>
+      <main dir="rtl" className="grid min-h-dvh place-items-center bg-background px-4 text-center">
+        <div className="max-w-sm space-y-3">
+          <h1 className="font-display text-2xl font-bold text-foreground">لا تملك صلاحية السوشال</h1>
+          <p className="text-sm text-muted-foreground">This account has no social portal access. Ask an admin to grant the social role.</p>
+          <button type="button" onClick={signOut} className="min-h-12 rounded-full bg-primary px-6 text-sm font-bold text-primary-foreground">
+            تسجيل الخروج · Sign out
+          </button>
+        </div>
+      </main>
     );
   }
+
+  const onSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    submit.mutate({
+      order_name: form.order_name,
+      sender_phone: form.sender_phone || customization.senderPhone,
+      recipient_phone: form.recipient_phone || customization.recipientPhone,
+      customer_name: form.customer_name,
+      customer_phone: form.customer_phone,
+      order_details: form.order_details,
+      quantity: form.quantity,
+      unit_price: Number(form.unit_price) || 0,
+      card_note: form.card_note,
+      
+      confirmation_message: confirmationTemplate,
+      method: form.method,
+      area: form.method === "delivery" ? form.area : null,
+      address: form.method === "delivery" ? form.address : null,
+      payment_option: form.payment_option,
+      deposit_paid: form.payment_option === "cash" ? 0 : Number(form.deposit_paid) || 0,
+      requested_date: form.requested_date,
+      requested_time: form.requested_time,
+      event_date: form.event_date || null,
+      is_urgent: form.is_urgent,
+      design_notes: [form.design_notes.trim(), customization.notes.trim()].filter(Boolean).join(" — "),
+      staff_notes: form.staff_notes,
+      extras_ar: extras.ar,
+      extras_en: extras.en,
+      design_image_url: customization.designImageUrl,
+    });
+
+  };
 
   return (
-    <main dir="rtl" className="min-h-screen bg-[#FAF6F0] text-[#3E2723] pb-16 font-sans">
-      <header className="sticky top-0 z-30 border-b border-[#B8860B]/20 bg-white/95 backdrop-blur-md px-4 py-3 shadow-xs">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <div className="grid h-10 w-10 place-items-center rounded-2xl bg-[#8B4513] text-white shadow-xs">
-              <Sparkles className="h-5 w-5" />
+    <main dir="rtl" className="min-h-dvh w-full max-w-full overflow-x-hidden bg-[#F9FBFC] text-[#3E2723] bg-delish-pattern pb-16">
+      <header className="border-b border-[#F1F5F9] bg-white/95 backdrop-blur-md shadow-xs">
+        <div className="mx-auto grid max-w-3xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-4">
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#FDE2CF] text-[#7B3F00] shadow-sm">
+            <Sparkles className="h-6 w-6" aria-hidden="true" />
+          </span>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h1 className="truncate font-serif text-lg font-bold text-[#3E2723] sm:text-xl">بوابة السوشال ميديا</h1>
+              <span className="-mt-1 hidden font-script text-2xl italic text-[#8B4513] sm:inline">Delish</span>
             </div>
-            <div>
-              <h1 className="font-extrabold text-base text-[#3E2723] leading-tight">شاشة السوشيال ميديا</h1>
-              <p className="text-[11px] font-semibold text-[#8B4513]">إدخال طلبات إنستغرام وواتساب بسهولة وسرعة</p>
-            </div>
+            <p className="truncate text-xs font-bold text-[#7A6458]">
+              إدخال الطلبات فوراً للمبيعات والمطبخ · Social Order Entry
+            </p>
           </div>
-
-          <div className="flex items-center gap-2">
-            <div className="flex rounded-full bg-[#FAF6F0] p-1 border border-slate-200">
-              <button
-                type="button"
-                onClick={() => setView("new")}
-                className={`min-h-[44px] px-3.5 rounded-full text-xs font-extrabold transition-all cursor-pointer ${
-                  view === "new"
-                    ? "bg-[#8B4513] text-white shadow-xs"
-                    : "text-[#5D2E17] hover:bg-white/60"
-                }`}
-              >
-                + طلب جديد
-              </button>
-              <button
-                type="button"
-                onClick={() => setView("orders")}
-                className={`min-h-[44px] px-3.5 rounded-full text-xs font-extrabold transition-all cursor-pointer ${
-                  view === "orders"
-                    ? "bg-[#8B4513] text-white shadow-xs"
-                    : "text-[#5D2E17] hover:bg-white/60"
-                }`}
-              >
-                الطلبات
-              </button>
-              <button
-                type="button"
-                onClick={() => setView("modifications")}
-                className={`min-h-[44px] px-3.5 rounded-full text-xs font-extrabold transition-all cursor-pointer ${
-                  view === "modifications"
-                    ? "bg-[#8B4513] text-white shadow-xs"
-                    : "text-[#5D2E17] hover:bg-white/60"
-                }`}
-              >
-                تعديلات
-              </button>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => void signOut()}
-              title="تسجيل الخروج"
-              className="grid h-11 w-11 place-items-center rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 active:scale-95 transition cursor-pointer"
-            >
-              <LogOut className="h-4 w-4" />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={signOut}
+            aria-label="تسجيل الخروج"
+            className="grid h-11 w-11 place-items-center rounded-full border border-slate-200 bg-white text-[#5D2E17] hover:bg-slate-50 shadow-xs"
+          >
+            <LogOut className="h-4 w-4" aria-hidden="true" />
+          </button>
         </div>
       </header>
 
-      <div className="mx-auto max-w-5xl px-3 sm:px-4 pt-4 space-y-4">
-        {done && (
-          <div className="rounded-2xl border border-emerald-300 bg-emerald-50 p-4 text-emerald-900 shadow-xs flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 text-xs font-bold">
-              <Check className="h-5 w-5 text-emerald-600 shrink-0" />
-              <span>تم حفظ الطلب بنجاح برقم: <strong className="text-emerald-950 font-black text-sm">{`DL-${done}`}</strong></span>
-            </div>
+      <div className="mx-auto max-w-3xl px-4 py-6">
+        {/* Two work modes: take a new order, or manage every existing order. */}
+        <nav className="no-scrollbar mb-5 flex max-w-full gap-2 overflow-x-auto" aria-label="أقسام بوابة السوشال">
+          {([
+            { value: "new" as const, label: "طلب جديد · New order" },
+            { value: "orders" as const, label: "إدارة الطلبات · Orders" },
+            { value: "modifications" as const, label: "تعديلات · Modifications" },
+          ]).map((item) => (
             <button
+              key={item.value}
               type="button"
-              onClick={() => setDone(null)}
-              className="min-h-[48px] px-3 text-xs font-black text-emerald-700 underline hover:text-emerald-900 cursor-pointer"
+              aria-current={view === item.value}
+              onClick={() => setView(item.value)}
+              className={`min-h-12 shrink-0 whitespace-nowrap rounded-full px-6 text-sm font-bold transition ${
+                view === item.value
+                  ? "bg-[#8B4513] text-white shadow-sm"
+                  : "border border-slate-200 bg-white text-[#5D2E17] hover:bg-slate-50"
+              }`}
             >
-              إغلاق
+              {item.label}
             </button>
-          </div>
-        )}
+          ))}
+        </nav>
 
         {view === "new" ? (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* STEP 1: FOLDABLE CARD - Customer & Delivery */}
-            <div className="rounded-3xl border border-slate-200 bg-white shadow-xs overflow-hidden">
-              <button
-                type="button"
-                onClick={() => setStep1Open((v) => !v)}
-                className="w-full min-h-[52px] flex items-center justify-between p-4 sm:p-5 border-b border-slate-100 bg-slate-50/40 hover:bg-slate-50 transition cursor-pointer"
-              >
-                <div className="flex items-center gap-2.5">
-                  <span className="grid h-8 w-8 place-items-center rounded-full bg-[#8B4513] text-xs font-black text-white">
-                    1
+        <>
+        {done ? (
+          <p role="status" className="mb-4 rounded-2xl bg-amber-50 border border-amber-200 p-4 text-sm font-bold text-amber-900 shadow-xs">
+            تم إرسال الطلب {done} ويظهر الآن على شاشة المبيعات والمطبخ ✅
+          </p>
+        ) : null}
+        {error ? (
+          <p role="alert" className="mb-4 rounded-2xl bg-red-50 border border-red-200 p-4 text-sm font-bold text-red-900 shadow-xs">
+            {error}
+          </p>
+        ) : null}
+
+        <form onSubmit={onSubmit} className="space-y-6">
+          <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+            <h2 className="font-serif text-xl font-extrabold text-[#3E2723]">طلب جديد · New Social Order</h2>
+            <span className="rounded-full bg-[#8B4513]/10 px-3 py-1 text-xs font-black text-[#8B4513]">
+              بوابة إدخال السوشال ميديا
+            </span>
+          </div>
+
+          {/* STEP 1: CUSTOMER & DELIVERY INFO */}
+          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+            <div className="flex items-center gap-2 border-b border-slate-100 pb-2.5">
+              <span className="grid h-7 w-7 place-items-center rounded-full bg-[#8B4513] text-xs font-black text-white">
+                1
+              </span>
+              <h3 className="font-bold text-base text-[#3E2723]">بيانات العميل والتوصيل · Customer & Delivery</h3>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block text-xs font-bold text-[#3E2723] sm:col-span-2">
+                اسم الطلب (يظهر في القوائم والمطبخ)
+                <input
+                  value={form.order_name}
+                  onChange={(event) => set("order_name", event.target.value)}
+                  placeholder="مثال: كيكة عيد ميلاد سارة"
+                  className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                />
+              </label>
+
+              <label className="block text-xs font-bold text-[#3E2723]">
+                اسم العميل *
+                <input
+                  required
+                  value={form.customer_name}
+                  onChange={(event) => set("customer_name", event.target.value)}
+                  placeholder="الاسم الكامل"
+                  className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                />
+              </label>
+
+              <label className="block text-xs font-bold text-[#3E2723]">
+                رقم الهاتف الرئيسي *
+                <input
+                  required
+                  dir="ltr"
+                  inputMode="tel"
+                  value={form.customer_phone}
+                  onChange={(event) => set("customer_phone", event.target.value)}
+                  placeholder="079XXXXXXX"
+                  className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                />
+              </label>
+
+              <label className="block text-xs font-bold text-[#3E2723]">
+                رقم المرسل (اختياري)
+                <input
+                  dir="ltr"
+                  inputMode="tel"
+                  value={form.sender_phone}
+                  onChange={(event) => set("sender_phone", event.target.value)}
+                  className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                />
+              </label>
+
+              <label className="block text-xs font-bold text-[#3E2723]">
+                رقم المستلم (اختياري)
+                <input
+                  dir="ltr"
+                  inputMode="tel"
+                  value={form.recipient_phone}
+                  onChange={(event) => set("recipient_phone", event.target.value)}
+                  className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                />
+              </label>
+
+              <div className="sm:col-span-2 grid gap-3 sm:grid-cols-2 pt-1 border-t border-slate-100">
+                <fieldset className="text-xs font-bold text-[#3E2723]">
+                  <legend className="mb-1">طريقة التسليم</legend>
+                  <div className="flex gap-2">
+                    {(["pickup", "delivery"] as const).map((method) => (
+                      <button
+                        key={method}
+                        type="button"
+                        onClick={() => set("method", method)}
+                        className={`min-h-11 flex-1 rounded-xl px-4 text-xs font-bold transition-all ${
+                          form.method === method
+                            ? "bg-[#8B4513] text-white shadow-xs"
+                            : "border border-slate-200 bg-white text-[#5D2E17] hover:bg-slate-50"
+                        }`}
+                      >
+                        {method === "pickup" ? "🏬 استلام من المحل" : "🚀 توصيل"}
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+
+                <div className="flex items-end">
+                  <button
+                    type="button"
+                    onClick={() => set("is_urgent", !form.is_urgent)}
+                    className={`w-full min-h-11 inline-flex items-center justify-center gap-2 rounded-xl px-4 text-xs font-extrabold transition-all ${
+                      form.is_urgent
+                        ? "bg-red-600 text-white shadow-sm"
+                        : "border border-red-300 text-red-700 bg-red-50/60 hover:bg-red-100/60"
+                    }`}
+                  >
+                    <AlertTriangle className="h-4 w-4" /> 🚨 طلب مستعجل (Urgent)
+                  </button>
+                </div>
+              </div>
+
+              {form.method === "delivery" && (
+                <>
+                  <label className="block text-xs font-bold text-[#3E2723]">
+                    منطقة التوصيل *
+                    <select
+                      required
+                      value={form.area}
+                      onChange={(event) => set("area", event.target.value)}
+                      className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                    >
+                      <option value="">اختر المنطقة</option>
+                      {DELIVERY_ZONES.map((zone) => (
+                        <optgroup key={zone.labelEn} label={`${zone.labelAr} · ${zone.labelEn}`}>
+                          {zone.areas.map((area) => (
+                            <option key={`${zone.labelEn}-${area}`} value={area}>
+                              {area === OTHER_GOVERNORATES_AREA
+                                ? `${area} (٥–٨ د.أ)`
+                                : `${area} — ${zone.fee.toFixed(2)} د.أ`}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="block text-xs font-bold text-[#3E2723]">
+                    العنوان التفصيلي
+                    <input
+                      value={form.address}
+                      onChange={(event) => set("address", event.target.value)}
+                      placeholder="شارع، رقم العمارة، الطابق…"
+                      className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                    />
+                  </label>
+                </>
+              )}
+
+              <label className="block text-xs font-bold text-[#3E2723]">
+                تاريخ التسليم *
+                <input
+                  type="date"
+                  required
+                  value={form.requested_date}
+                  onChange={(event) => set("requested_date", event.target.value)}
+                  className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                />
+              </label>
+
+              <label className="block text-xs font-bold text-[#3E2723]">
+                وقت التسليم *
+                <input
+                  type="time"
+                  required
+                  value={form.requested_time}
+                  onChange={(event) => set("requested_time", event.target.value)}
+                  className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                />
+              </label>
+            </div>
+          </div>
+
+          {/* STEP 2: PRODUCTS, FILLINGS & CUSTOMIZATION */}
+          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+            <div className="flex items-center gap-2 border-b border-slate-100 pb-2.5">
+              <span className="grid h-7 w-7 place-items-center rounded-full bg-[#8B4513] text-xs font-black text-white">
+                2
+              </span>
+              <h3 className="font-bold text-base text-[#3E2723]">المنتجات، الحشوات والتجهيز الخاص · Products & Fillings</h3>
+            </div>
+
+            {/* STOREFRONT MENU / CATALOG SELECTOR */}
+            <div className="rounded-2xl border border-[#B8860B]/30 bg-[#FFFDF9] p-3.5 space-y-3 shadow-2xs">
+              <div className="flex items-center justify-between gap-2 border-b border-[#B8860B]/20 pb-2">
+                <div className="flex items-center gap-2">
+                  <span className="grid h-8 w-8 place-items-center rounded-xl bg-[#8B4513] text-white">
+                    <Store className="h-4 w-4" />
                   </span>
-                  <div className="text-start">
-                    <h3 className="font-bold text-base text-[#3E2723]">العميل وموعد التسليم</h3>
-                    <p className="text-[11px] text-[#7A6458]">الاسم، الهاتف، التوصيل أو الاستلام</p>
+                  <div>
+                    <h4 className="text-xs font-bold text-[#3E2723]">منيو المنتجات على الموقع</h4>
+                    <p className="text-[10px] text-[#7A6458]">اضغط على أي صنف لإضافته وتحديد السعر فوراً</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  {form.customer_name && (
-                    <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg">
-                      {form.customer_name} ✓
-                    </span>
-                  )}
-                  {step1Open ? <ChevronUp className="h-5 w-5 text-slate-400" /> : <ChevronDown className="h-5 w-5 text-slate-400" />}
-                </div>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setShowMenuPicker((v) => !v)}
+                  className="rounded-full bg-white px-3 py-1 text-xs font-bold text-[#8B4513] border border-[#B8860B]/40 hover:bg-[#FDE2CF]/30 transition shadow-2xs"
+                >
+                  {showMenuPicker ? "إخفاء المنيو ▲" : "عرض منيو المنتجات ▼"}
+                </button>
+              </div>
 
-              {step1Open && (
-                <div className="p-4 sm:p-5 space-y-4 animate-in fade-in duration-150">
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <label className="block text-xs font-bold text-[#3E2723]">
-                      اسم العميل *
+              {showMenuPicker && (
+                <div className="space-y-3 pt-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="relative flex-1 min-w-[180px]">
+                      <Search className="absolute right-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
                       <input
                         type="text"
-                        required
-                        value={form.customer_name}
-                        onChange={(e) => set("customer_name", e.target.value)}
-                        placeholder="مثال: أم أحمد"
-                        className="mt-1 min-h-[48px] w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                        value={menuSearch}
+                        onChange={(e) => setMenuSearch(e.target.value)}
+                        placeholder="بحث بالاسم أو الحشوة…"
+                        className="w-full rounded-xl border border-slate-200 bg-white pr-8 pl-3 py-1.5 text-xs font-semibold text-[#3E2723] focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
                       />
-                    </label>
-
-                    <label className="block text-xs font-bold text-[#3E2723]">
-                      رقم الواتساب / الهاتف الرئيسي *
-                      <input
-                        type="tel"
-                        inputMode="tel"
-                        required
-                        dir="ltr"
-                        value={form.customer_phone}
-                        onChange={(e) => set("customer_phone", e.target.value)}
-                        placeholder="079XXXXXXX"
-                        className="mt-1 min-h-[48px] w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
-                      />
-                    </label>
-                  </div>
-
-                  <div className="rounded-xl bg-[#FFF8EE] p-3 border border-[#B8860B]/20">
-                    <label className="inline-flex items-center gap-2 cursor-pointer select-none text-xs font-bold text-[#5D2E17] min-h-[40px]">
-                      <input
-                        type="checkbox"
-                        checked={form.is_recipient_different}
-                        onChange={(e) => set("is_recipient_different", e.target.checked)}
-                        className="h-5 w-5 rounded border-slate-300 text-[#8B4513] focus:ring-[#B8860B]"
-                      />
-                      <span>المستلم شخص آخر (هدية / توصيل لطرف ثاني)</span>
-                    </label>
-
-                    {form.is_recipient_different && (
-                      <div className="mt-3 grid gap-3 sm:grid-cols-2 pt-2 border-t border-[#B8860B]/20 animate-in fade-in duration-200">
-                        <label className="block text-xs font-bold text-[#3E2723]">
-                          اسم المستلم
-                          <input
-                            type="text"
-                            value={form.recipient_name}
-                            onChange={(e) => set("recipient_name", e.target.value)}
-                            placeholder="اسم المستلم"
-                            className="mt-1 min-h-[48px] w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
-                          />
-                        </label>
-
-                        <label className="block text-xs font-bold text-[#3E2723]">
-                          رقم هاتف المستلم
-                          <input
-                            type="tel"
-                            inputMode="tel"
-                            dir="ltr"
-                            value={form.recipient_phone}
-                            onChange={(e) => set("recipient_phone", e.target.value)}
-                            placeholder="رقم المستلم"
-                            className="mt-1 min-h-[48px] w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
-                          />
-                        </label>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => set("method", "pickup")}
-                        className={`min-h-[48px] flex-1 inline-flex items-center justify-center gap-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                          form.method === "pickup"
-                            ? "bg-[#8B4513] text-white shadow-xs"
-                            : "border border-slate-200 bg-white text-[#5D2E17] hover:bg-slate-50"
-                        }`}
-                      >
-                        <Store className="h-4 w-4" /> استلام من المحل
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => set("method", "delivery")}
-                        className={`min-h-[48px] flex-1 inline-flex items-center justify-center gap-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                          form.method === "delivery"
-                            ? "bg-[#8B4513] text-white shadow-xs"
-                            : "border border-slate-200 bg-white text-[#5D2E17] hover:bg-slate-50"
-                        }`}
-                      >
-                        <Truck className="h-4 w-4" /> توصيل مع دليفري
-                      </button>
                     </div>
 
-                    {form.method === "delivery" && (
-                      <div className="grid gap-3 sm:grid-cols-2 pt-1">
-                        <label className="block text-xs font-bold text-[#3E2723]">
-                          منطقة التوصيل *
-                          <select
-                            value={form.area}
-                            onChange={(e) => set("area", e.target.value)}
-                            className="mt-1 min-h-[48px] w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
-                          >
-                            <option value="">— اختر المنطقة —</option>
-                            {DELIVERY_ZONES.map((zone) => (
-                              <optgroup key={zone.labelAr} label={zone.labelAr}>
-                                {zone.areas.map((area) => (
-                                  <option key={`${zone.labelAr}-${area}`} value={area}>
-                                    {area === OTHER_GOVERNORATES_AREA
-                                      ? `${area} (٥–٨ د.أ)`
-                                      : `${area} (${zone.fee.toFixed(2)} د.أ)`}
-                                  </option>
-                                ))}
-                              </optgroup>
-                            ))}
-                          </select>
-                          {form.area && (
-                            <span className="mt-1 block text-[11px] font-bold text-[#8B4513]">
-                              {form.area === OTHER_GOVERNORATES_AREA
-                                ? "أجرة التوصيل ٥–٨ د.أ (تحدد حسب العنوان)"
-                                : `أجرة التوصيل: ${(areaFee ?? 0).toFixed(2)} د.أ`}
-                            </span>
-                          )}
-                        </label>
-
-                        <label className="block text-xs font-bold text-[#3E2723]">
-                          العنوان التفصيلي
-                          <input
-                            type="text"
-                            value={form.address}
-                            onChange={(e) => set("address", e.target.value)}
-                            placeholder="شارع، عمارة، شقة..."
-                            className="mt-1 min-h-[48px] w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
-                          />
-                        </label>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="grid gap-3 sm:grid-cols-2 pt-1">
-                    <label className="block text-xs font-bold text-[#3E2723]">
-                      تاريخ التسليم *
-                      <input
-                        type="date"
-                        required
-                        value={form.requested_date}
-                        onChange={(e) => set("requested_date", e.target.value)}
-                        className="mt-1 min-h-[48px] w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
-                      />
-                    </label>
-
-                    <label className="block text-xs font-bold text-[#3E2723]">
-                      وقت التسليم *
-                      <input
-                        type="time"
-                        required
-                        value={form.requested_time}
-                        onChange={(e) => set("requested_time", e.target.value)}
-                        className="mt-1 min-h-[48px] w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
-                      />
-                    </label>
-                  </div>
-                </div>
-              )}
-            </div>
-            {/* STEP 2: FOLDABLE CARD - Cake Content (Clear Toggle: Menu vs Custom) */}
-            <div className="rounded-3xl border border-slate-200 bg-white shadow-xs overflow-hidden">
-              <button
-                type="button"
-                onClick={() => setStep2Open((v) => !v)}
-                className="w-full min-h-[52px] flex items-center justify-between p-4 sm:p-5 border-b border-slate-100 bg-slate-50/40 hover:bg-slate-50 transition cursor-pointer"
-              >
-                <div className="flex items-center gap-2.5">
-                  <span className="grid h-8 w-8 place-items-center rounded-full bg-[#8B4513] text-xs font-black text-white">
-                    2
-                  </span>
-                  <div className="text-start">
-                    <h3 className="font-bold text-base text-[#3E2723]">محتوى الكيكة</h3>
-                    <p className="text-[11px] text-[#7A6458]">منيو الموقع الجاهز أو كيك تفصيل مخصص</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-[#8B4513] bg-[#FFF8EE] px-2.5 py-1 rounded-lg">
-                    {form.order_mode === "menu" ? "منيو جاهز" : "تفصيل مخصص"}
-                  </span>
-                  {step2Open ? <ChevronUp className="h-5 w-5 text-slate-400" /> : <ChevronDown className="h-5 w-5 text-slate-400" />}
-                </div>
-              </button>
-
-              {step2Open && (
-                <div className="p-4 sm:p-5 space-y-4 animate-in fade-in duration-150">
-                  <div className="grid grid-cols-2 gap-2 p-1.5 rounded-2xl bg-[#FAF6F0] border border-slate-200">
-                    <button
-                      type="button"
-                      onClick={() => set("order_mode", "menu")}
-                      className={`min-h-[48px] rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                        form.order_mode === "menu"
-                          ? "bg-[#8B4513] text-white shadow-xs"
-                          : "text-[#5D2E17] hover:bg-white/60"
-                      }`}
-                    >
-                      🍰 منيو الموقع الجاهز
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => set("order_mode", "custom")}
-                      className={`min-h-[48px] rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                        form.order_mode === "custom"
-                          ? "bg-[#8B4513] text-white shadow-xs"
-                          : "text-[#5D2E17] hover:bg-white/60"
-                      }`}
-                    >
-                      🎨 كيك تفصيل مخصص
-                    </button>
-                  </div>
-
-                  {form.order_mode === "menu" && (
-                    <div className="space-y-3 animate-in fade-in duration-150">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <div className="relative flex-1 min-w-[200px]">
-                          <Search className="absolute right-3 top-3.5 h-4 w-4 text-slate-400" />
-                          <input
-                            type="search"
-                            value={menuSearch}
-                            onChange={(e) => setMenuSearch(e.target.value)}
-                            placeholder="ابحث عن كيكة أو صنف من المنيو..."
-                            className="w-full min-h-[48px] rounded-xl border border-slate-200 bg-[#F9FBFC] pr-9 pl-3.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
-                          />
-                        </div>
-
-                        <select
-                          value={menuCategory}
-                          onChange={(e) => setMenuCategory(e.target.value)}
-                          className="min-h-[48px] rounded-xl border border-slate-200 bg-[#F9FBFC] px-3 text-xs font-bold text-[#5D2E17] focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
-                        >
-                          <option value="all">كل الأقسام</option>
-                          {categoriesList.filter((c) => c !== "all").map((cat) => (
-                            <option key={cat} value={cat}>{cat}</option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="grid gap-2 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 max-h-60 overflow-y-auto p-1 border border-slate-100 rounded-2xl bg-[#F9FBFC]">
-                        {filteredMenuProducts.length > 0 ? (
-                          filteredMenuProducts.map((prod) => (
-                            <div
-                              key={prod.id}
-                              onClick={() => selectProductFromMenu(prod)}
-                              className="cursor-pointer rounded-xl border border-slate-200 bg-white p-3 shadow-2xs hover:border-[#B8860B] hover:shadow-xs transition-all text-right flex flex-col justify-between space-y-1.5 active:scale-98"
-                            >
-                              <div>
-                                <span className="font-extrabold text-xs text-[#3E2723] block leading-snug">{prod.name_ar}</span>
-                                {prod.filling_ar && (
-                                  <span className="text-[10px] text-slate-500 block">حشوة: {prod.filling_ar}</span>
-                                )}
-                              </div>
-                              <div className="flex items-center justify-between text-xs font-black text-[#8B4513] pt-1 border-t border-slate-100">
-                                <span>{prod.price_on_request ? "عند الطلب" : `${prod.price.toFixed(2)} د.أ`}</span>
-                                <span className="text-[10px] bg-[#FFF8EE] text-[#8B4513] px-2 py-0.5 rounded-full border border-[#B8860B]/30">اختيار ✓</span>
-                              </div>
-                            </div>
-                          ))
-                        ) : (
-                          <p className="text-center text-xs text-slate-500 py-6 col-span-full">لا يوجد منتجات تطابق البحث</p>
-                        )}
-                      </div>
-
-                      <label className="block text-xs font-bold text-[#3E2723] pt-1">
-                        الصنف المختار
-                        <input
-                          type="text"
-                          value={form.order_details}
-                          onChange={(e) => set("order_details", e.target.value)}
-                          placeholder="سيظهر اسم الكيك المختار من المنيو هنا"
-                          className="mt-1 min-h-[48px] w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm font-bold text-[#8B4513] focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
-                        />
-                      </label>
-                    </div>
-                  )}
-
-                  {form.order_mode === "custom" && (
-                    <div className="space-y-3 animate-in fade-in duration-150 rounded-2xl bg-[#FFF8EE]/50 p-4 border border-[#B8860B]/30">
-                      <div className="grid gap-3 sm:grid-cols-3">
-                        <label className="block text-xs font-bold text-[#3E2723]">
-                          الحجم *
-                          <select
-                            value={form.custom_size}
-                            onChange={(e) => set("custom_size", e.target.value)}
-                            className="mt-1 min-h-[48px] w-full rounded-xl border border-slate-200 bg-white px-3.5 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
-                          >
-                            <option value="">— اختر الحجم —</option>
-                            <option value="6 انش (يكفي 6-8 أشخاص)">6 انش (6-8 أشخاص)</option>
-                            <option value="8 انش (يكفي 10-12 شخص)">8 انش (10-12 شخص)</option>
-                            <option value="10 انش (يكفي 15-18 شخص)">10 انش (15-18 شخص)</option>
-                            <option value="دورين صغير (20 شخص)">دورين صغير (20 شخص)</option>
-                            <option value="دورين كبير (35+ شخص)">دورين كبير (35+ شخص)</option>
-                            <option value="حجم مخصص">حجم مخصص آخر</option>
-                          </select>
-                        </label>
-
-                        <label className="block text-xs font-bold text-[#3E2723]">
-                          النكهة *
-                          <select
-                            value={form.custom_flavor}
-                            onChange={(e) => set("custom_flavor", e.target.value)}
-                            className="mt-1 min-h-[48px] w-full rounded-xl border border-slate-200 bg-white px-3.5 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
-                          >
-                            <option value="">— اختر النكهة —</option>
-                            <option value="فانيليا">فانيليا (Vanilla)</option>
-                            <option value="شوكولاتة">شوكولاتة (Chocolate)</option>
-                            <option value="ريد فيلفيت">ريد فيلفيت (Red Velvet)</option>
-                            <option value="مكس فانيليا وشوكولاتة">مكس فانيليا وشوكولاتة</option>
-                            <option value="ليمون / توت">ليمون / توت</option>
-                          </select>
-                        </label>
-
-                        <label className="block text-xs font-bold text-[#3E2723]">
-                          الحشوة المختارة *
-                          <input
-                            type="text"
-                            value={form.custom_filling}
-                            onChange={(e) => set("custom_filling", e.target.value)}
-                            placeholder="مثال: نوتيلا، لوتس، كيندر..."
-                            className="mt-1 min-h-[48px] w-full rounded-xl border border-slate-200 bg-white px-3.5 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
-                          />
-                        </label>
-                      </div>
-
-                      <label className="block text-xs font-bold text-[#3E2723]">
-                        تفاصيل التصميم المخصص
-                        <input
-                          type="text"
-                          value={form.order_details}
-                          onChange={(e) => set("order_details", e.target.value)}
-                          placeholder="اكتب أي تفاصيل إضافية لتصميم الكيكة..."
-                          className="mt-1 min-h-[48px] w-full rounded-xl border border-slate-200 bg-white px-3.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
-                        />
-                      </label>
-
-                      <div className="pt-1">
-                        <span className="text-xs font-bold text-[#3E2723] block mb-1">رفع صورة مرجعية للتصميم</span>
-                        <div className="flex items-center gap-2">
-                          <label className="cursor-pointer inline-flex min-h-[48px] items-center justify-center gap-2 rounded-xl border border-[#B8860B] bg-white px-4 text-xs font-bold text-[#8B4513] hover:bg-[#FFF8EE] transition">
-                            {uploadingImage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-                            {uploadingImage ? "جاري الرفع..." : "اختيار صورة التصميم"}
-                            <input
-                              type="file"
-                              accept="image/*"
-                              className="hidden"
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (file) void handleImageUpload(file);
-                              }}
-                            />
-                          </label>
-                          {form.design_image_url && (
-                            <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-800 px-3 py-2 rounded-xl border border-emerald-200 text-xs font-extrabold">
-                              <ImageIcon className="h-4 w-4 text-emerald-600" />
-                              <span>تم إرفاق الصورة ✓</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* STEP 3: FOLDABLE CARD - Financials, Notes & WhatsApp Generator */}
-            <div className="rounded-3xl border border-slate-200 bg-white shadow-xs overflow-hidden">
-              <button
-                type="button"
-                onClick={() => setStep3Open((v) => !v)}
-                className="w-full min-h-[52px] flex items-center justify-between p-4 sm:p-5 border-b border-slate-100 bg-slate-50/40 hover:bg-slate-50 transition cursor-pointer"
-              >
-                <div className="flex items-center gap-2.5">
-                  <span className="grid h-8 w-8 place-items-center rounded-full bg-[#8B4513] text-xs font-black text-white">
-                    3
-                  </span>
-                  <div className="text-start">
-                    <h3 className="font-bold text-base text-[#3E2723]">الحساب والرسالة الجاهزة</h3>
-                    <p className="text-[11px] text-[#7A6458]">الأسعار، الملاحظات، وتوليد رسالة الواتساب</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-black text-[#8B4513]">
-                    {grandTotal.toFixed(2)} د.أ
-                  </span>
-                  {step3Open ? <ChevronUp className="h-5 w-5 text-slate-400" /> : <ChevronDown className="h-5 w-5 text-slate-400" />}
-                </div>
-              </button>
-
-              {step3Open && (
-                <div className="p-4 sm:p-5 space-y-4 animate-in fade-in duration-150">
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <label className="block text-xs font-bold text-[#3E2723]">
-                      الكمية
-                      <input
-                        type="number"
-                        min="1"
-                        inputMode="numeric"
-                        value={form.quantity}
-                        onChange={(e) => set("quantity", Math.max(1, Number(e.target.value) || 1))}
-                        className="mt-1 min-h-[48px] w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
-                      />
-                    </label>
-
-                    <label className="block text-xs font-bold text-[#3E2723]">
-                      السعر الإجمالي للكيك/الأصناف (د.أ) *
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        inputMode="decimal"
-                        dir="ltr"
-                        required
-                        value={form.unit_price}
-                        onChange={(e) => set("unit_price", e.target.value)}
-                        placeholder="0.00"
-                        className="mt-1 min-h-[48px] w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm font-bold text-[#8B4513] focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
-                      />
-                    </label>
-                  </div>
-
-                  <fieldset className="text-xs font-bold text-[#3E2723]">
-                    <legend className="mb-1">طريقة الدفع</legend>
-                    <div className="grid grid-cols-3 gap-2">
-                      {(
-                        [
-                          { value: "cash", label: "كاش عند الاستلام" },
-                          { value: "cliq_full", label: "كليك كامل" },
-                          { value: "cliq_deposit", label: "عربون كليك" },
-                        ] as const
-                      ).map((option) => (
+                    <div className="no-scrollbar flex gap-1 overflow-x-auto max-w-full py-0.5">
+                      {categoriesList.map((cat) => (
                         <button
-                          key={option.value}
+                          key={cat}
                           type="button"
-                          onClick={() => set("payment_option", option.value)}
-                          className={`min-h-[48px] rounded-xl px-2 text-xs font-bold transition-all cursor-pointer ${
-                            form.payment_option === option.value
-                              ? "bg-[#8B4513] text-white shadow-xs"
-                              : "border border-slate-200 bg-white text-[#5D2E17] hover:bg-slate-50"
+                          onClick={() => setMenuCategory(cat)}
+                          className={`rounded-full px-2.5 py-1 text-[11px] font-bold whitespace-nowrap transition-all ${
+                            menuCategory === cat
+                              ? "bg-[#8B4513] text-white shadow-2xs"
+                              : "bg-white text-[#5D2E17] border border-slate-200 hover:bg-slate-100"
                           }`}
                         >
-                          {option.label}
+                          {cat === "all" ? "الكل" : cat}
                         </button>
                       ))}
                     </div>
-
-                    {form.payment_option !== "cash" && (
-                      <label className="mt-2 block text-xs font-bold text-[#3E2723]">
-                        {form.payment_option === "cliq_full"
-                          ? "المبلغ الكامل المدفوع عبر كليك (د.أ)"
-                          : "قيمة العربون المدفوع عبر كليك (د.أ)"}
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          inputMode="decimal"
-                          dir="ltr"
-                          value={form.deposit_paid}
-                          onChange={(e) => set("deposit_paid", e.target.value)}
-                          className="mt-1 min-h-[48px] w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm font-bold text-[#8B4513] focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
-                        />
-                      </label>
-                    )}
-                  </fieldset>
-
-                  <div className="rounded-2xl border border-[#B8860B]/30 bg-[#FFF8EE] p-4">
-                    <h4 className="text-xs font-extrabold text-[#5D2E17] border-b border-[#B8860B]/20 pb-1.5">
-                      الحساب المالي للطلب
-                    </h4>
-                    <dl className="mt-2 space-y-1 text-xs text-[#3E2723]">
-                      <div className="flex justify-between">
-                        <dt>ثمن الأصناف ({form.quantity} × {(Number(form.unit_price) || 0).toFixed(2)})</dt>
-                        <dd className="font-bold">{originalPrice.toFixed(2)} د.أ</dd>
-                      </div>
-                      <div className="flex justify-between">
-                        <dt>أجرة التوصيل</dt>
-                        <dd className="font-bold">{deliveryFee.toFixed(2)} د.أ</dd>
-                      </div>
-                      <div className="flex justify-between border-t border-[#B8860B]/20 pt-1 text-base font-black">
-                        <dt>إجمالي الطلب</dt>
-                        <dd className="text-[#8B4513]">{grandTotal.toFixed(2)} د.أ</dd>
-                      </div>
-                      <div className="flex justify-between text-emerald-800">
-                        <dt>المدفوع كليك</dt>
-                        <dd className="font-bold">{paidAmount.toFixed(2)} د.أ</dd>
-                      </div>
-                      <div className="flex justify-between font-black text-sm text-[#8B4513] border-t border-[#B8860B]/20 pt-1">
-                        <dt>المتبقي عند الاستلام</dt>
-                        <dd>{remaining.toFixed(2)} د.أ</dd>
-                      </div>
-                    </dl>
                   </div>
 
-                  {/* Consolidate 4 notes into 2 clear fields */}
-                  <div className="space-y-3 pt-1">
-                    <label className="block text-xs font-bold text-[#3E2723]">
-                      1. ملاحظات الزبون والكتابة على الكيك (تظهر للمطبخ وفي رسالة الواتساب)
-                      <textarea
-                        rows={2}
-                        value={form.customer_notes}
-                        onChange={(e) => set("customer_notes", e.target.value)}
-                        placeholder="اكتب عبارة المعايدة أو الكتابة على الكيك وأي تفاصيل خاصة بالزبون..."
-                        className="mt-1 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] p-3 text-xs focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
-                      />
-                    </label>
-
-                    <label className="block text-xs font-bold text-[#3E2723]">
-                      2. ملاحظات داخلية للفريق (سرية - خاصة بالمبيعات والإدارة فقط)
-                      <textarea
-                        rows={2}
-                        value={form.staff_notes}
-                        onChange={(e) => set("staff_notes", e.target.value)}
-                        placeholder="ملاحظات سرية للفريق لا تظهر للزبون ولا للمطبخ..."
-                        className="mt-1 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] p-3 text-xs focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
-                      />
-                    </label>
-                  </div>
-
-                  {/* WhatsApp Confirmation Generator & Big Copy Button */}
-                  <div className="rounded-2xl border border-[#B8860B]/40 bg-[#FFFDF9] p-4 space-y-3">
-                    <span className="font-extrabold text-xs text-[#3E2723] block">
-                      👑 رسالة تأكيد الطلب للواتساب (جاهزة للإرسال)
-                    </span>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => copy(confirmationPreview, "confirmation")}
-                        className="min-h-[48px] flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-[#B8860B] bg-white px-4 text-xs font-black text-[#8B4513] hover:bg-[#FFF8EE] active:scale-95 transition cursor-pointer shadow-2xs"
-                      >
-                        {copied === "confirmation" ? <Check className="h-4 w-4 text-emerald-600" /> : <ClipboardCopy className="h-4 w-4" />}
-                        {copied === "confirmation" ? "تم نسخ الرسالة بنجاح ✓" : "[ نسخ رسالة الواتساب الجاهزة ]"}
-                      </button>
-
-                      <a
-                        href={whatsappUrl(confirmationPreview)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        title="إرسال عبر الواتساب"
-                        className="grid h-12 w-12 place-items-center rounded-xl bg-[#25D366] text-white shadow-sm hover:brightness-95 active:scale-95 transition"
-                      >
-                        <MessageCircle className="h-6 w-6" />
-                      </a>
+                  {storefront.isLoading ? (
+                    <div className="flex items-center justify-center py-4 text-xs text-[#7A6458]">
+                      <Loader2 className="h-4 w-4 animate-spin ml-2 text-[#8B4513]" />
+                      جاري تحميل المنيو…
                     </div>
+                  ) : filteredMenuProducts.length === 0 ? (
+                    <div className="text-center py-3 text-xs font-bold text-[#7A6458]">
+                      لا توجد نتائج مطابقة في المنيو
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-64 overflow-y-auto pr-1">
+                      {filteredMenuProducts.map((prod) => (
+                        <div
+                          key={prod.id}
+                          className="group flex flex-col justify-between rounded-xl bg-white p-2 border border-slate-200 shadow-2xs hover:border-[#B8860B] transition-all"
+                        >
+                          <div className="flex items-start gap-2">
+                            {prod.image_url ? (
+                              <img
+                                src={prod.image_url}
+                                alt={prod.name_ar}
+                                className="h-10 w-10 rounded-lg object-cover shrink-0 border border-slate-100"
+                              />
+                            ) : (
+                              <div className="h-10 w-10 rounded-lg bg-[#FDE2CF]/40 flex items-center justify-center shrink-0 text-[#8B4513]">
+                                <Utensils className="h-4 w-4" />
+                              </div>
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <h4 className="text-xs font-bold text-[#3E2723] leading-snug truncate">{prod.name_ar}</h4>
+                              <p className="text-[11px] font-extrabold text-[#8B4513] mt-0.5">
+                                {prod.price_on_request ? "حسب الطلب" : `${prod.price.toFixed(2)} د.أ`}
+                              </p>
+                            </div>
+                          </div>
 
-                    <pre className="max-h-52 overflow-y-auto whitespace-pre-wrap break-words rounded-xl bg-[#F9FBFC] p-3 text-xs text-[#3E2723] border border-slate-200 select-text">
-                      {confirmationPreview}
-                    </pre>
-                  </div>
-
-                  {/* Explicit Save & Confirm Action Button */}
-                  <button
-                    type="submit"
-                    disabled={submit.isPending}
-                    className="w-full min-h-[52px] inline-flex items-center justify-center gap-2 rounded-2xl bg-[#8B4513] text-white font-black text-sm shadow-md hover:bg-[#5D2E17] active:scale-98 disabled:opacity-60 transition cursor-pointer"
-                  >
-                    {submit.isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
-                    [ حفظ وإنشاء الطلب وتأكيده 💾 ]
-                  </button>
+                          <div className="mt-1.5 pt-1 border-t border-slate-100 flex flex-wrap gap-1">
+                            {prod.sizes && prod.sizes.length > 0 ? (
+                              prod.sizes.map((sz) => (
+                                <button
+                                  key={sz.label}
+                                  type="button"
+                                  onClick={() => selectProductFromMenu(prod, sz)}
+                                  className="flex-1 min-w-[55px] rounded-lg bg-[#F9FBFC] hover:bg-[#8B4513] hover:text-white px-1 py-0.5 text-[10px] font-bold border border-slate-200 transition-all text-center"
+                                >
+                                  {sz.label} ({sz.price} د.أ)
+                                </button>
+                              ))
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => selectProductFromMenu(prod)}
+                                className="w-full rounded-lg bg-[#8B4513] hover:bg-[#5D2E17] text-white px-2 py-0.5 text-[11px] font-bold shadow-2xs transition-all flex items-center justify-center gap-1"
+                              >
+                                <PlusCircle className="h-3 w-3" />
+                                اختيار المنتج
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
-          </form>
+
+            <label className="block text-xs font-bold text-[#3E2723]">
+              تفاصيل طلب الزبون *
+              <textarea
+                required
+                rows={3}
+                maxLength={2000}
+                value={form.order_details}
+                onChange={(event) => set("order_details", event.target.value)}
+                placeholder="اكتب تفاصيل الطلب كاملة أو اختر صنفاً من منيو الموقع أعلاه…"
+                className="mt-1 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+              />
+            </label>
+
+            {/* CAKE FILLING SELECTION */}
+            <div className="rounded-xl bg-[#FDE2CF]/20 border border-[#FDE2CF] p-3 space-y-2">
+              <span className="block text-xs font-bold text-[#5D2E17]">
+                نوع الحشوة (اختر أو اكتب) · Cake Filling Selection
+              </span>
+              <div className="flex flex-wrap gap-1">
+                {[
+                  "نوتيلا وبندق",
+                  "لوتس كراميل",
+                  "فستق حلبي",
+                  "شوكولاتة بلجيكية",
+                  "فراولة طازجة وكريمة",
+                  "فانيلا كلاسيك",
+                  "كراميل مملح",
+                  "أوريو وكريمة",
+                ].map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() =>
+                      setCustomization((curr) => ({
+                        ...curr,
+                        filling: curr.filling === f ? "" : f,
+                      }))
+                    }
+                    className={`rounded-full px-2.5 py-0.5 text-xs font-bold border transition-all ${
+                      customization.filling === f
+                        ? "bg-[#8B4513] text-white border-[#8B4513] shadow-xs"
+                        : "bg-white text-[#5D2E17] border-slate-200 hover:bg-amber-50"
+                    }`}
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
+              <input
+                type="text"
+                value={customization.filling}
+                onChange={(event) =>
+                  setCustomization((curr) => ({ ...curr, filling: event.target.value }))
+                }
+                placeholder="اكتب نوع الحشوة هنا (مثال: نوتيلا ولوتس أو حسب الطلب)"
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-[#3E2723] focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+              />
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block text-xs font-bold text-[#3E2723]">
+                الكمية *
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  required
+                  value={form.quantity}
+                  onChange={(event) => set("quantity", Math.max(1, Number(event.target.value) || 1))}
+                  className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                />
+              </label>
+
+              <label className="block text-xs font-bold text-[#3E2723]">
+                السعر الأصلي للحبة (د.أ)
+                <input
+                  type="number"
+                  min="0"
+                  step="0.25"
+                  value={form.unit_price}
+                  onChange={(event) => set("unit_price", event.target.value)}
+                  placeholder="0.00"
+                  className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                />
+              </label>
+            </div>
+
+            <div className="rounded-2xl border border-[#FDE2CF] bg-[#FDE2CF]/20 p-3 sm:p-4">
+              <CakeCustomizationPanel value={customization} onChange={setCustomization} />
+              {extras.ar.length ? (
+                <ul className="mt-2 space-y-0.5 rounded-xl bg-white/80 p-2.5 text-xs font-bold text-[#5D2E17]">
+                  {extras.ar.map((line) => (
+                    <li key={line}>• {line}</li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+
+            <label className="block text-xs font-bold text-[#3E2723]">
+              الكتابة على الكرت (رسالة الكرت)
+              <input
+                type="text"
+                maxLength={1000}
+                value={form.card_note}
+                onChange={(event) => set("card_note", event.target.value)}
+                placeholder="اكتب عبارة الإهداء المعروضة على الكرت هنا…"
+                className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+              />
+            </label>
+          </div>
+
+          {/* STEP 3: PAYMENT, SUMMARY & WHATSAPP CONFIRMATION */}
+          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+            <div className="flex items-center gap-2 border-b border-slate-100 pb-2.5">
+              <span className="grid h-7 w-7 place-items-center rounded-full bg-[#8B4513] text-xs font-black text-white">
+                3
+              </span>
+              <h3 className="font-bold text-base text-[#3E2723]">طريقة الدفع والحساب وتأكيد الطلب · Payment & Confirmation</h3>
+            </div>
+
+            <fieldset className="text-xs font-bold text-[#3E2723]">
+              <legend className="mb-1">طريقة الدفع</legend>
+              <div className="flex flex-wrap gap-2">
+                {(
+                  [
+                    { value: "cash", label: "كاش عند الاستلام" },
+                    { value: "cliq_full", label: "كليك دفع كامل" },
+                    { value: "cliq_deposit", label: "عربون عبر كليك" },
+                  ] as const
+                ).map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => set("payment_option", option.value)}
+                    className={`min-h-11 flex-1 rounded-xl px-3 text-xs font-bold transition-all ${
+                      form.payment_option === option.value
+                        ? "bg-[#8B4513] text-white shadow-xs"
+                        : "border border-slate-200 bg-white text-[#5D2E17] hover:bg-slate-50"
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+              {form.payment_option !== "cash" ? (
+                <label className="mt-2 block text-xs font-bold text-[#3E2723]">
+                  {form.payment_option === "cliq_full"
+                    ? "المبلغ الكامل المدفوع عبر كليك (د.أ)"
+                    : "قيمة العربون المدفوع عبر كليك (د.أ)"}
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    dir="ltr"
+                    value={form.deposit_paid}
+                    onChange={(event) => set("deposit_paid", event.target.value)}
+                    className="mt-1 min-h-11 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                  />
+                </label>
+              ) : null}
+            </fieldset>
+
+            {/* Live Financial Calculator */}
+            <div className="rounded-2xl border border-[#B8860B]/30 bg-[#FFF8EE] p-4">
+              <h4 className="text-xs font-bold text-[#5D2E17] border-b border-[#B8860B]/20 pb-1.5">
+                الحساب المالي للطلب
+              </h4>
+              <dl className="mt-2 space-y-1.5 text-xs text-[#3E2723]">
+                <div className="flex justify-between gap-2">
+                  <dt>ثمن الأصناف ({form.quantity} × {(Number(form.unit_price) || 0).toFixed(2)})</dt>
+                  <dd className="font-bold">{originalPrice.toFixed(2)} د.أ</dd>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <dt>أجرة التوصيل</dt>
+                  <dd className="font-bold">{deliveryFee.toFixed(2)} د.أ</dd>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <dt>إجمالي الطلب</dt>
+                  <dd className="font-bold">{grandTotal.toFixed(2)} د.أ</dd>
+                </div>
+                <div className="flex justify-between gap-2">
+                  <dt>المدفوع (عربون/كليك)</dt>
+                  <dd className="font-bold">{paidAmount.toFixed(2)} د.أ</dd>
+                </div>
+                <div className="flex justify-between gap-2 border-t border-[#B8860B]/30 pt-1.5 text-[#8B4513] font-bold text-sm">
+                  <dt>المبلغ المتبقي</dt>
+                  <dd>{remaining.toFixed(2)} د.أ</dd>
+                </div>
+              </dl>
+            </div>
+
+            <label className="block text-xs font-bold text-[#3E2723]">
+              ملاحظات داخلية للموظفين (خاص بالمبيعات والإدارة)
+              <textarea
+                rows={2}
+                value={form.staff_notes}
+                onChange={(event) => set("staff_notes", event.target.value)}
+                placeholder="ملاحظات سرية لا تظهر على شاشة المطبخ ولا للزبون…"
+                className="mt-1 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] p-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+              />
+            </label>
+
+            <button
+              type="submit"
+              disabled={submit.isPending}
+              className="w-full min-h-12 inline-flex items-center justify-center gap-2 rounded-full bg-[#8B4513] text-white font-extrabold text-sm shadow-md hover:bg-[#5D2E17] active:scale-95 disabled:opacity-60 transition"
+            >
+              {submit.isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+              حفظ وإرسال الطلب فوراً (إلى المطبخ والمبيعات) ✅
+            </button>
+          </div>
+
+          {/* Live WhatsApp Confirmation Message Box */}
+          <section className="rounded-3xl border border-[#B8860B]/40 bg-white p-5 shadow-xs space-y-3">
+            <h3 className="font-display text-sm font-bold text-[#3E2723]">👑 رسالة تأكيد الطلب للواتساب (Delish Cake)</h3>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void copy(confirmationPreview, "confirmation")}
+                className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-full border border-[#B8860B] bg-white px-4 text-xs font-bold text-[#8B4513] hover:bg-[#FDE2CF]/30 transition"
+              >
+                {copied === "confirmation" ? <Check className="h-4 w-4" /> : <ClipboardCopy className="h-4 w-4" />}
+                {copied === "confirmation" ? "تم النسخ" : "نسخ رسالة التأكيد"}
+              </button>
+              <a
+                href={whatsappUrl(confirmationPreview)}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="إرسال على واتساب"
+                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full bg-[#25D366] text-white shadow-xs hover:brightness-95 transition"
+              >
+                <MessageCircle className="h-5 w-5" />
+              </a>
+            </div>
+            <pre className="max-h-72 overflow-y-auto whitespace-pre-wrap break-words rounded-xl bg-[#F9FBFC] p-3 text-xs text-[#3E2723] border border-slate-200">
+              {confirmationPreview}
+            </pre>
+          </section>
+        </form>
+        </>
         ) : view === "modifications" ? (
           <ModificationsPanel
             initialSelectedId={editOrderId}

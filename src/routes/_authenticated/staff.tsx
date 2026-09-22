@@ -1,22 +1,20 @@
-﻿import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChefHat, ClipboardList, Crown, Inbox, Loader2, LogOut, MessageSquareHeart, ShoppingBag } from "lucide-react";
+import { ChefHat, Crown, Inbox, Loader2, LogOut, MessageSquareHeart, ShoppingBag } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminPanel } from "@/components/staff/AdminPanel";
 import { SalesPanel } from "@/components/staff/SalesPanel";
 import { KitchenPanel } from "@/components/staff/KitchenPanel";
 import { SocialPanel } from "@/components/staff/SocialPanel";
 import { MessagesPanel } from "@/components/staff/MessagesPanel";
-import { OrdersWorkspace } from "@/components/staff/OrdersWorkspace";
 
-type StaffTab = "sales" | "orders" | "social" | "kitchen" | "messages" | "admin";
+type StaffTab = "sales" | "kitchen" | "social" | "messages" | "admin";
 
 const TABS: { value: StaffTab; ar: string; en: string; icon: typeof Crown; roles?: string[] }[] = [
-  { value: "sales", ar: "المبيعات POS", en: "POS", icon: ShoppingBag, roles: ["sales", "admin"] },
-  { value: "orders", ar: "الطلبات Orders", en: "Orders", icon: ClipboardList, roles: ["sales", "admin"] },
-  { value: "social", ar: "السوشيال ميديا", en: "Social", icon: MessageSquareHeart, roles: ["social", "admin"] },
-  { value: "kitchen", ar: "المطبخ KDS", en: "KDS", icon: ChefHat, roles: ["kitchen", "admin"] },
+  { value: "sales", ar: "المبيعات", en: "Sales", icon: ShoppingBag },
+  { value: "kitchen", ar: "المطبخ", en: "Kitchen", icon: ChefHat },
+  { value: "social", ar: "السوشال", en: "Social", icon: MessageSquareHeart },
   {
     value: "messages",
     ar: "الرسائل",
@@ -24,7 +22,7 @@ const TABS: { value: StaffTab; ar: string; en: string; icon: typeof Crown; roles
     icon: Inbox,
     roles: ["sales", "social", "admin"],
   },
-  { value: "admin", ar: "الإدارة", en: "Admin", icon: Crown, roles: ["admin"] },
+  { value: "admin", ar: "الإدارة", en: "Admin", icon: Crown },
 ];
 
 export const Route = createFileRoute("/_authenticated/staff")({
@@ -33,7 +31,7 @@ export const Route = createFileRoute("/_authenticated/staff")({
       { title: "بوابة الموظفين | Delish Staff Portal" },
       {
         name: "description",
-        content: "بوابة ديليش الموحدة للموظفين: المبيعات، الطلبات، المطبخ، السوشيال ميديا والإدارة.",
+        content: "بوابة ديليش الموحدة للموظفين: المبيعات، المطبخ، السوشال ميديا والإدارة بحسب صلاحية كل حساب.",
       },
       { name: "robots", content: "noindex, nofollow" },
       { property: "og:title", content: "بوابة الموظفين | Delish Staff Portal" },
@@ -51,18 +49,23 @@ export const Route = createFileRoute("/_authenticated/staff")({
   errorComponent: StaffErrorScreen,
 });
 
+/** Any panel failure shows a readable message instead of a blank screen. */
 function StaffErrorScreen({ error }: { error: unknown }) {
   const navigate = useNavigate();
-  const message = error instanceof Error ? error.message : "حدث خطأ غير متوقع في البوابة";
-
+  // A thrown non-Error (or undefined) must not crash the boundary itself.
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "string" && error
+        ? error
+        : "خطأ غير معروف · Unknown error";
   const leave = async () => {
     await supabase.auth.signOut();
     void navigate({ to: "/auth", replace: true });
   };
-
   return (
     <main dir="rtl" className="grid min-h-dvh place-items-center bg-[#F9FBFC] px-4">
-      <div className="max-w-md rounded-3xl border border-slate-200 bg-white p-6 text-center shadow-lg">
+      <div className="max-w-sm rounded-3xl border border-slate-200 bg-white p-6 text-center shadow-lg">
         <h1 className="font-display text-lg font-bold text-[#3E2723]">تعذّر تحميل هذا القسم</h1>
         <p className="mt-2 text-sm text-[#7A6458]">This section could not be loaded.</p>
         <p className="mt-3 rounded-xl bg-slate-50 p-2 text-xs text-[#7A6458]">{message}</p>
@@ -216,7 +219,7 @@ function StaffPortalPage() {
                   type="button"
                   aria-current={on}
                   onClick={() => void navigate({ to: "/staff", search: { tab: tab.value } })}
-                  className={`inline-flex min-h-12 shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 text-xs font-bold transition-all active:scale-95 cursor-pointer ${
+                  className={`inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 text-xs font-bold transition-all active:scale-95 cursor-pointer ${
                     on
                       ? "bg-slate-900 text-white shadow-sm"
                       : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
@@ -239,7 +242,7 @@ function StaffPortalPage() {
             type="button"
             onClick={() => void signOut()}
             aria-label="تسجيل الخروج"
-            className="inline-flex min-h-12 min-w-12 items-center justify-center rounded-full border border-slate-200 text-slate-700 transition-all hover:bg-slate-50 active:scale-95 cursor-pointer"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-slate-200 text-slate-700 transition-all hover:bg-slate-50 active:scale-95 cursor-pointer"
           >
             <LogOut className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -247,11 +250,6 @@ function StaffPortalPage() {
       </div>
 
       {active === "sales" && <SalesPanel />}
-      {active === "orders" && (
-        <main className="mx-auto w-full max-w-7xl min-w-0 px-4 py-5">
-          <OrdersWorkspace showShiftReport />
-        </main>
-      )}
       {active === "kitchen" && <KitchenPanel />}
       {active === "social" && <SocialPanel />}
       {active === "messages" && <MessagesPanel />}
