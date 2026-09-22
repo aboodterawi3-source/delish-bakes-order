@@ -2,24 +2,14 @@ import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
-  AlertTriangle,
   ArrowDown,
   ArrowUp,
   BadgeDollarSign,
   Bike,
-  Calendar,
   CalendarClock,
   CheckCircle2,
-  ChevronDown,
-  ChevronUp,
-  Clock,
-  CreditCard,
-  DollarSign,
   Download,
-  Filter,
-  Layers,
   Link2,
-  Loader2,
   Lock,
   MessageCircle,
   Pencil,
@@ -27,17 +17,10 @@ import {
   Printer,
   RefreshCw,
   Search,
-  SlidersHorizontal,
-  Sparkles,
   Store,
-  Trash2,
-  Truck,
-  User,
   X,
-  Zap,
 } from "lucide-react";
 import { toast } from "sonner";
-
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { OrdersCalendar } from "@/components/staff/OrdersCalendar";
 import { DateFilterBar } from "@/components/staff/DateFilterBar";
@@ -74,15 +57,17 @@ import {
 
 export const ORDERS_KEY = ["sales-orders"] as const;
 
-export const statusMeta: Record<SalesStatus, { ar: string; en: string; chip: string; dot: string }> = {
-  new: { ar: "قيد الانتظار", en: "Pending", chip: "bg-amber-100 text-amber-900 border-amber-300", dot: "bg-amber-500" },
-  confirmed: { ar: "مؤكد", en: "Confirmed", chip: "bg-blue-100 text-blue-900 border-blue-300", dot: "bg-blue-500" },
-  baking: { ar: "قيد التنفيذ والكريمة", en: "In production", chip: "bg-purple-100 text-purple-900 border-purple-300", dot: "bg-purple-500" },
-  ready: { ar: "جاهز بالمحل", en: "Ready at store", chip: "bg-emerald-100 text-emerald-900 border-emerald-300", dot: "bg-emerald-500" },
-  out_for_delivery: { ar: "مع السائق للتوصيل", en: "Out for delivery", chip: "bg-orange-100 text-orange-900 border-orange-300", dot: "bg-orange-500" },
-  completed: { ar: "مكتمل ومستلم", en: "Completed", chip: "bg-green-100 text-green-900 border-green-300", dot: "bg-green-500" },
-  delivered: { ar: "تم التسليم", en: "Delivered", chip: "bg-green-100 text-green-900 border-green-300", dot: "bg-green-500" },
-  cancelled: { ar: "ملغي", en: "Canceled", chip: "bg-rose-100 text-rose-900 border-rose-300", dot: "bg-rose-500" },
+const flow: SalesStatus[] = ["new", "baking", "ready", "out_for_delivery", "completed"];
+
+export const statusMeta: Record<SalesStatus, { ar: string; en: string; chip: string }> = {
+  new: { ar: "قيد الانتظار", en: "Pending", chip: "bg-[#FDE2CF] text-[#7B3F00]" },
+  confirmed: { ar: "مؤكد", en: "Confirmed", chip: "bg-[#FDE2CF] text-[#7B3F00]" },
+  baking: { ar: "قيد التنفيذ", en: "In production", chip: "bg-[#EFA781] text-white" },
+  ready: { ar: "جاهز بالمحل", en: "Ready at store", chip: "bg-[#B8860B] text-white" },
+  out_for_delivery: { ar: "خارج للتوصيل", en: "Out for delivery", chip: "bg-[#8B4513] text-white" },
+  completed: { ar: "مكتمل", en: "Completed", chip: "bg-[#166534] text-white" },
+  delivered: { ar: "تم التسليم", en: "Delivered", chip: "bg-[#166534] text-white" },
+  cancelled: { ar: "ملغي", en: "Canceled", chip: "bg-red-600 text-white" },
 };
 
 export const payMeta: Record<PaymentMethod, { ar: string; en: string }> = {
@@ -97,6 +82,35 @@ const todayIso = () => {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 };
 
+/** The label shown in the list: the order name, falling back to the customer. */
+const listLabel = (order: SalesOrder) =>
+  order.order_name?.trim() || order.customer_name?.trim() || "طلب بدون اسم";
+
+/** Delivery region, or a pickup marker. */
+const regionLabel = (order: SalesOrder) =>
+  order.method === "delivery" ? order.area?.trim() || "منطقة غير محددة" : "استلام من المحل";
+
+/** Saves the customer's original reference photo so staff can print or forward it. */
+async function downloadDesignImage(url: string, orderNumber: string) {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error("download failed");
+    const blob = await response.blob();
+    const extension = (blob.type.split("/")[1] ?? "jpg").replace("jpeg", "jpg");
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = objectUrl;
+    link.download = `delish-${orderNumber}.${extension}`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(objectUrl);
+  } catch {
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+}
+
+/** Customer thermal receipt: itemised lines plus the full billing block. */
 export function printReceipt(order: SalesOrder) {
   const remaining = Math.max(order.total - order.deposit_paid, 0);
   const rows = order.items.length
@@ -104,67 +118,64 @@ export function printReceipt(order: SalesOrder) {
         .map(
           (item) =>
             `<tr><td><b>${item.quantity} × ${esc(item.name_ar)}</b>` +
-            (item.options_ar.length ? `<br><small style="color:#555;">${esc(item.options_ar.join(" · "))}</small>` : "") +
-            (item.notes ? `<br><small style="color:#8b4513;">ملاحظة: ${esc(item.notes)}</small>` : "") +
+            (item.options_ar.length ? `<br><small>${esc(item.options_ar.join(" · "))}</small>` : "") +
+            (item.notes ? `<br><small>ملاحظة: ${esc(item.notes)}</small>` : "") +
             `<br><small>${item.unit_price.toFixed(2)} د.أ / حبة</small></td>` +
-            `<td style="text-align:left;font-weight:bold;">${(item.unit_price * item.quantity).toFixed(2)}</td></tr>`,
+            `<td style="text-align:left">${(item.unit_price * item.quantity).toFixed(2)}</td></tr>`,
         )
         .join("")
-    : `<tr><td colspan="2">لا توجد أصناف مسجلة</td></tr>`;
+    : `<tr><td colspan="2">لا توجد أصناف مسجلة على هذا الطلب</td></tr>`;
 
-  const body = `<h1 style="text-align:center;font-size:20px;margin-bottom:4px;">Delish Cake &amp; Bake</h1>
-<div style="text-align:center;font-size:12px;color:#555;">عمان – الأردن · 0779179995</div>
-<div style="text-align:center;font-weight:bold;margin:8px 0;border-bottom:2px dashed #000;padding-bottom:4px;">إيصال العميل · CUSTOMER RECEIPT</div>
-<div style="display:flex;justify-content:space-between;font-size:14px;font-weight:bold;margin-bottom:4px;">
-  <span>${esc(orderLabel(order.order_number, order.staff_code))}</span>
-  <span>${esc(order.requested_date)} ${esc(order.requested_time.slice(0, 5))}</span>
-</div>
-${order.order_name ? `<div style="font-size:13px;margin-bottom:3px;"><b>الطلب:</b> ${esc(order.order_name)}</div>` : ""}
-<div style="font-size:13px;margin-bottom:3px;"><b>العميل:</b> ${esc(order.customer_name)} (${esc(order.customer_phone)})</div>
-${order.sender_phone ? `<div style="font-size:12px;"><b>المرسل:</b> ${esc(order.sender_phone)}</div>` : ""}
-${order.recipient_phone ? `<div style="font-size:12px;"><b>المستلم:</b> ${esc(order.recipient_phone)}</div>` : ""}
-<div style="font-size:13px;margin-bottom:6px;"><b>طريقة الاستلام:</b> ${order.method === "delivery" ? `توصيل منازل (${esc(order.area ?? "")} ${esc(order.address ?? "")})` : "استلام من المحل"}</div>
-${order.inscription ? `<div style="background:#fff9e6;padding:6px;border:1px solid #d4a373;border-radius:4px;margin:6px 0;font-size:14px;font-weight:bold;">الكتابة على الكيك: ${esc(order.inscription)}</div>` : ""}
-${order.card_note ? `<div style="font-size:12px;margin:4px 0;"><b>نص الكرت:</b> ${esc(order.card_note)}</div>` : ""}
-<div style="border-top:2px dashed #000;margin:6px 0;"></div>
-<table style="width:100%;font-size:13px;border-collapse:collapse;">${rows}</table>
-<div style="border-top:2px dashed #000;margin:6px 0;"></div>
-<div style="display:flex;justify-content:space-between;font-size:13px;"><span>المجموع الفرعي</span><span>${order.subtotal.toFixed(2)} د.أ</span></div>
-${order.discount_amount ? `<div style="display:flex;justify-content:space-between;font-size:13px;color:red;"><span>الخصم</span><span>-${order.discount_amount.toFixed(2)} د.أ</span></div>` : ""}
-<div style="display:flex;justify-content:space-between;font-size:13px;"><span>التوصيل</span><span>${order.delivery_fee.toFixed(2)} د.أ</span></div>
-<div style="display:flex;justify-content:space-between;font-size:16px;font-weight:bold;border-top:1px solid #000;padding-top:4px;margin-top:4px;"><b>الإجمالي</b><b>${order.total.toFixed(2)} د.أ</b></div>
-<div style="display:flex;justify-content:space-between;font-size:13px;margin-top:2px;"><span>المدفوع</span><span>${order.deposit_paid.toFixed(2)} د.أ</span></div>
-<div style="display:flex;justify-content:space-between;font-size:14px;font-weight:bold;color:${remaining > 0 ? "red" : "green"};"><span>المتبقي</span><span>${remaining.toFixed(2)} د.أ</span></div>
-<div style="font-size:12px;margin-top:4px;">طريقة الدفع: ${order.payment_method ? payMeta[order.payment_method].ar : "—"}</div>
-${order.notes ? `<div style="border-top:1px dashed #ccc;margin-top:6px;padding-top:4px;font-size:12px;">ملاحظات: ${esc(order.notes)}</div>` : ""}
-<div style="border-top:2px dashed #000;margin:8px 0;"></div>
-<div style="text-align:center;font-size:12px;font-weight:bold;">شكراً لاختياركم ديليش 🤍</div>`;
+  const body = `<h1>Delish Cake &amp; Bake</h1><div>ديليش – الأردن · 0779179995</div>
+<div style="text-align:center;font-weight:700">إيصال العميل · CUSTOMER RECEIPT</div><div class="line"></div>
+<div class="row"><span>${esc(orderLabel(order.order_number, order.staff_code))}</span><span>${esc(order.requested_date)} ${esc(order.requested_time.slice(0, 5))}</span></div>
+${order.order_name ? `<div>اسم الطلب: ${esc(order.order_name)}</div>` : ""}
+<div>${esc(order.customer_name)} · ${esc(order.customer_phone)}</div>
+${order.sender_phone ? `<div>رقم المرسل: ${esc(order.sender_phone)}</div>` : ""}
+${order.recipient_phone ? `<div>رقم المستلم: ${esc(order.recipient_phone)}</div>` : ""}
+<div>${order.method === "delivery" ? `توصيل: ${esc(order.area ?? "")} ${esc(order.address ?? "")}` : "استلام من المحل"}</div>
+${order.inscription ? `<div>الكتابة على الكيك: ${esc(order.inscription)}</div>` : ""}
+${order.card_note ? `<div>الكتابة على الكرت: ${esc(order.card_note)}</div>` : ""}
+<div class="line"></div><table>${rows}</table><div class="line"></div>
+<div class="row"><span>المجموع</span><span>${order.subtotal.toFixed(2)}</span></div>
+${order.discount_amount ? `<div class="row"><span>الخصم</span><span>-${order.discount_amount.toFixed(2)}</span></div>` : ""}
+<div class="row"><span>التوصيل</span><span>${order.delivery_fee.toFixed(2)}</span></div>
+<div class="row"><b>الإجمالي</b><b>${order.total.toFixed(2)}</b></div>
+<div class="row"><span>المدفوع</span><span>${order.deposit_paid.toFixed(2)}</span></div>
+<div class="row"><b>المتبقي</b><b>${remaining.toFixed(2)}</b></div>
+<div>طريقة الدفع: ${order.payment_method ? payMeta[order.payment_method].ar : "—"}</div>
+${order.notes ? `<div class="line"></div><div>ملاحظات: ${esc(order.notes)}</div>` : ""}
+${order.last_edited_at ? `<div>✏️ تم تعديل هذا الطلب: ${esc(order.last_edited_at.slice(0, 16).replace("T", " "))}</div>` : ""}
+<div class="line"></div><div style="text-align:center">شكراً لاختياركم ديليش 🤍</div>`;
 
-  printDocument(`إيصال ${order.order_number}`, body, "b{font-size:13px}");
+  if (!printDocument(`إيصال ${order.order_number}`, body, "b{font-size:13px}")) {
+    toast.error("تعذر فتح نافذة الطباعة");
+  }
 }
 
+/** Daily shift report on the thermal printer (never prints the screen itself). */
 function printShiftReport(report: ShiftReport, date: string) {
   const rows = report.byMethod
     .map(
       (row) =>
-        `<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;"><span>${row.method === "unpaid" ? "بدون طريقة دفع" : payMeta[row.method].ar} (${row.orders})</span><span>${row.collected.toFixed(2)} د.أ</span></div>`,
+        `<div class="row"><span>${row.method === "unpaid" ? "بدون طريقة دفع" : payMeta[row.method].ar} (${row.orders})</span><span>${row.collected.toFixed(2)}</span></div>`,
     )
     .join("");
-  const body = `<h1 style="text-align:center;font-size:20px;margin-bottom:4px;font-weight:900;">Delish Bakery • تقرير الشيفت</h1>
-<div style="text-align:center;font-weight:bold;font-size:13px;margin-bottom:4px;">تاريخ الشيفت: ${esc(date)}</div>
-<div style="border-top:2px dashed #000;margin:6px 0;"></div>
-${rows || "<div>لا توجد مدفوعات مسجلة</div>"}
-<div style="border-top:2px dashed #000;margin:6px 0;"></div>
-<div style="display:flex;justify-content:space-between;font-size:15px;font-weight:bold;"><span>إجمالي المحصل</span><span>${report.collected.toFixed(2)} د.أ</span></div>
-<div style="display:flex;justify-content:space-between;font-size:13px;margin-top:2px;"><span>المتبقي على العملاء</span><span>${report.outstanding.toFixed(2)} د.أ</span></div>
-<div style="display:flex;justify-content:space-between;font-size:13px;margin-top:2px;"><span>عدد الطلبات المنجزة</span><span>${report.orders}</span></div>
-<div style="display:flex;justify-content:space-between;font-size:13px;margin-top:2px;color:red;"><span>الطلبات الملغاة</span><span>${report.cancelled}</span></div>
-<div style="border-top:2px dashed #000;margin:12px 0 6px 0;"></div>
-<div style="text-align:center;font-size:12px;color:#555;">توقيع واستلام الكاشير: __________________</div>`;
-
-  printDocument(`تقرير ${date}`, body, "b{font-size:13px}");
+  const body = `<h1>Delish Cake &amp; Bake</h1>
+<div style="text-align:center;font-weight:700">تقرير إغلاق الشيفت</div>
+<div style="text-align:center">${esc(date)}</div><div class="line"></div>
+${rows || "<div>لا توجد مدفوعات</div>"}<div class="line"></div>
+<div class="row"><b>إجمالي المحصل</b><b>${report.collected.toFixed(2)}</b></div>
+<div class="row"><span>المتبقي على العملاء</span><span>${report.outstanding.toFixed(2)}</span></div>
+<div class="row"><span>عدد الطلبات</span><span>${report.orders}</span></div>
+<div class="row"><span>الطلبات الملغاة</span><span>${report.cancelled}</span></div>
+<div class="line"></div><div style="text-align:center">توقيع الكاشير: ____________</div>`;
+  if (!printDocument(`تقرير ${date}`, body, "b{font-size:13px}")) {
+    toast.error("تعذر فتح نافذة الطباعة");
+  }
 }
 
+/** Jordanian numbers arrive as 07…; WhatsApp needs the international form. */
 export function waNumber(phone: string) {
   const digits = phone.replace(/\D/g, "");
   if (digits.startsWith("962")) return digits;
@@ -172,41 +183,23 @@ export function waNumber(phone: string) {
   return digits;
 }
 
+/** Arabic-only schedule confirmation, opened in WhatsApp with a clipboard fallback. */
 function sendScheduleConfirmation(order: SalesOrder) {
   const message = `أهلاً بك من مخبز ديلش! 🌸 تم تحديث موعد طلبك رقم ${order.order_number} بنجاح إلى ${order.requested_date} الساعة ${order.requested_time.slice(0, 5)}. يسعدنا خدمتكم دائماً!`;
   void navigator.clipboard?.writeText(message).catch(() => undefined);
   window.open(`https://wa.me/${waNumber(order.customer_phone)}?text=${encodeURIComponent(message)}`, "_blank", "noopener");
-  toast.success("تم تجهيز رسالة التأكيد للواتساب 📲");
+  toast("تم تجهيز رسالة التأكيد للواتساب 📲");
 }
 
+/** Opens customer chat directly with full order confirmation text. */
 function sendCustomerWhatsApp(order: SalesOrder) {
-  const message =
-    order.confirmation_message ??
-    buildConfirmationMessage({
-      orderNumber: order.order_number,
-      customerName: order.customer_name,
-      when: `${order.requested_date} ${order.requested_time.slice(0, 5)}`,
-      fulfilment:
-        order.method === "delivery"
-          ? `توصيل · ${order.area ?? ""}${order.address ? ` — ${order.address}` : ""}`
-          : "استلام من المحل",
-      items: order.items.map((it) => `${it.quantity} × ${it.name_ar}`),
-      cakeWriting: order.inscription ?? "",
-      cardWriting: order.card_note ?? "",
-      notes: order.notes ?? "",
-      price: order.subtotal - order.discount_amount,
-      deliveryFee: order.delivery_fee,
-      total: order.total,
-      paid: order.deposit_paid,
-      paymentMethod: order.payment_method ?? "",
-      recipientPhone: order.recipient_phone ?? order.customer_phone,
-      senderPhone: order.sender_phone ?? order.customer_phone,
-    });
+  const message = buildConfirmationMessage(order);
   void navigator.clipboard?.writeText(message).catch(() => undefined);
   window.open(`https://wa.me/${waNumber(order.customer_phone)}?text=${encodeURIComponent(message)}`, "_blank", "noopener");
-  toast.success("تم فتح محادثة الواتساب مع العميل 📲");
+  toast("تم فتح محادثة الواتساب مع العميل 📲");
 }
 
+/** Mirrors the server update locally so the card repaints in the same frame. */
 function applyPatch(order: SalesOrder, input: OrderPatch): SalesOrder {
   const next: SalesOrder = { ...order };
   if (input.status !== undefined) next.status = input.status;
@@ -214,7 +207,8 @@ function applyPatch(order: SalesOrder, input: OrderPatch): SalesOrder {
   if (input.method !== undefined) next.method = input.method;
   if (input.area !== undefined) {
     next.area = input.area;
-    next.delivery_fee = input.area ? (feeForArea(input.area) ?? next.delivery_fee) : 0;
+    // Show the zone fee instantly instead of waiting for the server round-trip.
+    next.delivery_fee = input.area ? feeForArea(input.area) ?? next.delivery_fee : 0;
   }
   if (input.delivery_fee !== undefined) next.delivery_fee = input.delivery_fee;
   if (input.driver_name !== undefined) next.driver_name = input.driver_name;
@@ -243,6 +237,11 @@ function applyPatch(order: SalesOrder, input: OrderPatch): SalesOrder {
   return next;
 }
 
+/**
+ * The complete order desk: search, list, full order editing and printing.
+ * Shared by the sales screen and the social-media screen so both teams work on
+ * the exact same orders with the exact same abilities.
+ */
 export function OrdersWorkspace({
   showShiftReport = false,
   onEditOrder,
@@ -253,29 +252,28 @@ export function OrdersWorkspace({
   const queryClient = useQueryClient();
   const ordersFn = useServerFn(getSalesOrders);
   const updateFn = useServerFn(updateSalesOrder);
+  
   const reportFn = useServerFn(getShiftReport);
   const authorizationFn = useServerFn(getMyAuthorization);
   const discountFn = useServerFn(applyOrderDiscount);
   const editLinkFn = useServerFn(createOrderEditLink);
-  const reorderFn = useServerFn(setQueueRanks);
 
+  const [editLink, setEditLink] = useState<string | null>(null);
+  const [moneyError, setMoneyError] = useState<string | null>(null);
   const [term, setTerm] = useState("");
   const search = useDebouncedValue(term, 180);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [methodFilter, setMethodFilter] = useState<"all" | "pickup" | "delivery">("all");
-  const [mode, setMode] = useState<"list" | "calendar">("list");
-  const [dateKey, setDateKey] = useState<DateFilterKey>("all");
-  const [custom, setCustom] = useState<CustomRange>({ from: isoDay(0), to: isoDay(7) });
-
   const [zoomImage, setZoomImage] = useState<string | null>(null);
   const [cancelFor, setCancelFor] = useState<SalesOrder | null>(null);
   const [cancelReason, setCancelReason] = useState("");
   const [shiftOpen, setShiftOpen] = useState(false);
   const [shiftDate, setShiftDate] = useState(todayIso);
   const [report, setReport] = useState<ShiftReport | null>(null);
-  const [editLink, setEditLink] = useState<string | null>(null);
-  const [moneyError, setMoneyError] = useState<string | null>(null);
+  const [mode, setMode] = useState<"list" | "calendar">("list");
+  const [dateKey, setDateKey] = useState<DateFilterKey>("all");
+  const [methodFilter, setMethodFilter] = useState<"all" | "pickup" | "delivery">("all");
+  const [custom, setCustom] = useState<CustomRange>({ from: isoDay(0), to: isoDay(7) });
+  const reorderFn = useServerFn(setQueueRanks);
 
   const authorization = useQuery({
     queryKey: ["my-authorization"],
@@ -311,13 +309,16 @@ export function OrdersWorkspace({
     },
   });
 
+
   const discount = useMutation({
     mutationFn: (input: { orderId: string; percent: number; reason: string }) =>
       discountFn({ data: input }),
     onError: (err: Error) => setMoneyError(err.message),
     onSuccess: (updated) => {
       setMoneyError(null);
-      void queryClient.invalidateQueries({ queryKey: ORDERS_KEY });
+      queryClient.setQueryData<SalesOrder[]>(ORDERS_KEY, (rows) =>
+        (rows ?? []).map((order) => (order.id === updated.id ? updated : order)),
+      );
     },
   });
 
@@ -329,6 +330,7 @@ export function OrdersWorkspace({
 
   useOrdersRealtime(ORDERS_KEY, true, "orders-workspace-live");
 
+  // Closes dialogs on Escape so cashiers never get trapped in a modal.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
@@ -341,51 +343,39 @@ export function OrdersWorkspace({
     return () => window.removeEventListener("keydown", onKey);
   }, [cancelFor, shiftOpen, selectedId, zoomImage]);
 
-  const rawList = orders.data ?? [];
-
-  // Filtered List
   const list = useMemo(() => {
     const needle = search.trim().toLowerCase();
-    return rawList
+    const rows = (orders.data ?? [])
       .filter((order) => matchesDateFilter(order.requested_date, dateKey, custom))
-      .filter((order) => (methodFilter === "all" ? true : order.method === methodFilter))
-      .filter((order) => (statusFilter === "all" ? true : order.status === statusFilter))
-      .filter((order) => {
-        if (!needle) return true;
-        return [
-          order.customer_name,
-          order.customer_phone,
-          order.order_name ?? "",
-          order.sender_phone ?? "",
-          order.recipient_phone ?? "",
-          order.order_number,
-          order.area ?? "",
-        ]
-          .join(" ")
-          .toLowerCase()
-          .includes(needle);
-      })
-      .sort((a, b) => {
-        const rankA = a.queue_rank ?? Number.MAX_SAFE_INTEGER;
-        const rankB = b.queue_rank ?? Number.MAX_SAFE_INTEGER;
-        if (rankA !== rankB) return rankA - rankB;
-        const byDate = b.requested_date.localeCompare(a.requested_date);
-        if (byDate !== 0) return byDate;
-        return b.requested_time.localeCompare(a.requested_time);
-      });
-  }, [rawList, search, dateKey, custom, methodFilter, statusFilter]);
+      .filter((order) => (methodFilter === "all" ? true : order.method === methodFilter));
+    const filtered = !needle
+      ? rows
+      : rows.filter((order) =>
+          [
+            order.customer_name,
+            order.customer_phone,
+            order.order_name ?? "",
+            order.sender_phone ?? "",
+            order.recipient_phone ?? "",
+            order.order_number,
+            order.area ?? "",
+          ]
+            .join(" ")
+            .toLowerCase()
+            .includes(needle),
+        );
+    // A manual queue position always comes first; the rest keep the date order.
+    return [...filtered].sort((a, b) => {
+      const rankA = a.queue_rank ?? Number.MAX_SAFE_INTEGER;
+      const rankB = b.queue_rank ?? Number.MAX_SAFE_INTEGER;
+      if (rankA !== rankB) return rankA - rankB;
+      const byDate = b.requested_date.localeCompare(a.requested_date);
+      if (byDate !== 0) return byDate;
+      return b.requested_time.localeCompare(a.requested_time);
+    });
+  }, [orders.data, search, dateKey, custom]);
 
-  // Statistics Summary
-  const stats = useMemo(() => {
-    const totalCollected = rawList.reduce((sum, o) => sum + (o.status !== "cancelled" ? o.deposit_paid : 0), 0);
-    const totalPendingBalance = rawList.reduce(
-      (sum, o) => sum + (o.status !== "cancelled" ? Math.max(o.total - o.deposit_paid, 0) : 0),
-      0,
-    );
-    const activeCount = rawList.filter((o) => ["new", "baking", "ready", "out_for_delivery"].includes(o.status)).length;
-    return { totalCollected, totalPendingBalance, activeCount, totalOrders: rawList.length };
-  }, [rawList]);
-
+  /** Moves one order up or down the manual priority order. */
   const onMove = useCallback(
     async (id: string, direction: -1 | 1) => {
       const items = reorderRanks(list, id, direction);
@@ -407,8 +397,8 @@ export function OrdersWorkspace({
   );
 
   const selected = useMemo(
-    () => rawList.find((order) => order.id === selectedId) ?? null,
-    [rawList, selectedId],
+    () => (orders.data ?? []).find((order) => order.id === selectedId) ?? null,
+    [orders.data, selectedId],
   );
 
   const openOrder = useCallback((id: string) => setSelectedId(id), []);
@@ -422,122 +412,68 @@ export function OrdersWorkspace({
   }, [shiftOpen, runReport]);
 
   return (
-    <div dir="rtl" className="min-w-0 space-y-4 font-sans select-none">
-      {/* 1. MASTER COMMAND & METRICS BAR */}
-      <div className="grid gap-3.5 rounded-3xl border border-border/80 bg-card p-4 sm:p-5 shadow-xs">
-        {/* Quick Analytics Counters */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-          <div className="rounded-2xl bg-secondary/40 p-3 border border-border/60">
-            <span className="text-[11px] font-bold text-muted-foreground block">إجمالي الطلبات</span>
-            <span className="text-lg font-black text-foreground">{stats.totalOrders} طلب</span>
-          </div>
-          <div className="rounded-2xl bg-amber-500/10 p-3 border border-amber-500/20">
-            <span className="text-[11px] font-black text-amber-700 dark:text-amber-300 block">الطلبات النشطة الآن</span>
-            <span className="text-lg font-black text-amber-700 dark:text-amber-300">{stats.activeCount} قيد المتابعة</span>
-          </div>
-          <div className="rounded-2xl bg-emerald-500/10 p-3 border border-emerald-500/20">
-            <span className="text-[11px] font-black text-emerald-700 dark:text-emerald-300 block">المبالغ المحصلة</span>
-            <span className="text-lg font-black text-emerald-700 dark:text-emerald-300">{jd(stats.totalCollected)}</span>
-          </div>
-          <div className="rounded-2xl bg-rose-500/10 p-3 border border-rose-500/20">
-            <span className="text-[11px] font-black text-rose-700 dark:text-rose-300 block">المتبقي عند التسليم</span>
-            <span className="text-lg font-black text-rose-700 dark:text-rose-300">{jd(stats.totalPendingBalance)}</span>
-          </div>
-        </div>
-
-        {/* Search & Actions Row */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pt-2 border-t border-border/60">
-          <div className="relative flex-1">
-            <input
-              type="search"
-              value={term}
-              onChange={(e) => setTerm(e.target.value)}
-              placeholder="ابحث بالاسم، هاتف العميل، اسم الكيك، أو رقم الطلب..."
-              className="min-h-[46px] w-full rounded-2xl border border-input bg-background pe-10 ps-3.5 text-sm font-bold text-foreground outline-none focus:border-primary"
-            />
-            <Search className="absolute end-3.5 top-3.5 h-4 w-4 text-muted-foreground pointer-events-none" />
-            {term && (
+    <div className="min-w-0">
+      {/* Stable workspace controls shared by Sales and Social. */}
+      <div className="grid min-w-0 gap-3 border-b border-border pb-4">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 lg:grid-cols-[minmax(0,1fr)_auto_auto]">
+          <label className="relative block min-w-0">
+          <span className="sr-only">بحث بالاسم أو الهاتف أو اسم الطلب</span>
+          <Search className="pointer-events-none absolute end-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+          <input
+            type="search"
+            value={term}
+            onChange={(event) => setTerm(event.target.value)}
+            placeholder="ابحث بالاسم، الهاتف، اسم الطلب، أو رقم الطلب…"
+            className="min-h-12 w-full rounded-lg border border-input bg-background pe-11 ps-4 text-sm shadow-sm"
+          />
+          </label>
+          <button
+            type="button"
+            onClick={() => void orders.refetch()}
+            aria-label="تحديث الطلبات"
+            className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-foreground shadow-sm"
+          >
+            <RefreshCw className={`h-4 w-4 ${orders.isFetching ? "animate-spin" : ""}`} aria-hidden="true" />
+          </button>
+          {/* List / monthly calendar switch stays distinct from search and filters. */}
+          <div className="col-span-2 grid min-h-12 grid-cols-2 rounded-lg border border-border bg-muted p-1 lg:col-span-1 lg:w-52" role="group" aria-label="طريقة عرض الطلبات">
+            {(["list", "calendar"] as const).map((value) => (
               <button
+                key={value}
                 type="button"
-                onClick={() => setTerm("")}
-                className="absolute end-10 top-3 text-muted-foreground hover:text-foreground p-1 cursor-pointer"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2">
-            {/* View Mode Switcher (List vs Calendar) */}
-            <div className="flex rounded-2xl bg-secondary/60 p-1 border border-border/70">
-              <button
-                type="button"
-                onClick={() => setMode("list")}
-                className={`min-h-[38px] px-3.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                  mode === "list"
-                    ? "bg-card text-foreground shadow-xs border border-border/80"
+                onClick={() => setMode(value)}
+                aria-pressed={mode === value}
+                className={`min-h-10 rounded-md px-4 text-sm font-bold transition-colors ${
+                  mode === value
+                    ? "bg-background text-primary shadow-sm ring-1 ring-border"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                📋 جدول
+                {value === "list" ? "قائمة" : "تقويم"}
               </button>
-              <button
-                type="button"
-                onClick={() => setMode("calendar")}
-                className={`min-h-[38px] px-3.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                  mode === "calendar"
-                    ? "bg-card text-primary shadow-xs border border-border/80"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                📅 تقويم
-              </button>
-            </div>
-
-            {/* Refresh Button */}
-            <button
-              type="button"
-              onClick={() => void orders.refetch()}
-              title="تحديث البيانات"
-              className="grid h-11 w-11 place-items-center rounded-2xl border border-border bg-card text-foreground hover:bg-secondary cursor-pointer"
-            >
-              <RefreshCw className={`h-4 w-4 ${orders.isFetching ? "animate-spin text-primary" : ""}`} />
-            </button>
-
-            {/* Shift Financial Report Button */}
-            {showShiftReport && (
-              <button
-                type="button"
-                onClick={() => setShiftOpen(true)}
-                className="min-h-[44px] px-4 rounded-2xl bg-primary text-primary-foreground text-xs font-black shadow-xs hover:opacity-90 active:scale-95 transition flex items-center gap-1.5 cursor-pointer shrink-0"
-              >
-                <BadgeDollarSign className="h-4 w-4" />
-                <span>إغلاق الشيفت المالي</span>
-              </button>
-            )}
+            ))}
           </div>
         </div>
 
-        {/* Date Filters Strip */}
+        {/* Universal date filter occupies its own responsive row. */}
         <DateFilterBar value={dateKey} onChange={setDateKey} custom={custom} onCustom={setCustom} />
 
-        {/* Status Filter Chips & Method Selector */}
         <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-          {/* Method Filter */}
-          <div className="flex items-center gap-1 p-1 rounded-2xl bg-secondary/50 border border-border/70">
+          {/* Quick Fulfillment Method Filter (All, Delivery, Pickup) */}
+          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-secondary/40 border border-border">
             {[
-              { id: "all" as const, label: "الكل" },
-              { id: "delivery" as const, label: "🛵 دليفري منازل" },
+              { id: "all" as const, label: "جميع الطلبات" },
+              { id: "delivery" as const, label: "🛵 توصيل منازل" },
               { id: "pickup" as const, label: "🏪 استلام محلي" },
             ].map((tab) => (
               <button
                 key={tab.id}
                 type="button"
                 onClick={() => setMethodFilter(tab.id)}
-                className={`min-h-[36px] px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                className={`min-h-[36px] px-3.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   methodFilter === tab.id
                     ? "bg-primary text-primary-foreground shadow-2xs font-black"
-                    : "text-muted-foreground hover:text-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-background"
                 }`}
               >
                 {tab.label}
@@ -545,88 +481,44 @@ export function OrdersWorkspace({
             ))}
           </div>
 
-          {/* Status Filter Scroll */}
-          <div className="no-scrollbar flex items-center gap-1.5 overflow-x-auto py-1">
-            {[
-              { key: "all", label: "كافة الحالات" },
-              { key: "new", label: "قيد الانتظار" },
-              { key: "baking", label: "قيد التنفيذ" },
-              { key: "ready", label: "جاهز بالمحل" },
-              { key: "out_for_delivery", label: "مع السائق" },
-              { key: "completed", label: "مكتمل" },
-              { key: "cancelled", label: "ملغي" },
-            ].map((st) => {
-              const isActive = statusFilter === st.key;
-              return (
-                <button
-                  key={st.key}
-                  type="button"
-                  onClick={() => setStatusFilter(st.key)}
-                  className={`min-h-[34px] px-3 rounded-xl text-xs font-black shrink-0 transition-all cursor-pointer border ${
-                    isActive
-                      ? "bg-foreground text-background border-foreground shadow-2xs"
-                      : "border-border/70 bg-card text-muted-foreground hover:text-foreground hover:bg-secondary/60"
-                  }`}
-                >
-                  {st.label}
-                </button>
-              );
-            })}
-          </div>
+          {showShiftReport ? (
+            <button
+              type="button"
+              onClick={() => setShiftOpen(true)}
+              className="inline-flex min-h-[38px] items-center justify-center gap-1.5 rounded-xl bg-primary px-3.5 text-xs font-bold text-primary-foreground shadow-xs cursor-pointer hover:opacity-90 transition"
+            >
+              <BadgeDollarSign className="h-4 w-4" aria-hidden="true" />
+              <span>إغلاق الشيفت المالي</span>
+            </button>
+          ) : null}
         </div>
       </div>
 
-      {/* 2. ORDERS RENDER (CALENDAR OR WORKSPACE TABLE) */}
       {orders.isPending ? (
-        <div className="grid h-64 place-items-center rounded-3xl border border-border bg-card">
-          <div className="flex flex-col items-center gap-2">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="text-xs font-bold text-muted-foreground">جاري تحميل جدول الطلبات...</p>
-          </div>
-        </div>
+        <p className="py-10 text-center text-sm text-muted-foreground">جار تحميل الطلبات…</p>
       ) : orders.isError ? (
-        <div className="grid h-48 place-items-center rounded-3xl border border-destructive/30 bg-destructive/5 p-6 text-center text-destructive">
-          <p className="font-bold text-sm">تعذر تحميل بيانات الطلبات. يرجى تحديث الصفحة.</p>
-        </div>
+        <p className="py-10 text-center text-sm text-destructive">تعذّر تحميل الطلبات — حدّث الصفحة</p>
       ) : mode === "calendar" ? (
-        <OrdersCalendar
-          orders={orders.data ?? []}
-          onOpen={openOrder}
-          onPatch={(patchData) => patch.mutate(patchData)}
-        />
+        <OrdersCalendar orders={orders.data ?? []} onOpen={openOrder} onPatch={(patchData) => patch.mutate(patchData)} />
       ) : list.length === 0 ? (
-        <div className="grid h-52 place-items-center rounded-3xl border border-dashed border-border bg-card p-6 text-center">
-          <div>
-            <CalendarClock className="mx-auto h-8 w-8 text-muted-foreground/40 mb-2" />
-            <p className="font-black text-sm text-muted-foreground">لا توجد طلبات مطابقة للبحث أو الفلتر المحدد</p>
-          </div>
-        </div>
+        <p className="py-10 text-center text-sm text-muted-foreground">لا توجد طلبات مطابقة</p>
       ) : (
-        <div className="grid gap-3">
+        <ul className="mt-4 grid gap-3">
           {list.map((order) => (
-            <OrderRowCard
+            <OrderCard
               key={order.id}
               order={order}
               onOpen={openOrder}
               onZoom={setZoomImage}
               onMove={onMove}
               onEditOrder={onEditOrder}
-              onQuickPaid={() => {
-                patch.mutate({
-                  orderId: order.id,
-                  deposit_paid: order.total,
-                  payment_method: "cash",
-                });
-                toast.success(`تم تسجيل دفع كامل المبلغ نقداً للطلب ${order.order_number} ✅`);
-              }}
             />
           ))}
-        </div>
+        </ul>
       )}
 
-      {/* 3. ORDER DETAIL & MANAGEMENT DRAWER */}
       {selected ? (
-        <OrderPanelDrawer
+        <OrderPanel
           order={selected}
           authorization={authorization.data ?? null}
           moneyError={moneyError}
@@ -636,6 +528,7 @@ export function OrdersWorkspace({
             discount.mutate({ orderId: selected.id, percent, reason })
           }
           onIssueEditLink={() => issueEditLink.mutate(selected.id)}
+          
           onZoom={setZoomImage}
           onClose={() => {
             setSelectedId(null);
@@ -650,334 +543,273 @@ export function OrdersWorkspace({
         />
       ) : null}
 
-      {/* 4. FULLSCREEN IMAGE ZOOM */}
-      {zoomImage && (
+      {zoomImage ? (
         <div
+          className="fixed inset-0 z-50 grid place-items-center bg-foreground/80 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="صورة الطلب"
           onClick={() => setZoomImage(null)}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-in fade-in duration-200"
         >
-          <div className="relative max-h-[92vh] max-w-4xl" onClick={(e) => e.stopPropagation()}>
-            <img
-              src={zoomImage}
-              alt="صورة التصميم"
-              className="max-h-[85vh] max-w-full rounded-3xl object-contain shadow-2xl border border-white/20"
-            />
-            <button
-              type="button"
-              onClick={() => setZoomImage(null)}
-              className="mt-3 mx-auto min-h-[44px] px-6 rounded-full bg-white text-slate-950 font-black text-xs shadow-md flex items-center gap-1.5 cursor-pointer"
-            >
-              <X className="h-4 w-4" /> إغلاق العرض
-            </button>
-          </div>
+          <img src={zoomImage} alt="صورة تصميم الطلب بالحجم الكامل" className="max-h-[90dvh] max-w-full rounded-2xl" />
         </div>
-      )}
+      ) : null}
 
-      {/* 5. CANCEL ORDER MODAL */}
-      {cancelFor && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="w-full max-w-md rounded-3xl border border-border bg-card p-5 shadow-2xl space-y-4">
-            <div className="flex items-center gap-2.5 text-destructive border-b border-border pb-3">
-              <AlertTriangle className="h-5 w-5" />
-              <h3 className="font-black text-base">إلغاء الطلب {cancelFor.order_number}</h3>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-foreground mb-1">
-                سبب الإلغاء (مطلوب لتوثيق السجل) *
-              </label>
+      {cancelFor ? (
+        <div className="fixed inset-0 z-40 grid place-items-center overflow-x-hidden bg-foreground/50 p-4" role="dialog" aria-modal="true" aria-label="إلغاء الطلب">
+          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-sm overflow-y-auto rounded-2xl bg-card p-4 sm:p-5">
+            <h2 className="font-display text-lg font-bold text-foreground">إلغاء الطلب {cancelFor.order_number}</h2>
+            <label className="mt-4 block text-sm font-bold text-foreground">
+              سبب الإلغاء (مطلوب) · Reason
               <textarea
                 required
-                rows={3}
                 value={cancelReason}
-                onChange={(e) => setCancelReason(e.target.value)}
-                placeholder="اذكر سبب الإلغاء بالتفصيل..."
-                className="w-full rounded-2xl border border-input bg-background p-3 text-xs font-bold outline-none focus:border-destructive"
+                onChange={(event) => setCancelReason(event.target.value)}
+                rows={3}
+                className="mt-1 w-full rounded-xl border border-input bg-background p-3 text-sm"
               />
-            </div>
-
-            <div className="flex gap-2 pt-2">
+            </label>
+            <div className="mt-4 flex gap-2">
               <button
                 type="button"
                 disabled={!cancelReason.trim() || patch.isPending}
                 onClick={() => {
-                  patch.mutate({
-                    orderId: cancelFor.id,
-                    status: "cancelled",
-                    cancel_reason: cancelReason.trim(),
-                  });
+                  patch.mutate({ orderId: cancelFor.id, status: "cancelled", cancel_reason: cancelReason.trim() });
                   setCancelFor(null);
                   setSelectedId(null);
-                  toast.success("تم إلغاء الطلب وتوثيق السبب");
                 }}
-                className="flex-1 min-h-[46px] rounded-xl bg-destructive text-destructive-foreground font-black text-xs shadow-xs hover:opacity-90 disabled:opacity-40 cursor-pointer"
+                className="min-h-12 flex-1 rounded-full bg-destructive px-4 text-sm font-bold text-destructive-foreground disabled:opacity-50"
               >
                 تأكيد الإلغاء
               </button>
-              <button
-                type="button"
-                onClick={() => setCancelFor(null)}
-                className="flex-1 min-h-[46px] rounded-xl border border-border bg-secondary/50 text-foreground font-bold text-xs hover:bg-secondary cursor-pointer"
-              >
-                تراجع
+              <button type="button" onClick={() => setCancelFor(null)} className="min-h-12 flex-1 rounded-full border border-border text-sm font-bold text-foreground">
+                رجوع
               </button>
             </div>
           </div>
         </div>
-      )}
+      ) : null}
 
-      {/* 6. SHIFT FINANCIAL REPORT MODAL */}
-      {shiftOpen && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="w-full max-w-md rounded-3xl border border-border bg-card p-5 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-border pb-3">
-              <div className="flex items-center gap-2">
-                <BadgeDollarSign className="h-5 w-5 text-emerald-600" />
-                <h3 className="font-black text-base text-foreground">تقرير إغلاق الشيفت المالي</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShiftOpen(false)}
-                className="grid h-9 w-9 place-items-center rounded-full border border-border hover:bg-secondary"
-              >
-                <X className="h-4 w-4" />
+      {shiftOpen ? (
+        <div className="fixed inset-0 z-40 grid place-items-center overflow-x-hidden bg-foreground/50 p-4" role="dialog" aria-modal="true" aria-label="إغلاق الشيفت المالي">
+          <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-2xl bg-card p-4 sm:p-5">
+            <div className="flex items-center gap-2">
+              <h2 className="me-auto font-display text-lg font-bold text-foreground">إغلاق الشيفت المالي</h2>
+              <button type="button" onClick={() => setShiftOpen(false)} aria-label="إغلاق" className="grid h-12 w-12 place-items-center rounded-full border border-border">
+                <X className="h-4 w-4" aria-hidden="true" />
               </button>
             </div>
-
-            <div>
-              <label className="block text-xs font-bold text-foreground mb-1">تاريخ الشيفت:</label>
+            <label className="mt-4 block text-sm font-bold text-foreground">
+              تاريخ الشيفت · Date
               <input
                 type="date"
                 value={shiftDate}
-                onChange={(e) => setShiftDate(e.target.value)}
-                className="min-h-[44px] w-full rounded-xl border border-input bg-background px-3 text-xs font-bold text-foreground outline-none focus:border-primary"
+                onChange={(event) => setShiftDate(event.target.value)}
+                className="mt-1 min-h-12 w-full rounded-xl border border-input bg-background px-3 text-sm"
               />
-            </div>
+            </label>
 
             {report ? (
-              <div className="space-y-3 rounded-2xl bg-secondary/30 p-3.5 border border-border/70 text-xs">
+              <div className="mt-4 space-y-2 text-sm">
                 {report.byMethod.map((row) => (
-                  <div key={row.method} className="flex items-center justify-between font-bold">
-                    <span>{row.method === "unpaid" ? "غير محدد" : payMeta[row.method].ar} ({row.orders} طلب)</span>
-                    <span className="text-foreground">{jd(row.collected)}</span>
+                  <div key={row.method} className="flex items-center justify-between rounded-xl bg-secondary px-3 py-2">
+                    <span className="font-bold text-secondary-foreground">
+                      {row.method === "unpaid" ? "بدون طريقة دفع" : payMeta[row.method].ar}
+                      <span className="ms-2 text-xs font-normal">({row.orders} طلب)</span>
+                    </span>
+                    <span className="font-bold text-secondary-foreground">{jd(row.collected)}</span>
                   </div>
                 ))}
-                <div className="flex items-center justify-between border-t border-border/80 pt-2 font-black text-sm text-foreground">
-                  <span>إجمالي المحصل:</span>
-                  <span className="text-emerald-600 text-base">{jd(report.collected)}</span>
+                <div className="flex items-center justify-between border-t border-border pt-2 font-bold text-foreground">
+                  <span>إجمالي المحصل</span>
+                  <span>{jd(report.collected)}</span>
                 </div>
-                <div className="flex items-center justify-between text-muted-foreground font-bold">
-                  <span>المتبقي على العملاء:</span>
-                  <span className="text-rose-600">{jd(report.outstanding)}</span>
+                <div className="flex items-center justify-between text-foreground">
+                  <span>المتبقي على العملاء</span>
+                  <span>{jd(report.outstanding)}</span>
                 </div>
                 <div className="flex items-center justify-between text-muted-foreground">
-                  <span>إجمالي الطلبات / الملغاة:</span>
-                  <span>{report.orders} مكتمل • {report.cancelled} ملغي</span>
+                  <span>الطلبات · الملغاة</span>
+                  <span>{report.orders} · {report.cancelled}</span>
                 </div>
-
                 <button
                   type="button"
                   onClick={() => printShiftReport(report, shiftDate)}
-                  className="w-full min-h-[48px] rounded-2xl bg-primary text-primary-foreground font-black text-xs shadow-md hover:opacity-90 active:scale-95 transition flex items-center justify-center gap-2 cursor-pointer mt-2"
+                  className="mt-2 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-primary px-5 text-sm font-bold text-primary-foreground"
                 >
-                  <Printer className="h-4 w-4" />
-                  <span>طباعة بون الشيفت الحراري 🖨️</span>
+                  <Printer className="h-4 w-4" aria-hidden="true" /> طباعة التقرير اليومي
                 </button>
               </div>
             ) : (
-              <div className="grid h-32 place-items-center">
-                <Loader2 className="h-6 w-6 animate-spin text-primary" />
-              </div>
+              <p className="mt-4 text-sm text-muted-foreground">جار حساب التقرير…</p>
             )}
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
 
-/** MODERN ORDER ROW CARD COMPONENT */
-const OrderRowCard = memo(function OrderRowCard({
+/** List card: order number, status, region, order name and a thumbnail. */
+const OrderCard = memo(function OrderCard({
   order,
   onOpen,
   onZoom,
   onMove,
   onEditOrder,
-  onQuickPaid,
 }: {
   order: SalesOrder;
   onOpen: (id: string) => void;
   onZoom: (url: string) => void;
+  /** Manual priority move: -1 = up, 1 = down. */
   onMove: (id: string, direction: -1 | 1) => void;
   onEditOrder?: ((id: string) => void) | undefined;
-  onQuickPaid: () => void;
 }) {
   const remaining = Math.max(order.total - order.deposit_paid, 0);
-  const statusInfo = statusMeta[order.status] || statusMeta.new;
-
   return (
-    <div className="rounded-3xl border border-border/80 bg-card p-3.5 sm:p-4 shadow-2xs hover:shadow-xs hover:border-primary/40 transition-all space-y-3">
-      {/* Top Strip: Status, Order Number, Delivery Method, Date/Time */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-2.5">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-black border ${statusInfo.chip}`}>
-            <span className={`h-2 w-2 rounded-full ${statusInfo.dot}`} />
-            {statusInfo.ar}
-          </span>
-          <span className="font-black text-sm text-foreground">
-            {orderLabel(order.order_number, order.staff_code)}
-          </span>
-          <span className="text-xs font-bold text-foreground truncate max-w-[200px]">
-            {order.order_name?.trim() || order.customer_name}
-          </span>
-          {order.last_edited_at && (
-            <span className="inline-flex items-center gap-1 rounded-lg bg-amber-500/10 px-2 py-0.5 text-[10px] font-black text-amber-600 border border-amber-500/20">
-              <Pencil className="h-2.5 w-2.5" /> معدّل
-            </span>
-          )}
-        </div>
+    <li className="min-w-0 overflow-hidden rounded-2xl border border-border bg-card p-4">
+      <div className="flex min-w-0 gap-3">
+        {order.design_image_url ? (
+          <button
+            type="button"
+            onClick={() => onZoom(order.design_image_url as string)}
+            aria-label={`تكبير صورة الطلب ${order.order_number}`}
+            className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-border"
+          >
+            <img
+              src={order.design_image_url}
+              alt={`صورة تصميم الطلب ${order.order_number}`}
+              loading="lazy"
+              className="h-full w-full object-cover"
+            />
+          </button>
+        ) : null}
 
-        <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground">
-          <span className="inline-flex items-center gap-1">
-            <Calendar className="h-3.5 w-3.5" />
-            {order.requested_date}
-          </span>
-          <span>•</span>
-          <span className="inline-flex items-center gap-1 text-foreground font-black">
-            <Clock className="h-3.5 w-3.5 text-amber-500" />
-            {order.requested_time.slice(0, 5)}
-          </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusMeta[order.status].chip}`}>
+              {statusMeta[order.status].ar}
+            </span>
+            <span className="font-display text-base font-bold text-foreground">{orderLabel(order.order_number, order.staff_code)}</span>
+            <span className="min-w-0 break-words text-sm font-bold text-foreground">{listLabel(order)}</span>
+            {order.last_edited_at ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-gold px-2 py-0.5 text-[11px] font-bold text-white">
+                <Pencil className="h-3 w-3" aria-hidden="true" /> تم التعديل
+              </span>
+            ) : null}
+            <span className="inline-flex min-w-0 items-center gap-1 break-words text-xs text-muted-foreground sm:ms-auto">
+              <CalendarClock className="h-4 w-4" aria-hidden="true" />
+              {order.requested_date} · {order.requested_time.slice(0, 5)}
+            </span>
+            {order.schedule_updated_at ? (
+              <span className="rounded-full bg-gold px-3 py-1 text-[11px] font-bold text-white">
+                تم تعديل الموعد 🔄
+              </span>
+            ) : null}
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+            <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-3 py-1 font-bold text-secondary-foreground">
+              {order.method === "delivery" ? <Bike className="h-3.5 w-3.5" aria-hidden="true" /> : <Store className="h-3.5 w-3.5" aria-hidden="true" />}
+              {regionLabel(order)}
+            </span>
+            <span className="text-muted-foreground">الإجمالي {jd(order.total)}</span>
+            <span className="text-muted-foreground">مدفوع {jd(order.deposit_paid)}</span>
+            <span className={remaining > 0 ? "font-bold text-destructive" : "font-bold text-foreground"}>
+              المتبقي {jd(remaining)}
+            </span>
+            {order.payment_method ? <span className="text-muted-foreground">{payMeta[order.payment_method].ar}</span> : null}
+          </div>
+
+          {order.modifications && order.modifications.length > 0 ? (
+            (() => {
+              const lastMod = order.modifications[order.modifications.length - 1];
+              if (!lastMod) return null;
+              return (
+                <div className="mt-2.5 rounded-xl bg-amber-50 p-2 text-[11px] border border-amber-200 text-amber-900 flex flex-wrap items-center gap-1.5">
+                  <span className="font-bold">📝 آخر تعديل:</span>
+                  <span>{lastMod.field}</span>
+                  <span className="line-through text-amber-700/80">{lastMod.oldValue}</span>
+                  <span className="font-bold text-emerald-800">← {lastMod.newValue}</span>
+                </div>
+              );
+            })()
+          ) : null}
         </div>
       </div>
 
-      {/* Middle Row: Content, Inscription, and Fulfilment */}
-      <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
-        <div className="space-y-1.5 flex-1 min-w-0">
-          <div className="flex flex-wrap items-center gap-2 text-xs">
-            <span className="font-black text-foreground">{order.customer_name}</span>
-            <span dir="ltr" className="text-muted-foreground font-bold">{order.customer_phone}</span>
-            <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg bg-secondary text-foreground">
-              {order.method === "delivery" ? `🛵 توصيل (${order.area || "عمان"})` : "🏪 استلام محلي"}
-            </span>
-          </div>
-
-          {/* Items Summary */}
-          <div className="text-xs text-muted-foreground">
-            {order.items.map((it) => `${it.quantity} × ${it.name_ar}`).join(" • ")}
-          </div>
-
-          {/* Inscription Ribbon Badge if present */}
-          {order.inscription && (
-            <div className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500/10 px-2.5 py-1 text-xs font-black text-amber-900 dark:text-amber-200 border border-amber-500/20">
-              <span>✍️</span>
-              <span>"{order.inscription}"</span>
-            </div>
-          )}
-
-          {/* Modifications alert banner if any */}
-          {order.modifications && order.modifications.length > 0 && (
-            <div className="text-[11px] font-bold text-amber-800 dark:text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-xl border border-amber-500/20">
-              آخر تعديل: {order.modifications[order.modifications.length - 1]?.field ?? "—"}
-            </div>
-          )}
-        </div>
-
-        {/* Financial Badge */}
-        <div className="flex sm:flex-col items-end justify-between sm:justify-start w-full sm:w-auto gap-1 shrink-0 pt-2 sm:pt-0 border-t sm:border-0 border-border/40">
-          <span className="text-base font-black text-foreground">{jd(order.total)}</span>
-          <div className="flex items-center gap-2 text-xs">
-            <span className="text-muted-foreground">مدفوع: {jd(order.deposit_paid)}</span>
-            <span className={`font-black ${remaining > 0 ? "text-rose-600" : "text-emerald-600"}`}>
-              {remaining > 0 ? `باقي ${jd(remaining)}` : "مدفوع بالكامل ✓"}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom Actions Deck */}
-      <div className="flex flex-wrap items-center justify-between gap-2 pt-2.5 border-t border-border/60">
+      <div className="mt-3.5 pt-3 border-t border-border/80 flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => onOpen(order.id)}
-            className="min-h-[40px] px-4 rounded-xl bg-primary text-primary-foreground text-xs font-black shadow-xs hover:opacity-90 active:scale-95 transition cursor-pointer"
+            className="min-h-[42px] rounded-xl bg-primary px-4 text-xs font-black text-primary-foreground shadow-xs hover:opacity-90 active:scale-95 transition cursor-pointer"
           >
-            إدارة الطلب ⚡
+            إدارة الطلب
           </button>
-
-          {onEditOrder && (
+          {onEditOrder ? (
             <button
               type="button"
               onClick={() => onEditOrder(order.id)}
-              className="min-h-[40px] px-3.5 rounded-xl border border-border bg-card text-foreground text-xs font-bold hover:bg-secondary active:scale-95 transition flex items-center gap-1.5 cursor-pointer"
+              className="inline-flex min-h-[42px] items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-3 text-xs font-bold text-foreground hover:bg-secondary/60 active:scale-95 transition cursor-pointer"
             >
               <Pencil className="h-3.5 w-3.5 text-primary" />
               <span>تعديل</span>
             </button>
-          )}
-
+          ) : null}
           <button
             type="button"
             onClick={() => sendCustomerWhatsApp(order)}
-            className="min-h-[40px] px-3.5 rounded-xl border border-emerald-600/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-xs font-black hover:bg-emerald-500/20 active:scale-95 transition flex items-center gap-1.5 cursor-pointer"
+            title="إرسال رسالة واتساب للعميل"
+            className="inline-flex min-h-[42px] items-center justify-center gap-1.5 rounded-xl border border-emerald-600/30 bg-emerald-50 px-3 text-xs font-bold text-emerald-800 hover:bg-emerald-100 active:scale-95 transition cursor-pointer"
           >
-            <MessageCircle className="h-3.5 w-3.5 text-emerald-600" />
+            <MessageCircle className="h-4 w-4 text-emerald-600" />
             <span>واتساب</span>
           </button>
-
           <button
             type="button"
             onClick={() => printReceipt(order)}
-            className="min-h-[40px] px-3.5 rounded-xl border border-border bg-card text-foreground text-xs font-bold hover:bg-secondary active:scale-95 transition flex items-center gap-1.5 cursor-pointer"
+            title="طباعة الفاتورة الحرارية"
+            className="inline-flex min-h-[42px] items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-3 text-xs font-bold text-foreground hover:bg-secondary/60 active:scale-95 transition cursor-pointer"
           >
             <Printer className="h-3.5 w-3.5" />
             <span>فاتورة</span>
           </button>
-
-          {remaining > 0 && (
-            <button
-              type="button"
-              onClick={onQuickPaid}
-              title="تسجيل دفع المتبقي كاملاً كاش بنقرة واحدة"
-              className="min-h-[40px] px-3.5 rounded-xl bg-emerald-600 text-white text-xs font-black shadow-2xs hover:bg-emerald-700 active:scale-95 transition flex items-center gap-1 cursor-pointer"
-            >
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              <span>استلام {jd(remaining)} كاش</span>
-            </button>
-          )}
-
-          {order.schedule_updated_at && (
+          {order.schedule_updated_at ? (
             <button
               type="button"
               onClick={() => sendScheduleConfirmation(order)}
-              className="min-h-[40px] px-3.5 rounded-xl bg-amber-600 text-white text-xs font-black hover:bg-amber-700 active:scale-95 transition flex items-center gap-1.5 cursor-pointer"
+              className="inline-flex min-h-[42px] items-center justify-center gap-1.5 rounded-xl bg-amber-600 px-3 text-xs font-black text-white hover:bg-amber-700 active:scale-95 transition cursor-pointer"
             >
-              <span>تأكيد الموعد 🔄</span>
+              <MessageCircle className="h-3.5 w-3.5" />
+              <span>تأكيد الموعد المعدل 🔄</span>
             </button>
-          )}
+          ) : null}
         </div>
 
-        {/* Priority Rank Stepper */}
+        {/* Priority queue reorder controls */}
         <div className="flex items-center gap-1 rounded-xl border border-border bg-secondary/30 p-0.5">
           <button
             type="button"
             onClick={() => onMove(order.id, -1)}
+            aria-label="رفع أولوية الطلب"
             title="تقديم في الطابور"
-            className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-card active:scale-90 transition cursor-pointer"
+            className="grid h-9 w-9 place-items-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-card active:scale-90 transition cursor-pointer"
           >
-            <ArrowUp className="h-3.5 w-3.5" />
+            <ArrowUp className="h-4 w-4" aria-hidden="true" />
           </button>
           <button
             type="button"
             onClick={() => onMove(order.id, 1)}
+            aria-label="تنزيل أولوية الطلب"
             title="تأخير في الطابور"
-            className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-card active:scale-90 transition cursor-pointer"
+            className="grid h-9 w-9 place-items-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-card active:scale-90 transition cursor-pointer"
           >
-            <ArrowDown className="h-3.5 w-3.5" />
+            <ArrowDown className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
       </div>
-    </div>
+    </li>
   );
 });
 
@@ -988,8 +820,7 @@ const SAVED_DRIVERS = [
   { label: "شركة توصيل خارجية", name: "شركة التوصيل", phone: "" },
 ] as const;
 
-/** COMPREHENSIVE ORDER DETAIL DRAWER COMPONENT */
-function OrderPanelDrawer({
+function OrderPanel({
   order,
   authorization,
   moneyError,
@@ -1015,10 +846,20 @@ function OrderPanelDrawer({
   onCancel: () => void;
 }) {
   const [deposit, setDeposit] = useState(String(order.deposit_paid));
+  const initialPayChoice = (row: SalesOrder) =>
+    row.payment_method !== "cliq"
+      ? "cash"
+      : row.total > 0 && row.deposit_paid >= row.total
+        ? "cliq_full"
+        : "cliq_deposit";
+  const [payChoice, setPayChoice] = useState<"cash" | "cliq_full" | "cliq_deposit">(() =>
+    initialPayChoice(order),
+  );
   const [driverName, setDriverName] = useState(order.driver_name ?? "");
   const [driverPhone, setDriverPhone] = useState(order.driver_phone ?? "");
   const [discountPercent, setDiscountPercent] = useState(String(order.discount_percent || ""));
   const [discountReason, setDiscountReason] = useState("");
+  const [messageCopied, setMessageCopied] = useState(false);
   const [address, setAddress] = useState(order.address ?? "");
   const [showAdvancedPay, setShowAdvancedPay] = useState(false);
 
@@ -1027,10 +868,12 @@ function OrderPanelDrawer({
 
   useEffect(() => {
     setDeposit(String(order.deposit_paid));
+    setPayChoice(initialPayChoice(order));
     setDriverName(order.driver_name ?? "");
     setDriverPhone(order.driver_phone ?? "");
     setDiscountPercent(String(order.discount_percent || ""));
     setDiscountReason("");
+    setMessageCopied(false);
     setAddress(order.address ?? "");
   }, [order.id]);
 
@@ -1079,6 +922,8 @@ function OrderPanelDrawer({
 ملاحظات: ${order.notes || "لا يوجد"}`;
   }, [order, remaining]);
 
+  const field = "mt-1 min-h-12 w-full rounded-xl border border-input bg-background px-3 text-sm";
+
   const workflowSteps: Array<{ key: SalesStatus; label: string; icon: string }> = [
     { key: "new", label: "جديد", icon: "⏳" },
     { key: "baking", label: "قيد التنفيذ", icon: "👨‍🍳" },
@@ -1093,51 +938,80 @@ function OrderPanelDrawer({
       deposit_paid: liveTotal,
       payment_method: method,
     });
-    toast.success(`تم استلام كامل المبلغ ${jd(liveTotal)} (${method === "cash" ? "كاش" : "كليك"})`);
   };
 
   return (
     <div
-      className="fixed inset-0 z-40 flex justify-start bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
+      className="fixed inset-0 z-40 flex max-w-full justify-start overflow-x-hidden bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
       role="dialog"
       aria-modal="true"
+      aria-label={`إدارة الطلب ${order.order_number}`}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="ms-auto flex h-full w-full max-w-lg flex-col bg-card p-4 sm:p-5 shadow-2xl animate-in slide-in-from-right duration-250 border-s border-border">
-        {/* Drawer Header */}
-        <div className="border-b border-border/80 pb-3 flex items-center justify-between">
+      <div className="ms-auto flex h-full w-full max-w-lg min-w-0 flex-col overflow-x-hidden bg-card p-4 sm:p-5 shadow-2xl animate-in slide-in-from-right duration-250 border-s border-border">
+        
+        {/* HEADER: Quick Info & Immediate Actions */}
+        <div className="border-b border-border pb-3">
           <div className="flex items-center gap-2">
-            <h2 className="font-black text-lg text-foreground">
+            <h2 className="me-auto font-display text-lg font-bold text-foreground">
               {orderLabel(order.order_number, order.staff_code)}
             </h2>
-            {order.last_edited_at && (
-              <span className="rounded-lg bg-amber-500/10 px-2 py-0.5 text-[10px] font-black text-amber-600 border border-amber-500/20">
-                معدّل
+            {order.last_edited_at ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-gold px-2.5 py-0.5 text-[11px] font-bold text-white">
+                <Pencil className="h-3 w-3" aria-hidden="true" /> تم التعديل
               </span>
-            )}
+            ) : null}
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="إغلاق"
+              className="grid h-10 w-10 place-items-center rounded-full border border-border text-foreground hover:bg-secondary active:scale-95"
+            >
+              <X className="h-5 w-5" aria-hidden="true" />
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="grid h-10 w-10 place-items-center rounded-full border border-border text-foreground hover:bg-secondary cursor-pointer"
-          >
-            <X className="h-5 w-5" />
-          </button>
+
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <div>
+              <p className="text-sm font-bold text-foreground">{order.order_name?.trim() || order.customer_name}</p>
+              <p className="text-xs text-muted-foreground" dir="ltr">{order.customer_phone}</p>
+            </div>
+            
+            {/* Quick Contact Action Buttons */}
+            <div className="flex items-center gap-2">
+              <a
+                href={`tel:${order.customer_phone}`}
+                className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-primary/10 px-3 text-xs font-bold text-primary hover:bg-primary/20 active:scale-95"
+              >
+                <Phone className="h-3.5 w-3.5" aria-hidden="true" /> اتصال
+              </a>
+              <a
+                href={`https://wa.me/${waNumber(order.customer_phone)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-[#25D366]/10 px-3 text-xs font-bold text-[#25D366] hover:bg-[#25D366]/20 active:scale-95"
+              >
+                <MessageCircle className="h-3.5 w-3.5" aria-hidden="true" /> واتساب
+              </a>
+            </div>
+          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto pt-3.5 space-y-4">
-          {/* Workflow Stepper */}
-          <div className="rounded-2xl border border-border bg-secondary/20 p-3 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-black text-foreground">حالة الطلب السريعة:</span>
-              {order.status === "cancelled" && (
-                <span className="text-[10px] font-black bg-rose-500/10 text-rose-600 px-2 py-0.5 rounded-md">
-                  ملغي: {order.cancel_reason}
+        <div className="flex-1 overflow-y-auto pt-4 space-y-5">
+
+          {/* SINGLE-TAP WORKFLOW STEPPER */}
+          <section className="rounded-2xl border border-border bg-background p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="text-xs font-bold text-muted-foreground">حالة الطلب السريعة</h3>
+              {order.status === "cancelled" ? (
+                <span className="rounded-full bg-destructive/15 px-2.5 py-0.5 text-xs font-bold text-destructive">
+                  ملغي: {order.cancel_reason || "لا يوجد سبب"}
                 </span>
-              )}
+              ) : null}
             </div>
+            
             <div className="grid grid-cols-5 gap-1 text-center">
               {workflowSteps.map((step) => {
                 const isActive = order.status === step.key;
@@ -1146,173 +1020,362 @@ function OrderPanelDrawer({
                     key={step.key}
                     type="button"
                     onClick={() => onPatch({ status: step.key })}
-                    className={`flex flex-col items-center justify-center rounded-xl p-2 min-h-[50px] transition-all cursor-pointer ${
+                    className={`flex flex-col items-center justify-center rounded-xl p-2 transition-all min-h-14 ${
                       isActive
-                        ? "bg-primary text-primary-foreground font-black shadow-xs scale-102"
-                        : "bg-card text-foreground hover:bg-secondary/60 active:scale-95 border border-border/60"
+                        ? "bg-primary text-primary-foreground font-bold shadow-sm scale-[1.02]"
+                        : "bg-secondary/50 text-foreground hover:bg-secondary active:scale-95"
                     }`}
                   >
-                    <span className="text-sm">{step.icon}</span>
-                    <span className="text-[10px] font-bold mt-0.5">{step.label}</span>
+                    <span className="text-base">{step.icon}</span>
+                    <span className="text-[10px] mt-0.5 leading-tight">{step.label}</span>
                   </button>
                 );
               })}
             </div>
-          </div>
 
-          {/* Quick Financial Settle */}
-          <div className="rounded-2xl border border-border bg-card p-3.5 space-y-2.5">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-bold text-muted-foreground">الإجمالي: <strong className="text-foreground">{jd(liveTotal)}</strong></span>
-              <span className="font-bold text-muted-foreground">المدفوع: <strong className="text-emerald-600">{jd(Number(deposit) || 0)}</strong></span>
-              <span className={`font-black ${remaining > 0 ? "text-rose-600" : "text-emerald-600"}`}>
-                المتبقي: {jd(remaining)}
-              </span>
+            <div className="mt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={onCancel}
+                className="text-xs text-destructive hover:underline"
+              >
+                إلغاء الطلب
+              </button>
             </div>
+          </section>
 
-            {remaining > 0 ? (
-              <div className="space-y-1.5 pt-1">
-                <button
-                  type="button"
-                  onClick={() => handleMarkPaidInFull("cash")}
-                  className="w-full min-h-[46px] rounded-xl bg-emerald-600 text-white font-black text-xs shadow-sm hover:bg-emerald-700 active:scale-95 transition flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <CheckCircle2 className="h-4 w-4" />
-                  <span>💵 تم استلام المتبقي كاملاً ({jd(remaining)} - كاش)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleMarkPaidInFull("cliq")}
-                  className="w-full min-h-[40px] rounded-xl border border-emerald-600/30 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 font-bold text-xs hover:bg-emerald-100 cursor-pointer"
-                >
-                  💳 تم استلام المتبقي عبر CliQ
-                </button>
-              </div>
-            ) : (
-              <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/40 p-2 text-center text-xs font-black text-emerald-800 dark:text-emerald-200 border border-emerald-200">
-                ✅ الحساب مسدد بالكامل
-              </div>
-            )}
-          </div>
-
-          {/* Items & Inscription Review */}
-          <div className="rounded-2xl border border-border bg-card p-3.5 space-y-2">
-            <div className="flex items-center justify-between border-b border-border/60 pb-2">
-              <h4 className="font-black text-xs text-foreground">المنتجات المطلوبة</h4>
-              {onEditOrder && (
+          {/* ORDER SUMMARY CARD (CRITICAL PREVIEW) */}
+          <section className="rounded-2xl border border-border bg-background p-3.5">
+            <div className="flex items-center justify-between border-b border-border/60 pb-2 mb-2">
+              <h3 className="text-sm font-bold text-foreground">تفاصيل المنتجات المطلوبة</h3>
+              {onEditOrder ? (
                 <button
                   type="button"
                   onClick={() => {
                     onClose();
                     onEditOrder(order.id);
                   }}
-                  className="text-xs font-black text-primary hover:underline"
+                  className="text-xs font-bold text-primary hover:underline flex items-center gap-1"
                 >
-                  تعديل كامل ✏️
+                  <Pencil className="h-3.5 w-3.5" /> ✏️ تعديل الطلب (سوشيال ميديا)
                 </button>
-              )}
+              ) : null}
             </div>
 
-            <div className="space-y-1.5 text-xs">
+            <div className="space-y-2">
               {order.items.map((item, idx) => (
-                <div key={idx} className="flex justify-between items-start border-b border-border/30 pb-1 last:border-0">
+                <div key={idx} className="flex justify-between items-start text-xs border-b border-border/30 pb-1.5 last:border-0 last:pb-0">
                   <div>
-                    <p className="font-black text-foreground">{item.quantity} × {item.name_ar}</p>
-                    {item.options_ar.length > 0 && (
-                      <p className="text-[10px] text-muted-foreground">{item.options_ar.join(" • ")}</p>
-                    )}
+                    <p className="font-bold text-foreground">{item.quantity} × {item.name_ar}</p>
+                    {item.options_ar.length > 0 ? (
+                      <p className="text-[11px] text-muted-foreground">{item.options_ar.join(" · ")}</p>
+                    ) : null}
                   </div>
-                  <span className="font-bold">{jd(item.unit_price * item.quantity)}</span>
+                  <span className="font-bold text-foreground">{jd(item.unit_price * item.quantity)}</span>
                 </div>
               ))}
+
+              {order.inscription ? (
+                <div className="mt-2 rounded-xl bg-gold/15 p-2 text-xs text-foreground border border-gold/30">
+                  <span className="font-bold text-gold">✍️ الكتابة على الكيك:</span> "{order.inscription}"
+                </div>
+              ) : null}
+
+              {order.card_note ? (
+                <div className="mt-1 rounded-xl bg-secondary p-2 text-xs text-foreground">
+                  <span className="font-bold">📜 كارت الإهداء:</span> "{order.card_note}"
+                </div>
+              ) : null}
+
+              {order.notes ? (
+                <div className="mt-1 rounded-xl bg-secondary/80 p-2 text-xs text-muted-foreground">
+                  <span className="font-bold text-foreground">📝 ملاحظات إضافية:</span> {order.notes}
+                </div>
+              ) : null}
             </div>
 
-            {order.inscription && (
-              <div className="rounded-xl border border-amber-400 bg-amber-500/10 p-2 text-xs font-black text-amber-900 dark:text-amber-200">
-                ✍️ الكتابة على الكيك: "{order.inscription}"
+            {/* Audit Log Box Below Items */}
+            <div className="mt-3">
+              <ModificationsHistoryBox
+                modifications={order.modifications}
+                lastEditedAt={order.last_edited_at}
+              />
+            </div>
+          </section>
+
+          {/* ONE-TAP FINANCIAL SETTLEMENT */}
+          <section className="rounded-2xl border border-border bg-background p-3.5">
+            <h3 className="text-sm font-bold text-foreground mb-2">الحساب والمالية</h3>
+            
+            <div className="grid grid-cols-3 gap-2 rounded-xl bg-secondary/60 p-2.5 text-center text-xs">
+              <div>
+                <span className="block text-muted-foreground">الإجمالي</span>
+                <span className="font-bold text-foreground text-sm">{jd(liveTotal)}</span>
               </div>
-            )}
-
-            {order.notes && (
-              <div className="text-[11px] text-muted-foreground bg-secondary/30 p-2 rounded-xl">
-                ملاحظات: {order.notes}
+              <div>
+                <span className="block text-muted-foreground">المدفوع</span>
+                <span className="font-bold text-emerald-600 text-sm">{jd(Number(deposit) || 0)}</span>
               </div>
-            )}
-          </div>
+              <div>
+                <span className="block text-muted-foreground">المتبقي</span>
+                <span className={`font-bold text-sm ${remaining > 0 ? "text-destructive" : "text-emerald-600"}`}>
+                  {jd(remaining)}
+                </span>
+              </div>
+            </div>
 
-          {/* Delivery & Driver Dispatch */}
-          {order.method === "delivery" && (
-            <div className="rounded-2xl border border-border bg-card p-3.5 space-y-2.5">
-              <h4 className="font-black text-xs text-foreground">توجيه التوصيل والسائق</h4>
-              <p className="text-xs text-muted-foreground">
-                العنوان: {order.area} {order.address ? `— ${order.address}` : ""}
-              </p>
-
-              <select
-                value={SAVED_DRIVERS.find((d) => d.name === driverName)?.name || ""}
-                onChange={(e) => {
-                  const sel = SAVED_DRIVERS.find((d) => d.name === e.target.value);
-                  if (sel) {
-                    setDriverName(sel.name);
-                    setDriverPhone(sel.phone);
-                    onPatch({ driver_name: sel.name, driver_phone: sel.phone });
-                  }
-                }}
-                className="min-h-[42px] w-full rounded-xl border border-input bg-background px-3 text-xs font-bold text-foreground"
-              >
-                <option value="">— اختيار سائق التوصيل —</option>
-                {SAVED_DRIVERS.map((d) => (
-                  <option key={d.name} value={d.name}>{d.label}</option>
-                ))}
-              </select>
-
-              {driverPhone && (
-                <a
-                  href={`https://wa.me/${waNumber(driverPhone)}?text=${encodeURIComponent(driverDispatchMessage)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full min-h-[42px] rounded-xl bg-[#25D366] text-white font-black text-xs shadow-xs hover:brightness-95 flex items-center justify-center gap-1.5 cursor-pointer"
+            {/* ONE-CLICK SETTLEMENT BUTTON */}
+            {remaining > 0 ? (
+              <div className="mt-3 space-y-2">
+                <button
+                  type="button"
+                  onClick={() => handleMarkPaidInFull("cash")}
+                  className="w-full min-h-12 rounded-full bg-emerald-600 px-4 text-sm font-bold text-white shadow-sm transition-transform hover:bg-emerald-700 active:scale-95 flex items-center justify-center gap-2"
                 >
-                  <MessageCircle className="h-4 w-4" />
-                  <span>إرسال تفاصيل التوصيل للسائق عبر WhatsApp</span>
-                </a>
-              )}
+                  <CheckCircle2 className="h-4 w-4" /> 💵 تم استلام المتبقي بالكامل ({jd(remaining)} - كاش)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleMarkPaidInFull("cliq")}
+                  className="w-full min-h-10 rounded-full border border-emerald-600/40 bg-emerald-50 px-4 text-xs font-bold text-emerald-800 hover:bg-emerald-100 active:scale-95"
+                >
+                  💳 تم استلام المتبقي عبر CliQ
+                </button>
+              </div>
+            ) : (
+              <div className="mt-2 rounded-xl bg-emerald-50 p-2 text-center text-xs font-bold text-emerald-700 border border-emerald-200">
+                ✅ الحساب مدفوع بالكامل
+              </div>
+            )}
+
+            {/* Advanced financial toggle */}
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={() => setShowAdvancedPay(!showAdvancedPay)}
+                className="text-[11px] text-muted-foreground hover:underline"
+              >
+                {showAdvancedPay ? "إخفاء خيارات الخصم والعربون" : "⚙️ خصم خاص / تعديل العربون"}
+              </button>
+
+              {showAdvancedPay ? (
+                <div className="mt-3 space-y-3 pt-2 border-t border-border">
+                  {/* Custom discount */}
+                  {mayDiscount ? (
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <input
+                          type="number"
+                          min="0"
+                          max={discountCap}
+                          value={discountPercent}
+                          onChange={(e) => setDiscountPercent(e.target.value)}
+                          placeholder="نسبة الخصم %"
+                          className="min-h-10 flex-1 rounded-xl border border-input px-3 text-xs"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => onApplyDiscount?.(Number(discountPercent) || 0, discountReason)}
+                          className="min-h-10 rounded-xl bg-primary px-3 text-xs font-bold text-primary-foreground"
+                        >
+                          تطبيق
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {/* Edit deposit manual */}
+                  <label className="block text-xs font-bold text-foreground">
+                    تعديل المبلغ المدفوع يدويًا:
+                    <input
+                      type="number"
+                      value={deposit}
+                      onChange={(e) => setDeposit(e.target.value)}
+                      onBlur={() => onPatch({ deposit_paid: Number(deposit) || 0 })}
+                      className={field}
+                    />
+                  </label>
+
+                  {/* Customer edit link */}
+                  {onIssueEditLink ? (
+                    <button
+                      type="button"
+                      onClick={() => onIssueEditLink()}
+                      className="inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-xl border border-primary text-xs font-bold text-primary"
+                    >
+                      <Link2 className="h-3.5 w-3.5" /> إصدار رابط تعديل للعميل
+                    </button>
+                  ) : null}
+                  {editLink ? (
+                    <input readOnly value={editLink} className="min-h-10 w-full rounded-xl border px-2 text-[11px]" dir="ltr" />
+                  ) : null}
+                </div>
+              ) : null}
             </div>
-          )}
+          </section>
 
-          {/* WhatsApp Customer Button */}
-          <a
-            href={`https://wa.me/${waNumber(order.recipient_phone || order.customer_phone)}?text=${encodeURIComponent(confirmationMessage)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full min-h-[46px] rounded-2xl bg-[#25D366] text-white font-black text-xs shadow-md hover:brightness-95 flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <MessageCircle className="h-4 w-4" />
-            <span>إرسال رسالة التأكيد الكاملة للعميل عبر WhatsApp</span>
-          </a>
+          {/* DELIVERY & DRIVER ASSIGNMENT */}
+          <section className="rounded-2xl border border-border bg-background p-3.5">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-bold text-foreground">التسليم والتوصيل</h3>
+              <div className="flex gap-1">
+                <button
+                  type="button"
+                  onClick={() => onPatch({ method: "pickup", delivery_fee: 0 })}
+                  className={`px-3 py-1 text-xs font-bold rounded-full ${order.method === "pickup" ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground"}`}
+                >
+                  استلام محلي
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onPatch({ method: "delivery" })}
+                  className={`px-3 py-1 text-xs font-bold rounded-full ${order.method === "delivery" ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground"}`}
+                >
+                  توصيل
+                </button>
+              </div>
+            </div>
 
-          {/* Thermal Print Slip */}
+            {order.method === "pickup" ? (
+              <div className="rounded-xl bg-gold/10 p-3 text-xs font-bold text-gold border border-gold/20 flex items-center gap-2">
+                <span>⏰ موعد الاستلام من المحل:</span>
+                <span>{order.requested_date} · {order.requested_time.slice(0, 5)}</span>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {/* Area Dropdown & Delivery Fee */}
+                <label className="block text-xs font-bold text-foreground">
+                  منطقة التوصيل · Delivery zone:
+                  <select
+                    value={order.area ?? ""}
+                    onChange={(event) => {
+                      const area = event.target.value;
+                      onPatch(area ? { area } : { area: null, delivery_fee: 0 });
+                    }}
+                    className={field}
+                  >
+                    <option value="">— اختر المنطقة —</option>
+                    {DELIVERY_ZONES.map((zone) => (
+                      <optgroup key={zone.labelAr} label={zone.labelAr}>
+                        {zone.areas.map((area) => (
+                          <option key={area} value={area}>
+                            {area}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                  <span className="mt-1 block text-[11px] font-medium text-muted-foreground">
+                    أجرة التوصيل المحسوبة: {jd(order.method === "delivery" ? order.delivery_fee : 0)}
+                    {order.area === OTHER_GOVERNORATES_AREA
+                      ? ` · محافظات أخرى ${OTHER_FEE_MIN}–${OTHER_FEE_MAX} د.أ`
+                      : ""}
+                  </span>
+                </label>
+
+                {/* Text Address Input */}
+                <label className="block text-xs font-bold text-foreground">
+                  العنوان النصي · Text Address:
+                  <input
+                    value={address}
+                    onChange={(event) => setAddress(event.target.value)}
+                    onBlur={() => onPatch({ address: address.trim() || null })}
+                    placeholder="أدخل الشارع، البناية، أو الملاحظة..."
+                    className={field}
+                  />
+                </label>
+
+                {/* Driver Selector */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-foreground">
+                    تعيين سائق التوصيل:
+                    <select
+                      value={SAVED_DRIVERS.find(d => d.name === driverName)?.name || ""}
+                      onChange={(e) => {
+                        const selected = SAVED_DRIVERS.find(d => d.name === e.target.value);
+                        if (selected) {
+                          setDriverName(selected.name);
+                          setDriverPhone(selected.phone);
+                          onPatch({ driver_name: selected.name, driver_phone: selected.phone });
+                        }
+                      }}
+                      className={field}
+                    >
+                      <option value="">— اختر من السائقين المحفوظين —</option>
+                      {SAVED_DRIVERS.map((d) => (
+                        <option key={d.name} value={d.name}>{d.label}</option>
+                      ))}
+                    </select>
+                  </label>
+
+                  {driverPhone ? (
+                    <a
+                      href={`https://wa.me/${waNumber(driverPhone)}?text=${encodeURIComponent(driverDispatchMessage)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-full bg-[#25D366] text-xs font-bold text-white shadow-sm hover:opacity-90 active:scale-95"
+                    >
+                      <MessageCircle className="h-4 w-4" /> 📲 إرسال تفاصيل الطلب للسائق عبر واتساب
+                    </a>
+                  ) : null}
+                </div>
+              </div>
+            )}
+          </section>
+
+          {/* COMPACT WHATSAPP CUSTOMER CONFIRMATION */}
+          <section className="rounded-2xl border border-border bg-background p-3.5 space-y-2">
+            <h3 className="text-sm font-bold text-foreground">تأكيد الطلب مع العميل</h3>
+            <a
+              href={`https://wa.me/${waNumber(order.recipient_phone || order.customer_phone)}?text=${encodeURIComponent(confirmationMessage)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[#25D366] text-sm font-bold text-white shadow-sm hover:opacity-95 active:scale-95"
+            >
+              <MessageCircle className="h-5 w-5" /> 💬 إرسال رسالة التأكيد عبر واتساب
+            </a>
+          </section>
+
+          {/* DESIGN IMAGE IF AVAILABLE */}
+          {order.design_image_url ? (
+            <section className="space-y-2">
+              <h3 className="text-xs font-bold text-foreground">صورة التصميم</h3>
+              <button
+                type="button"
+                onClick={() => onZoom(order.design_image_url as string)}
+                className="block w-full overflow-hidden rounded-xl border border-border"
+              >
+                <img
+                  src={order.design_image_url}
+                  alt="تصميم الطلب"
+                  className="w-full max-h-48 object-cover"
+                />
+              </button>
+            </section>
+          ) : null}
+
+        </div>
+
+        {/* FOOTER ACTIONS */}
+        <div className="border-t border-border pt-3 mt-3 flex gap-2">
           <button
             type="button"
             onClick={() => printReceipt(order)}
-            className="w-full min-h-[46px] rounded-2xl border border-border bg-card text-foreground font-black text-xs hover:bg-secondary flex items-center justify-center gap-2 cursor-pointer"
+            className="flex-1 inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-primary px-4 text-xs font-bold text-primary hover:bg-primary/5 active:scale-95"
           >
-            <Printer className="h-4 w-4" />
-            <span>طباعة الإيصال الحراري 🖨️</span>
+            <Printer className="h-4 w-4" /> طباعة إيصال
           </button>
-
-          {/* Cancel Order Action */}
-          <div className="pt-2 text-center">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="text-xs text-rose-600 font-bold hover:underline cursor-pointer"
-            >
-              إلغاء هذا الطلب
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex min-h-11 items-center justify-center rounded-full bg-secondary px-5 text-xs font-bold text-foreground hover:bg-secondary/80 active:scale-95"
+          >
+            إغلاق
+          </button>
         </div>
+
       </div>
     </div>
   );
 }
+
