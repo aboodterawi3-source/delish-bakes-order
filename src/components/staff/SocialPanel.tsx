@@ -198,14 +198,19 @@ export function SocialPanel() {
             : "استلام من المحل",
         items: [`${form.quantity} × ${finalOrderDetails}`],
         cakeWriting: form.customer_notes.trim(),
-        paymentLabel:
+        cardWriting: form.card_note?.trim() ?? "",
+        paymentMethod:
           form.payment_option === "cliq_full"
             ? `دفع كامل كليك (${paidAmount.toFixed(2)} د.أ)`
             : form.payment_option === "cliq_deposit"
               ? `عربون كليك (${paidAmount.toFixed(2)} د.أ)`
               : "كاش عند الاستلام",
+        price: grandTotal - (form.method === "delivery" ? deliveryFee : 0),
+        deliveryFee: form.method === "delivery" ? deliveryFee : 0,
         total: grandTotal,
-        remaining,
+        paid: paidAmount,
+        recipientPhone: form.recipient_phone?.trim() || form.customer_phone.trim(),
+        senderPhone: form.customer_phone.trim(),
         notes: form.customer_notes.trim(),
       }),
     [form, finalOrderDetails, paidAmount, grandTotal, remaining],
