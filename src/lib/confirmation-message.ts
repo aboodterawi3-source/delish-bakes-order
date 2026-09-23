@@ -17,17 +17,21 @@ export type ConfirmationInput = {
   cakeWriting: string;
   cardWriting: string;
   /** Optional dynamic note line (extras, urgency…). */
-  extraNote?: string;
+  extraNote?: string | undefined;
   notes: string;
   /** Legacy: final-photo line, no longer set from the social portal. */
-  finalPhoto?: boolean;
+  finalPhoto?: boolean | undefined;
   price: number;
   deliveryFee: number;
   total: number;
   paid: number;
   paymentMethod: string;
-  recipientPhone: string;
-  senderPhone: string;
+  recipientPhone?: string | undefined;
+  senderPhone?: string | undefined;
+  customerPhone?: string | undefined;
+  isGift?: boolean | undefined;
+  orderSource?: string | undefined;
+  cliqAccount?: string | undefined;
 };
 
 const money = (value: number) => `${(Number.isFinite(value) ? value : 0).toFixed(2)} د.أ`;
@@ -77,6 +81,10 @@ export function buildConfirmationMessage(input: ConfirmationInput): string {
     `الكتابه على الكرت  : ${orDash(input.cardWriting)}`,
   ];
 
+  if (input.orderSource?.trim()) {
+    lines.push("", `قناة التواصل : ${input.orderSource.trim()}`);
+  }
+
   if (input.extraNote?.trim()) {
     lines.push("", `ملاحظات إضافية: ${input.extraNote.trim()}`);
   }
@@ -86,6 +94,10 @@ export function buildConfirmationMessage(input: ConfirmationInput): string {
   if (input.finalPhoto) {
     lines.push("", "بس بدي الصوره النهائيه لو سمحت");
   }
+
+  const paymentDesc = input.cliqAccount
+    ? `${input.paymentMethod} (${input.cliqAccount})`
+    : input.paymentMethod;
 
   lines.push(
     "",
@@ -99,14 +111,24 @@ export function buildConfirmationMessage(input: ConfirmationInput): string {
     "",
     `المبلغ المتبقي : ${money(remaining)}`,
     "",
-    `طريقة الدفع : ${orDash(input.paymentMethod)}`,
-    "",
-    `رقم المستلم : ${orDash(input.recipientPhone)}`,
-    "",
-    `رقم المرسل : ${orDash(input.senderPhone)}`,
-    "",
-    TERMS,
+    `طريقة الدفع : ${orDash(paymentDesc)}`,
   );
+
+  if (input.isGift || (input.recipientPhone && input.recipientPhone.trim() && input.recipientPhone.trim() !== input.senderPhone?.trim())) {
+    lines.push(
+      "",
+      `رقم المستلم : ${orDash(input.recipientPhone)}`,
+      "",
+      `رقم المرسل : ${orDash(input.senderPhone || input.customerPhone)}`,
+    );
+  } else {
+    lines.push(
+      "",
+      `رقم الهاتف : ${orDash(input.customerPhone || input.senderPhone)}`,
+    );
+  }
+
+  lines.push("", TERMS);
 
   return lines.join("\n");
 }

@@ -8,6 +8,7 @@ import {
   BellRing,
   Cake,
   Calendar,
+  Calendar as CalendarIcon,
   CheckCircle2,
   ChefHat,
   Clock,
@@ -18,6 +19,7 @@ import {
   Filter,
   Flame,
   Layers,
+  LayoutGrid,
   Loader2,
   LogOut,
   Maximize2,
@@ -44,6 +46,8 @@ import {
   type KdsOrder,
   type KitchenStage,
 } from "@/lib/kds.functions";
+import { OrdersCalendar } from "@/components/staff/OrdersCalendar";
+import type { SalesOrder, SalesStatus } from "@/lib/sales.functions";
 import { PRIORITY_META, type PriorityColor } from "@/lib/priority";
 import { esc, printDocument } from "@/lib/print";
 import bellAsset from "@/assets/Bell.mp3.asset.json";
@@ -576,6 +580,7 @@ export function KitchenPanel() {
 
   const [filter, setFilter] = useState<DateFilterKey>("today");
   const [custom, setCustom] = useState<CustomRange>({ from: isoDay(0), to: isoDay(0) });
+  const [viewMode, setViewMode] = useState<"board" | "calendar">("board");
   const [pending, setPending] = useState<string | null>(null);
   const [alerts, setAlerts] = useState<string[]>([]);
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -633,6 +638,68 @@ export function KitchenPanel() {
   }, [orders.data, soundEnabled]);
 
   const rawOrdersList = useMemo(() => orders.data ?? [], [orders.data]);
+
+  const adaptedOrders: SalesOrder[] = useMemo(() => {
+    return rawOrdersList.map((k) => ({
+      id: k.id,
+      order_number: k.order_number,
+      staff_code: k.staff_code,
+      order_name: null,
+      sender_phone: null,
+      recipient_phone: null,
+      last_edited_at: null,
+      queue_rank: null,
+      customer_name: k.customer_name,
+      customer_phone: "—",
+      method: k.method,
+      area: null,
+      address: null,
+      requested_date: k.requested_date,
+      requested_time: k.requested_time,
+      notes: k.notes,
+      staff_notes: null,
+      inscription: k.inscription,
+      design_image_url: k.design_image_url,
+      subtotal: 0,
+      delivery_fee: 0,
+      discount_amount: 0,
+      discount_percent: 0,
+      total: 0,
+      deposit_paid: 0,
+      payment_method: null,
+      driver_name: null,
+      driver_phone: null,
+      cancel_reason: null,
+      card_note: null,
+      final_photo_requested: false,
+      confirmation_message: null,
+      status: (k.status === "ready" ? "ready" : k.status === "baking" ? "baking" : "new") as SalesStatus,
+      schedule_updated_at: null,
+      created_at: k.requested_date || new Date().toISOString(),
+      updated_at: k.requested_date || new Date().toISOString(),
+      items: (k.items || []).map((it) => ({
+        id: it.id,
+        order_id: k.id,
+        product_id: null,
+        item_name: it.name_ar || it.name_en,
+        name_ar: it.name_ar,
+        name_en: it.name_en,
+        options_ar: it.options_ar || [],
+        quantity: it.quantity,
+        unit_price: 0,
+        total_price: 0,
+        notes: it.notes,
+        flavor: (it.options_ar || []).join(", "),
+        size: null,
+        category: it.category,
+        color: null,
+        filling: null,
+        photo_url: null,
+        priority_color: it.priority_color,
+        order_index: 0,
+      })),
+    })) as unknown as SalesOrder[];
+  }, [rawOrdersList]);
 
   // FIFO AUTOMATIC SORTING: Sort by nearest deadline (requested_date ascending, then requested_time ascending)
   const visible = useMemo(() => {
@@ -737,42 +804,72 @@ export function KitchenPanel() {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Quick Date Filter Chips */}
-            <div className="flex rounded-2xl bg-secondary/60 p-1 border border-border/70">
+            {/* View Mode Switcher */}
+            <div className="flex rounded-2xl bg-secondary/80 p-1 border border-border/70">
               <button
                 type="button"
-                onClick={() => setFilter("today")}
-                className={`min-h-[38px] px-3.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                  filter === "today"
+                onClick={() => setViewMode("board")}
+                className={`min-h-[38px] px-3.5 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer ${
+                  viewMode === "board"
                     ? "bg-card text-foreground shadow-xs border border-border/80"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                طلبات اليوم
+                <LayoutGrid className="h-3.5 w-3.5" />
+                <span>لوحة التجهيز</span>
               </button>
               <button
                 type="button"
-                onClick={() => setFilter("tomorrow")}
-                className={`min-h-[38px] px-3.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                  filter === "tomorrow"
-                    ? "bg-card text-foreground shadow-xs border border-border/80"
+                onClick={() => setViewMode("calendar")}
+                className={`min-h-[38px] px-3.5 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer ${
+                  viewMode === "calendar"
+                    ? "bg-primary text-primary-foreground shadow-xs"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                غداً
-              </button>
-              <button
-                type="button"
-                onClick={() => setFilter("all")}
-                className={`min-h-[38px] px-3.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
-                  filter === "all"
-                    ? "bg-card text-foreground shadow-xs border border-border/80"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                جميع الطلبات
+                <CalendarIcon className="h-3.5 w-3.5" />
+                <span>تقويم الطلبات</span>
               </button>
             </div>
+
+            {/* Quick Date Filter Chips (shown when in board view) */}
+            {viewMode === "board" && (
+              <div className="flex rounded-2xl bg-secondary/60 p-1 border border-border/70">
+                <button
+                  type="button"
+                  onClick={() => setFilter("today")}
+                  className={`min-h-[38px] px-3.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                    filter === "today"
+                      ? "bg-card text-foreground shadow-xs border border-border/80"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  طلبات اليوم
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFilter("tomorrow")}
+                  className={`min-h-[38px] px-3.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                    filter === "tomorrow"
+                      ? "bg-card text-foreground shadow-xs border border-border/80"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  غداً
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFilter("all")}
+                  className={`min-h-[38px] px-3.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                    filter === "all"
+                      ? "bg-card text-foreground shadow-xs border border-border/80"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  جميع الطلبات
+                </button>
+              </div>
+            )}
 
             {/* Sound Toggle Button */}
             <button
@@ -801,8 +898,27 @@ export function KitchenPanel() {
         </div>
       </header>
 
-      {/* 2. THREE-STAGE PRODUCTION BOARD */}
-      <main className="mx-auto max-w-7xl px-3 sm:px-4 py-4">
+      {/* 2. MAIN CONTENT: CALENDAR OR THREE-STAGE PRODUCTION BOARD */}
+      {viewMode === "calendar" ? (
+        <main className="mx-auto max-w-7xl px-3 sm:px-4 py-4">
+          <OrdersCalendar
+            orders={adaptedOrders}
+            isKitchen={true}
+            onOpen={(id) => {
+              const k = rawOrdersList.find((x) => x.id === id);
+              if (k?.design_image_url) setZoom(k.design_image_url);
+            }}
+            onKitchenStage={(id, stage) => {
+              void onStage(id, stage);
+            }}
+            onPrintKitchenTicket={(ord) => {
+              const k = rawOrdersList.find((x) => x.id === ord.id);
+              if (k) printKitchenTicket(k);
+            }}
+          />
+        </main>
+      ) : (
+        <main className="mx-auto max-w-7xl px-3 sm:px-4 py-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
           {STAGES.map((stage) => {
             const list = visible.filter((o) => stageOf(o.status) === stage.key);
@@ -849,6 +965,7 @@ export function KitchenPanel() {
           })}
         </div>
       </main>
+      )}
 
       {/* 3. FULLSCREEN REFERENCE DESIGN IMAGE MODAL */}
       {zoom && (

@@ -43,3 +43,11 @@ build
 *.njsproj
 *.sln
 *.sw?
+
+# Downloads and archives
+*.exe
+*.zip
+*.ZIP
+desktop.ini
+SQLEXPRADV_x64_ENU/
+

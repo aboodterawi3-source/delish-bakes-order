@@ -129,10 +129,10 @@ const PAYMENT_METHOD_MAP: Record<string, string> = {
 function parseTimeInMinutes(timeStr: string): number {
   if (!timeStr) return 9 * 60; // default 9:00 AM
   const parts = timeStr.split(":").map(Number);
-  const h = parts[0] ?? Number.NaN;
-  const m = parts[1] ?? 0;
-  if (Number.isNaN(h)) return 9 * 60;
-  return h * 60 + (Number.isNaN(m) ? 0 : m);
+  const h = parts[0];
+  const m = parts[1];
+  if (h === undefined || isNaN(h)) return 9 * 60;
+  return h * 60 + (m === undefined || isNaN(m) ? 0 : m);
 }
 
 /** Format time in minutes to 12-hour Arabic format (e.g. 9:00 ص) */
@@ -289,9 +289,19 @@ export interface OrdersCalendarProps {
   orders: SalesOrder[];
   onOpen: (id: string) => void;
   onPatch?: (input: OrderPatch) => void;
+  isKitchen?: boolean;
+  onKitchenStage?: (id: string, stage: "new" | "baking" | "ready") => void;
+  onPrintKitchenTicket?: (order: SalesOrder) => void;
 }
 
-export const OrdersCalendar = memo(function OrdersCalendar({ orders, onOpen, onPatch }: OrdersCalendarProps) {
+export const OrdersCalendar = memo(function OrdersCalendar({
+  orders,
+  onOpen,
+  onPatch,
+  isKitchen,
+  onKitchenStage,
+  onPrintKitchenTicket,
+}: OrdersCalendarProps) {
   const updateOrderServerFn = useServerFn(updateSalesOrder);
   const [viewMode, setViewMode] = useState<CalendarViewMode>("day");
   const [currentDate, setCurrentDate] = useState<Date>(() => new Date());
@@ -917,7 +927,11 @@ export const OrdersCalendar = memo(function OrdersCalendar({ orders, onOpen, onP
                           <span className="flex items-center gap-1">
                             <Clock className="h-3 w-3" /> {timeWindow}
                           </span>
-                          <span>{ord.total.toFixed(2)} د.أ</span>
+                          {!isKitchen && (ord.total ?? 0) > 0 ? (
+                            <span>{(ord.total ?? 0).toFixed(2)} د.أ</span>
+                          ) : isKitchen ? (
+                            <span>{ord.items.length ? `${ord.items.reduce((s, it) => s + it.quantity, 0)} قطع` : ""}</span>
+                          ) : null}
                         </div>
                       </div>
                     );
@@ -1015,22 +1029,24 @@ export const OrdersCalendar = memo(function OrdersCalendar({ orders, onOpen, onP
                 </div>
 
                 {/* 1-Tap Call & WhatsApp Buttons */}
-                <div className="grid grid-cols-2 gap-2 pt-1">
-                  <a
-                    href={`tel:${selectedOrder.customer_phone}`}
-                    className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-600 text-white font-bold text-xs shadow-sm hover:bg-emerald-700 transition-colors"
-                  >
-                    <Phone className="h-4 w-4" /> 📞 اتصال مباشر
-                  </a>
-                  <a
-                    href={`https://wa.me/${getCleanPhone(selectedOrder.customer_phone)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-500 text-white font-bold text-xs shadow-sm hover:bg-emerald-600 transition-colors"
-                  >
-                    <MessageCircle className="h-4 w-4" /> 💬 واتساب
-                  </a>
-                </div>
+                {selectedOrder.customer_phone && selectedOrder.customer_phone !== "—" ? (
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <a
+                      href={`tel:${selectedOrder.customer_phone}`}
+                      className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-600 text-white font-bold text-xs shadow-sm hover:bg-emerald-700 transition-colors"
+                    >
+                      <Phone className="h-4 w-4" /> 📞 اتصال مباشر
+                    </a>
+                    <a
+                      href={`https://wa.me/${getCleanPhone(selectedOrder.customer_phone)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-500 text-white font-bold text-xs shadow-sm hover:bg-emerald-600 transition-colors"
+                    >
+                      <MessageCircle className="h-4 w-4" /> 💬 واتساب
+                    </a>
+                  </div>
+                ) : null}
               </div>
 
               {/* Date & Fulfillment */}
@@ -1044,7 +1060,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({ orders, onOpen, onP
                 <div className="text-xs font-bold text-muted-foreground flex items-center gap-1">
                   {selectedOrder.method === "delivery" ? (
                     <>
-                      <Truck className="h-4 w-4 text-blue-500" /> توصيل إلى: {selectedOrder.area ?? "منطقة غير محددة"} {selectedOrder.address ? `— ${selectedOrder.address}` : ""} (أجرة: {selectedOrder.delivery_fee.toFixed(2)} د.أ)
+                      <Truck className="h-4 w-4 text-blue-500" /> توصيل إلى: {selectedOrder.area ?? "منطقة غير محددة"} {selectedOrder.address ? `— ${selectedOrder.address}` : ""} {selectedOrder.delivery_fee ? `(أجرة: ${selectedOrder.delivery_fee.toFixed(2)} د.أ)` : ""}
                     </>
                   ) : (
                     <>
@@ -1064,7 +1080,9 @@ export const OrdersCalendar = memo(function OrdersCalendar({ orders, onOpen, onP
                     <div key={it.id} className="py-2 first:pt-0 last:pb-0">
                       <div className="flex items-center justify-between text-sm font-bold">
                         <span>{it.name_ar} (x{it.quantity})</span>
-                        <span>{(it.unit_price * it.quantity).toFixed(2)} د.أ</span>
+                        {it.unit_price && it.unit_price > 0 ? (
+                          <span>{(it.unit_price * it.quantity).toFixed(2)} د.أ</span>
+                        ) : null}
                       </div>
                       {it.options_ar?.length ? (
                         <div className="text-xs font-semibold text-muted-foreground mt-0.5">
@@ -1107,48 +1125,94 @@ export const OrdersCalendar = memo(function OrdersCalendar({ orders, onOpen, onP
                 </div>
               ) : null}
 
-              {/* Financial Calculation & Payment */}
-              <div className="rounded-2xl border border-border bg-card p-4 space-y-2 text-xs font-bold">
-                <h4 className="text-xs font-black text-muted-foreground mb-2">💵 الحساب المالي وطريقة الدفع</h4>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">المجموع الفرعي:</span>
-                  <span>{selectedOrder.subtotal.toFixed(2)} د.أ</span>
-                </div>
-                {selectedOrder.delivery_fee > 0 ? (
+              {/* Financial Calculation & Payment (Hidden in kitchen mode) */}
+              {!isKitchen && (selectedOrder.total > 0 || selectedOrder.payment_method) ? (
+                <div className="rounded-2xl border border-border bg-card p-4 space-y-2 text-xs font-bold">
+                  <h4 className="text-xs font-black text-muted-foreground mb-2">💵 الحساب المالي وطريقة الدفع</h4>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">أجرة التوصيل:</span>
-                    <span>+{selectedOrder.delivery_fee.toFixed(2)} د.أ</span>
+                    <span className="text-muted-foreground">المجموع الفرعي:</span>
+                    <span>{(selectedOrder.subtotal ?? 0).toFixed(2)} د.أ</span>
                   </div>
-                ) : null}
-                {selectedOrder.discount_amount > 0 ? (
-                  <div className="flex justify-between text-rose-600">
-                    <span>الخصم:</span>
-                    <span>-{selectedOrder.discount_amount.toFixed(2)} د.أ</span>
+                  {(selectedOrder.delivery_fee ?? 0) > 0 ? (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">أجرة التوصيل:</span>
+                      <span>+{(selectedOrder.delivery_fee ?? 0).toFixed(2)} د.أ</span>
+                    </div>
+                  ) : null}
+                  {(selectedOrder.discount_amount ?? 0) > 0 ? (
+                    <div className="flex justify-between text-rose-600">
+                      <span>الخصم:</span>
+                      <span>-{(selectedOrder.discount_amount ?? 0).toFixed(2)} د.أ</span>
+                    </div>
+                  ) : null}
+                  <div className="flex justify-between text-sm font-black pt-1 border-t border-border">
+                    <span>الإجمالي النهائي:</span>
+                    <span className="text-primary">{(selectedOrder.total ?? 0).toFixed(2)} د.أ</span>
                   </div>
-                ) : null}
-                <div className="flex justify-between text-sm font-black pt-1 border-t border-border">
-                  <span>الإجمالي النهائي:</span>
-                  <span className="text-primary">{selectedOrder.total.toFixed(2)} د.أ</span>
+                  <div className="flex justify-between text-emerald-600">
+                    <span>المدفوع (العربون):</span>
+                    <span>{(selectedOrder.deposit_paid ?? 0).toFixed(2)} د.أ</span>
+                  </div>
+                  <div className="flex justify-between text-amber-600 font-black text-sm">
+                    <span>المتبقي المطلوب:</span>
+                    <span>{((selectedOrder.total ?? 0) - (selectedOrder.deposit_paid ?? 0)).toFixed(2)} د.أ</span>
+                  </div>
+                  <div className="pt-2 border-t border-border flex items-center justify-between text-muted-foreground">
+                    <span>طريقة الدفع:</span>
+                    <span className="font-bold text-foreground">
+                      {selectedOrder.payment_method ? (PAYMENT_METHOD_MAP[selectedOrder.payment_method] ?? selectedOrder.payment_method) : "لم تحدد"}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex justify-between text-emerald-600">
-                  <span>المدفوع (العربون):</span>
-                  <span>{selectedOrder.deposit_paid.toFixed(2)} د.أ</span>
+              ) : null}
+
+              {/* Kitchen Stage Transition Actions */}
+              {isKitchen && onKitchenStage ? (
+                <div className="rounded-2xl border border-amber-300 bg-amber-50/60 p-4 space-y-2">
+                  <h4 className="text-xs font-black text-amber-900 flex items-center gap-1.5">
+                    👨‍🍳 إجراءات مرحلة المطبخ · Kitchen Stage
+                  </h4>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {selectedOrder.status !== "baking" && selectedOrder.status !== "ready" && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onKitchenStage(selectedOrder.id, "baking");
+                          setSelectedOrder((prev) => prev ? { ...prev, status: "baking" } : null);
+                        }}
+                        className="flex-1 min-h-10 rounded-xl bg-blue-600 text-white font-bold text-xs hover:bg-blue-700 transition"
+                      >
+                        ⚡ بدء التجهيز بالمطبخ
+                      </button>
+                    )}
+                    {selectedOrder.status !== "ready" && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onKitchenStage(selectedOrder.id, "ready");
+                          setSelectedOrder((prev) => prev ? { ...prev, status: "ready" } : null);
+                        }}
+                        className="flex-1 min-h-10 rounded-xl bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 transition"
+                      >
+                        ✅ جاهز بالمحل (Ready)
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <div className="flex justify-between text-amber-600 font-black text-sm">
-                  <span>المتبقي المطلوب:</span>
-                  <span>{(selectedOrder.total - selectedOrder.deposit_paid).toFixed(2)} د.أ</span>
-                </div>
-                <div className="pt-2 border-t border-border flex items-center justify-between text-muted-foreground">
-                  <span>طريقة الدفع:</span>
-                  <span className="font-bold text-foreground">
-                    {selectedOrder.payment_method ? (PAYMENT_METHOD_MAP[selectedOrder.payment_method] ?? selectedOrder.payment_method) : "لم تحدد"}
-                  </span>
-                </div>
-              </div>
+              ) : null}
             </div>
 
             {/* Modal Bottom Action Controls */}
             <div className="sticky bottom-0 z-10 flex items-center justify-between gap-2 border-t border-border bg-card/95 p-4 backdrop-blur-md">
+              {isKitchen && onPrintKitchenTicket ? (
+                <button
+                  type="button"
+                  onClick={() => onPrintKitchenTicket(selectedOrder)}
+                  className="flex flex-1 min-h-11 items-center justify-center gap-2 rounded-xl bg-[#8B4513] text-white font-bold text-xs shadow-sm hover:bg-[#5D2E17] transition"
+                >
+                  <Printer className="h-4 w-4" /> 🖨️ طباعة تذكرة المطبخ
+                </button>
+              ) : null}
               <button
                 type="button"
                 onClick={() => {
@@ -1158,15 +1222,17 @@ export const OrdersCalendar = memo(function OrdersCalendar({ orders, onOpen, onP
                 }}
                 className="flex flex-1 min-h-11 items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground font-bold text-xs shadow-sm hover:opacity-90 transition-opacity"
               >
-                <Pencil className="h-4 w-4" /> ✏️ تعديل كامل الطلب
+                <Pencil className="h-4 w-4" /> ✏️ تفاصيل كاملة
               </button>
-              <button
-                type="button"
-                onClick={() => printOrderReceipt(selectedOrder)}
-                className="flex flex-1 min-h-11 items-center justify-center gap-2 rounded-xl border border-border bg-muted text-foreground font-bold text-xs hover:bg-accent transition-colors"
-              >
-                <Printer className="h-4 w-4" /> 🖨️ طباعة البون
-              </button>
+              {!isKitchen ? (
+                <button
+                  type="button"
+                  onClick={() => printOrderReceipt(selectedOrder)}
+                  className="flex flex-1 min-h-11 items-center justify-center gap-2 rounded-xl border border-border bg-muted text-foreground font-bold text-xs hover:bg-accent transition-colors"
+                >
+                  <Printer className="h-4 w-4" /> 🖨️ طباعة البون
+                </button>
+              ) : null}
             </div>
           </div>
         </div>
