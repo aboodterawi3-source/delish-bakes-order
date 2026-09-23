@@ -238,9 +238,11 @@ const inputClass =
 export function CakeCustomizationPanel({
   value,
   onChange,
+  hideGift = false,
 }: {
   value: Customization;
   onChange: (next: Customization) => void;
+  hideGift?: boolean;
 }) {
   const set = <K extends keyof Customization>(key: K, next: Customization[K]) =>
     onChange({ ...value, [key]: next });
@@ -476,35 +478,37 @@ export function CakeCustomizationPanel({
         )}
       </Section>
 
-      <Section title="Gift · خيار هدية" subtitle="Sender and recipient numbers" active={value.gift}>
-        <Toggle checked={value.gift} onChange={(next) => set("gift", next)} label="Is this a gift? · هل هذه هدية؟" />
-        {value.gift && (
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block space-y-1.5">
-              <span className="text-xs font-semibold text-[#3E2723]">Sender phone · هاتف المُرسل</span>
-              <input
-                inputMode="tel"
-                value={value.senderPhone}
-                onChange={(e) => set("senderPhone", e.target.value.replace(/[^0-9+\s-]/g, ""))}
-                maxLength={25}
-                placeholder="07 9xxx xxxx"
-                className={inputClass}
-              />
-            </label>
-            <label className="block space-y-1.5">
-              <span className="text-xs font-semibold text-[#3E2723]">Recipient phone · هاتف المُستلم</span>
-              <input
-                inputMode="tel"
-                value={value.recipientPhone}
-                onChange={(e) => set("recipientPhone", e.target.value.replace(/[^0-9+\s-]/g, ""))}
-                maxLength={25}
-                placeholder="07 9xxx xxxx"
-                className={inputClass}
-              />
-            </label>
-          </div>
-        )}
-      </Section>
+      {!hideGift && (
+        <Section title="Gift · خيار هدية" subtitle="Sender and recipient numbers" active={value.gift}>
+          <Toggle checked={value.gift} onChange={(next) => set("gift", next)} label="Is this a gift? · هل هذه هدية؟" />
+          {value.gift && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block space-y-1.5">
+                <span className="text-xs font-semibold text-[#3E2723]">Sender phone · هاتف المُرسل</span>
+                <input
+                  inputMode="tel"
+                  value={value.senderPhone}
+                  onChange={(e) => set("senderPhone", e.target.value.replace(/[^0-9+\s-]/g, ""))}
+                  maxLength={25}
+                  placeholder="07 9xxx xxxx"
+                  className={inputClass}
+                />
+              </label>
+              <label className="block space-y-1.5">
+                <span className="text-xs font-semibold text-[#3E2723]">Recipient phone · هاتف المُستلم</span>
+                <input
+                  inputMode="tel"
+                  value={value.recipientPhone}
+                  onChange={(e) => set("recipientPhone", e.target.value.replace(/[^0-9+\s-]/g, ""))}
+                  maxLength={25}
+                  placeholder="07 9xxx xxxx"
+                  className={inputClass}
+                />
+              </label>
+            </div>
+          )}
+        </Section>
+      )}
 
       <Section
         title="Reference photo · صورة مرجعية"

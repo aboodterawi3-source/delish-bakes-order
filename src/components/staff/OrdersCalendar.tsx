@@ -1166,6 +1166,76 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                 </div>
               ) : null}
 
+              {/* DEDICATED MODIFICATIONS SECTION */}
+              {selectedOrder.modifications && selectedOrder.modifications.length > 0 && (
+                <div className="rounded-2xl border-2 border-amber-500/80 bg-gradient-to-b from-amber-500/10 via-amber-500/5 to-amber-500/15 p-4 space-y-3 shadow-xs">
+                  <div className="flex items-center justify-between border-b border-amber-500/30 pb-2">
+                    <span className="flex items-center gap-1.5 text-xs font-black text-amber-900 dark:text-amber-200">
+                      <span className="text-base">⚠️</span>
+                      <span>سجل وتفاصيل التعديل على الطلب ({selectedOrder.modifications.length} تفاصيل)</span>
+                    </span>
+                    {selectedOrder.last_edited_at && (
+                      <span className="text-[10px] font-mono text-muted-foreground" dir="ltr">
+                        {new Date(selectedOrder.last_edited_at).toLocaleTimeString("ar-JO", { hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Baseline if present */}
+                  {selectedOrder.modifications
+                    .filter((m) => m.field.includes("الطلب الأساسي") || m.field.includes("النسخة الأصلية"))
+                    .map((baseMod, idx) => (
+                      <div key={idx} className="rounded-xl border border-amber-400/60 bg-background/90 p-3 space-y-1 shadow-2xs">
+                        <span className="text-xs font-black text-amber-900 dark:text-amber-300 block">
+                          📌 نسخة الطلب الأصلية عند الإنشاء:
+                        </span>
+                        <div className="whitespace-pre-line text-xs font-bold leading-relaxed text-foreground bg-muted/40 p-2.5 rounded-lg border border-border/60">
+                          {baseMod.oldValue}
+                        </div>
+                      </div>
+                    ))}
+
+                  {/* Detailed changes list */}
+                  <div className="space-y-2">
+                    {selectedOrder.modifications
+                      .filter((m) => !m.field.includes("الطلب الأساسي") && !m.field.includes("النسخة الأصلية"))
+                      .map((mod, idx) => (
+                        <div key={idx} className="rounded-xl bg-card p-2.5 border border-amber-300/60 dark:border-amber-700/60 space-y-1.5 shadow-2xs">
+                          <div className="flex items-center justify-between text-xs font-black text-foreground">
+                            <span className="flex items-center gap-1 text-primary">
+                              <span>🔹</span>
+                              <span>{mod.field}</span>
+                            </span>
+                            {mod.updatedAt && (
+                              <span className="text-[10px] text-muted-foreground font-mono" dir="ltr">
+                                {new Date(mod.updatedAt).toLocaleTimeString("ar-JO", { hour: "2-digit", minute: "2-digit" })}
+                              </span>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                            {mod.oldValue && (
+                              <div className="rounded-lg bg-red-500/10 p-2 border border-red-500/20 text-red-950 dark:text-red-200">
+                                <span className="block text-[10px] font-bold text-red-700 dark:text-red-400 mb-0.5">
+                                  ❌ السابق:
+                                </span>
+                                <span className="line-through font-bold break-words">{mod.oldValue}</span>
+                              </div>
+                            )}
+                            {mod.newValue && (
+                              <div className="rounded-lg bg-emerald-500/10 p-2 border border-emerald-500/25 text-emerald-950 dark:text-emerald-200">
+                                <span className="block text-[10px] font-black text-emerald-700 dark:text-emerald-400 mb-0.5">
+                                  ✅ الجديد:
+                                </span>
+                                <span className="font-black break-words">{mod.newValue}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+
               {/* Kitchen Stage Transition Actions */}
               {isKitchen && onKitchenStage ? (
                 <div className="rounded-2xl border border-amber-300 bg-amber-50/60 p-4 space-y-2">

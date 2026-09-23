@@ -345,79 +345,23 @@ const KdsCleanCard = memo(function KdsCleanCard({
           </div>
         </div>
 
-        {/* MODIFICATIONS DIFF ALERT BOX */}
-        {order.modifications && order.modifications.length > 0 && (
-          <div className="rounded-2xl border-2 border-amber-400 bg-amber-500/10 p-3 text-xs space-y-2 shadow-xs animate-in fade-in duration-150">
-            <div className="flex items-center justify-between font-black">
-              <span className="flex items-center gap-1 text-amber-700 dark:text-amber-400">
-                <AlertTriangle className="h-4 w-4 shrink-0" />
-                تعديل على الطلب:
-              </span>
-              {hasUnack ? (
-                <span className="bg-red-600 text-white text-[10px] px-2 py-0.5 rounded-full font-black animate-pulse">
-                  تعديل غير مؤكد بالمطبخ
-                </span>
-              ) : (
-                <span className="bg-emerald-600 text-white text-[10px] px-2 py-0.5 rounded-full font-black">
-                  تمت المراجعة ✓
-                </span>
-              )}
-            </div>
-
-            <div className="space-y-1.5">
-              {order.modifications.map((mod, idx) =>
-                mod.field.includes("الطلب الأساسي") || mod.field.includes("النسخة الأصلية") ? (
-                  <div key={idx} className="rounded-xl bg-amber-500/10 p-2.5 border border-amber-400/40 text-[11px] text-amber-950 dark:text-amber-200">
-                    <div className="font-black text-amber-900 dark:text-amber-300 mb-1 flex items-center justify-between">
-                      <span className="flex items-center gap-1">📌 {mod.field}</span>
-                      <span className="text-[10px] font-mono text-amber-800">{formatRelativeTime(mod.updatedAt)}</span>
-                    </div>
-                    <div className="whitespace-pre-line text-xs font-bold leading-relaxed bg-background/70 p-2 rounded-lg border border-amber-300/40 me-0">
-                      {mod.oldValue}
-                    </div>
-                  </div>
-                ) : (
-                  <div key={idx} className="rounded-xl bg-card p-2 border border-border/80 text-[11px]">
-                    <div className="flex justify-between font-bold text-muted-foreground mb-1">
-                      <span>{mod.field}:</span>
-                      <span>{formatRelativeTime(mod.updatedAt)}</span>
-                    </div>
-                    {mod.oldValue && (
-                      <div className="flex items-center gap-1 text-red-600 bg-red-500/10 p-1 rounded-lg font-bold">
-                        <span className="shrink-0">❌ السابق:</span>
-                        <span className="line-through">{mod.oldValue}</span>
-                      </div>
-                    )}
-                    {mod.newValue && (
-                      <div className="flex items-center gap-1 text-emerald-700 bg-emerald-500/10 p-1 rounded-lg font-black mt-0.5">
-                        <span className="shrink-0">➕ الجديد:</span>
-                        <span>{mod.newValue}</span>
-                      </div>
-                    )}
-                  </div>
-                )
-              )}
-            </div>
-
-            {hasUnack && (
-              <button
-                type="button"
-                onClick={() => onAck(order.id)}
-                className="w-full min-h-[44px] rounded-xl bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-black text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <CheckCircle2 className="h-4 w-4" />
-                [ تمت مراجعة التعديل في المطبخ ✓ ]
-              </button>
-            )}
+        {/* 1. ORIGINAL ORDER PREPARATION SPECS (الأصناف، الحشوات، الكتابة، التصميم) */}
+        <div className="space-y-2.5">
+          <div className="flex items-center justify-between text-xs font-black text-foreground/80 border-b border-border/50 pb-1">
+            <span className="flex items-center gap-1.5">
+              <Cake className="h-4 w-4 text-amber-600" />
+              <span>مواصفات وتجهيز الطلب:</span>
+            </span>
+            <span className="text-[11px] text-muted-foreground font-bold">
+              {mainItems.length} صنف
+            </span>
           </div>
-        )}
 
-        {/* ORDER ITEMS: Cake Name, Options, Fillings (Large font legible from 2 meters) */}
-        <div className="space-y-2">
+          {/* Cake Items List */}
           {(mainItems.length > 0 ? mainItems : order.items).map((item) => (
             <div
               key={item.id}
-              className="rounded-2xl bg-secondary/40 p-3 border border-border/80 shadow-2xs space-y-1.5"
+              className="rounded-2xl bg-secondary/50 p-3.5 border border-border/80 shadow-2xs space-y-2"
             >
               <div className="flex items-baseline justify-between gap-1">
                 <span className="font-black text-lg sm:text-xl text-foreground leading-snug">
@@ -510,6 +454,115 @@ const KdsCleanCard = memo(function KdsCleanCard({
             </div>
           )}
         </div>
+
+        {/* 2. DEDICATED MODIFICATIONS SECTION (خانة مخصصة تأتي تحت الطلب الأصلي بوضوح تام) */}
+        {order.modifications && order.modifications.length > 0 && (
+          <div className="rounded-2xl border-2 border-amber-500/80 bg-gradient-to-b from-amber-500/10 via-amber-500/5 to-amber-500/15 p-3.5 space-y-3 shadow-xs animate-in fade-in duration-150">
+            {/* Box Header */}
+            <div className="flex items-center justify-between border-b border-amber-500/30 pb-2">
+              <div className="flex items-center gap-2 font-black text-amber-900 dark:text-amber-200 text-xs sm:text-sm">
+                <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+                <span>خانة التعديل على الطلب ({order.modifications.length} تفاصيل مسجلة)</span>
+              </div>
+              {hasUnack ? (
+                <span className="bg-red-600 text-white text-[10px] px-2.5 py-0.5 rounded-full font-black animate-pulse shadow-xs">
+                  ⚠️ غير معتمد بالمطبخ
+                </span>
+              ) : (
+                <span className="bg-emerald-600 text-white text-[10px] px-2.5 py-0.5 rounded-full font-black shadow-xs">
+                  تم الاطلاع ✓
+                </span>
+              )}
+            </div>
+
+            {/* Baseline snapshot (الطلب الأساسي الأصلي قبل التعديل) */}
+            {order.modifications
+              .filter((m) => m.field.includes("الطلب الأساسي") || m.field.includes("النسخة الأصلية"))
+              .map((baseMod, idx) => (
+                <div
+                  key={idx}
+                  className="rounded-xl border border-amber-400/60 bg-background/90 p-3 space-y-1.5 shadow-2xs"
+                >
+                  <div className="flex items-center justify-between text-xs font-black text-amber-900 dark:text-amber-300">
+                    <span className="flex items-center gap-1.5">
+                      <span>📌</span>
+                      <span>نسخة الطلب الأصلية الأساسية (عند الإنشاء قبل التعديل):</span>
+                    </span>
+                    {baseMod.updatedAt && (
+                      <span className="text-[10px] font-mono text-muted-foreground" dir="ltr">
+                        {formatRelativeTime(baseMod.updatedAt)}
+                      </span>
+                    )}
+                  </div>
+                  <div className="whitespace-pre-line text-xs font-bold leading-relaxed text-foreground bg-muted/40 p-2.5 rounded-lg border border-border/60">
+                    {baseMod.oldValue}
+                  </div>
+                </div>
+              ))}
+
+            {/* List of Specific Field Changes */}
+            <div className="space-y-2">
+              <div className="text-[11px] font-black text-amber-900 dark:text-amber-200 flex items-center gap-1">
+                <span>📝</span>
+                <span>تفاصيل البنود التي تم تعديلها:</span>
+              </div>
+              <div className="space-y-2">
+                {order.modifications
+                  .filter((m) => !m.field.includes("الطلب الأساسي") && !m.field.includes("النسخة الأصلية"))
+                  .map((mod, idx) => (
+                    <div
+                      key={idx}
+                      className="rounded-xl bg-card p-2.5 border border-amber-300/60 dark:border-amber-700/60 space-y-1.5 shadow-2xs"
+                    >
+                      <div className="flex items-center justify-between text-xs font-black text-foreground">
+                        <span className="flex items-center gap-1 text-primary">
+                          <span>🔹</span>
+                          <span>{mod.field}</span>
+                        </span>
+                        {mod.updatedAt && (
+                          <span className="text-[10px] text-muted-foreground font-mono" dir="ltr">
+                            {formatRelativeTime(mod.updatedAt)}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Before / After visual Diff */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                        {mod.oldValue && (
+                          <div className="rounded-lg bg-red-500/10 p-2 border border-red-500/20 text-red-950 dark:text-red-200">
+                            <span className="block text-[10px] font-bold text-red-700 dark:text-red-400 mb-0.5">
+                              ❌ السابق (قبل التعديل):
+                            </span>
+                            <span className="line-through font-bold break-words">{mod.oldValue}</span>
+                          </div>
+                        )}
+                        {mod.newValue && (
+                          <div className="rounded-lg bg-emerald-500/10 p-2 border border-emerald-500/25 text-emerald-950 dark:text-emerald-200">
+                            <span className="block text-[10px] font-black text-emerald-700 dark:text-emerald-400 mb-0.5">
+                              ✅ الجديد (المعتمد حالياً):
+                            </span>
+                            <span className="font-black break-words">{mod.newValue}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+
+            {/* Acknowledge Button for Kitchen */}
+            {hasUnack && (
+              <button
+                type="button"
+                onClick={() => onAck(order.id)}
+                className="w-full min-h-[46px] rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                [ تم الاطلاع واعتماد هذا التعديل في المطبخ ✓ ]
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* FOOTER & ACTIONS (Large tactile touch buttons) */}
@@ -647,7 +700,7 @@ export function KitchenPanel() {
       order_name: null,
       sender_phone: null,
       recipient_phone: null,
-      last_edited_at: null,
+      last_edited_at: k.last_edited_at ?? null,
       queue_rank: null,
       customer_name: k.customer_name,
       customer_phone: "—",
@@ -677,6 +730,7 @@ export function KitchenPanel() {
       schedule_updated_at: null,
       created_at: k.requested_date || new Date().toISOString(),
       updated_at: k.requested_date || new Date().toISOString(),
+      modifications: k.modifications ?? null,
       items: (k.items || []).map((it) => ({
         id: it.id,
         order_id: k.id,

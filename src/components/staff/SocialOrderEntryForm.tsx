@@ -1039,7 +1039,7 @@ export function SocialOrderEntryForm({ onSuccessOrder, title = "طلب جديد 
 
         {/* CAKE CUSTOMIZATION PANEL */}
         <div className="min-w-0 rounded-2xl border border-[#FDE2CF] bg-[#FDE2CF]/20 p-3 sm:p-4">
-          <CakeCustomizationPanel value={customization} onChange={setCustomization} />
+          <CakeCustomizationPanel value={customization} onChange={setCustomization} hideGift={true} />
           {extras.ar.length ? (
             <ul className="mt-3 space-y-1 rounded-xl bg-white/80 p-3 text-xs font-bold text-[#5D2E17]">
               {extras.ar.map((line) => (
