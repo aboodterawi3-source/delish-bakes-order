@@ -1167,23 +1167,25 @@ export const OrdersCalendar = memo(function OrdersCalendar({
               ) : null}
 
               {/* DEDICATED MODIFICATIONS SECTION */}
-              {selectedOrder.modifications && selectedOrder.modifications.length > 0 && (
+              {(selectedOrder.modifications && selectedOrder.modifications.length > 0) || selectedOrder.last_edited_at || selectedOrder.schedule_updated_at ? (
                 <div className="rounded-2xl border-2 border-amber-500/80 bg-gradient-to-b from-amber-500/10 via-amber-500/5 to-amber-500/15 p-4 space-y-3 shadow-xs">
                   <div className="flex items-center justify-between border-b border-amber-500/30 pb-2">
                     <span className="flex items-center gap-1.5 text-xs font-black text-amber-900 dark:text-amber-200">
                       <span className="text-base">⚠️</span>
-                      <span>سجل وتفاصيل التعديل على الطلب ({selectedOrder.modifications.length} تفاصيل)</span>
+                      <span>
+                        سجل وتفاصيل التعديل على الطلب {selectedOrder.modifications && selectedOrder.modifications.length > 0 ? `(${selectedOrder.modifications.length} تفاصيل)` : "⚠️ (تم التعديل)"}
+                      </span>
                     </span>
-                    {selectedOrder.last_edited_at && (
+                    {(selectedOrder.last_edited_at || selectedOrder.schedule_updated_at) && (
                       <span className="text-[10px] font-mono text-muted-foreground" dir="ltr">
-                        {new Date(selectedOrder.last_edited_at).toLocaleTimeString("ar-JO", { hour: "2-digit", minute: "2-digit" })}
+                        {new Date(selectedOrder.last_edited_at || selectedOrder.schedule_updated_at || Date.now()).toLocaleTimeString("ar-JO", { hour: "2-digit", minute: "2-digit" })}
                       </span>
                     )}
                   </div>
 
                   {/* Baseline if present */}
                   {selectedOrder.modifications
-                    .filter((m) => m.field.includes("الطلب الأساسي") || m.field.includes("النسخة الأصلية"))
+                    ?.filter((m) => m.field.includes("الطلب الأساسي") || m.field.includes("النسخة الأصلية"))
                     .map((baseMod, idx) => (
                       <div key={idx} className="rounded-xl border border-amber-400/60 bg-background/90 p-3 space-y-1 shadow-2xs">
                         <span className="text-xs font-black text-amber-900 dark:text-amber-300 block">
@@ -1197,44 +1199,76 @@ export const OrdersCalendar = memo(function OrdersCalendar({
 
                   {/* Detailed changes list */}
                   <div className="space-y-2">
-                    {selectedOrder.modifications
-                      .filter((m) => !m.field.includes("الطلب الأساسي") && !m.field.includes("النسخة الأصلية"))
-                      .map((mod, idx) => (
-                        <div key={idx} className="rounded-xl bg-card p-2.5 border border-amber-300/60 dark:border-amber-700/60 space-y-1.5 shadow-2xs">
-                          <div className="flex items-center justify-between text-xs font-black text-foreground">
-                            <span className="flex items-center gap-1 text-primary">
-                              <span>🔹</span>
-                              <span>{mod.field}</span>
-                            </span>
-                            {mod.updatedAt && (
-                              <span className="text-[10px] text-muted-foreground font-mono" dir="ltr">
-                                {new Date(mod.updatedAt).toLocaleTimeString("ar-JO", { hour: "2-digit", minute: "2-digit" })}
+                    {selectedOrder.modifications && selectedOrder.modifications.filter((m) => !m.field.includes("الطلب الأساسي") && !m.field.includes("النسخة الأصلية")).length > 0 ? (
+                      selectedOrder.modifications
+                        .filter((m) => !m.field.includes("الطلب الأساسي") && !m.field.includes("النسخة الأصلية"))
+                        .map((mod, idx) => (
+                          <div key={idx} className="rounded-xl bg-card p-2.5 border border-amber-300/60 dark:border-amber-700/60 space-y-1.5 shadow-2xs">
+                            <div className="flex items-center justify-between text-xs font-black text-foreground">
+                              <span className="flex items-center gap-1 text-primary">
+                                <span>🔹</span>
+                                <span>{mod.field}</span>
                               </span>
-                            )}
+                              {mod.updatedAt && (
+                                <span className="text-[10px] text-muted-foreground font-mono" dir="ltr">
+                                  {new Date(mod.updatedAt).toLocaleTimeString("ar-JO", { hour: "2-digit", minute: "2-digit" })}
+                                </span>
+                              )}
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                              {mod.oldValue && (
+                                <div className="rounded-lg bg-red-500/10 p-2 border border-red-500/20 text-red-950 dark:text-red-200">
+                                  <span className="block text-[10px] font-bold text-red-700 dark:text-red-400 mb-0.5">
+                                    ❌ السابق:
+                                  </span>
+                                  <span className="line-through font-bold break-words">{mod.oldValue}</span>
+                                </div>
+                              )}
+                              {mod.newValue && (
+                                <div className="rounded-lg bg-emerald-500/10 p-2 border border-emerald-500/25 text-emerald-950 dark:text-emerald-200">
+                                  <span className="block text-[10px] font-black text-emerald-700 dark:text-emerald-400 mb-0.5">
+                                    ✅ الجديد:
+                                  </span>
+                                  <span className="font-black break-words">{mod.newValue}</span>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                            {mod.oldValue && (
-                              <div className="rounded-lg bg-red-500/10 p-2 border border-red-500/20 text-red-950 dark:text-red-200">
-                                <span className="block text-[10px] font-bold text-red-700 dark:text-red-400 mb-0.5">
-                                  ❌ السابق:
-                                </span>
-                                <span className="line-through font-bold break-words">{mod.oldValue}</span>
-                              </div>
-                            )}
-                            {mod.newValue && (
-                              <div className="rounded-lg bg-emerald-500/10 p-2 border border-emerald-500/25 text-emerald-950 dark:text-emerald-200">
-                                <span className="block text-[10px] font-black text-emerald-700 dark:text-emerald-400 mb-0.5">
-                                  ✅ الجديد:
-                                </span>
-                                <span className="font-black break-words">{mod.newValue}</span>
-                              </div>
-                            )}
+                        ))
+                    ) : (
+                      /* Fallback when modifications array is empty but order is flagged as edited */
+                      <div className="rounded-xl bg-card p-3 border border-amber-300/60 dark:border-amber-700/60 space-y-2 shadow-2xs">
+                        <div className="flex items-center justify-between text-xs font-black text-foreground">
+                          <span className="flex items-center gap-1 text-primary">
+                            <span>🔹</span>
+                            <span>
+                              {selectedOrder.schedule_updated_at ? "تعديل موعد التسليم (عبر رابط العميل)" : "تعديل مواصفات الطلب بمكتب المبيعات"}
+                            </span>
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                          <div className="rounded-lg bg-red-500/10 p-2 border border-red-500/20 text-red-950 dark:text-red-200">
+                            <span className="block text-[10px] font-bold text-red-700 dark:text-red-400 mb-0.5">
+                              ❌ الحالة:
+                            </span>
+                            <span className="font-bold break-words">
+                              {selectedOrder.schedule_updated_at ? "تم تعديل موعد الاستلام/التوصيل من قبل الزبون" : "تم تعديل تفاصيل ومواصفات الطلب بمكتب المبيعات"}
+                            </span>
+                          </div>
+                          <div className="rounded-lg bg-emerald-500/10 p-2 border border-emerald-500/25 text-emerald-950 dark:text-emerald-200">
+                            <span className="block text-[10px] font-black text-emerald-700 dark:text-emerald-400 mb-0.5">
+                              ✅ المعتمد حالياً للتجهيز:
+                            </span>
+                            <span className="font-black break-words">
+                              {selectedOrder.requested_date} ⏰ {selectedOrder.requested_time ? selectedOrder.requested_time.slice(0, 5) : ""}
+                            </span>
                           </div>
                         </div>
-                      ))}
+                      </div>
+                    )}
                   </div>
                 </div>
-              )}
+              ) : null}
 
               {/* Kitchen Stage Transition Actions */}
               {isKitchen && onKitchenStage ? (

@@ -446,7 +446,7 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
     // Fetch existing order details to compute modification diffs for KDS and audit
     const { data: existing } = await context.supabase
       .from("orders")
-      .select("id, order_number, customer_name, customer_phone, requested_date, requested_time, method, area, address, order_name, sender_phone, recipient_phone, deposit_paid, notes, inscription, staff_notes, card_note, total, modifications")
+      .select("id, order_number, status, payment_method, driver_name, driver_phone, customer_name, customer_phone, requested_date, requested_time, method, area, address, order_name, sender_phone, recipient_phone, deposit_paid, notes, inscription, staff_notes, card_note, total, modifications")
       .eq("id", data.orderId)
       .single();
 
@@ -629,6 +629,20 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
         }
       }
 
+      if (clean['card_note'] !== undefined) {
+        const oldVal = (existing.card_note ?? "").trim();
+        const newVal = String(clean['card_note'] ?? "").trim();
+        if (oldVal !== newVal) {
+          newDiffs.push({
+            field: "كرت الإهداء / ملاحظة الكرت",
+            oldValue: oldVal || "بدون كرت",
+            newValue: newVal || "بدون كرت",
+            updatedAt: nowIso,
+            acknowledgedAt: null,
+          });
+        }
+      }
+
       if (clean['deposit_paid'] !== undefined) {
         const oldVal = Number(existing.deposit_paid ?? 0);
         const newVal = Number(clean['deposit_paid'] ?? 0);
@@ -643,9 +657,61 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
         }
       }
 
-      if (newDiffs.length > 0) {
-        clean['modifications'] = [...currentMods, ...newDiffs].slice(-30);
+      if (clean['driver_name'] !== undefined) {
+        const oldVal = (existing.driver_name ?? "").trim();
+        const newVal = String(clean['driver_name'] ?? "").trim();
+        if (oldVal !== newVal) {
+          newDiffs.push({
+            field: "سائق التوصيل",
+            oldValue: oldVal || "غير محدد",
+            newValue: newVal || "غير محدد",
+            updatedAt: nowIso,
+            acknowledgedAt: null,
+          });
+        }
       }
+
+      if (clean['payment_method'] !== undefined) {
+        const oldVal = String(existing.payment_method ?? "");
+        const newVal = String(clean['payment_method'] ?? "");
+        if (oldVal !== newVal) {
+          const pmLabel = (val: string) => val === "cash" ? "كاش" : val === "cliq" ? "كليك" : val === "online" ? "إلكتروني" : val || "غير محدد";
+          newDiffs.push({
+            field: "طريقة الدفع",
+            oldValue: pmLabel(oldVal),
+            newValue: pmLabel(newVal),
+            updatedAt: nowIso,
+            acknowledgedAt: null,
+          });
+        }
+      }
+
+      if (clean['status'] !== undefined) {
+        const oldVal = String(existing.status ?? "");
+        const newVal = String(clean['status'] ?? "");
+        if (oldVal !== newVal) {
+          newDiffs.push({
+            field: "حالة الطلب",
+            oldValue: oldVal,
+            newValue: newVal,
+            updatedAt: nowIso,
+            acknowledgedAt: null,
+          });
+        }
+      }
+
+      // If user submitted an edit but none of the specific fields created diffs, record a general modification
+      if (newDiffs.length === 0) {
+        newDiffs.push({
+          field: "تعديل تفاصيل ومواصفات الطلب",
+          oldValue: "البيانات السابقة للطلب",
+          newValue: "تم حفظ وتحديث مواصفات الطلب بمكتب المبيعات",
+          updatedAt: nowIso,
+          acknowledgedAt: null,
+        });
+      }
+
+      clean['modifications'] = [...currentMods, ...newDiffs].slice(-30);
     }
 
     // Every desk edit is stamped so the list and printouts show the edit badge.

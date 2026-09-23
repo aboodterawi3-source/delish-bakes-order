@@ -456,13 +456,15 @@ const KdsCleanCard = memo(function KdsCleanCard({
         </div>
 
         {/* 2. DEDICATED MODIFICATIONS SECTION (خانة مخصصة تأتي تحت الطلب الأصلي بوضوح تام) */}
-        {order.modifications && order.modifications.length > 0 && (
+        {(isEdited || (order.modifications && order.modifications.length > 0)) && (
           <div className="rounded-2xl border-2 border-amber-500/80 bg-gradient-to-b from-amber-500/10 via-amber-500/5 to-amber-500/15 p-3.5 space-y-3 shadow-xs animate-in fade-in duration-150">
             {/* Box Header */}
             <div className="flex items-center justify-between border-b border-amber-500/30 pb-2">
               <div className="flex items-center gap-2 font-black text-amber-900 dark:text-amber-200 text-xs sm:text-sm">
                 <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
-                <span>خانة التعديل على الطلب ({order.modifications.length} تفاصيل مسجلة)</span>
+                <span>
+                  خانة التعديل على الطلب {order.modifications && order.modifications.length > 0 ? `(${order.modifications.length} تفاصيل مسجلة)` : "⚠️ (تعديل معتمد)"}
+                </span>
               </div>
               {hasUnack ? (
                 <span className="bg-red-600 text-white text-[10px] px-2.5 py-0.5 rounded-full font-black animate-pulse shadow-xs">
@@ -477,7 +479,7 @@ const KdsCleanCard = memo(function KdsCleanCard({
 
             {/* Baseline snapshot (الطلب الأساسي الأصلي قبل التعديل) */}
             {order.modifications
-              .filter((m) => m.field.includes("الطلب الأساسي") || m.field.includes("النسخة الأصلية"))
+              ?.filter((m) => m.field.includes("الطلب الأساسي") || m.field.includes("النسخة الأصلية"))
               .map((baseMod, idx) => (
                 <div
                   key={idx}
@@ -507,46 +509,83 @@ const KdsCleanCard = memo(function KdsCleanCard({
                 <span>تفاصيل البنود التي تم تعديلها:</span>
               </div>
               <div className="space-y-2">
-                {order.modifications
-                  .filter((m) => !m.field.includes("الطلب الأساسي") && !m.field.includes("النسخة الأصلية"))
-                  .map((mod, idx) => (
-                    <div
-                      key={idx}
-                      className="rounded-xl bg-card p-2.5 border border-amber-300/60 dark:border-amber-700/60 space-y-1.5 shadow-2xs"
-                    >
-                      <div className="flex items-center justify-between text-xs font-black text-foreground">
-                        <span className="flex items-center gap-1 text-primary">
-                          <span>🔹</span>
-                          <span>{mod.field}</span>
-                        </span>
-                        {mod.updatedAt && (
-                          <span className="text-[10px] text-muted-foreground font-mono" dir="ltr">
-                            {formatRelativeTime(mod.updatedAt)}
+                {order.modifications && order.modifications.filter((m) => !m.field.includes("الطلب الأساسي") && !m.field.includes("النسخة الأصلية")).length > 0 ? (
+                  order.modifications
+                    .filter((m) => !m.field.includes("الطلب الأساسي") && !m.field.includes("النسخة الأصلية"))
+                    .map((mod, idx) => (
+                      <div
+                        key={idx}
+                        className="rounded-xl bg-card p-2.5 border border-amber-300/60 dark:border-amber-700/60 space-y-1.5 shadow-2xs"
+                      >
+                        <div className="flex items-center justify-between text-xs font-black text-foreground">
+                          <span className="flex items-center gap-1 text-primary">
+                            <span>🔹</span>
+                            <span>{mod.field}</span>
                           </span>
-                        )}
-                      </div>
+                          {mod.updatedAt && (
+                            <span className="text-[10px] text-muted-foreground font-mono" dir="ltr">
+                              {formatRelativeTime(mod.updatedAt)}
+                            </span>
+                          )}
+                        </div>
 
-                      {/* Before / After visual Diff */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                        {mod.oldValue && (
-                          <div className="rounded-lg bg-red-500/10 p-2 border border-red-500/20 text-red-950 dark:text-red-200">
-                            <span className="block text-[10px] font-bold text-red-700 dark:text-red-400 mb-0.5">
-                              ❌ السابق (قبل التعديل):
-                            </span>
-                            <span className="line-through font-bold break-words">{mod.oldValue}</span>
-                          </div>
-                        )}
-                        {mod.newValue && (
-                          <div className="rounded-lg bg-emerald-500/10 p-2 border border-emerald-500/25 text-emerald-950 dark:text-emerald-200">
-                            <span className="block text-[10px] font-black text-emerald-700 dark:text-emerald-400 mb-0.5">
-                              ✅ الجديد (المعتمد حالياً):
-                            </span>
-                            <span className="font-black break-words">{mod.newValue}</span>
-                          </div>
-                        )}
+                        {/* Before / After visual Diff */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                          {mod.oldValue && (
+                            <div className="rounded-lg bg-red-500/10 p-2 border border-red-500/20 text-red-950 dark:text-red-200">
+                              <span className="block text-[10px] font-bold text-red-700 dark:text-red-400 mb-0.5">
+                                ❌ السابق (قبل التعديل):
+                              </span>
+                              <span className="line-through font-bold break-words">{mod.oldValue}</span>
+                            </div>
+                          )}
+                          {mod.newValue && (
+                            <div className="rounded-lg bg-emerald-500/10 p-2 border border-emerald-500/25 text-emerald-950 dark:text-emerald-200">
+                              <span className="block text-[10px] font-black text-emerald-700 dark:text-emerald-400 mb-0.5">
+                                ✅ الجديد (المعتمد حالياً):
+                              </span>
+                              <span className="font-black break-words">{mod.newValue}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                ) : (
+                  /* Fallback when modifications array is empty but order is flagged as edited */
+                  <div className="rounded-xl bg-card p-3 border border-amber-300/60 dark:border-amber-700/60 space-y-2 shadow-2xs">
+                    <div className="flex items-center justify-between text-xs font-black text-foreground">
+                      <span className="flex items-center gap-1 text-primary">
+                        <span>🔹</span>
+                        <span>
+                          {order.schedule_updated_at ? "تعديل موعد التسليم (عبر رابط العميل)" : "تعديل تفاصيل ومواصفات الطلب بمكتب المبيعات"}
+                        </span>
+                      </span>
+                      {(order.schedule_updated_at || order.last_edited_at) && (
+                        <span className="text-[10px] text-muted-foreground font-mono" dir="ltr">
+                          {formatRelativeTime(order.schedule_updated_at || order.last_edited_at || new Date().toISOString())}
+                        </span>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                      <div className="rounded-lg bg-red-500/10 p-2 border border-red-500/20 text-red-950 dark:text-red-200">
+                        <span className="block text-[10px] font-bold text-red-700 dark:text-red-400 mb-0.5">
+                          ❌ الحالة:
+                        </span>
+                        <span className="font-bold break-words">
+                          {order.schedule_updated_at ? "تم تعديل موعد الاستلام/التوصيل من قبل الزبون" : "تم تعديل تفاصيل ومواصفات الطلب بمكتب المبيعات"}
+                        </span>
+                      </div>
+                      <div className="rounded-lg bg-emerald-500/10 p-2 border border-emerald-500/25 text-emerald-950 dark:text-emerald-200">
+                        <span className="block text-[10px] font-black text-emerald-700 dark:text-emerald-400 mb-0.5">
+                          ✅ المعتمد حالياً للتجهيز:
+                        </span>
+                        <span className="font-black break-words">
+                          {order.requested_date} ⏰ {formatTimeSlotArabic(order.requested_time)}
+                        </span>
                       </div>
                     </div>
-                  ))}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -727,7 +766,7 @@ export function KitchenPanel() {
       final_photo_requested: false,
       confirmation_message: null,
       status: (k.status === "ready" ? "ready" : k.status === "baking" ? "baking" : "new") as SalesStatus,
-      schedule_updated_at: null,
+      schedule_updated_at: k.schedule_updated_at ?? null,
       created_at: k.requested_date || new Date().toISOString(),
       updated_at: k.requested_date || new Date().toISOString(),
       modifications: k.modifications ?? null,

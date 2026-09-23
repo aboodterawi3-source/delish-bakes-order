@@ -394,10 +394,12 @@ export const submitOrderEdit = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const row = await loadToken(data.token);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { buildOriginalOrderBaseline } = await import("@/lib/sales.functions");
+    type OrderModification = import("@/lib/sales.functions").OrderModification;
 
     const { data: before } = await supabaseAdmin
       .from("orders")
-      .select("requested_date, requested_time")
+      .select("id, order_number, customer_name, customer_phone, requested_date, requested_time, method, area, address, order_name, sender_phone, recipient_phone, deposit_paid, notes, inscription, staff_notes, card_note, total, modifications")
       .eq("id", row.order_id)
       .single();
 
@@ -405,6 +407,91 @@ export const submitOrderEdit = createServerFn({ method: "POST" })
       (data.requested_date && data.requested_date !== before?.requested_date) ||
       (data.requested_time &&
         data.requested_time.slice(0, 5) !== String(before?.requested_time ?? "").slice(0, 5));
+
+    const nowIso = new Date().toISOString();
+    const currentMods = ((before?.modifications as OrderModification[] | null) ?? []);
+    const newDiffs: OrderModification[] = [];
+
+    // Preserve baseline if this is the first modification on this order
+    const hasBaseline = currentMods.some((m) => m.field.includes("الطلب الأساسي") || m.field.includes("النسخة الأصلية"));
+    if (!hasBaseline && before) {
+      const { data: existingItems } = await supabaseAdmin
+        .from("order_items")
+        .select("name_ar, name_en, quantity, unit_price, options_ar, notes")
+        .eq("order_id", row.order_id);
+      const baselineSummary = buildOriginalOrderBaseline(before, existingItems ?? []);
+      newDiffs.push({
+        field: "الطلب الأساسي (النسخة الأصلية عند الإنشاء)",
+        oldValue: baselineSummary,
+        newValue: "تم إجراء أول تعديل على هذا الطلب عبر رابط العميل",
+        updatedAt: nowIso,
+        acknowledgedAt: null,
+      });
+    }
+
+    if (data.requested_date && data.requested_date !== before?.requested_date) {
+      newDiffs.push({
+        field: "تاريخ الاستلام/التوصيل (رابط الزبون)",
+        oldValue: before?.requested_date || "غير محدد",
+        newValue: data.requested_date,
+        updatedAt: nowIso,
+        acknowledgedAt: null,
+      });
+    }
+
+    if (data.requested_time && data.requested_time.slice(0, 5) !== String(before?.requested_time ?? "").slice(0, 5)) {
+      newDiffs.push({
+        field: "وقت الاستلام/التوصيل (رابط الزبون)",
+        oldValue: before?.requested_time ? String(before.requested_time).slice(0, 5) : "غير محدد",
+        newValue: data.requested_time.slice(0, 5),
+        updatedAt: nowIso,
+        acknowledgedAt: null,
+      });
+    }
+
+    if (data.inscription !== undefined) {
+      const oldVal = (before?.inscription ?? "").trim();
+      const newVal = data.inscription.trim();
+      if (oldVal !== newVal) {
+        newDiffs.push({
+          field: "الكتابة على الكيك (رابط الزبون)",
+          oldValue: oldVal || "بدون كتابة",
+          newValue: newVal || "بدون كتابة",
+          updatedAt: nowIso,
+          acknowledgedAt: null,
+        });
+      }
+    }
+
+    if (data.notes !== undefined) {
+      const oldVal = (before?.notes ?? "").trim();
+      const newVal = data.notes.trim();
+      if (oldVal !== newVal) {
+        newDiffs.push({
+          field: "ملاحظات الطلب (رابط الزبون)",
+          oldValue: oldVal || "بدون ملاحظات",
+          newValue: newVal || "بدون ملاحظات",
+          updatedAt: nowIso,
+          acknowledgedAt: null,
+        });
+      }
+    }
+
+    if (data.customer_phone?.trim()) {
+      const oldVal = (before?.customer_phone ?? "").trim();
+      const newVal = data.customer_phone.trim();
+      if (oldVal && newVal && oldVal !== newVal) {
+        newDiffs.push({
+          field: "رقم هاتف العميل (رابط الزبون)",
+          oldValue: oldVal,
+          newValue: newVal,
+          updatedAt: nowIso,
+          acknowledgedAt: null,
+        });
+      }
+    }
+
+    const updatedMods = (newDiffs.length > 0 ? [...currentMods, ...newDiffs] : currentMods).slice(-30);
 
     const { error } = await supabaseAdmin
       .from("orders")
@@ -414,7 +501,9 @@ export const submitOrderEdit = createServerFn({ method: "POST" })
         ...(data.customer_phone?.trim() ? { customer_phone: data.customer_phone.trim() } : {}),
         ...(data.requested_date ? { requested_date: data.requested_date } : {}),
         ...(data.requested_time ? { requested_time: data.requested_time } : {}),
-        ...(scheduleChanged ? { schedule_updated_at: new Date().toISOString() } : {}),
+        schedule_updated_at: new Date().toISOString(),
+        last_edited_at: new Date().toISOString(),
+        ...(newDiffs.length > 0 ? { modifications: updatedMods as any } : {}),
       } as never)
       .eq("id", row.order_id);
     if (error) throw publicError("order-edit.update", error);
