@@ -800,7 +800,7 @@ export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
 
     const order = toOrder(updatedOrder as Row);
 
-    await writeAudit({
+    await writeAudit(context as never, {
       order_id: order.id,
       order_number: order.order_number,
       staff_user_id: context.userId,
@@ -984,7 +984,7 @@ export const replaceSalesOrderItems = createServerFn({ method: "POST" })
     if (orderError) throw new Error(orderError.message);
 
     const order = toOrder(row as Row);
-    await writeAudit({
+    await writeAudit(context as never, {
       order_id: order.id,
       order_number: order.order_number,
       staff_user_id: context.userId,

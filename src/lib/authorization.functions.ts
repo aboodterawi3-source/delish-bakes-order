@@ -67,8 +67,8 @@ async function resolveAuthorization(context: Ctx): Promise<StaffAuthorization & 
   };
 }
 
-/** Writes an audit row with the service role, so a signed-in account can never forge or edit it. */
-async function writeAudit(entry: {
+/** Writes an immutable audit row through the signed-in staff session. */
+async function writeAudit(context: Ctx, entry: {
   order_id: string | null;
   order_number: string | null;
   staff_user_id: string;
@@ -79,8 +79,16 @@ async function writeAudit(entry: {
   discount_percent: number | null;
   reason: string | null;
 }) {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { error } = await supabaseAdmin.from("audit_logs").insert(entry as never);
+  const { error } = await context.supabase.rpc("record_staff_audit", {
+    _order_id: entry.order_id,
+    _order_number: entry.order_number,
+    _staff_name: entry.staff_name,
+    _action: entry.action,
+    _original_amount: entry.original_amount,
+    _modified_amount: entry.modified_amount,
+    _discount_percent: entry.discount_percent,
+    _reason: entry.reason,
+  });
   if (error) throw new Error(error.message);
 }
 
@@ -224,7 +232,7 @@ export const applyOrderDiscount = createServerFn({ method: "POST" })
       .eq("id", data.orderId);
     if (error) throw new Error(error.message);
 
-    await writeAudit({
+    await writeAudit(ctx, {
       order_id: order.id,
       order_number: order.order_number,
       staff_user_id: ctx.userId,
@@ -287,7 +295,7 @@ export const createOrderEditLink = createServerFn({ method: "POST" })
     } as never);
     if (error) throw new Error(error.message);
 
-    await writeAudit({
+    await writeAudit(ctx, {
       order_id: order.id,
       order_number: order.order_number,
       staff_user_id: ctx.userId,

@@ -26,8 +26,7 @@ export async function canEditProductPrice(
   if (roles.includes("admin")) return true;
   if (!productId) return true;
 
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data, error } = await (supabaseAdmin as any)
+  const { data, error } = await context.supabase
     .from("sales_product_permissions")
     .select("can_edit_price")
     .eq("user_id", context.userId)
