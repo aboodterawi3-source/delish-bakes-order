@@ -455,16 +455,14 @@ const KdsCleanCard = memo(function KdsCleanCard({
           )}
         </div>
 
-        {/* 2. DEDICATED MODIFICATIONS SECTION (خانة مخصصة تأتي تحت الطلب الأصلي بوضوح تام) */}
+        {/* تفاصيل البنود التي تم تعديلها */}
         {(isEdited || (order.modifications && order.modifications.length > 0)) && (
-          <div className="rounded-2xl border-2 border-amber-500/80 bg-gradient-to-b from-amber-500/10 via-amber-500/5 to-amber-500/15 p-3.5 space-y-3 shadow-xs animate-in fade-in duration-150">
-            {/* Box Header */}
+          <div className="rounded-2xl border-2 border-amber-500/80 bg-gradient-to-b from-amber-500/10 via-amber-500/5 to-amber-500/15 p-3.5 space-y-2.5 shadow-xs animate-in fade-in duration-150">
+            {/* Header: تفاصيل البنود التي تم تعديلها */}
             <div className="flex items-center justify-between border-b border-amber-500/30 pb-2">
               <div className="flex items-center gap-2 font-black text-amber-900 dark:text-amber-200 text-xs sm:text-sm">
-                <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
-                <span>
-                  خانة التعديل على الطلب {order.modifications && order.modifications.length > 0 ? `(${order.modifications.length} تفاصيل مسجلة)` : "⚠️ (تعديل معتمد)"}
-                </span>
+                <span>📝</span>
+                <span>تفاصيل البنود التي تم تعديلها</span>
               </div>
               {hasUnack ? (
                 <span className="bg-red-600 text-white text-[10px] px-2.5 py-0.5 rounded-full font-black animate-pulse shadow-xs">
@@ -477,38 +475,8 @@ const KdsCleanCard = memo(function KdsCleanCard({
               )}
             </div>
 
-            {/* Baseline snapshot (الطلب الأساسي الأصلي قبل التعديل) */}
-            {order.modifications
-              ?.filter((m) => m.field.includes("الطلب الأساسي") || m.field.includes("النسخة الأصلية"))
-              .map((baseMod, idx) => (
-                <div
-                  key={idx}
-                  className="rounded-xl border border-amber-400/60 bg-background/90 p-3 space-y-1.5 shadow-2xs"
-                >
-                  <div className="flex items-center justify-between text-xs font-black text-amber-900 dark:text-amber-300">
-                    <span className="flex items-center gap-1.5">
-                      <span>📌</span>
-                      <span>نسخة الطلب الأصلية الأساسية (عند الإنشاء قبل التعديل):</span>
-                    </span>
-                    {baseMod.updatedAt && (
-                      <span className="text-[10px] font-mono text-muted-foreground" dir="ltr">
-                        {formatRelativeTime(baseMod.updatedAt)}
-                      </span>
-                    )}
-                  </div>
-                  <div className="whitespace-pre-line text-xs font-bold leading-relaxed text-foreground bg-muted/40 p-2.5 rounded-lg border border-border/60">
-                    {baseMod.oldValue}
-                  </div>
-                </div>
-              ))}
-
             {/* List of Specific Field Changes */}
             <div className="space-y-2">
-              <div className="text-[11px] font-black text-amber-900 dark:text-amber-200 flex items-center gap-1">
-                <span>📝</span>
-                <span>تفاصيل البنود التي تم تعديلها:</span>
-              </div>
-              <div className="space-y-2">
                 {order.modifications && order.modifications.filter((m) => !m.field.includes("الطلب الأساسي") && !m.field.includes("النسخة الأصلية")).length > 0 ? (
                   order.modifications
                     .filter((m) => !m.field.includes("الطلب الأساسي") && !m.field.includes("النسخة الأصلية"))
@@ -587,7 +555,6 @@ const KdsCleanCard = memo(function KdsCleanCard({
                   </div>
                 )}
               </div>
-            </div>
 
             {/* Acknowledge Button for Kitchen */}
             {hasUnack && (

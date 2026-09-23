@@ -1166,14 +1166,14 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                 </div>
               ) : null}
 
-              {/* DEDICATED MODIFICATIONS SECTION */}
+              {/* تفاصيل البنود التي تم تعديلها */}
               {(selectedOrder.modifications && selectedOrder.modifications.length > 0) || selectedOrder.last_edited_at || selectedOrder.schedule_updated_at ? (
                 <div className="rounded-2xl border-2 border-amber-500/80 bg-gradient-to-b from-amber-500/10 via-amber-500/5 to-amber-500/15 p-4 space-y-3 shadow-xs">
                   <div className="flex items-center justify-between border-b border-amber-500/30 pb-2">
                     <span className="flex items-center gap-1.5 text-xs font-black text-amber-900 dark:text-amber-200">
-                      <span className="text-base">⚠️</span>
+                      <span>📝</span>
                       <span>
-                        سجل وتفاصيل التعديل على الطلب {selectedOrder.modifications && selectedOrder.modifications.length > 0 ? `(${selectedOrder.modifications.length} تفاصيل)` : "⚠️ (تم التعديل)"}
+                        تفاصيل البنود التي تم تعديلها {selectedOrder.modifications && selectedOrder.modifications.length > 0 ? `(${selectedOrder.modifications.length} تفاصيل)` : "⚠️"}
                       </span>
                     </span>
                     {(selectedOrder.last_edited_at || selectedOrder.schedule_updated_at) && (
@@ -1182,20 +1182,6 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                       </span>
                     )}
                   </div>
-
-                  {/* Baseline if present */}
-                  {selectedOrder.modifications
-                    ?.filter((m) => m.field.includes("الطلب الأساسي") || m.field.includes("النسخة الأصلية"))
-                    .map((baseMod, idx) => (
-                      <div key={idx} className="rounded-xl border border-amber-400/60 bg-background/90 p-3 space-y-1 shadow-2xs">
-                        <span className="text-xs font-black text-amber-900 dark:text-amber-300 block">
-                          📌 نسخة الطلب الأصلية عند الإنشاء:
-                        </span>
-                        <div className="whitespace-pre-line text-xs font-bold leading-relaxed text-foreground bg-muted/40 p-2.5 rounded-lg border border-border/60">
-                          {baseMod.oldValue}
-                        </div>
-                      </div>
-                    ))}
 
                   {/* Detailed changes list */}
                   <div className="space-y-2">
