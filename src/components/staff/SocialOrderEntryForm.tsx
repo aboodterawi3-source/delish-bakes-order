@@ -739,52 +739,6 @@ export function SocialOrderEntryForm({ onSuccessOrder, title = "طلب جديد 
           />
         </label>
 
-        {/* CAKE FILLING SELECTION */}
-        <div className="block text-sm font-bold text-[#3E2723] rounded-xl bg-[#FDE2CF]/20 border border-[#FDE2CF] p-3">
-          <span className="block text-xs font-bold text-[#5D2E17] mb-1.5">
-            نوع الحشوة (اختر أو اكتب) · Cake Filling Selection
-          </span>
-          <div className="flex flex-wrap gap-1.5 mb-2">
-            {[
-              "نوتيلا وبندق",
-              "لوتس كراميل",
-              "فستق حلبي",
-              "شوكولاتة بلجيكية",
-              "فراولة طازجة وكريمة",
-              "فانيلا كلاسيك",
-              "كراميل مملح",
-              "أوريو وكريمة",
-            ].map((f) => (
-              <button
-                key={f}
-                type="button"
-                onClick={() =>
-                  setCustomization((curr) => ({
-                    ...curr,
-                    filling: curr.filling === f ? "" : f,
-                  }))
-                }
-                className={`rounded-full px-3 py-1 text-xs font-bold border transition-all ${
-                  customization.filling === f
-                    ? "bg-[#8B4513] text-white border-[#8B4513] shadow-xs"
-                    : "bg-white text-[#5D2E17] border-slate-200 hover:bg-amber-50"
-                }`}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
-          <input
-            type="text"
-            value={customization.filling}
-            onChange={(event) =>
-              setCustomization((curr) => ({ ...curr, filling: event.target.value }))
-            }
-            placeholder="اكتب نوع الحشوة هنا (مثال: نوتيلا ولوتس أو حسب الطلب)"
-            className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-[#3E2723] focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
-          />
-        </div>
-
         {/* QUANTITY & UNIT PRICE */}
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block text-sm font-bold text-[#3E2723]">
