@@ -707,6 +707,19 @@ export type Database = {
           status: Database["public"]["Enums"]["order_status"]
         }[]
       }
+      record_staff_audit: {
+        Args: {
+          _action: string
+          _discount_percent?: number
+          _modified_amount?: number
+          _order_id: string
+          _order_number: string
+          _original_amount?: number
+          _reason?: string
+          _staff_name: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "sales" | "kitchen" | "social"
