@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -32,12 +32,19 @@ import {
   Store,
   Trash2,
   Check,
+  CreditCard,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { clearAllSalesOrders } from "@/lib/sales.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrdersRealtime } from "@/hooks/use-orders-realtime";
 import { BRAND_PALETTES, useBrandPalette } from "@/lib/brand-palette";
+import {
+  useCliqAccounts,
+  type CliqAccountConfig,
+  DEFAULT_CLIQ_ACCOUNTS,
+} from "@/lib/cliq-config";
 import {
   createStaff,
   getAdminAccess,
@@ -1264,6 +1271,33 @@ function StoreOperationsPanel() {
   const [phone, setPhone] = useState("+962 7 9000 0000");
   const [wiping, setWiping] = useState(false);
 
+  // CliQ accounts management
+  const { accounts: cliqAccounts, saveAll: saveCliqAccounts, resetAll: resetCliqAccounts } = useCliqAccounts();
+  const [localCliqAccounts, setLocalCliqAccounts] = useState<CliqAccountConfig[]>(cliqAccounts);
+
+  useEffect(() => {
+    setLocalCliqAccounts(cliqAccounts);
+  }, [cliqAccounts]);
+
+  const handleCliqLabelChange = (id: string, newLabel: string) => {
+    setLocalCliqAccounts((prev) =>
+      prev.map((acc) => (acc.id === id ? { ...acc, label: newLabel } : acc))
+    );
+  };
+
+  const handleSaveCliq = () => {
+    saveCliqAccounts(localCliqAccounts);
+    toast.success("تم حفظ أسماء خيارات كليك بنجاح وستظهر في شاشة إنشاء الطلب ✅");
+  };
+
+  const handleResetCliq = () => {
+    if (window.confirm("هل تريد استعادة الأسماء الافتراضية لحسابات كليك؟")) {
+      resetCliqAccounts();
+      setLocalCliqAccounts(DEFAULT_CLIQ_ACCOUNTS);
+      toast.success("تمت استعادة الأسماء الافتراضية لحسابات كليك 🔄");
+    }
+  };
+
   const handleSaveSettings = () => {
     toast.success("تم حفظ بيانات الفرع الرئيسي بنجاح 🌸");
   };
@@ -1302,7 +1336,7 @@ function StoreOperationsPanel() {
           <button
             type="button"
             onClick={handleSaveSettings}
-            className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-[#B8801C] px-4 text-xs font-bold text-white shadow-xs hover:bg-[#9E6C14]"
+            className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-[#B8801C] px-4 text-xs font-bold text-white shadow-xs hover:bg-[#9E6C14] cursor-pointer"
           >
             <Save className="h-4 w-4" />
             <span>حفظ البيانات</span>
@@ -1330,6 +1364,91 @@ function StoreOperationsPanel() {
               dir="ltr"
             />
           </label>
+        </div>
+      </div>
+
+      {/* CliQ Payment Accounts Configuration */}
+      <div className="rounded-3xl border border-[#EFE8DC] bg-white p-5 sm:p-6 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-[#EFE8DC] pb-3">
+          <div>
+            <h3 className="text-base font-black text-[#26160F] flex items-center gap-2">
+              <CreditCard className="h-5 w-5 text-[#B8801C]" />
+              <span>إعدادات وتعديل أسماء حسابات كليك (شاشة إنشاء الطلب)</span>
+            </h3>
+            <p className="text-xs text-[#4A3B32]/80 mt-1">
+              تعديل النصوص والأسماء التي تظهر داخل أيقونات كليك عند اختيار (دفع كامل أو عربون عبر كليك)
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleResetCliq}
+              className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              <span>استعادة الأسماء الافتراضية</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveCliq}
+              className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-[#8B4513] px-4 text-xs font-bold text-white shadow-xs hover:bg-[#6D340E] transition cursor-pointer"
+            >
+              <Save className="h-3.5 w-3.5" />
+              <span>حفظ خيارات كليك</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Inputs for accounts */}
+        <div className="grid gap-4 sm:grid-cols-3">
+          {localCliqAccounts.map((acc, idx) => (
+            <div key={acc.id} className="rounded-2xl border border-[#EFE8DC] bg-[#FDFBF7] p-4 space-y-3">
+              <div className="flex items-center gap-2.5">
+                <span className="text-2xl p-2 rounded-xl bg-white border border-[#EFE8DC] shadow-xs">
+                  {acc.icon}
+                </span>
+                <div>
+                  <span className="text-xs font-black text-[#26160F] block">
+                    الخيار {idx + 1}: {acc.id === "staff" ? "حساب موظفة" : acc.id === "shop" ? "حساب المحل" : "الحساب الرئيسي"}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">معرف الحساب: {acc.id}</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#26160F] mb-1">
+                  الاسم داخل الأيقونة:
+                </label>
+                <input
+                  type="text"
+                  value={acc.label}
+                  onChange={(e) => handleCliqLabelChange(acc.id, e.target.value)}
+                  placeholder="اكتب الاسم هنا..."
+                  className="w-full min-h-11 rounded-xl border border-[#EFE8DC] bg-white px-3 text-xs font-bold text-[#26160F] focus:outline-none focus:ring-2 focus:ring-[#B8801C]"
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Live Preview */}
+        <div className="rounded-2xl border border-dashed border-[#B8860B]/40 bg-[#FFFDF7] p-4 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-[#8B4513]">
+              معاينة مباشرة: شكل الأزرار في شاشة إنشاء الطلب (طلب جديد):
+            </span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+            {localCliqAccounts.map((acc) => (
+              <div
+                key={acc.id}
+                className="flex items-center justify-center gap-2 rounded-xl p-2.5 text-xs font-black border border-[#8B4513] bg-[#8B4513] text-white shadow-xs"
+              >
+                <span className="text-base">{acc.icon}</span>
+                <span>{acc.label || "(بدون اسم)"}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 

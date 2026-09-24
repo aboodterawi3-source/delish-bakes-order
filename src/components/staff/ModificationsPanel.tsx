@@ -810,12 +810,6 @@ function MasterOrderEditor({
         </div>
       </div>
 
-      {/* Audit Log & Previous Modifications */}
-      <ModificationsHistoryBox
-        modifications={order.modifications}
-        lastEditedAt={order.last_edited_at}
-      />
-
       {/* SECTION 1: Customer Identity & Gifting */}
       <div className="rounded-3xl border border-border/80 bg-card p-4 sm:p-5 shadow-xs space-y-4">
         <div className="flex items-center justify-between border-b border-border/60 pb-3">

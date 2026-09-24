@@ -1364,14 +1364,6 @@ function OrderPanelDrawer({
             )}
           </div>
 
-          {/* Audit Log & Baseline Snapshot */}
-          {(order.modifications?.length || order.last_edited_at) && (
-            <ModificationsHistoryBox
-              modifications={order.modifications}
-              lastEditedAt={order.last_edited_at}
-            />
-          )}
-
           {/* Delivery & Driver Dispatch */}
           {order.method === "delivery" && (
             <div className="rounded-2xl border border-border bg-card p-3.5 space-y-2.5">
@@ -1456,6 +1448,16 @@ function OrderPanelDrawer({
               </>
             )}
           </div>
+
+          {/* Audit Log & Baseline Snapshot (Moved to end of sheet) */}
+          {(order.modifications?.length || order.last_edited_at) && (
+            <div className="pt-3 border-t border-border/50">
+              <ModificationsHistoryBox
+                modifications={order.modifications}
+                lastEditedAt={order.last_edited_at}
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>

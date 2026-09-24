@@ -32,6 +32,7 @@ import {
   emptyCustomization,
   type Customization,
 } from "@/components/delish/CakeCustomizationPanel";
+import { useCliqAccounts } from "@/lib/cliq-config";
 
 export type OrderSource = "instagram" | "whatsapp" | "messenger" | "store";
 export type CliqAccount = "mahmoud" | "shop" | "staff";
@@ -174,12 +175,23 @@ export function SocialOrderEntryForm({ onSuccessOrder, title = "طلب جديد 
   const areaFee = feeForArea(form.area);
   const deliveryFee = form.method === "delivery" ? areaFee ?? 0 : 0;
 
+  const { accounts: cliqAccounts } = useCliqAccounts();
+
   // Selected CliQ account display
   const cliqAccountText = useMemo(() => {
-    if (form.cliq_account === "mahmoud") return "كليك محمود";
-    if (form.cliq_account === "shop") return "كليك محل";
-    return form.cliq_staff_name.trim() ? `كليك موظفة: ${form.cliq_staff_name.trim()}` : "كليك موظفة معينة";
-  }, [form.cliq_account, form.cliq_staff_name]);
+    const currentAcc = cliqAccounts.find((a) => a.id === form.cliq_account);
+    const label = currentAcc
+      ? currentAcc.label
+      : form.cliq_account === "shop"
+      ? "كليك محل"
+      : form.cliq_account === "staff"
+      ? "كليك موظفة معينة"
+      : "كليك محمود";
+    if (form.cliq_account === "staff") {
+      return form.cliq_staff_name.trim() ? `${label}: ${form.cliq_staff_name.trim()}` : label;
+    }
+    return label;
+  }, [cliqAccounts, form.cliq_account, form.cliq_staff_name]);
 
   const paymentLabel = useMemo(() => {
     if (form.payment_option === "cash") return "كاش عند الاستلام";
@@ -884,16 +896,16 @@ export function SocialOrderEntryForm({ onSuccessOrder, title = "طلب جديد 
                 </span>
               </div>
 
-              {/* 3 CliQ Account Options */}
+              {/* CliQ Account Options (Configurable via Admin) */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                {CLIQ_ACCOUNTS.map((acc) => {
+                {cliqAccounts.map((acc) => {
                   const isSelected = form.cliq_account === acc.id;
                   return (
                     <button
                       key={acc.id}
                       type="button"
-                      onClick={() => set("cliq_account", acc.id)}
-                      className={`flex items-center justify-center gap-2 rounded-xl p-2.5 text-xs font-black transition-all border ${
+                      onClick={() => set("cliq_account", acc.id as CliqAccount)}
+                      className={`flex items-center justify-center gap-2 rounded-xl p-2.5 text-xs font-black transition-all border cursor-pointer ${
                         isSelected
                           ? "bg-[#8B4513] text-white border-[#8B4513] shadow-xs scale-[1.02]"
                           : "bg-white text-[#5D2E17] border-slate-200 hover:bg-amber-50"
