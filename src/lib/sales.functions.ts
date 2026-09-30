@@ -734,25 +734,8 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
         }
       }
 
-      // If no field-level diff was found, try to log an items summary change
-      if (newDiffs.length === 0) {
-        const { data: currentItems } = await context.supabase
-          .from("order_items")
-          .select("name_ar, quantity, options_ar")
-          .eq("order_id", data.orderId);
-        const itemSummary =
-          (currentItems ?? [])
-            .map(
-              (it: any) =>
-                `${it.quantity}× ${it.name_ar}${it.options_ar?.length ? ` (${(it.options_ar as string[]).join("، ")})` : ""}`,
-            )
-            .join(" + ") || "بدون أصناف";
-        // Only push if we don't already have a baseline (avoid noise)
-        // This case only fires if someone saves the form without changing any tracked field — skip silently
-        // to avoid flooding kitchen with empty diffs.
-        void itemSummary; // noop: no diff to surface, skip
-      }
-
+      // Saves that changed no tracked field record nothing: no extra query, and
+      // no empty diff pushed to the kitchen.
       clean["modifications"] = [...currentMods, ...newDiffs].slice(-30);
     }
 
@@ -1000,7 +983,7 @@ export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
         total,
         last_edited_at: new Date().toISOString(),
         last_edited_by: context.userId,
-        ...(newDiffs.length > 0 ? { modifications: [...currentMods, ...newDiffs] } : {}),
+        ...(newDiffs.length > 0 ? { modifications: [...currentMods, ...newDiffs].slice(-30) } : {}),
       } as never)
       .eq("id", data.orderId)
       .select(SELECT)
@@ -1292,11 +1275,14 @@ export const getShiftReport = createServerFn({ method: "POST" })
  * Permanently deletes a single sales order along with its items, tokens, and audit records.
  */
 export const deleteSalesOrder = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: { orderId: string }) => {
     if (!input?.orderId) throw new Error("رقم معرّف الطلب مطلوب · orderId is required");
     return { orderId: String(input.orderId) };
   })
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    await assertRole(context, ["admin"]);
+
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     // 1. Delete order tokens
@@ -1326,48 +1312,52 @@ export const deleteSalesOrder = createServerFn({ method: "POST" })
  * Permanently clears and wipes ALL sales orders from the database.
  * Used for cleaning test data and starting fresh.
  */
-export const clearAllSalesOrders = createServerFn({ method: "POST" }).handler(async () => {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+export const clearAllSalesOrders = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertRole(context, ["admin"]);
 
-  // 1. Delete all order edit tokens
-  try {
-    await (supabaseAdmin as any)
-      .from("order_edit_tokens")
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // 1. Delete all order edit tokens
+    try {
+      await (supabaseAdmin as any)
+        .from("order_edit_tokens")
+        .delete()
+        .neq("id", "00000000-0000-0000-0000-000000000000");
+    } catch (e) {
+      console.warn("Tokens cleanup warning:", e);
+    }
+
+    // 2. Delete all audit logs
+    try {
+      await (supabaseAdmin as any)
+        .from("audit_logs")
+        .delete()
+        .neq("id", "00000000-0000-0000-0000-000000000000");
+    } catch (e) {
+      console.warn("Audit logs cleanup warning:", e);
+    }
+
+    // 3. Delete all order items
+    const { error: itemsError } = await (supabaseAdmin as any)
+      .from("order_items")
       .delete()
       .neq("id", "00000000-0000-0000-0000-000000000000");
-  } catch (e) {
-    console.warn("Tokens cleanup warning:", e);
-  }
+    if (itemsError) {
+      console.error("Failed to delete order items:", itemsError);
+      throw new Error(itemsError.message);
+    }
 
-  // 2. Delete all audit logs
-  try {
-    await (supabaseAdmin as any)
-      .from("audit_logs")
+    // 4. Delete all orders
+    const { error: ordersError } = await (supabaseAdmin as any)
+      .from("orders")
       .delete()
       .neq("id", "00000000-0000-0000-0000-000000000000");
-  } catch (e) {
-    console.warn("Audit logs cleanup warning:", e);
-  }
+    if (ordersError) {
+      console.error("Failed to delete orders:", ordersError);
+      throw new Error(ordersError.message);
+    }
 
-  // 3. Delete all order items
-  const { error: itemsError } = await (supabaseAdmin as any)
-    .from("order_items")
-    .delete()
-    .neq("id", "00000000-0000-0000-0000-000000000000");
-  if (itemsError) {
-    console.error("Failed to delete order items:", itemsError);
-    throw new Error(itemsError.message);
-  }
-
-  // 4. Delete all orders
-  const { error: ordersError } = await (supabaseAdmin as any)
-    .from("orders")
-    .delete()
-    .neq("id", "00000000-0000-0000-0000-000000000000");
-  if (ordersError) {
-    console.error("Failed to delete orders:", ordersError);
-    throw new Error(ordersError.message);
-  }
-
-  return { ok: true, count: 0, message: "تم مسح وتنظيف كافة الطلبات بنجاح ✅" };
-});
+    return { ok: true, count: 0, message: "تم مسح وتنظيف كافة الطلبات بنجاح ✅" };
+  });

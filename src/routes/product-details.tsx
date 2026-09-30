@@ -48,6 +48,7 @@ function ProductDetailsPage() {
   return (
     <main className="min-h-dvh w-full bg-background">
       <ProductDetailsView
+        key={product?.id ?? "no-product"}
         product={product}
         isPending={content.isPending}
         cartCount={count}

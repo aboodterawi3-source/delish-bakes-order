@@ -168,7 +168,7 @@ export function buildConfirmationMessage(input: ConfirmationInput): string {
   }
 
   if (input.cardWriting?.trim()) {
-    lines.push("🎀 الكرت: ", "الكرت بنكتب عليه ", input.cardWriting.trim());
+    lines.push(`🎀 الكرت: الكرت بنكتب عليه ${input.cardWriting.trim()}`);
   }
 
   if (input.notes?.trim() && input.notes !== "—") {

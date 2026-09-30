@@ -9,13 +9,13 @@ import {
   Loader2,
   MessageCircle,
   Package,
-  Phone,
   RefreshCw,
   Search,
   Sparkles,
   TrendingUp,
 } from "lucide-react";
 import { getSocialStaffStats, type SocialStaffStatsResult } from "@/lib/social.functions";
+import { jordanDay } from "@/lib/date-filter";
 
 const statusBadges: Record<string, { label: string; bg: string; text: string }> = {
   new: { label: "جديد", bg: "bg-blue-50 border-blue-200", text: "text-blue-700" },
@@ -46,8 +46,8 @@ export function SocialStaffOrdersStats() {
   );
 
   const now = useMemo(() => new Date(), []);
-  const todayStr = useMemo(() => now.toISOString().slice(0, 10), [now]);
-  const monthPrefix = useMemo(() => now.toISOString().slice(0, 7), [now]);
+  const todayStr = useMemo(() => jordanDay(now), [now]);
+  const monthPrefix = useMemo(() => todayStr.slice(0, 7), [todayStr]);
   const sevenDaysAgo = useMemo(
     () => new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString(),
     [now],
@@ -59,11 +59,11 @@ export function SocialStaffOrdersStats() {
 
     // Time filtering
     if (timeFilter === "today") {
-      list = list.filter((o) => o.created_at?.startsWith(todayStr));
+      list = list.filter((o) => jordanDay(o.created_at) === todayStr);
     } else if (timeFilter === "week") {
       list = list.filter((o) => o.created_at && o.created_at >= sevenDaysAgo);
     } else if (timeFilter === "month") {
-      list = list.filter((o) => o.created_at?.startsWith(monthPrefix));
+      list = list.filter((o) => jordanDay(o.created_at).startsWith(monthPrefix));
     }
 
     // Text search
@@ -71,10 +71,10 @@ export function SocialStaffOrdersStats() {
     if (q) {
       list = list.filter(
         (o) =>
-          o.order_number.toLowerCase().includes(q) ||
-          o.customer_name.toLowerCase().includes(q) ||
-          o.customer_phone.includes(q) ||
-          (o.order_name && o.order_name.toLowerCase().includes(q)),
+          (o.order_number ?? "").toLowerCase().includes(q) ||
+          (o.customer_name ?? "").toLowerCase().includes(q) ||
+          (o.customer_phone ?? "").includes(q) ||
+          (o.order_name ?? "").toLowerCase().includes(q),
       );
     }
 

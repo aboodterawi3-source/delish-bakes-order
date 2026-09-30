@@ -1288,8 +1288,17 @@ export function SocialOrderEntryForm({
                   </div>
                 ) : (
                   <div
+                    role="button"
+                    tabIndex={0}
+                    aria-label="اختيار أو تصوير صورة حوالة كليك"
                     onClick={() => {
                       if (!uploadingReceipt) receiptFileRef.current?.click();
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        if (!uploadingReceipt) receiptFileRef.current?.click();
+                      }
                     }}
                     className={`group relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-4 text-center cursor-pointer transition-all ${
                       uploadingReceipt

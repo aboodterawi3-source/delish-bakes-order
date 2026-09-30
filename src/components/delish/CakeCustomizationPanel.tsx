@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import {
   AlertCircle,
   Check,
@@ -227,6 +227,19 @@ export function CakeCustomizationPanel({
   const [balloonMode, setBalloonMode] = useState<"none" | "yes">(value.balloons ? "yes" : "none");
   const [topperMode, setTopperMode] = useState<"none" | "yes">(value.topper ? "yes" : "none");
   const [photoMode, setPhotoMode] = useState<"none" | "yes">(value.designImageUrl ? "yes" : "none");
+
+  // Keep the three yes/no switches in step with the values the parent owns, so a
+  // reset, a prefilled order or a product switch cannot leave a confirmed "no
+  // balloons" line sitting next to balloons the customer asked for.
+  useEffect(() => {
+    setBalloonMode(value.balloons ? "yes" : "none");
+  }, [value.balloons]);
+  useEffect(() => {
+    setTopperMode(value.topper ? "yes" : "none");
+  }, [value.topper]);
+  useEffect(() => {
+    setPhotoMode(value.designImageUrl ? "yes" : "none");
+  }, [value.designImageUrl]);
 
   const handleFile = async (file: File | undefined) => {
     if (!file) return;
@@ -537,6 +550,7 @@ export function CakeCustomizationPanel({
                     }`}
                   >
                     <span
+                      aria-hidden="true"
                       className="h-3 w-3 rounded-full border border-black/10 shrink-0"
                       style={{ backgroundColor: color.swatch }}
                     />
@@ -569,6 +583,7 @@ export function CakeCustomizationPanel({
                       />
                       <button
                         type="button"
+                        aria-label={`حذف ${pick.label}`}
                         onClick={() =>
                           set(
                             "balloonPicks",

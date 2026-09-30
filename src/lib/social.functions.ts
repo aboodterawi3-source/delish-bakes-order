@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertRole, type StaffRoleName } from "@/lib/role-guard";
 import { feeForArea } from "@/lib/delivery-zones";
+import { jordanDay } from "@/lib/date-filter";
 
 const SOCIAL_ROLES: StaffRoleName[] = ["social", "sales", "admin"];
 
@@ -167,7 +168,14 @@ export const createSocialOrder = createServerFn({ method: "POST" })
         final_photo_requested: Boolean(data.final_photo_requested),
         design_image_url: designImage || receiptImage,
         modifications: receiptImage
-          ? [{ field: "cliq_receipt", value: receiptImage, time: new Date().toISOString() }]
+          ? [
+              {
+                field: "حوالة كليك",
+                oldValue: "",
+                newValue: "صورة الحوالة مرفقة",
+                updatedAt: new Date().toISOString(),
+              },
+            ]
           : [],
         subtotal,
         delivery_fee: deliveryFee,
@@ -305,19 +313,25 @@ export const getSocialStaffStats = createServerFn({ method: "GET" })
     const myOrders = myOrdersRaw ?? [];
 
     const now = new Date();
-    const todayStr = now.toISOString().slice(0, 10);
+    const todayStr = jordanDay(now);
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
-    const monthPrefix = now.toISOString().slice(0, 7);
+    const monthPrefix = todayStr.slice(0, 7);
 
-    const myTodayOrders = myOrders.filter((o) => o.created_at && o.created_at.startsWith(todayStr));
+    // Day and month boundaries are Jordan dates: created_at is stored in UTC, so
+    // comparing the raw ISO string would mis-file evening orders under tomorrow.
+    const myTodayOrders = myOrders.filter((o) => jordanDay(o.created_at) === todayStr);
     const myWeekOrders = myOrders.filter((o) => o.created_at && o.created_at >= sevenDaysAgo);
-    const myMonthOrders = myOrders.filter(
-      (o) => o.created_at && o.created_at.startsWith(monthPrefix),
-    );
+    const myMonthOrders = myOrders.filter((o) => jordanDay(o.created_at).startsWith(monthPrefix));
 
-    const myTodayTotal = myTodayOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
-    const myMonthTotal = myMonthOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
-    const myAllTimeTotal = myOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+    // Cancelled orders are not revenue, so they never count towards the money totals.
+    const sumSales = (rows: typeof myOrders) =>
+      rows
+        .filter((o) => o.status !== "cancelled")
+        .reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+
+    const myTodayTotal = sumSales(myTodayOrders);
+    const myMonthTotal = sumSales(myMonthOrders);
+    const myAllTimeTotal = sumSales(myOrders);
 
     return {
       currentStaff: {

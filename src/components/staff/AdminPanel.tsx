@@ -1577,7 +1577,7 @@ function StoreOperationsPanel() {
   const handleZoneChange = (index: number, field: keyof DeliveryZone, value: any) => {
     setLocalZones((prev) => {
       const updated = [...prev];
-      updated[index] = { ...updated[index], [field]: value };
+      updated[index] = { ...updated[index], [field]: value } as DeliveryZone;
       return updated;
     });
   };
@@ -1594,7 +1594,6 @@ function StoreOperationsPanel() {
       toast.success("تمت استعادة أسعار التوصيل الافتراضية 🔄");
     }
   };
-
 
   const handleSaveSettings = () => {
     toast.success("تم حفظ بيانات الفرع الرئيسي بنجاح 🌸");

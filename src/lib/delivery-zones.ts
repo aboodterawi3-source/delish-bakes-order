@@ -94,20 +94,15 @@ export const DELIVERY_AREAS = Object.keys(AREA_FEES);
 
 const normalise = (value: string) => value.trim().replace(/\s+/g, " ");
 
-/** Returns the fee for an area, or null when the area is not one we deliver to. */
+/**
+ * Returns the fee for an area, or null when the area is not one we deliver to.
+ *
+ * Always resolved from the trusted table in this module, so the browser and the
+ * server agree on the fee and a tampered request cannot lower the delivery
+ * charge. The admin zone editor keeps its own copy only for its editing UI.
+ */
 export function feeForArea(area: string | null | undefined): number | null {
   if (!area) return null;
-  // Fallback to static AREA_FEES only during initial SSR/build when store might not be ready
-  const activeMap = typeof window !== "undefined" ? undefined : AREA_FEES;
-
-  let feesMap = activeMap;
-  try {
-    const { getActiveAreaFees } = require("@/hooks/use-delivery-zones");
-    feesMap = getActiveAreaFees();
-  } catch (e) {
-    feesMap = AREA_FEES;
-  }
-
-  const fee = feesMap[normalise(area)];
+  const fee = AREA_FEES[normalise(area)];
   return fee === undefined ? null : fee;
 }

@@ -22,6 +22,24 @@ export const isoDay = (offsetDays = 0): string => {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 };
 
+/**
+ * Jordan calendar date (YYYY-MM-DD) of an instant, in Jordan time — a fixed
+ * UTC+3 offset with no DST. `created_at` is stored in UTC, so slicing the raw
+ * ISO string would file orders made after 21:00 local under the next day.
+ */
+export const jordanDay = (value: string | Date | null | undefined): string => {
+  if (!value) return "";
+  const date = typeof value === "string" ? new Date(value) : value;
+  if (Number.isNaN(date.getTime())) return "";
+  const shifted = new Date(date.getTime() + 3 * 60 * 60 * 1000);
+  return `${shifted.getUTCFullYear()}-${String(shifted.getUTCMonth() + 1).padStart(2, "0")}-${String(
+    shifted.getUTCDate(),
+  ).padStart(2, "0")}`;
+};
+
+/** Today's calendar date in Jordan (YYYY-MM-DD). */
+export const jordanToday = (): string => jordanDay(new Date());
+
 export type CustomRange = { from: string; to: string };
 
 /** True when a requested date (YYYY-MM-DD) belongs to the chosen filter. */
