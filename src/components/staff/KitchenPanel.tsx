@@ -696,11 +696,11 @@ const KdsCleanCard = memo(function KdsCleanCard({
         <button
           type="button"
           onClick={() => onOpenDetails(order)}
-          title="عرض تفاصيل ومواصفات الطلب كاملة بشكل سلس"
+          title="عرض تفاصيل ومواصفات الطلب كاملة"
           className="w-full min-h-[44px] inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-950 dark:text-amber-100 border border-amber-500/30 text-xs font-black shadow-2xs active:scale-[0.98] transition cursor-pointer"
         >
           <Eye className="h-4 w-4 text-amber-700 dark:text-amber-300" />
-          <span>📋 فتح صفحة الطلب (عرض سلس مثل مسج التثبيت)</span>
+          <span>📋 فتح صفحة الطلب</span>
         </button>
 
         <button
