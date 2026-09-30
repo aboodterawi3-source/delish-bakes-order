@@ -132,7 +132,11 @@ const AUDIT_ACTION_LABEL: Record<string, { ar: string; class: string }> = {
 
 /** Builds a UTF-8 CSV (Excel friendly) and triggers a download. */
 function downloadCsv(name: string, headers: string[], rows: (string | number)[][]) {
-  const escape = (value: string | number) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+  const escape = (value: string | number) => {
+    let text = String(value ?? "");
+    if (typeof value === "string" && /^[=+\-@\t\r]/.test(text)) text = `'${text}`;
+    return `"${text.replace(/"/g, '""')}"`;
+  };
   const body = [headers, ...rows].map((row) => row.map(escape).join(",")).join("\r\n");
   const url = URL.createObjectURL(new Blob([`\uFEFF${body}`], { type: "text/csv;charset=utf-8;" }));
   const link = document.createElement("a");

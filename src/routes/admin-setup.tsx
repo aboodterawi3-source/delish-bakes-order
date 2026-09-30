@@ -33,6 +33,7 @@ function AdminSetupPage() {
   const [needsSetup, setNeedsSetup] = useState<boolean | null>(null);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [setupToken, setSetupToken] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,7 +46,7 @@ function AdminSetupPage() {
     setBusy(true);
     setError(null);
     try {
-      await create({ data: { username, password } });
+      await create({ data: { username, password, setupToken } });
       await supabase.auth.signInWithPassword({ email: usernameToEmail(username), password });
       void navigate({ to: "/staff", search: { tab: "admin" as const }, replace: true });
     } catch (caught) {
@@ -115,6 +116,17 @@ function AdminSetupPage() {
                 autoComplete="new-password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
+                className="mt-1 min-h-12 w-full rounded-xl border border-input bg-background px-3 text-sm"
+              />
+            </label>
+            <label className="block text-sm font-bold text-foreground">
+              رمز التهيئة · Setup token
+              <input
+                type="password"
+                required
+                autoComplete="off"
+                value={setupToken}
+                onChange={(event) => setSetupToken(event.target.value)}
                 className="mt-1 min-h-12 w-full rounded-xl border border-input bg-background px-3 text-sm"
               />
             </label>
