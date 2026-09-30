@@ -233,6 +233,15 @@ export const getKitchenOrders = createServerFn({ method: "GET" })
       let mods =
         modsMap.get(order.id) ?? (Array.isArray(order.modifications) ? order.modifications : []);
 
+      // The modification history embeds raw phone numbers (customer, sender,
+      // recipient), so it gets the same masking as every other kitchen text.
+      mods = mods.map((mod: OrderModification) => ({
+        ...mod,
+        field: stripPhones(mod.field) ?? mod.field,
+        oldValue: stripPhones(mod.oldValue) ?? mod.oldValue,
+        newValue: stripPhones(mod.newValue) ?? mod.newValue,
+      }));
+
       // If modifications array is still empty but order has edit timestamps, synthesize explicit diff entries
       if (mods.length === 0) {
         if (order.schedule_updated_at) {

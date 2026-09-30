@@ -187,6 +187,7 @@ export const setStaffAuthorization = createServerFn({ method: "POST" })
 export const listAuditLogs = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<AuditEntry[]> => {
+    await assertRole(context as unknown as Ctx, ["admin"]);
     const { data, error } = await context.supabase
       .from("audit_logs")
       .select(

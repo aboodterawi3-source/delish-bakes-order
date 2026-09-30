@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import {
   CheckCircle2,
@@ -17,10 +17,6 @@ import { DelishLogo } from "@/components/delish/DelishLogo";
 import { BackgroundCurves } from "@/components/delish/BackgroundCurves";
 
 export const Route = createFileRoute("/clean-orders")({
-  validateSearch: (search) => {
-    const raw = (search as { auto?: unknown }).auto;
-    return { auto: raw === "true" || raw === true };
-  },
   head: () => ({
     meta: [
       { title: "تنظيف كافة الطلبات | Delish Bakes" },
@@ -32,7 +28,6 @@ export const Route = createFileRoute("/clean-orders")({
 });
 
 function CleanOrdersPage() {
-  const search = Route.useSearch();
   const clearFn = useServerFn(clearAllSalesOrders);
 
   const [busy, setBusy] = useState(false);
@@ -54,12 +49,6 @@ function CleanOrdersPage() {
       setBusy(false);
     }
   };
-
-  useEffect(() => {
-    if (search.auto && !done && !busy) {
-      void handleWipe();
-    }
-  }, [search.auto]);
 
   return (
     <main
