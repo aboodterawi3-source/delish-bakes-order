@@ -14,7 +14,10 @@ export const Route = createFileRoute("/edit-order")({
   head: () => ({
     meta: [
       { title: "تعديل موعد طلبك | مخبز ديليش" },
-      { name: "description", content: "عدّل موعد استلام أو توصيل طلبك من مخبز ديليش عبر رابط آمن لمرة واحدة." },
+      {
+        name: "description",
+        content: "عدّل موعد استلام أو توصيل طلبك من مخبز ديليش عبر رابط آمن لمرة واحدة.",
+      },
       { name: "robots", content: "noindex, nofollow" },
       { property: "og:title", content: "تعديل موعد طلبك | مخبز ديليش" },
       { property: "og:description", content: "رابط آمن لتعديل موعد طلبك من مخبز ديليش." },
@@ -55,11 +58,14 @@ function EditOrderPage() {
   }, [orderQuery.data]);
 
   const saveMutation = useMutation({
-    mutationFn: () => submitFn({ data: { token: token ?? "", requested_date: date, requested_time: time } }),
+    mutationFn: () =>
+      submitFn({ data: { token: token ?? "", requested_date: date, requested_time: time } }),
   });
 
   // expiration handling
-  const expiresAt = orderQuery.data?.expires_at ? new Date(orderQuery.data.expires_at).getTime() : null;
+  const expiresAt = orderQuery.data?.expires_at
+    ? new Date(orderQuery.data.expires_at).getTime()
+    : null;
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 30_000);
@@ -93,9 +99,14 @@ function EditOrderPage() {
           {orderQuery.data?.order && (
             <header className="text-center mt-4">
               <h1 className="font-display text-xl font-bold text-[#3E2723]">
-                طلب <span dir="ltr">{orderLabel(orderQuery.data.order.order_number, orderQuery.data.order.staff_code)}</span>
+                طلب{" "}
+                <span dir="ltr">
+                  {orderLabel(orderQuery.data.order.order_number, orderQuery.data.order.staff_code)}
+                </span>
               </h1>
-              <p className="mt-1 text-sm text-[#7A6458]">أهلاً {orderQuery.data.order.customer_name}</p>
+              <p className="mt-1 text-sm text-[#7A6458]">
+                أهلاً {orderQuery.data.order.customer_name}
+              </p>
             </header>
           )}
         </div>
@@ -120,7 +131,8 @@ function EditOrderPage() {
           )}
           {linkExpired && (
             <p className="rounded-2xl bg-amber-100 p-4 text-sm font-bold text-amber-800">
-              انتهت صلاحية هذا الرابط (صالح لمدة ساعة واحدة فقط). تواصل مع فريق ديليش للحصول على رابط جديد.
+              انتهت صلاحية هذا الرابط (صالح لمدة ساعة واحدة فقط). تواصل مع فريق ديليش للحصول على
+              رابط جديد.
             </p>
           )}
           {success && (
@@ -178,13 +190,17 @@ function EditOrderPage() {
                   className="min-h-12 w-full rounded-full bg-[#8B4513] px-6 text-sm font-bold text-white shadow-sm transition-transform hover:scale-[1.02] active:scale-95 disabled:opacity-60"
                 >
                   {saveMutation.isPending ? (
-                    <> <Loader2 className="inline h-4 w-4 animate-spin mr-2" /> جارٍ الحفظ…</>
+                    <>
+                      {" "}
+                      <Loader2 className="inline h-4 w-4 animate-spin mr-2" /> جارٍ الحفظ…
+                    </>
                   ) : (
                     "حفظ التعديلات"
                   )}
                 </button>
                 <p className="text-center text-[11px] text-[#7A6458]">
-                  هذا الرابط يعمل لمرة واحدة وتنتهي صلاحيته بعد ساعة{minutesLeft > 0 ? ` — يتبقّى ${minutesLeft} دقيقة` : ""}.
+                  هذا الرابط يعمل لمرة واحدة وتنتهي صلاحيته بعد ساعة
+                  {minutesLeft > 0 ? ` — يتبقّى ${minutesLeft} دقيقة` : ""}.
                 </p>
               </div>
             </>

@@ -22,5 +22,7 @@ export function usernameToEmail(raw: string): string {
 /** Turns an internal address back into the name staff typed. */
 export function emailToUsername(email: string | null | undefined): string {
   if (!email) return "—";
-  return email.endsWith(`@${STAFF_EMAIL_DOMAIN}`) ? email.slice(0, -`@${STAFF_EMAIL_DOMAIN}`.length) : email;
+  return email.endsWith(`@${STAFF_EMAIL_DOMAIN}`)
+    ? email.slice(0, -`@${STAFF_EMAIL_DOMAIN}`.length)
+    : email;
 }

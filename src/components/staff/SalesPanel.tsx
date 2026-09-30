@@ -43,9 +43,17 @@ export function SalesPanel() {
     return (
       <main dir="rtl" className="grid min-h-dvh place-items-center bg-background px-4 text-center">
         <div className="max-w-sm space-y-3">
-          <h1 className="font-display text-2xl font-bold text-foreground">لا تملك صلاحية المبيعات</h1>
-          <p className="text-sm text-muted-foreground">This account has no sales access. Ask an admin to grant the sales role.</p>
-          <button type="button" onClick={signOut} className="min-h-12 rounded-full bg-primary px-6 text-sm font-bold text-primary-foreground">
+          <h1 className="font-display text-2xl font-bold text-foreground">
+            لا تملك صلاحية المبيعات
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            This account has no sales access. Ask an admin to grant the sales role.
+          </p>
+          <button
+            type="button"
+            onClick={signOut}
+            className="min-h-12 rounded-full bg-primary px-6 text-sm font-bold text-primary-foreground"
+          >
             تسجيل الخروج · Sign out
           </button>
         </div>
@@ -61,7 +69,9 @@ export function SalesPanel() {
             <h1 className="truncate font-display text-lg font-bold text-foreground sm:text-xl">
               واجهة المبيعات <span className="delish-wordmark">Delish</span>
             </h1>
-            <p className="text-xs text-muted-foreground">Sales &amp; POS Desk · نقطة البيع وحجز الطلبات</p>
+            <p className="text-xs text-muted-foreground">
+              Sales &amp; POS Desk · نقطة البيع وحجز الطلبات
+            </p>
           </div>
           <button
             type="button"
@@ -75,14 +85,17 @@ export function SalesPanel() {
       </header>
 
       <div className="mx-auto w-full max-w-7xl min-w-0 px-4 py-5">
-        <nav className="no-scrollbar mb-5 flex max-w-full gap-2 overflow-x-auto" aria-label="أقسام واجهة المبيعات">
-          {([
+        <nav
+          className="no-scrollbar mb-5 flex max-w-full gap-2 overflow-x-auto"
+          aria-label="أقسام واجهة المبيعات"
+        >
+          {[
             { value: "pos" as const, ar: "طلب جديد", en: "New Order" },
             { value: "orders" as const, ar: "جدول الطلبات", en: "Orders" },
             { value: "modifications" as const, ar: "تعديلات", en: "Modifications" },
             { value: "messages" as const, ar: "رسائل العملاء", en: "Messages" },
             { value: "site" as const, ar: "إدارة الموقع", en: "Website" },
-          ]).map((item) => (
+          ].map((item) => (
             <button
               key={item.value}
               type="button"

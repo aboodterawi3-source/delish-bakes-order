@@ -127,7 +127,10 @@ function AuthPage() {
     event.preventDefault();
     setBusy(true);
     setError(null);
-    const { data, error: signInError } = await supabase.auth.signInWithPassword({ email: usernameToEmail(username), password });
+    const { data, error: signInError } = await supabase.auth.signInWithPassword({
+      email: usernameToEmail(username),
+      password,
+    });
     setBusy(false);
     if (signInError || !data.user) {
       setError("بيانات الدخول غير صحيحة · Invalid name or password");
@@ -137,7 +140,10 @@ function AuthPage() {
   };
 
   return (
-    <main dir="rtl" className="relative grid min-h-dvh place-items-center overflow-hidden bg-[#F9FBFC] px-4 py-10">
+    <main
+      dir="rtl"
+      className="relative grid min-h-dvh place-items-center overflow-hidden bg-[#F9FBFC] px-4 py-10"
+    >
       <BackgroundCurves />
       <div className="relative z-10 w-full max-w-sm rounded-3xl border border-[#B8860B]/20 bg-white p-7 shadow-[var(--shadow-soft)]">
         <div className="flex flex-col items-center text-center">
@@ -183,7 +189,10 @@ function AuthPage() {
           </label>
 
           {error && (
-            <p role="alert" className="rounded-xl bg-destructive/10 p-3 text-xs font-bold text-destructive">
+            <p
+              role="alert"
+              className="rounded-xl bg-destructive/10 p-3 text-xs font-bold text-destructive"
+            >
               {error}
             </p>
           )}

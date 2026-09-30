@@ -43,7 +43,11 @@ export const getMyPermissions = createServerFn({ method: "GET" })
   .handler(
     async ({
       context,
-    }): Promise<{ permittedProductIds: string[]; deniedProductIds: string[]; isAdmin: boolean }> => {
+    }): Promise<{
+      permittedProductIds: string[];
+      deniedProductIds: string[];
+      isAdmin: boolean;
+    }> => {
       const ctx = context as unknown as Ctx;
       const roles = await getRoles(ctx);
       const isAdmin = roles.includes("admin");

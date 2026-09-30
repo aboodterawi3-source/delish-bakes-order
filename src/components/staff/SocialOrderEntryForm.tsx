@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
   AlertTriangle,
+  Camera,
   Check,
   ClipboardCopy,
   Gift,
+  Image as ImageIcon,
   Instagram,
   Loader2,
   MessageCircle,
@@ -14,25 +16,34 @@ import {
   Send,
   Sparkles,
   Store,
+  Trash2,
+  UploadCloud,
   User,
   Utensils,
   Zap,
 } from "lucide-react";
-import {
-  createSocialOrder,
-  type SocialOrderInput,
-} from "@/lib/social.functions";
+import { createSocialOrder, type SocialOrderInput } from "@/lib/social.functions";
 import { DELIVERY_ZONES, OTHER_GOVERNORATES_AREA, feeForArea } from "@/lib/delivery-zones";
-import { buildConfirmationMessage, remainingBalance } from "@/lib/confirmation-message";
+import {
+  buildConfirmationMessage,
+  buildModificationMessage,
+  formatArabicDate,
+  formatArabicTime,
+  remainingBalance,
+} from "@/lib/confirmation-message";
 import { useStorefrontContent } from "@/hooks/use-storefront-content";
 import type { StorefrontProduct, SizePrice } from "@/lib/storefront-content";
 import {
   CakeCustomizationPanel,
   customizationSummary,
   emptyCustomization,
+  type CakeCustomizationErrors,
   type Customization,
 } from "@/components/delish/CakeCustomizationPanel";
 import { useCliqAccounts } from "@/lib/cliq-config";
+import { convertToWebp } from "@/lib/image-webp";
+import { IMAGE_ACCEPT } from "@/lib/image-validation";
+import { uploadDesignImage } from "@/lib/design-upload.functions";
 
 export type OrderSource = "instagram" | "whatsapp" | "messenger" | "store";
 export type CliqAccount = "mahmoud" | "shop" | "staff";
@@ -76,7 +87,8 @@ const emptyForm = {
 
 /** Official Delish store WhatsApp number (international format, no "+"). */
 const WHATSAPP_NUMBER = "962779179995";
-const whatsappUrl = (text: string) => `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`;
+const whatsappUrl = (text: string) =>
+  `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`;
 
 const CHANNEL_CONFIG: Record<OrderSource, { ar: string; color: string; icon: typeof Instagram }> = {
   instagram: {
@@ -112,16 +124,47 @@ export interface SocialOrderEntryFormProps {
   title?: string;
 }
 
-export function SocialOrderEntryForm({ onSuccessOrder, title = "طلب جديد · New order" }: SocialOrderEntryFormProps) {
+export function SocialOrderEntryForm({
+  onSuccessOrder,
+  title = "طلب جديد · New order",
+}: SocialOrderEntryFormProps) {
   const createFn = useServerFn(createSocialOrder);
   const storefront = useStorefrontContent();
 
   const [form, setForm] = useState(emptyForm);
   const [customization, setCustomization] = useState<Customization>(emptyCustomization);
-  const [copied, setCopied] = useState<"summary" | "confirmation" | null>(null);
+  const [copied, setCopied] = useState<"summary" | "confirmation" | "modification" | null>(null);
   const [done, setDone] = useState<string | null>(null);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
+  const [previewTab, setPreviewTab] = useState<"confirmation" | "modification">("confirmation");
   const [error, setError] = useState<string | null>(null);
+  const [customErrors, setCustomErrors] = useState<CakeCustomizationErrors>({});
+
+  // CliQ Receipt Upload state
+  const uploadImageFn = useServerFn(uploadDesignImage);
+  const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
+  const [uploadingReceipt, setUploadingReceipt] = useState(false);
+  const [receiptError, setReceiptError] = useState<string | null>(null);
+  const receiptFileRef = useRef<HTMLInputElement>(null);
+
+  const handleReceiptUpload = async (file: File | undefined) => {
+    if (!file) return;
+    setReceiptError(null);
+    setUploadingReceipt(true);
+    try {
+      const converted = await convertToWebp(file);
+      const saved = await uploadImageFn({ data: { data_url: converted.dataUrl } });
+      setReceiptUrl(saved.url);
+      setError(null);
+    } catch (err) {
+      setReceiptError(
+        err instanceof Error ? err.message : "تعذّر رفع صورة الحوالة · Upload failed",
+      );
+    } finally {
+      setUploadingReceipt(false);
+      if (receiptFileRef.current) receiptFileRef.current.value = "";
+    }
+  };
 
   // Storefront Menu picker state
   const [showMenuPicker, setShowMenuPicker] = useState(true);
@@ -165,15 +208,18 @@ export function SocialOrderEntryForm({ onSuccessOrder, title = "طلب جديد 
     }
   };
 
-  const set = useCallback(<K extends keyof typeof emptyForm>(key: K, value: (typeof emptyForm)[K]) => {
-    setForm((current) => ({ ...current, [key]: value }));
-    setCopied(null);
-  }, []);
+  const set = useCallback(
+    <K extends keyof typeof emptyForm>(key: K, value: (typeof emptyForm)[K]) => {
+      setForm((current) => ({ ...current, [key]: value }));
+      setCopied(null);
+    },
+    [],
+  );
 
   const extras = useMemo(() => customizationSummary(customization), [customization]);
 
   const areaFee = feeForArea(form.area);
-  const deliveryFee = form.method === "delivery" ? areaFee ?? 0 : 0;
+  const deliveryFee = form.method === "delivery" ? (areaFee ?? 0) : 0;
 
   const { accounts: cliqAccounts } = useCliqAccounts();
 
@@ -183,10 +229,10 @@ export function SocialOrderEntryForm({ onSuccessOrder, title = "طلب جديد 
     const label = currentAcc
       ? currentAcc.label
       : form.cliq_account === "shop"
-      ? "كليك محل"
-      : form.cliq_account === "staff"
-      ? "كليك موظفة معينة"
-      : "كليك محمود";
+        ? "كليك محل"
+        : form.cliq_account === "staff"
+          ? "كليك موظفة معينة"
+          : "كليك محمود";
     if (form.cliq_account === "staff") {
       return form.cliq_staff_name.trim() ? `${label}: ${form.cliq_staff_name.trim()}` : label;
     }
@@ -205,7 +251,8 @@ export function SocialOrderEntryForm({ onSuccessOrder, title = "طلب جديد 
   // Live financial calculator
   const unitPrice = Math.max(Number(form.unit_price) || 0, 0);
   const originalPrice = unitPrice * form.quantity;
-  const paidAmount = form.payment_option === "cash" ? 0 : Math.max(Number(form.deposit_paid) || 0, 0);
+  const paidAmount =
+    form.payment_option === "cash" ? 0 : Math.max(Number(form.deposit_paid) || 0, 0);
   const grandTotal = originalPrice + deliveryFee;
   const remaining = remainingBalance(grandTotal, paidAmount);
 
@@ -222,9 +269,7 @@ export function SocialOrderEntryForm({ onSuccessOrder, title = "طلب جديد 
     ? form.sender_phone.trim() || form.customer_phone.trim()
     : form.customer_phone.trim();
 
-  const effectiveRecipientPhone = form.is_gift
-    ? form.recipient_phone.trim()
-    : "";
+  const effectiveRecipientPhone = form.is_gift ? form.recipient_phone.trim() : "";
 
   const effectiveOrderName = form.order_name.trim()
     ? form.order_name.trim()
@@ -240,6 +285,11 @@ export function SocialOrderEntryForm({ onSuccessOrder, title = "طلب جديد 
         customerName: effectiveCustomerName,
         customerPhone: effectiveCustomerPhone,
         when: `${form.requested_date} ${form.requested_time}`.trim(),
+        date: form.requested_date,
+        time: form.requested_time,
+        address: form.address,
+        area: form.area,
+        filling: customization.filling,
         fulfilment:
           form.method === "delivery"
             ? `توصيل · ${form.area || "—"}${form.address.trim() ? ` — ${form.address.trim()}` : ""}`
@@ -274,6 +324,7 @@ export function SocialOrderEntryForm({ onSuccessOrder, title = "طلب جديد 
       form.design_notes,
       customization.topperText,
       customization.notes,
+      customization.filling,
       form.card_note,
       form.is_urgent,
       originalPrice,
@@ -294,6 +345,53 @@ export function SocialOrderEntryForm({ onSuccessOrder, title = "طلب جديد 
     ? savedMessage
     : confirmationTemplate.replace("{{ORDER_NUMBER}}", "(يُضاف تلقائياً عند الإرسال)");
 
+  // Official modification message
+  const modificationTemplate = useMemo(
+    () =>
+      buildModificationMessage({
+        orderNumber: "{{ORDER_NUMBER}}",
+        time: `${formatArabicDate(form.requested_date)} الساعة ${formatArabicTime(form.requested_time)}`.trim(),
+        fulfilment:
+          form.method === "delivery" ? form.area || form.address || "توصيل" : "استلام من المحل",
+        orderDetails: form.order_details.trim() || "نفس البكج يلي بالصوره",
+        designNotes: [
+          ...(customization.filling ? [`حشوة الكيكة: ${customization.filling}`] : []),
+          ...(form.design_notes ? [form.design_notes] : []),
+          ...(customization.notes ? [customization.notes] : []),
+          ...(form.card_note ? [`الكرت: ${form.card_note}`] : []),
+        ],
+        modifications: [
+          ...(form.method === "delivery" && form.area ? [`توصيل ${form.area}`] : []),
+          ...(customization.filling ? [`حشوة ${customization.filling}`] : []),
+          ...(customization.numberCandles && customization.candleDigits
+            ? [`شمع ${customization.candleDigits}`]
+            : []),
+          ...(customization.topper && customization.topperText
+            ? [`توبر: ${customization.topperText}`]
+            : []),
+        ],
+      }),
+    [
+      form.requested_date,
+      form.requested_time,
+      form.method,
+      form.area,
+      form.address,
+      form.order_details,
+      form.design_notes,
+      form.card_note,
+      customization,
+    ],
+  );
+
+  const modificationPreview = modificationTemplate.replace(
+    "{{ORDER_NUMBER}}",
+    done || "(يُضاف تلقائياً عند الإرسال)",
+  );
+
+  const activePreviewText =
+    previewTab === "confirmation" ? confirmationPreview : modificationPreview;
+
   const submit = useMutation({
     mutationFn: (input: SocialOrderInput) => createFn({ data: input }),
     onSuccess: (order) => {
@@ -307,43 +405,49 @@ export function SocialOrderEntryForm({ onSuccessOrder, title = "طلب جديد 
         requested_date: prev.requested_date,
       }));
       setCustomization(emptyCustomization);
+      setCustomErrors({});
+      setReceiptUrl(null);
+      setReceiptError(null);
     },
     onError: (mutationError: Error) => setError(mutationError.message),
   });
 
-  const copy = useCallback(async (text: string, which: "summary" | "confirmation") => {
-    const legacyCopy = () => {
-      const area = document.createElement("textarea");
-      area.value = text;
-      area.setAttribute("readonly", "");
-      area.style.position = "fixed";
-      area.style.insetInlineStart = "-9999px";
-      document.body.appendChild(area);
-      area.select();
-      const ok = document.execCommand("copy");
-      document.body.removeChild(area);
-      if (!ok) throw new Error("copy failed");
-    };
-    try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(text);
-      } else {
-        legacyCopy();
-      }
-      setCopied(which);
-      setError(null);
-      window.setTimeout(() => setCopied(null), 2500);
-    } catch {
+  const copy = useCallback(
+    async (text: string, which: "summary" | "confirmation" | "modification") => {
+      const legacyCopy = () => {
+        const area = document.createElement("textarea");
+        area.value = text;
+        area.setAttribute("readonly", "");
+        area.style.position = "fixed";
+        area.style.insetInlineStart = "-9999px";
+        document.body.appendChild(area);
+        area.select();
+        const ok = document.execCommand("copy");
+        document.body.removeChild(area);
+        if (!ok) throw new Error("copy failed");
+      };
       try {
-        legacyCopy();
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          legacyCopy();
+        }
         setCopied(which);
         setError(null);
         window.setTimeout(() => setCopied(null), 2500);
       } catch {
-        setError("تعذّر النسخ · Copy failed — حدّد النص من المعاينة وانسخه يدوياً");
+        try {
+          legacyCopy();
+          setCopied(which);
+          setError(null);
+          window.setTimeout(() => setCopied(null), 2500);
+        } catch {
+          setError("تعذّر النسخ · Copy failed — حدّد النص من المعاينة وانسخه يدوياً");
+        }
       }
-    }
-  }, []);
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!done) return;
@@ -354,8 +458,59 @@ export function SocialOrderEntryForm({ onSuccessOrder, title = "طلب جديد 
   const onSubmit = (event: React.FormEvent) => {
     event.preventDefault();
 
+    // Validation for Mandatory Customization Fields
+    const newErrors: CakeCustomizationErrors = {};
+    if (!customization.filling.trim()) {
+      newErrors.filling = "⚠️ يرجى كتابة أو اختيار نوع الحشوة للكيكة (خانة إجبارية)";
+    }
+    if (customization.numberCandles && !customization.candleDigits.trim()) {
+      newErrors.candles = "⚠️ يرجى كتابة أرقام الشموع المطلوبة أو اختيار 'بدون شموع'";
+    }
+    if (
+      customization.balloons &&
+      customization.balloonPicks.length === 0 &&
+      !customization.balloonNotes.trim()
+    ) {
+      newErrors.balloons =
+        "⚠️ يرجى اختيار ألوان البالونات أو كتابة تفاصيلها أو اختيار 'بدون بالونات'";
+    }
+    if (customization.topper && !customization.topperText.trim()) {
+      newErrors.topper = "⚠️ يرجى كتابة الاسم أو العبارة المطلوبة على التوبر أو اختيار 'بدون توبر'";
+    }
+    if (!customization.notes.trim()) {
+      newErrors.notes =
+        "⚠️ يرجى كتابة ملاحظات الكيكة أو الضغط على زر 'لا توجد ملاحظات إضافية' (خانة إجبارية)";
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setCustomErrors(newErrors);
+      setError(
+        "⚠️ يرجى إكمال خانات تخصيص الكيكة الإجبارية المحددة باللون الأحمر أدناه لتأكيد الطلب.",
+      );
+      const firstKey = Object.keys(newErrors)[0];
+      const targetElem = document.getElementById(`custom-field-${firstKey}`);
+      if (targetElem) {
+        targetElem.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      return;
+    }
+    setCustomErrors({});
+
+    // Validation for Mandatory CliQ Receipt Photo
+    if (form.payment_option !== "cash" && !receiptUrl) {
+      setError(
+        "⚠️ يرجى تحميل صورة إشعار أو حوالة كليك لإتمام الطلب (خانة إجبارية عند اختيار كليك).",
+      );
+      const targetElem = document.getElementById("cliq-receipt-upload-section");
+      if (targetElem) {
+        targetElem.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      return;
+    }
+
     // Staff notes enriched with channel & cliq details
     const cliqTag = form.payment_option !== "cash" ? `[كليك: ${cliqAccountText}]` : "";
+    const cliqReceiptTag = receiptUrl ? `[صورة الحوالة: ${receiptUrl}]` : "";
     const sourceTag = `[المصدر: ${CHANNEL_CONFIG[form.order_source].ar}]`;
     const giftTag = form.is_gift
       ? `[طلب هدية - المرسل: ${form.sender_name || effectiveCustomerName} (${effectiveSenderPhone}) / المستلم: ${form.recipient_name || "—"} (${effectiveRecipientPhone || "—"})]`
@@ -364,6 +519,7 @@ export function SocialOrderEntryForm({ onSuccessOrder, title = "طلب جديد 
     const combinedStaffNotes = [
       sourceTag,
       cliqTag,
+      cliqReceiptTag,
       giftTag,
       form.staff_notes.trim(),
     ]
@@ -394,38 +550,99 @@ export function SocialOrderEntryForm({ onSuccessOrder, title = "طلب جديد 
       requested_time: form.requested_time,
       event_date: form.event_date || null,
       is_urgent: form.is_urgent,
-      design_notes: [form.design_notes.trim(), customization.notes.trim()].filter(Boolean).join(" — "),
+      design_notes: [form.design_notes.trim(), customization.notes.trim()]
+        .filter(Boolean)
+        .join(" — "),
       staff_notes: combinedStaffNotes,
       extras_ar: [
         `المصدر: ${CHANNEL_CONFIG[form.order_source].ar}`,
         ...(form.payment_option !== "cash" ? [`كليك: ${cliqAccountText}`] : []),
+        ...(receiptUrl ? ["صورة حوالة كليك مرفقة 📄"] : []),
         ...(form.is_gift ? ["طلب هدية 🎁"] : []),
         ...extras.ar,
       ],
       extras_en: extras.en,
-      design_image_url: customization.designImageUrl,
+      design_image_url: customization.designImageUrl || receiptUrl || null,
+      receipt_image_url: receiptUrl,
     });
   };
 
   return (
     <div className="space-y-6">
       {done ? (
-        <div role="status" className="rounded-2xl bg-amber-50 border-2 border-amber-300 p-4 text-sm font-bold text-amber-900 shadow-sm flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="text-xl">✅</span>
-            <span>تم إرسال الطلب <b>{done}</b> بنجاح ويظهر الآن مباشرة في المبيعات والمطبخ!</span>
+        <div
+          role="status"
+          className="rounded-2xl bg-gradient-to-r from-amber-50 to-amber-100/70 border-2 border-amber-300 p-4 text-sm font-bold text-amber-950 shadow-md flex flex-wrap items-center justify-between gap-3 animate-in fade-in"
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">✨</span>
+            <div>
+              <p className="font-black text-base text-[#5D2E17]">
+                تم تثبيت الطلب بنجاح ✨ (رقم الأوردر: {done})
+              </p>
+              <p className="text-xs text-[#7A6458]">تم حفظ الطلب وإرساله فوراً للمطبخ والمبيعات</p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void copy(savedMessage || confirmationPreview, "confirmation")}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-white border border-amber-300 px-3.5 py-2 text-xs font-black text-[#5D2E17] hover:bg-amber-50 shadow-2xs transition cursor-pointer"
+            >
+              {copied === "confirmation" ? (
+                <Check className="h-3.5 w-3.5 text-emerald-600" />
+              ) : (
+                <ClipboardCopy className="h-3.5 w-3.5" />
+              )}
+              <span>
+                {copied === "confirmation"
+                  ? "تم نسخ رسالة التثبيت ✅"
+                  : "📌 نسخ مسج التثبيت للزبون"}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => void copy(modificationPreview, "modification")}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-rose-50 border border-rose-300 px-3 py-2 text-xs font-black text-rose-800 hover:bg-rose-100 shadow-2xs transition cursor-pointer"
+            >
+              {copied === "modification" ? (
+                <Check className="h-3.5 w-3.5 text-emerald-600" />
+              ) : (
+                <ClipboardCopy className="h-3.5 w-3.5" />
+              )}
+              <span>
+                {copied === "modification" ? "تم نسخ مسج التعديل ✅" : "🛑 نسخ مسج التعديل"}
+              </span>
+            </button>
+
+            <a
+              href={whatsappUrl(savedMessage || confirmationPreview)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-[#25D366] px-3.5 py-2 text-xs font-black text-white hover:brightness-95 shadow-2xs transition"
+            >
+              <MessageCircle className="h-3.5 w-3.5" />
+              <span>إرسال واتساب</span>
+            </a>
           </div>
         </div>
       ) : null}
 
       {error ? (
-        <div role="alert" className="rounded-2xl bg-red-50 border border-red-200 p-4 text-sm font-bold text-red-900 shadow-xs">
+        <div
+          role="alert"
+          className="rounded-2xl bg-red-50 border border-red-200 p-4 text-sm font-bold text-red-900 shadow-xs"
+        >
           ⚠️ {error}
         </div>
       ) : null}
 
-      <form onSubmit={onSubmit} className="grid min-w-0 gap-5 rounded-3xl border border-slate-200/80 bg-white p-4 shadow-[0_8px_24px_-8px_rgba(62,39,35,0.06)] sm:p-6">
-        
+      <form
+        onSubmit={onSubmit}
+        className="grid min-w-0 gap-5 rounded-3xl border border-slate-200/80 bg-white p-4 shadow-[0_8px_24px_-8px_rgba(62,39,35,0.06)] sm:p-6"
+      >
         {/* HEADER & SOURCE SELECTOR */}
         <div className="border-b border-slate-100 pb-4">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
@@ -469,7 +686,9 @@ export function SocialOrderEntryForm({ onSuccessOrder, title = "طلب جديد 
         <div className="rounded-2xl border border-[#B8860B]/30 bg-[#FFFDF9] p-3.5 shadow-2xs">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <span className="text-xs font-black text-[#5D2E17] block">نوع الطلب · Order Type</span>
+              <span className="text-xs font-black text-[#5D2E17] block">
+                نوع الطلب · Order Type
+              </span>
               <p className="text-[11px] text-[#7A6458]">
                 {form.is_gift
                   ? "طلب هدية: يتطلب رقم وبيانات المرسل والمستلم بشكل منفصل"
@@ -620,8 +839,12 @@ export function SocialOrderEntryForm({ onSuccessOrder, title = "طلب جديد 
                 <Store className="h-5 w-5" />
               </span>
               <div>
-                <h3 className="text-sm font-bold text-[#3E2723]">منيو أصناف الموقع · Storefront Menu</h3>
-                <p className="text-[11px] text-[#7A6458]">اختر أي منتج/حجم من قائمة الموقع لإضافته بضغطة واحدة</p>
+                <h3 className="text-sm font-bold text-[#3E2723]">
+                  منيو أصناف الموقع · Storefront Menu
+                </h3>
+                <p className="text-[11px] text-[#7A6458]">
+                  اختر أي منتج/حجم من قائمة الموقع لإضافته بضغطة واحدة
+                </p>
               </div>
             </div>
             <button
@@ -694,7 +917,9 @@ export function SocialOrderEntryForm({ onSuccessOrder, title = "طلب جديد 
                           </div>
                         )}
                         <div className="min-w-0 flex-1">
-                          <h4 className="text-xs font-bold text-[#3E2723] leading-snug truncate">{prod.name_ar}</h4>
+                          <h4 className="text-xs font-bold text-[#3E2723] leading-snug truncate">
+                            {prod.name_ar}
+                          </h4>
                           <p className="text-[11px] font-extrabold text-[#8B4513] mt-0.5">
                             {prod.price_on_request ? "حسب الطلب" : `${prod.price.toFixed(2)} د.أ`}
                           </p>
@@ -781,7 +1006,13 @@ export function SocialOrderEntryForm({ onSuccessOrder, title = "طلب جديد 
 
         {/* CAKE CUSTOMIZATION PANEL */}
         <div className="min-w-0 rounded-2xl border border-[#FDE2CF] bg-[#FDE2CF]/20 p-3 sm:p-4">
-          <CakeCustomizationPanel value={customization} onChange={setCustomization} hideGift={true} />
+          <CakeCustomizationPanel
+            value={customization}
+            onChange={setCustomization}
+            hideGift={true}
+            errors={customErrors}
+            onClearError={(key) => setCustomErrors((prev) => ({ ...prev, [key]: undefined }))}
+          />
           {extras.ar.length ? (
             <ul className="mt-3 space-y-1 rounded-xl bg-white/80 p-3 text-xs font-bold text-[#5D2E17]">
               {extras.ar.map((line) => (
@@ -860,67 +1091,93 @@ export function SocialOrderEntryForm({ onSuccessOrder, title = "طلب جديد 
         {/* PAYMENT METHOD WITH CLIQ ACCOUNTS */}
         <fieldset className="text-sm font-bold text-[#3E2723]">
           <legend>طريقة الدفع · Payment method</legend>
-          <div className="mt-1 flex flex-wrap gap-2">
-            {(
-              [
-                { value: "cash", label: "كاش عند الاستلام" },
-                { value: "cliq_full", label: "كليك دفع كامل" },
-                { value: "cliq_deposit", label: "عربون عبر كليك" },
-              ] as const
-            ).map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => set("payment_option", option.value)}
-                aria-pressed={form.payment_option === option.value}
-                className={`min-h-11 flex-[1_1_9rem] rounded-xl px-4 text-xs font-bold transition-all ${
-                  form.payment_option === option.value
-                    ? "bg-[#8B4513] text-white shadow-sm"
-                    : "border border-slate-200 bg-white text-[#5D2E17] hover:bg-slate-50"
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
+          <div className="mt-1 grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => set("payment_option", "cash")}
+              aria-pressed={form.payment_option === "cash"}
+              className={`min-h-11 rounded-xl px-4 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                form.payment_option === "cash"
+                  ? "bg-[#8B4513] text-white shadow-sm"
+                  : "border border-slate-200 bg-white text-[#5D2E17] hover:bg-slate-50"
+              }`}
+            >
+              <span>💵</span>
+              <span>كاش عند الاستلام</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (form.payment_option === "cash") {
+                  set("payment_option", "cliq_full");
+                }
+              }}
+              aria-pressed={form.payment_option !== "cash"}
+              className={`min-h-11 rounded-xl px-4 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                form.payment_option !== "cash"
+                  ? "bg-[#8B4513] text-white shadow-sm ring-2 ring-[#B8860B]/40"
+                  : "border border-slate-200 bg-white text-[#5D2E17] hover:bg-slate-50"
+              }`}
+            >
+              <span>⚡</span>
+              <span>دفع عبر كليك · CliQ</span>
+              <span className="text-[10px] opacity-80">
+                {form.payment_option !== "cash" ? "▼" : "◀"}
+              </span>
+            </button>
           </div>
 
-          {/* CLIQ SUB-CARD WITH 3 DESTINATION ACCOUNTS */}
+          {/* CLIQ SUB-CARD WITH DROPDOWN OPTIONS */}
           {form.payment_option !== "cash" && (
-            <div className="mt-3 rounded-2xl border-2 border-[#B8860B]/40 bg-[#FFFDF7] p-3.5 space-y-3 shadow-xs animate-in fade-in">
-              <div className="flex items-center justify-between">
+            <div className="mt-3 rounded-2xl border-2 border-[#B8860B]/40 bg-[#FFFDF7] p-3.5 space-y-3.5 shadow-sm animate-in fade-in slide-in-from-top-2">
+              <div className="flex items-center justify-between pb-1 border-b border-amber-100">
                 <span className="text-xs font-black text-[#5D2E17] flex items-center gap-1.5">
-                  ⚡ حساب كليك المستلم · CliQ Account Destination
+                  ⚡ تفاصيل وخيارات كليك · CliQ Options
                 </span>
-                <span className="text-[11px] font-bold text-[#8B4513] bg-[#FDE2CF]/60 px-2 py-0.5 rounded-full">
+                <span className="text-[11px] font-bold text-[#8B4513] bg-[#FDE2CF]/70 px-2.5 py-0.5 rounded-full border border-amber-200">
                   {cliqAccountText}
                 </span>
               </div>
 
-              {/* CliQ Account Options (Configurable via Admin) */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                {cliqAccounts.map((acc) => {
-                  const isSelected = form.cliq_account === acc.id;
-                  return (
-                    <button
-                      key={acc.id}
-                      type="button"
-                      onClick={() => set("cliq_account", acc.id as CliqAccount)}
-                      className={`flex items-center justify-center gap-2 rounded-xl p-2.5 text-xs font-black transition-all border cursor-pointer ${
-                        isSelected
-                          ? "bg-[#8B4513] text-white border-[#8B4513] shadow-xs scale-[1.02]"
-                          : "bg-white text-[#5D2E17] border-slate-200 hover:bg-amber-50"
-                      }`}
-                    >
-                      <span className="text-base">{acc.icon}</span>
-                      <span>{acc.label}</span>
-                    </button>
-                  );
-                })}
+              {/* 1. قائمة نوع دفع كليك */}
+              <div>
+                <label className="block text-xs font-bold text-[#5D2E17] mb-1">
+                  نوع عملية كليك · CliQ Payment Type
+                </label>
+                <select
+                  value={form.payment_option}
+                  onChange={(e) =>
+                    set("payment_option", e.target.value as "cliq_full" | "cliq_deposit")
+                  }
+                  className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-[#3E2723] focus:outline-none focus:ring-2 focus:ring-[#B8860B] cursor-pointer"
+                >
+                  <option value="cliq_full">💳 كليك دفع كامل (سداد كامل المبلغ)</option>
+                  <option value="cliq_deposit">🪙 عربون عبر كليك (دفعة مقدمة / عربون)</option>
+                </select>
+              </div>
+
+              {/* 2. قائمة حساب كليك المستلم */}
+              <div>
+                <label className="block text-xs font-bold text-[#5D2E17] mb-1">
+                  حساب كليك المستلم · CliQ Account Destination
+                </label>
+                <select
+                  value={form.cliq_account}
+                  onChange={(e) => set("cliq_account", e.target.value as CliqAccount)}
+                  className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-[#3E2723] focus:outline-none focus:ring-2 focus:ring-[#B8860B] cursor-pointer"
+                >
+                  {cliqAccounts.map((acc) => (
+                    <option key={acc.id} value={acc.id}>
+                      {acc.icon} {acc.label}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* If "Staff Member" CliQ is selected: input for employee name */}
               {form.cliq_account === "staff" && (
-                <div className="pt-1">
+                <div className="pt-0.5 animate-in fade-in">
                   <label className="block text-xs font-bold text-[#5D2E17]">
                     اسم الموظفة / كود الحساب
                     <input
@@ -935,11 +1192,24 @@ export function SocialOrderEntryForm({ onSuccessOrder, title = "طلب جديد 
                 </div>
               )}
 
-              {/* Amount paid via CliQ */}
+              {/* 3. المبلغ المدفوع عبر كليك */}
               <label className="block text-xs font-bold text-[#3E2723]">
-                {form.payment_option === "cliq_full"
-                  ? "المبلغ الكامل المدفوع عبر كليك (د.أ)"
-                  : "قيمة العربون المدفوع عبر كليك (د.أ)"}
+                <div className="flex items-center justify-between mb-1">
+                  <span>
+                    {form.payment_option === "cliq_full"
+                      ? "المبلغ الكامل المدفوع عبر كليك (د.أ)"
+                      : "قيمة العربون المدفوع عبر كليك (د.أ)"}
+                  </span>
+                  {grandTotal > 0 && form.payment_option === "cliq_full" && (
+                    <button
+                      type="button"
+                      onClick={() => set("deposit_paid", grandTotal.toFixed(2))}
+                      className="text-[10px] font-bold text-[#8B4513] hover:underline cursor-pointer"
+                    >
+                      تعبئة كامل المبلغ ({grandTotal.toFixed(2)} د.أ)
+                    </button>
+                  )}
+                </div>
                 <input
                   type="number"
                   min="0"
@@ -951,6 +1221,112 @@ export function SocialOrderEntryForm({ onSuccessOrder, title = "طلب جديد 
                   className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
                 />
               </label>
+
+              {/* 4. رفع صورة حوالة كليك (إجباري عند اختيار كليك) */}
+              <div
+                id="cliq-receipt-upload-section"
+                className="pt-2.5 border-t border-amber-200/70 space-y-2"
+              >
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black text-[#5D2E17] flex items-center gap-1.5">
+                    <Camera className="h-4 w-4 text-[#8B4513]" />
+                    <span>صورة إشعار / حوالة كليك (إجبارية) · CliQ Receipt</span>
+                    <span className="text-red-500 font-black text-sm">*</span>
+                  </label>
+                  {receiptUrl && (
+                    <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <Check className="h-3 w-3" /> تم الإرفاق
+                    </span>
+                  )}
+                </div>
+
+                <input
+                  ref={receiptFileRef}
+                  type="file"
+                  accept={IMAGE_ACCEPT}
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) void handleReceiptUpload(file);
+                  }}
+                />
+
+                {receiptUrl ? (
+                  <div className="flex items-center gap-3 p-3 rounded-xl bg-white border border-emerald-300 shadow-2xs">
+                    <img
+                      src={receiptUrl}
+                      alt="إشعار حوالة كليك"
+                      className="h-16 w-16 rounded-lg object-cover border border-slate-200 cursor-pointer hover:opacity-90 transition shrink-0"
+                      onClick={() => window.open(receiptUrl, "_blank")}
+                      title="اضغط لفتح الصورة بحجم كامل"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-slate-800 truncate">
+                        صورة الحوالة مرفقة بنجاح ✅
+                      </p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        سواء كان كليك كامل أو عربون
+                      </p>
+                      <div className="flex items-center gap-2 mt-1.5">
+                        <button
+                          type="button"
+                          onClick={() => receiptFileRef.current?.click()}
+                          className="text-[11px] font-bold text-primary hover:underline cursor-pointer"
+                        >
+                          تغيير الصورة
+                        </button>
+                        <span className="text-muted-foreground">•</span>
+                        <button
+                          type="button"
+                          onClick={() => setReceiptUrl(null)}
+                          className="text-[11px] font-bold text-rose-600 hover:underline cursor-pointer flex items-center gap-1"
+                        >
+                          <Trash2 className="h-3 w-3" /> حذف
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => {
+                      if (!uploadingReceipt) receiptFileRef.current?.click();
+                    }}
+                    className={`group relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-4 text-center cursor-pointer transition-all ${
+                      uploadingReceipt
+                        ? "border-amber-300 bg-amber-50/50 cursor-wait"
+                        : "border-amber-300/80 bg-white/80 hover:border-[#8B4513] hover:bg-amber-50/40"
+                    }`}
+                  >
+                    {uploadingReceipt ? (
+                      <div className="flex flex-col items-center gap-2 py-2">
+                        <Loader2 className="h-7 w-7 animate-spin text-[#8B4513]" />
+                        <span className="text-xs font-black text-[#5D2E17]">
+                          جاري معالجة ورفع صورة الحوالة...
+                        </span>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="grid h-10 w-10 place-items-center rounded-xl bg-amber-100/70 text-[#8B4513] group-hover:scale-110 transition">
+                          <UploadCloud className="h-5 w-5" />
+                        </div>
+                        <p className="mt-2 text-xs font-black text-[#5D2E17]">
+                          اضغط هنا لاختيار أو تصوير صورة حوالة كليك 📸
+                        </p>
+                        <p className="mt-0.5 text-[11px] text-[#7A6458]">
+                          (لقطة شاشة من البنك أو وصل التحويل — يدعم JPG / PNG حتى 5MB)
+                        </p>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {receiptError && (
+                  <p className="mt-1 text-xs font-bold text-rose-600 flex items-center gap-1">
+                    <AlertTriangle className="h-3.5 w-3.5" />
+                    <span>{receiptError}</span>
+                  </p>
+                )}
+              </div>
             </div>
           )}
         </fieldset>
@@ -997,7 +1373,9 @@ export function SocialOrderEntryForm({ onSuccessOrder, title = "طلب جديد 
             onClick={() => set("is_urgent", !form.is_urgent)}
             aria-pressed={form.is_urgent}
             className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 text-xs font-bold transition-all ${
-              form.is_urgent ? "bg-red-600 text-white shadow-sm" : "border border-red-300 text-red-700 bg-red-50/50 hover:bg-red-50"
+              form.is_urgent
+                ? "bg-red-600 text-white shadow-sm"
+                : "border border-red-300 text-red-700 bg-red-50/50 hover:bg-red-50"
             }`}
           >
             <AlertTriangle className="h-4 w-4" aria-hidden="true" /> 🚨 مستعجل · Urgent
@@ -1033,7 +1411,9 @@ export function SocialOrderEntryForm({ onSuccessOrder, title = "طلب جديد 
           <h3 className="text-sm font-bold text-[#5D2E17]">الحساب · السعر، العربون، المتبقي</h3>
           <dl className="mt-2 space-y-1 text-sm text-[#3E2723]">
             <div className="flex justify-between gap-2">
-              <dt>المبلغ ({form.quantity} × {(Number(form.unit_price) || 0).toFixed(2)})</dt>
+              <dt>
+                المبلغ ({form.quantity} × {(Number(form.unit_price) || 0).toFixed(2)})
+              </dt>
               <dd className="font-bold">{originalPrice.toFixed(2)} د.أ</dd>
             </div>
             <div className="flex justify-between gap-2">
@@ -1074,36 +1454,86 @@ export function SocialOrderEntryForm({ onSuccessOrder, title = "طلب جديد 
             disabled={submit.isPending}
             className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[#8B4513] px-6 text-center text-sm font-bold text-white shadow-sm hover:bg-[#5D2E17] disabled:opacity-60 transition"
           >
-            {submit.isPending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Send className="h-4 w-4" aria-hidden="true" />}
+            {submit.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <Send className="h-4 w-4" aria-hidden="true" />
+            )}
             إرسال وتثبيت الطلب فورا
           </button>
         </div>
       </form>
 
-      {/* CONFIRMATION MESSAGE PREVIEW & WHATSAPP BUTTON */}
-      <section className="rounded-3xl border border-[#B8860B]/40 bg-card p-5">
-        <h2 className="font-display text-base font-bold text-foreground">👑 رسالة تأكيد الطلب (Delish Cake)</h2>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
+      {/* CONFIRMATION / MODIFICATION MESSAGE PREVIEW */}
+      <section className="rounded-3xl border border-[#B8860B]/40 bg-card p-5 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-[#B8860B]" />
+            <h2 className="font-display text-base font-bold text-foreground">
+              معاينة رسائل الواتساب والتثبيت
+            </h2>
+          </div>
+
+          {/* Toggle between Confirmation and Modification templates */}
+          <div className="flex items-center gap-1 rounded-2xl bg-secondary/70 p-1 border border-border">
+            <button
+              type="button"
+              onClick={() => setPreviewTab("confirmation")}
+              className={`rounded-xl px-3.5 py-1.5 text-xs font-black transition-all cursor-pointer ${
+                previewTab === "confirmation"
+                  ? "bg-[#8B4513] text-white shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              📌 مسج تثبيت الأوردر (للزبون)
+            </button>
+            <button
+              type="button"
+              onClick={() => setPreviewTab("modification")}
+              className={`rounded-xl px-3.5 py-1.5 text-xs font-black transition-all cursor-pointer ${
+                previewTab === "modification"
+                  ? "bg-rose-600 text-white shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              🛑 مسج تثبيت التعديل (🛑 تعديل)
+            </button>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="mt-4 flex flex-wrap items-center gap-2">
           <button
             type="button"
-            onClick={() => void copy(confirmationPreview, "confirmation")}
-            className="inline-flex min-h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-full border border-[#B8860B] bg-white px-4 text-sm font-bold text-[#8B4513] hover:bg-[#FDE2CF]/30 transition"
+            onClick={() => void copy(activePreviewText, previewTab)}
+            className="inline-flex min-h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-full border border-[#B8860B] bg-white px-4 text-sm font-bold text-[#8B4513] hover:bg-[#FDE2CF]/30 transition shadow-2xs cursor-pointer"
           >
-            {copied === "confirmation" ? <Check className="h-4 w-4" aria-hidden="true" /> : <ClipboardCopy className="h-4 w-4" aria-hidden="true" />}
-            {copied === "confirmation" ? "تم النسخ بنجاح" : "نسخ رسالة التأكيد"}
+            {copied === previewTab ? (
+              <Check className="h-4 w-4 text-emerald-600" aria-hidden="true" />
+            ) : (
+              <ClipboardCopy className="h-4 w-4" aria-hidden="true" />
+            )}
+            {copied === previewTab
+              ? "تم النسخ بنجاح ✅"
+              : previewTab === "confirmation"
+                ? "نسخ مسج تثبيت الأوردر للزبون"
+                : "نسخ مسج التعديل (🛑🛑🛑تعديل)"}
           </button>
           <a
-            href={whatsappUrl(confirmationPreview)}
+            href={whatsappUrl(activePreviewText)}
             target="_blank"
             rel="noopener noreferrer"
-            aria-label="إرسال رسالة التأكيد على واتساب"
+            aria-label="إرسال على واتساب"
             title="إرسال على واتساب"
             className="inline-flex min-h-12 min-w-12 items-center justify-center rounded-full bg-[#25D366] text-white shadow-sm hover:brightness-95 transition"
           >
             <MessageCircle className="h-5 w-5" aria-hidden="true" />
           </a>
         </div>
-        <pre className="mt-3 max-h-96 overflow-y-auto whitespace-pre-wrap break-words rounded-xl bg-secondary/60 p-3 text-sm text-foreground">{confirmationPreview}</pre>
+
+        <pre className="mt-3.5 max-h-96 overflow-y-auto whitespace-pre-wrap break-words rounded-2xl bg-secondary/40 border border-border/80 p-4 text-xs sm:text-sm text-foreground leading-relaxed font-sans">
+          {activePreviewText}
+        </pre>
       </section>
     </div>
   );

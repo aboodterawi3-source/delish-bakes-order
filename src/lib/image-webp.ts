@@ -21,9 +21,12 @@ export type ConvertedImage = {
   height: number;
 };
 
-const approxBytes = (dataUrl: string) => Math.floor((dataUrl.length - dataUrl.indexOf(",") - 1) * 0.75);
+const approxBytes = (dataUrl: string) =>
+  Math.floor((dataUrl.length - dataUrl.indexOf(",") - 1) * 0.75);
 
-async function loadBitmap(file: File): Promise<{ width: number; height: number; draw: CanvasImageSource }> {
+async function loadBitmap(
+  file: File,
+): Promise<{ width: number; height: number; draw: CanvasImageSource }> {
   if (typeof createImageBitmap === "function") {
     const bitmap = await createImageBitmap(file);
     return { width: bitmap.width, height: bitmap.height, draw: bitmap };
@@ -47,7 +50,6 @@ export async function convertToWebp(file: File): Promise<ConvertedImage> {
   // Strict gate: genuine JPG/PNG only, 5MB max.
   await assertSafeImageFile(file);
 
-
   const { width, height, draw } = await loadBitmap(file);
   if (!width || !height) throw new Error("تعذّر قراءة الصورة · Could not read the image");
 
@@ -70,10 +72,22 @@ export async function convertToWebp(file: File): Promise<ConvertedImage> {
     if (!dataUrl.startsWith("data:image/webp")) {
       // Very old browsers without WebP encoding: fall back to JPEG at the same quality.
       const jpeg = canvas.toDataURL("image/jpeg", QUALITY);
-      best = { dataUrl: jpeg, bytes: approxBytes(jpeg), originalBytes: file.size, width: w, height: h };
+      best = {
+        dataUrl: jpeg,
+        bytes: approxBytes(jpeg),
+        originalBytes: file.size,
+        width: w,
+        height: h,
+      };
       if (best.bytes <= TARGET_BYTES) break;
     } else {
-      best = { dataUrl, bytes: approxBytes(dataUrl), originalBytes: file.size, width: w, height: h };
+      best = {
+        dataUrl,
+        bytes: approxBytes(dataUrl),
+        originalBytes: file.size,
+        width: w,
+        height: h,
+      };
       if (best.bytes <= TARGET_BYTES) break;
     }
     scale *= 0.8;
@@ -84,4 +98,6 @@ export async function convertToWebp(file: File): Promise<ConvertedImage> {
 }
 
 export const formatBytes = (bytes: number) =>
-  bytes >= 1_000_000 ? `${(bytes / 1_000_000).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1000))} KB`;
+  bytes >= 1_000_000
+    ? `${(bytes / 1_000_000).toFixed(1)} MB`
+    : `${Math.max(1, Math.round(bytes / 1000))} KB`;

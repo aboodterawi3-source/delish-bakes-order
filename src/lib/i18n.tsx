@@ -36,7 +36,10 @@ export const t_: Dict = {
   flavor: { ar: "النكهة", en: "Flavor" },
   qty: { ar: "الكمية", en: "Quantity" },
   notes: { ar: "ملاحظات", en: "Notes" },
-  notesPh: { ar: "مثال: بدون مكسّرات، كتابة اسم على الكيك…", en: "e.g. no nuts, write a name on top…" },
+  notesPh: {
+    ar: "مثال: بدون مكسّرات، كتابة اسم على الكيك…",
+    en: "e.g. no nuts, write a name on top…",
+  },
   cart: { ar: "السلة", en: "Cart" },
   emptyCart: { ar: "سلتك فارغة حتى الآن", en: "Your cart is empty" },
   subtotal: { ar: "المجموع", en: "Subtotal" },
@@ -54,7 +57,10 @@ export const t_: Dict = {
   emptyMenu: { ar: "لا يوجد شيء هنا بعد — عُد قريباً.", en: "Nothing here yet — check back soon." },
   celebrationCakes: { ar: "كيك المناسبات", en: "Celebration Cakes" },
   builderTitle: { ar: "صمّم كيكتك الخاصة", en: "Design your own cake" },
-  builderSub: { ar: "أربع خطوات بسيطة، ونحن نتولّى الباقي.", en: "Four simple steps, we handle the rest." },
+  builderSub: {
+    ar: "أربع خطوات بسيطة، ونحن نتولّى الباقي.",
+    en: "Four simple steps, we handle the rest.",
+  },
   step: { ar: "خطوة", en: "Step" },
   of: { ar: "من", en: "of" },
   next: { ar: "التالي", en: "Next" },

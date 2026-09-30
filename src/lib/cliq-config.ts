@@ -28,8 +28,12 @@ export function getStoredCliqAccounts(): CliqAccountConfig[] {
         return found
           ? {
               ...def,
-              label: typeof found.label === "string" && found.label.trim() ? found.label.trim() : def.label,
-              icon: typeof found.icon === "string" && found.icon.trim() ? found.icon.trim() : def.icon,
+              label:
+                typeof found.label === "string" && found.label.trim()
+                  ? found.label.trim()
+                  : def.label,
+              icon:
+                typeof found.icon === "string" && found.icon.trim() ? found.icon.trim() : def.icon,
             }
           : def;
       });
@@ -77,9 +81,7 @@ export function useCliqAccounts() {
   }, []);
 
   const updateAccountLabel = (id: string, newLabel: string) => {
-    const updated = accounts.map((acc) =>
-      acc.id === id ? { ...acc, label: newLabel } : acc
-    );
+    const updated = accounts.map((acc) => (acc.id === id ? { ...acc, label: newLabel } : acc));
     setAccounts(updated);
     saveStoredCliqAccounts(updated);
   };

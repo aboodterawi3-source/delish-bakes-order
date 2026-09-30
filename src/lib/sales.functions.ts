@@ -6,7 +6,6 @@ import { feeForArea } from "@/lib/delivery-zones";
 /** The order desk: sales, social media and admins all manage the same orders. */
 const SALES_ROLES: StaffRoleName[] = ["sales", "admin", "social"];
 
-
 export type SalesStatus =
   | "new"
   | "confirmed"
@@ -86,22 +85,22 @@ type Row = Record<string, unknown> & { order_items?: unknown[] };
 
 const toOrder = (row: Row): SalesOrder => ({
   ...(row as unknown as Omit<SalesOrder, "items">),
-  subtotal: Number(row['subtotal'] ?? 0),
-  delivery_fee: Number(row['delivery_fee'] ?? 0),
-  discount_amount: Number(row['discount_amount'] ?? 0),
-  discount_percent: Number(row['discount_percent'] ?? 0),
-  total: Number(row['total'] ?? 0),
-  deposit_paid: Number(row['deposit_paid'] ?? 0),
-  modifications: (row['modifications'] as OrderModification[] | null) ?? null,
+  subtotal: Number(row["subtotal"] ?? 0),
+  delivery_fee: Number(row["delivery_fee"] ?? 0),
+  discount_amount: Number(row["discount_amount"] ?? 0),
+  discount_percent: Number(row["discount_percent"] ?? 0),
+  total: Number(row["total"] ?? 0),
+  deposit_paid: Number(row["deposit_paid"] ?? 0),
+  modifications: (row["modifications"] as OrderModification[] | null) ?? null,
   items: ((row.order_items ?? []) as Record<string, unknown>[]).map((item) => ({
-    id: String(item['id']),
-    name_ar: String(item['name_ar']),
-    name_en: String(item['name_en']),
-    quantity: Number(item['quantity'] ?? 1),
-    unit_price: Number(item['unit_price'] ?? 0),
-    options_ar: (item['options_ar'] as string[]) ?? [],
-    notes: (item['notes'] as string | null) ?? null,
-    product_id: (item['product_id'] as string | null) ?? null,
+    id: String(item["id"]),
+    name_ar: String(item["name_ar"]),
+    name_en: String(item["name_en"]),
+    quantity: Number(item["quantity"] ?? 1),
+    unit_price: Number(item["unit_price"] ?? 0),
+    options_ar: (item["options_ar"] as string[]) ?? [],
+    notes: (item["notes"] as string | null) ?? null,
+    product_id: (item["product_id"] as string | null) ?? null,
   })),
 });
 
@@ -165,8 +164,10 @@ export type CreateSalesOrderInput = {
 export const createSalesOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: CreateSalesOrderInput) => {
-    if (!input?.customer_name?.trim()) throw new Error("اسم العميل مطلوب · Customer name is required");
-    if (!input?.customer_phone?.trim()) throw new Error("رقم هاتف العميل مطلوب · Customer phone is required");
+    if (!input?.customer_name?.trim())
+      throw new Error("اسم العميل مطلوب · Customer name is required");
+    if (!input?.customer_phone?.trim())
+      throw new Error("رقم هاتف العميل مطلوب · Customer phone is required");
     if (!input?.requested_date) throw new Error("التاريخ مطلوب · Date is required");
     if (!input?.requested_time) throw new Error("الوقت مطلوب · Time is required");
     if (!Array.isArray(input.items) || input.items.length === 0) {
@@ -203,7 +204,8 @@ export const createSalesOrder = createServerFn({ method: "POST" })
         area: data.method === "delivery" ? data.area || null : null,
         address: data.method === "delivery" ? data.address?.trim() || null : null,
         requested_date: data.requested_date,
-        requested_time: data.requested_time.length === 5 ? `${data.requested_time}:00` : data.requested_time,
+        requested_time:
+          data.requested_time.length === 5 ? `${data.requested_time}:00` : data.requested_time,
         notes: data.notes?.trim() || null,
         staff_notes: data.staff_notes?.trim() || null,
         inscription: data.inscription?.trim() || null,
@@ -223,7 +225,8 @@ export const createSalesOrder = createServerFn({ method: "POST" })
       .select(SELECT)
       .single();
 
-    if (error || !order) throw new Error(error?.message || "تعذّر حفظ الطلب · Could not save order");
+    if (error || !order)
+      throw new Error(error?.message || "تعذّر حفظ الطلب · Could not save order");
 
     const { error: itemError } = await context.supabase.from("order_items").insert(
       data.items.map((item) => ({
@@ -247,7 +250,8 @@ export const createSalesOrder = createServerFn({ method: "POST" })
       .eq("id", (order as { id: string }).id)
       .single();
 
-    if (fetchError || !fullOrder) throw new Error(fetchError?.message || "تعذّر استرجاع الطلب المحفوظ");
+    if (fetchError || !fullOrder)
+      throw new Error(fetchError?.message || "تعذّر استرجاع الطلب المحفوظ");
 
     return toOrder(fullOrder as Row);
   });
@@ -302,34 +306,34 @@ const buildOrderPatch = (input: OrderPatch): Record<string, unknown> => {
 
   if (input.status !== undefined) {
     if (!STATUSES.includes(input.status)) throw new Error("حالة غير صالحة · Invalid status");
-    patch['status'] = input.status;
+    patch["status"] = input.status;
   }
   if (input.cancel_reason !== undefined) {
-    patch['cancel_reason'] = input.cancel_reason ? String(input.cancel_reason).slice(0, 500) : null;
+    patch["cancel_reason"] = input.cancel_reason ? String(input.cancel_reason).slice(0, 500) : null;
   }
   if (input.method !== undefined) {
     if (input.method !== "delivery" && input.method !== "pickup") {
       throw new Error("طريقة غير صالحة · Invalid method");
     }
-    patch['method'] = input.method;
+    patch["method"] = input.method;
   }
   if (input.delivery_fee !== undefined) {
     const fee = Number(input.delivery_fee);
     if (!Number.isFinite(fee) || fee < 0 || fee > 1000) {
       throw new Error("أجرة توصيل غير صالحة · Invalid delivery fee");
     }
-    patch['delivery_fee'] = fee;
+    patch["delivery_fee"] = fee;
   }
   // Selecting a zone sets the fee from the trusted table, overriding any sent fee.
   if (input.area !== undefined) {
     if (input.area === null || input.area === "") {
-      patch['area'] = null;
+      patch["area"] = null;
     } else {
       const area = String(input.area).trim().replace(/\s+/g, " ");
       const zoneFee = feeForArea(area);
       if (zoneFee === null) throw new Error("منطقة غير صالحة · Invalid delivery area");
-      patch['area'] = area;
-      patch['delivery_fee'] = zoneFee;
+      patch["area"] = area;
+      patch["delivery_fee"] = zoneFee;
     }
   }
   if (input.deposit_paid !== undefined) {
@@ -337,65 +341,68 @@ const buildOrderPatch = (input: OrderPatch): Record<string, unknown> => {
     if (!Number.isFinite(deposit) || deposit < 0 || deposit > 100000) {
       throw new Error("عربون غير صالح · Invalid deposit");
     }
-    patch['deposit_paid'] = deposit;
+    patch["deposit_paid"] = deposit;
   }
   if (input.payment_method !== undefined) {
     if (input.payment_method !== null && !PAYMENT_METHODS.includes(input.payment_method)) {
       throw new Error("طريقة دفع غير صالحة · Invalid payment method");
     }
-    patch['payment_method'] = input.payment_method;
+    patch["payment_method"] = input.payment_method;
   }
   if (input.driver_name !== undefined) {
-    patch['driver_name'] = input.driver_name ? String(input.driver_name).slice(0, 120) : null;
+    patch["driver_name"] = input.driver_name ? String(input.driver_name).slice(0, 120) : null;
   }
   if (input.driver_phone !== undefined) {
-    patch['driver_phone'] = input.driver_phone ? String(input.driver_phone).slice(0, 40) : null;
+    patch["driver_phone"] = input.driver_phone ? String(input.driver_phone).slice(0, 40) : null;
   }
   if (input.card_note !== undefined) {
-    patch['card_note'] = input.card_note ? String(input.card_note).slice(0, 1000) : null;
+    patch["card_note"] = input.card_note ? String(input.card_note).slice(0, 1000) : null;
   }
   if (input.final_photo_requested !== undefined) {
-    patch['final_photo_requested'] = Boolean(input.final_photo_requested);
+    patch["final_photo_requested"] = Boolean(input.final_photo_requested);
   }
   if (input.confirmation_message !== undefined) {
-    patch['confirmation_message'] = input.confirmation_message
+    patch["confirmation_message"] = input.confirmation_message
       ? String(input.confirmation_message).slice(0, 8000)
       : null;
   }
 
   // Free-text order identity fields — trimmed and length-capped.
   const text = (value: unknown, max: number) => {
-    const clean = String(value ?? "").replace(/[\r\n]+/g, " ").trim();
+    const clean = String(value ?? "")
+      .replace(/[\r\n]+/g, " ")
+      .trim();
     return clean ? clean.slice(0, max) : null;
   };
-  if (input.order_name !== undefined) patch['order_name'] = text(input.order_name, 160);
-  if (input.sender_phone !== undefined) patch['sender_phone'] = text(input.sender_phone, 40);
-  if (input.recipient_phone !== undefined) patch['recipient_phone'] = text(input.recipient_phone, 40);
-  if (input.address !== undefined) patch['address'] = text(input.address, 500);
-  if (input.notes !== undefined) patch['notes'] = text(input.notes, 2000);
-  if (input.staff_notes !== undefined) patch['staff_notes'] = text(input.staff_notes, 2000);
-  if (input.inscription !== undefined) patch['inscription'] = text(input.inscription, 500);
+  if (input.order_name !== undefined) patch["order_name"] = text(input.order_name, 160);
+  if (input.sender_phone !== undefined) patch["sender_phone"] = text(input.sender_phone, 40);
+  if (input.recipient_phone !== undefined)
+    patch["recipient_phone"] = text(input.recipient_phone, 40);
+  if (input.address !== undefined) patch["address"] = text(input.address, 500);
+  if (input.notes !== undefined) patch["notes"] = text(input.notes, 2000);
+  if (input.staff_notes !== undefined) patch["staff_notes"] = text(input.staff_notes, 2000);
+  if (input.inscription !== undefined) patch["inscription"] = text(input.inscription, 500);
   if (input.customer_name !== undefined) {
     const name = text(input.customer_name, 160);
     if (!name) throw new Error("اسم العميل مطلوب · Customer name is required");
-    patch['customer_name'] = name;
+    patch["customer_name"] = name;
   }
   if (input.customer_phone !== undefined) {
     const phone = text(input.customer_phone, 40);
     if (!phone) throw new Error("رقم الهاتف مطلوب · Customer phone is required");
-    patch['customer_phone'] = phone;
+    patch["customer_phone"] = phone;
   }
   if (input.requested_date !== undefined) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(String(input.requested_date))) {
       throw new Error("تاريخ غير صالح · Invalid date");
     }
-    patch['requested_date'] = input.requested_date;
+    patch["requested_date"] = input.requested_date;
   }
   if (input.requested_time !== undefined) {
     if (!/^\d{2}:\d{2}(:\d{2})?$/.test(String(input.requested_time))) {
       throw new Error("وقت غير صالح · Invalid time");
     }
-    patch['requested_time'] = input.requested_time;
+    patch["requested_time"] = input.requested_time;
   }
 
   return patch;
@@ -410,15 +417,21 @@ export type OrderModification = {
 };
 
 export function buildOriginalOrderBaseline(order: any, items: any[]): string {
-  const itemsText = (items ?? [])
-    .map((it: any) => `${it.quantity}× ${it.name_ar || it.name_en || "صنف"}${it.options_ar?.length ? ` (${it.options_ar.join(" ، ")})` : ""}`)
-    .join(" + ") || "بدون تفاصيل أصناف";
-  const fulfText = order.method === "delivery"
-    ? `توصيل دليفري (${order.area || "عمان"}${order.address ? ` - ${order.address}` : ""})`
-    : "استلام من المحل";
-  const giftText = (order.sender_phone || order.recipient_phone || order.order_name)
-    ? ` [هدية: ${order.order_name ? `المستلم: ${order.order_name} ` : ""}(هاتف: ${order.recipient_phone || "—"}) / هاتف المرسل: ${order.sender_phone || "—"}]`
-    : "";
+  const itemsText =
+    (items ?? [])
+      .map(
+        (it: any) =>
+          `${it.quantity}× ${it.name_ar || it.name_en || "صنف"}${it.options_ar?.length ? ` (${it.options_ar.join(" ، ")})` : ""}`,
+      )
+      .join(" + ") || "بدون تفاصيل أصناف";
+  const fulfText =
+    order.method === "delivery"
+      ? `توصيل دليفري (${order.area || "عمان"}${order.address ? ` - ${order.address}` : ""})`
+      : "استلام من المحل";
+  const giftText =
+    order.sender_phone || order.recipient_phone || order.order_name
+      ? ` [هدية: ${order.order_name ? `المستلم: ${order.order_name} ` : ""}(هاتف: ${order.recipient_phone || "—"}) / هاتف المرسل: ${order.sender_phone || "—"}]`
+      : "";
   const inscText = order.inscription ? `الكتابة: "${order.inscription}"` : "";
   const notesText = order.notes ? `الملاحظات: "${order.notes}"` : "";
   const timeText = order.requested_time ? String(order.requested_time).slice(0, 5) : "";
@@ -446,7 +459,9 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
     // Fetch existing order details to compute modification diffs for KDS and audit
     const { data: existing } = await context.supabase
       .from("orders")
-      .select("id, order_number, status, payment_method, driver_name, driver_phone, customer_name, customer_phone, requested_date, requested_time, method, area, address, order_name, sender_phone, recipient_phone, deposit_paid, notes, inscription, staff_notes, card_note, total, modifications")
+      .select(
+        "id, order_number, status, payment_method, driver_name, driver_phone, customer_name, customer_phone, requested_date, requested_time, method, area, address, order_name, sender_phone, recipient_phone, deposit_paid, notes, inscription, staff_notes, card_note, total, modifications",
+      )
       .eq("id", data.orderId)
       .single();
 
@@ -456,7 +471,9 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
       const nowIso = new Date().toISOString();
 
       // If this is the FIRST modification on this order, preserve the original order baseline!
-      const hasBaseline = currentMods.some((m) => m.field.includes("الطلب الأساسي") || m.field.includes("النسخة الأصلية"));
+      const hasBaseline = currentMods.some(
+        (m) => m.field.includes("الطلب الأساسي") || m.field.includes("النسخة الأصلية"),
+      );
       if (!hasBaseline) {
         const { data: existingItems } = await context.supabase
           .from("order_items")
@@ -472,9 +489,9 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
         });
       }
 
-      if (clean['customer_name'] !== undefined) {
+      if (clean["customer_name"] !== undefined) {
         const oldVal = (existing.customer_name ?? "").trim();
-        const newVal = String(clean['customer_name'] ?? "").trim();
+        const newVal = String(clean["customer_name"] ?? "").trim();
         if (oldVal && newVal && oldVal !== newVal) {
           newDiffs.push({
             field: "اسم العميل",
@@ -486,9 +503,9 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
         }
       }
 
-      if (clean['customer_phone'] !== undefined) {
+      if (clean["customer_phone"] !== undefined) {
         const oldVal = (existing.customer_phone ?? "").trim();
-        const newVal = String(clean['customer_phone'] ?? "").trim();
+        const newVal = String(clean["customer_phone"] ?? "").trim();
         if (oldVal && newVal && oldVal !== newVal) {
           newDiffs.push({
             field: "رقم هاتف العميل",
@@ -500,9 +517,9 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
         }
       }
 
-      if (clean['order_name'] !== undefined) {
+      if (clean["order_name"] !== undefined) {
         const oldVal = (existing.order_name ?? "").trim();
-        const newVal = String(clean['order_name'] ?? "").trim();
+        const newVal = String(clean["order_name"] ?? "").trim();
         if (oldVal !== newVal) {
           newDiffs.push({
             field: "اسم المستلم / الطلب",
@@ -514,9 +531,9 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
         }
       }
 
-      if (clean['sender_phone'] !== undefined) {
+      if (clean["sender_phone"] !== undefined) {
         const oldVal = (existing.sender_phone ?? "").trim();
-        const newVal = String(clean['sender_phone'] ?? "").trim();
+        const newVal = String(clean["sender_phone"] ?? "").trim();
         if (oldVal !== newVal) {
           newDiffs.push({
             field: "هاتف المرسل",
@@ -528,9 +545,9 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
         }
       }
 
-      if (clean['recipient_phone'] !== undefined) {
+      if (clean["recipient_phone"] !== undefined) {
         const oldVal = (existing.recipient_phone ?? "").trim();
-        const newVal = String(clean['recipient_phone'] ?? "").trim();
+        const newVal = String(clean["recipient_phone"] ?? "").trim();
         if (oldVal !== newVal) {
           newDiffs.push({
             field: "هاتف المستلم",
@@ -542,9 +559,9 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
         }
       }
 
-      if (clean['requested_date'] !== undefined) {
+      if (clean["requested_date"] !== undefined) {
         const oldVal = existing.requested_date ?? "";
-        const newVal = String(clean['requested_date']);
+        const newVal = String(clean["requested_date"]);
         if (oldVal !== newVal) {
           newDiffs.push({
             field: "تاريخ التسليم",
@@ -556,9 +573,9 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
         }
       }
 
-      if (clean['requested_time'] !== undefined) {
+      if (clean["requested_time"] !== undefined) {
         const oldVal = (existing.requested_time ?? "").slice(0, 5);
-        const newVal = String(clean['requested_time']).slice(0, 5);
+        const newVal = String(clean["requested_time"]).slice(0, 5);
         if (oldVal !== newVal) {
           newDiffs.push({
             field: "وقت التسليم",
@@ -570,12 +587,22 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
         }
       }
 
-      if (clean['method'] !== undefined || clean['area'] !== undefined || clean['address'] !== undefined) {
-        const oldMethod = existing.method === "delivery" ? `توصيل (${existing.area || "عمان"}${existing.address ? ` - ${existing.address}` : ""})` : "استلام من المحل";
-        const newM = clean['method'] !== undefined ? clean['method'] : existing.method;
-        const newArea = clean['area'] !== undefined ? clean['area'] : existing.area;
-        const newAddr = clean['address'] !== undefined ? clean['address'] : existing.address;
-        const newMethod = newM === "delivery" ? `توصيل (${newArea || "عمان"}${newAddr ? ` - ${newAddr}` : ""})` : "استلام من المحل";
+      if (
+        clean["method"] !== undefined ||
+        clean["area"] !== undefined ||
+        clean["address"] !== undefined
+      ) {
+        const oldMethod =
+          existing.method === "delivery"
+            ? `توصيل (${existing.area || "عمان"}${existing.address ? ` - ${existing.address}` : ""})`
+            : "استلام من المحل";
+        const newM = clean["method"] !== undefined ? clean["method"] : existing.method;
+        const newArea = clean["area"] !== undefined ? clean["area"] : existing.area;
+        const newAddr = clean["address"] !== undefined ? clean["address"] : existing.address;
+        const newMethod =
+          newM === "delivery"
+            ? `توصيل (${newArea || "عمان"}${newAddr ? ` - ${newAddr}` : ""})`
+            : "استلام من المحل";
         if (oldMethod !== newMethod) {
           newDiffs.push({
             field: "طريقة الاستلام / العنوان",
@@ -587,9 +614,9 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
         }
       }
 
-      if (clean['notes'] !== undefined) {
+      if (clean["notes"] !== undefined) {
         const oldVal = (existing.notes ?? "").trim();
-        const newVal = String(clean['notes'] ?? "").trim();
+        const newVal = String(clean["notes"] ?? "").trim();
         if (oldVal !== newVal) {
           newDiffs.push({
             field: "الملاحظات",
@@ -601,9 +628,9 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
         }
       }
 
-      if (clean['inscription'] !== undefined) {
+      if (clean["inscription"] !== undefined) {
         const oldVal = (existing.inscription ?? "").trim();
-        const newVal = String(clean['inscription'] ?? "").trim();
+        const newVal = String(clean["inscription"] ?? "").trim();
         if (oldVal !== newVal) {
           newDiffs.push({
             field: "الكتابة على الكيك",
@@ -615,9 +642,9 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
         }
       }
 
-      if (clean['staff_notes'] !== undefined) {
+      if (clean["staff_notes"] !== undefined) {
         const oldVal = (existing.staff_notes ?? "").trim();
-        const newVal = String(clean['staff_notes'] ?? "").trim();
+        const newVal = String(clean["staff_notes"] ?? "").trim();
         if (oldVal !== newVal) {
           newDiffs.push({
             field: "ملاحظات الموظفين",
@@ -629,9 +656,9 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
         }
       }
 
-      if (clean['card_note'] !== undefined) {
+      if (clean["card_note"] !== undefined) {
         const oldVal = (existing.card_note ?? "").trim();
-        const newVal = String(clean['card_note'] ?? "").trim();
+        const newVal = String(clean["card_note"] ?? "").trim();
         if (oldVal !== newVal) {
           newDiffs.push({
             field: "كرت الإهداء / ملاحظة الكرت",
@@ -643,9 +670,9 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
         }
       }
 
-      if (clean['deposit_paid'] !== undefined) {
+      if (clean["deposit_paid"] !== undefined) {
         const oldVal = Number(existing.deposit_paid ?? 0);
-        const newVal = Number(clean['deposit_paid'] ?? 0);
+        const newVal = Number(clean["deposit_paid"] ?? 0);
         if (oldVal !== newVal) {
           newDiffs.push({
             field: "العربون المدفوع",
@@ -657,9 +684,9 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
         }
       }
 
-      if (clean['driver_name'] !== undefined) {
+      if (clean["driver_name"] !== undefined) {
         const oldVal = (existing.driver_name ?? "").trim();
-        const newVal = String(clean['driver_name'] ?? "").trim();
+        const newVal = String(clean["driver_name"] ?? "").trim();
         if (oldVal !== newVal) {
           newDiffs.push({
             field: "سائق التوصيل",
@@ -671,11 +698,18 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
         }
       }
 
-      if (clean['payment_method'] !== undefined) {
+      if (clean["payment_method"] !== undefined) {
         const oldVal = String(existing.payment_method ?? "");
-        const newVal = String(clean['payment_method'] ?? "");
+        const newVal = String(clean["payment_method"] ?? "");
         if (oldVal !== newVal) {
-          const pmLabel = (val: string) => val === "cash" ? "كاش" : val === "cliq" ? "كليك" : val === "online" ? "إلكتروني" : val || "غير محدد";
+          const pmLabel = (val: string) =>
+            val === "cash"
+              ? "كاش"
+              : val === "cliq"
+                ? "كليك"
+                : val === "online"
+                  ? "إلكتروني"
+                  : val || "غير محدد";
           newDiffs.push({
             field: "طريقة الدفع",
             oldValue: pmLabel(oldVal),
@@ -686,9 +720,9 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
         }
       }
 
-      if (clean['status'] !== undefined) {
+      if (clean["status"] !== undefined) {
         const oldVal = String(existing.status ?? "");
-        const newVal = String(clean['status'] ?? "");
+        const newVal = String(clean["status"] ?? "");
         if (oldVal !== newVal) {
           newDiffs.push({
             field: "حالة الطلب",
@@ -700,23 +734,31 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
         }
       }
 
-      // If user submitted an edit but none of the specific fields created diffs, record a general modification
+      // If no field-level diff was found, try to log an items summary change
       if (newDiffs.length === 0) {
-        newDiffs.push({
-          field: "تعديل تفاصيل ومواصفات الطلب",
-          oldValue: "البيانات السابقة للطلب",
-          newValue: "تم حفظ وتحديث مواصفات الطلب بمكتب المبيعات",
-          updatedAt: nowIso,
-          acknowledgedAt: null,
-        });
+        const { data: currentItems } = await context.supabase
+          .from("order_items")
+          .select("name_ar, quantity, options_ar")
+          .eq("order_id", data.orderId);
+        const itemSummary =
+          (currentItems ?? [])
+            .map(
+              (it: any) =>
+                `${it.quantity}× ${it.name_ar}${it.options_ar?.length ? ` (${(it.options_ar as string[]).join("، ")})` : ""}`,
+            )
+            .join(" + ") || "بدون أصناف";
+        // Only push if we don't already have a baseline (avoid noise)
+        // This case only fires if someone saves the form without changing any tracked field — skip silently
+        // to avoid flooding kitchen with empty diffs.
+        void itemSummary; // noop: no diff to surface, skip
       }
 
-      clean['modifications'] = [...currentMods, ...newDiffs].slice(-30);
+      clean["modifications"] = [...currentMods, ...newDiffs].slice(-30);
     }
 
     // Every desk edit is stamped so the list and printouts show the edit badge.
-    clean['last_edited_at'] = new Date().toISOString();
-    clean['last_edited_by'] = context.userId;
+    clean["last_edited_at"] = new Date().toISOString();
+    clean["last_edited_by"] = context.userId;
     const { data: row, error } = await context.supabase
       .from("orders")
       .update(clean as never)
@@ -726,7 +768,6 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return toOrder(row as Row);
   });
-
 
 export type OrderItemPatch = {
   itemId: string;
@@ -772,7 +813,12 @@ export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
     if (input.options !== undefined) {
       if (!Array.isArray(input.options)) throw new Error("إضافات غير صالحة · Invalid options");
       out.options = input.options
-        .map((option) => String(option ?? "").replace(/[\r\n]+/g, " ").trim().slice(0, 200))
+        .map((option) =>
+          String(option ?? "")
+            .replace(/[\r\n]+/g, " ")
+            .trim()
+            .slice(0, 200),
+        )
         .filter(Boolean)
         .slice(0, 30);
     }
@@ -785,7 +831,7 @@ export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
 
     const { data: before } = await context.supabase
       .from("order_items")
-      .select("unit_price, quantity, product_id, order_id")
+      .select("unit_price, quantity, product_id, order_id, name_ar, options_ar, notes")
       .eq("id", data.itemId)
       .single();
     if (!before || before.order_id !== data.orderId) {
@@ -803,22 +849,117 @@ export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
         (before.product_id as string | null) ?? null,
       );
       if (!allowed) {
-        throw new Error("لا تملك صلاحية تعديل سعر هذا المنتج · You are not allowed to change this product's price");
+        throw new Error(
+          "لا تملك صلاحية تعديل سعر هذا المنتج · You are not allowed to change this product's price",
+        );
       }
     }
 
+    // Fetch order modifications to update them
+    const { data: existingOrder } = await context.supabase
+      .from("orders")
+      .select("modifications")
+      .eq("id", data.orderId)
+      .single();
+    const currentMods = (existingOrder?.modifications as OrderModification[] | null) ?? [];
+    const nowIso = new Date().toISOString();
+    const hasBaseline = currentMods.some(
+      (m) => m.field.includes("الطلب الأساسي") || m.field.includes("النسخة الأصلية"),
+    );
+    const newDiffs: OrderModification[] = [];
+
+    // Build inline old/new summary for kitchen
+    const oldNameLabel = (before.name_ar as string | null) ?? "";
+    const oldOptions = (before.options_ar as string[] | null) ?? [];
+    const oldSummary = [oldNameLabel, ...oldOptions].filter(Boolean).join(" - ");
+
+    const newNameLabel = data.name ?? oldNameLabel;
+    const newOptions = data.options ?? oldOptions;
+    const newSummary = [newNameLabel, ...newOptions].filter(Boolean).join(" - ");
+
+    if (!hasBaseline) {
+      // Record baseline
+      const { data: allItems } = await context.supabase
+        .from("order_items")
+        .select("name_ar, name_en, quantity, unit_price, options_ar, notes")
+        .eq("order_id", data.orderId);
+      const baselineText =
+        (allItems ?? [])
+          .map(
+            (it: any) =>
+              `${it.quantity}× ${it.name_ar}${it.options_ar?.length ? ` (${(it.options_ar as string[]).join("، ")})` : ""}`,
+          )
+          .join(" + ") || "بدون أصناف";
+      newDiffs.push({
+        field: "الطلب الأساسي (النسخة الأصلية عند الإنشاء)",
+        oldValue: baselineText,
+        newValue: "تم إجراء أول تعديل على هذا الطلب",
+        updatedAt: nowIso,
+        acknowledgedAt: null,
+      });
+    }
+
+    // Per-field granular diffs
+    if (data.name !== undefined && data.name !== oldNameLabel) {
+      newDiffs.push({
+        field: "اسم الصنف",
+        oldValue: oldNameLabel || "—",
+        newValue: data.name || "—",
+        updatedAt: nowIso,
+        acknowledgedAt: null,
+      });
+    }
+
+    if (data.quantity !== undefined && Number(data.quantity) !== Number(before.quantity)) {
+      newDiffs.push({
+        field: `كمية: ${oldNameLabel || "صنف"}`,
+        oldValue: String(before.quantity ?? 1),
+        newValue: String(data.quantity),
+        updatedAt: nowIso,
+        acknowledgedAt: null,
+      });
+    }
+
+    if (data.options !== undefined) {
+      const oldSet = new Set(oldOptions);
+      const newSet = new Set(data.options);
+      // Options removed
+      for (const opt of oldOptions) {
+        if (!newSet.has(opt)) {
+          newDiffs.push({
+            field: "خيار حُذف",
+            oldValue: opt,
+            newValue: "— (تم حذفه)",
+            updatedAt: nowIso,
+            acknowledgedAt: null,
+          });
+        }
+      }
+      // Options added
+      for (const opt of data.options) {
+        if (!oldSet.has(opt)) {
+          newDiffs.push({
+            field: "خيار جديد ✨",
+            oldValue: "— (لم يكن موجودًا)",
+            newValue: opt,
+            updatedAt: nowIso,
+            acknowledgedAt: null,
+          });
+        }
+      }
+    }
 
     const itemPatch: Record<string, unknown> = {};
-    if (data.newUnitPrice !== undefined) itemPatch['unit_price'] = data.newUnitPrice;
-    if (data.quantity !== undefined) itemPatch['quantity'] = data.quantity;
+    if (data.newUnitPrice !== undefined) itemPatch["unit_price"] = data.newUnitPrice;
+    if (data.quantity !== undefined) itemPatch["quantity"] = data.quantity;
     if (data.name !== undefined) {
-      itemPatch['name_ar'] = data.name;
-      itemPatch['name_en'] = data.name;
+      itemPatch["name_ar"] = data.name;
+      itemPatch["name_en"] = data.name;
     }
-    if (data.notes !== undefined) itemPatch['notes'] = data.notes;
+    if (data.notes !== undefined) itemPatch["notes"] = data.notes;
     if (data.options !== undefined) {
-      itemPatch['options_ar'] = data.options;
-      itemPatch['options_en'] = data.options;
+      itemPatch["options_ar"] = data.options;
+      itemPatch["options_en"] = data.options;
     }
     if (Object.keys(itemPatch).length === 0) {
       throw new Error("لا يوجد تغيير · Nothing to update");
@@ -839,7 +980,7 @@ export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
 
     const subtotal = (items ?? []).reduce(
       (acc, it) => acc + Number(it.unit_price) * Number(it.quantity),
-      0
+      0,
     );
 
     const { data: currentOrder } = await context.supabase
@@ -848,7 +989,8 @@ export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
       .eq("id", data.orderId)
       .single();
 
-    const deliveryFee = currentOrder?.method === "delivery" ? Number(currentOrder?.delivery_fee ?? 0) : 0;
+    const deliveryFee =
+      currentOrder?.method === "delivery" ? Number(currentOrder?.delivery_fee ?? 0) : 0;
     const total = subtotal + deliveryFee;
 
     const { data: updatedOrder, error: orderError } = await context.supabase
@@ -858,6 +1000,7 @@ export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
         total,
         last_edited_at: new Date().toISOString(),
         last_edited_by: context.userId,
+        ...(newDiffs.length > 0 ? { modifications: [...currentMods, ...newDiffs] } : {}),
       } as never)
       .eq("id", data.orderId)
       .select(SELECT)
@@ -904,7 +1047,9 @@ export const replaceSalesOrderItems = createServerFn({ method: "POST" })
     }
     if (input.lines.length > 40) throw new Error("عدد الأصناف كبير · Too many items");
     const lines: RebuildLine[] = input.lines.map((line) => {
-      const name = String(line?.name ?? "").trim().slice(0, 2000);
+      const name = String(line?.name ?? "")
+        .trim()
+        .slice(0, 2000);
       if (!name) throw new Error("وصف الصنف مطلوب · Item description is required");
       const quantity = Math.trunc(Number(line?.quantity ?? 1));
       if (!Number.isFinite(quantity) || quantity < 1 || quantity > 1000) {
@@ -916,7 +1061,12 @@ export const replaceSalesOrderItems = createServerFn({ method: "POST" })
       }
       const options = Array.isArray(line?.options)
         ? line.options
-            .map((option) => String(option ?? "").replace(/[\r\n]+/g, " ").trim().slice(0, 200))
+            .map((option) =>
+              String(option ?? "")
+                .replace(/[\r\n]+/g, " ")
+                .trim()
+                .slice(0, 200),
+            )
             .filter(Boolean)
             .slice(0, 30)
         : [];
@@ -932,7 +1082,9 @@ export const replaceSalesOrderItems = createServerFn({ method: "POST" })
 
     const { data: existing, error: readError } = await context.supabase
       .from("orders")
-      .select("id, order_number, customer_name, customer_phone, requested_date, requested_time, method, area, address, order_name, sender_phone, recipient_phone, deposit_paid, notes, inscription, staff_notes, card_note, total, delivery_fee, discount_amount, subtotal, modifications")
+      .select(
+        "id, order_number, customer_name, customer_phone, requested_date, requested_time, method, area, address, order_name, sender_phone, recipient_phone, deposit_paid, notes, inscription, staff_notes, card_note, total, delivery_fee, discount_amount, subtotal, modifications",
+      )
       .eq("id", data.orderId)
       .single();
     if (readError || !existing) throw new Error("طلب غير موجود · Order not found");
@@ -942,17 +1094,27 @@ export const replaceSalesOrderItems = createServerFn({ method: "POST" })
       .select("name_ar, name_en, quantity, unit_price, options_ar, notes")
       .eq("order_id", data.orderId);
 
-    const oldSummary = (oldItemsData ?? [])
-      .map((it: any) => `${it.quantity}× ${it.name_ar}${it.options_ar?.length ? ` (${it.options_ar.join(" ، ")})` : ""}`)
-      .join(" + ") || "بدون أصناف";
+    const oldSummary =
+      (oldItemsData ?? [])
+        .map(
+          (it: any) =>
+            `${it.quantity}× ${it.name_ar}${it.options_ar?.length ? ` (${it.options_ar.join(" ، ")})` : ""}`,
+        )
+        .join(" + ") || "بدون أصناف";
 
-    const newSummary = data.lines
-      .map((line) => `${line.quantity}× ${line.name}${line.options?.length ? ` (${line.options.join(" ، ")})` : ""}`)
-      .join(" + ") || "بدون أصناف";
+    const newSummary =
+      data.lines
+        .map(
+          (line) =>
+            `${line.quantity}× ${line.name}${line.options?.length ? ` (${line.options.join(" ، ")})` : ""}`,
+        )
+        .join(" + ") || "بدون أصناف";
 
     const currentMods = (existing.modifications as OrderModification[] | null) ?? [];
     const nowIso = new Date().toISOString();
-    const hasBaseline = currentMods.some((m) => m.field.includes("الطلب الأساسي") || m.field.includes("النسخة الأصلية"));
+    const hasBaseline = currentMods.some(
+      (m) => m.field.includes("الطلب الأساسي") || m.field.includes("النسخة الأصلية"),
+    );
     const baselineDiffs: OrderModification[] = [];
     if (!hasBaseline) {
       const baselineSummary = buildOriginalOrderBaseline(existing, oldItemsData ?? []);
@@ -992,7 +1154,10 @@ export const replaceSalesOrderItems = createServerFn({ method: "POST" })
         .select("id, price")
         .in("id", pricedProductIds);
       const catalogPrice = new Map<string, number>(
-        (catalog ?? []).map((row: { id: string; price: number | null }) => [row.id, Number(row.price ?? 0)]),
+        (catalog ?? []).map((row: { id: string; price: number | null }) => [
+          row.id,
+          Number(row.price ?? 0),
+        ]),
       );
       for (const productId of pricedProductIds) {
         const allowed = await canEditProductPrice(context as never, productId);
@@ -1008,7 +1173,6 @@ export const replaceSalesOrderItems = createServerFn({ method: "POST" })
         }
       }
     }
-
 
     const { error: deleteError } = await context.supabase
       .from("order_items")
@@ -1136,16 +1300,10 @@ export const deleteSalesOrder = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     // 1. Delete order tokens
-    await (supabaseAdmin as any)
-      .from("order_edit_tokens")
-      .delete()
-      .eq("order_id", data.orderId);
+    await (supabaseAdmin as any).from("order_edit_tokens").delete().eq("order_id", data.orderId);
 
     // 2. Delete audit logs associated with this order
-    await (supabaseAdmin as any)
-      .from("audit_logs")
-      .delete()
-      .eq("order_id", data.orderId);
+    await (supabaseAdmin as any).from("audit_logs").delete().eq("order_id", data.orderId);
 
     // 3. Delete order items
     const { error: itemsError } = await (supabaseAdmin as any)
@@ -1168,51 +1326,48 @@ export const deleteSalesOrder = createServerFn({ method: "POST" })
  * Permanently clears and wipes ALL sales orders from the database.
  * Used for cleaning test data and starting fresh.
  */
-export const clearAllSalesOrders = createServerFn({ method: "POST" })
-  .handler(async () => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+export const clearAllSalesOrders = createServerFn({ method: "POST" }).handler(async () => {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    // 1. Delete all order edit tokens
-    try {
-      await (supabaseAdmin as any)
-        .from("order_edit_tokens")
-        .delete()
-        .neq("id", "00000000-0000-0000-0000-000000000000");
-    } catch (e) {
-      console.warn("Tokens cleanup warning:", e);
-    }
-
-    // 2. Delete all audit logs
-    try {
-      await (supabaseAdmin as any)
-        .from("audit_logs")
-        .delete()
-        .neq("id", "00000000-0000-0000-0000-000000000000");
-    } catch (e) {
-      console.warn("Audit logs cleanup warning:", e);
-    }
-
-    // 3. Delete all order items
-    const { error: itemsError } = await (supabaseAdmin as any)
-      .from("order_items")
+  // 1. Delete all order edit tokens
+  try {
+    await (supabaseAdmin as any)
+      .from("order_edit_tokens")
       .delete()
       .neq("id", "00000000-0000-0000-0000-000000000000");
-    if (itemsError) {
-      console.error("Failed to delete order items:", itemsError);
-      throw new Error(itemsError.message);
-    }
+  } catch (e) {
+    console.warn("Tokens cleanup warning:", e);
+  }
 
-    // 4. Delete all orders
-    const { error: ordersError } = await (supabaseAdmin as any)
-      .from("orders")
+  // 2. Delete all audit logs
+  try {
+    await (supabaseAdmin as any)
+      .from("audit_logs")
       .delete()
       .neq("id", "00000000-0000-0000-0000-000000000000");
-    if (ordersError) {
-      console.error("Failed to delete orders:", ordersError);
-      throw new Error(ordersError.message);
-    }
+  } catch (e) {
+    console.warn("Audit logs cleanup warning:", e);
+  }
 
-    return { ok: true, count: 0, message: "تم مسح وتنظيف كافة الطلبات بنجاح ✅" };
-  });
+  // 3. Delete all order items
+  const { error: itemsError } = await (supabaseAdmin as any)
+    .from("order_items")
+    .delete()
+    .neq("id", "00000000-0000-0000-0000-000000000000");
+  if (itemsError) {
+    console.error("Failed to delete order items:", itemsError);
+    throw new Error(itemsError.message);
+  }
 
+  // 4. Delete all orders
+  const { error: ordersError } = await (supabaseAdmin as any)
+    .from("orders")
+    .delete()
+    .neq("id", "00000000-0000-0000-0000-000000000000");
+  if (ordersError) {
+    console.error("Failed to delete orders:", ordersError);
+    throw new Error(ordersError.message);
+  }
 
+  return { ok: true, count: 0, message: "تم مسح وتنظيف كافة الطلبات بنجاح ✅" };
+});

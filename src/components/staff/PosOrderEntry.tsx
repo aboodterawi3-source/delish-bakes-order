@@ -41,11 +41,7 @@ import { toast } from "sonner";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useStorefrontContent } from "@/hooks/use-storefront-content";
 import type { StorefrontProduct } from "@/lib/storefront-content";
-import {
-  DELIVERY_ZONES,
-  OTHER_GOVERNORATES_AREA,
-  feeForArea,
-} from "@/lib/delivery-zones";
+import { DELIVERY_ZONES, OTHER_GOVERNORATES_AREA, feeForArea } from "@/lib/delivery-zones";
 import {
   createSalesOrder,
   getSalesOrders,
@@ -89,9 +85,19 @@ const STANDARD_CATEGORIES = [
   { id: "all", label: "الكل", icon: "✨", keywords: [] },
   { id: "cakes", label: "كيك جاهز", icon: "🎂", keywords: ["كيك", "cake", "جاتو"] },
   { id: "cupcakes", label: "كب كيك", icon: "🧁", keywords: ["كب كيك", "cupcake"] },
-  { id: "pastries", label: "معجنات", icon: "🥐", keywords: ["معجنات", "pastry", "كرواسون", "croissant"] },
+  {
+    id: "pastries",
+    label: "معجنات",
+    icon: "🥐",
+    keywords: ["معجنات", "pastry", "كرواسون", "croissant"],
+  },
   { id: "donuts", label: "دونات", icon: "🍩", keywords: ["دونات", "donut", "doughnut"] },
-  { id: "drinks", label: "مشروبات", icon: "☕", keywords: ["مشروب", "عصير", "قهوة", "شاي", "drink", "coffee", "latte"] },
+  {
+    id: "drinks",
+    label: "مشروبات",
+    icon: "☕",
+    keywords: ["مشروب", "عصير", "قهوة", "شاي", "drink", "coffee", "latte"],
+  },
 ];
 
 export function PosOrderEntry() {
@@ -201,7 +207,8 @@ export function PosOrderEntry() {
     [cart],
   );
 
-  const effectiveMethod = stationMode === "quick" ? "pickup" : stationMode === "delivery" ? "delivery" : method;
+  const effectiveMethod =
+    stationMode === "quick" ? "pickup" : stationMode === "delivery" ? "delivery" : method;
 
   const deliveryFee = useMemo(() => {
     if (effectiveMethod === "delivery" && area) {
@@ -252,7 +259,11 @@ export function PosOrderEntry() {
     });
 
     if (typeof window !== "undefined" && window.navigator?.vibrate) {
-      try { window.navigator.vibrate(25); } catch { /* ignore */ }
+      try {
+        window.navigator.vibrate(25);
+      } catch {
+        /* ignore */
+      }
     }
   };
 
@@ -278,16 +289,17 @@ export function PosOrderEntry() {
   };
 
   const updateCartItemQuantity = (id: string, delta: number) => {
-    setCart((prev) =>
-      prev
-        .map((item) => {
-          if (item.id === id) {
-            const newQty = item.quantity + delta;
-            return newQty > 0 ? { ...item, quantity: newQty } : null;
-          }
-          return item;
-        })
-        .filter(Boolean) as PosCartItem[],
+    setCart(
+      (prev) =>
+        prev
+          .map((item) => {
+            if (item.id === id) {
+              const newQty = item.quantity + delta;
+              return newQty > 0 ? { ...item, quantity: newQty } : null;
+            }
+            return item;
+          })
+          .filter(Boolean) as PosCartItem[],
     );
   };
 
@@ -304,7 +316,9 @@ export function PosOrderEntry() {
     mutationFn: (input: CreateSalesOrderInput) => createOrderFn({ data: input }),
     onSuccess: (newOrder) => {
       queryClient.setQueryData<SalesOrder[]>(ORDERS_KEY, (curr) => [newOrder, ...(curr ?? [])]);
-      toast.success(`تم إنشاء وتأكيد الطلب بنجاح ✅ (${orderLabel(newOrder.order_number, newOrder.staff_code)})`);
+      toast.success(
+        `تم إنشاء وتأكيد الطلب بنجاح ✅ (${orderLabel(newOrder.order_number, newOrder.staff_code)})`,
+      );
 
       if (shouldPrintAfterCreate) {
         try {
@@ -349,14 +363,10 @@ export function PosOrderEntry() {
     }
 
     const finalCustomerName =
-      stationMode === "quick"
-        ? (customerName.trim() || "زبون محلي Takeaway")
-        : customerName.trim();
+      stationMode === "quick" ? customerName.trim() || "زبون محلي Takeaway" : customerName.trim();
 
     const finalCustomerPhone =
-      stationMode === "quick"
-        ? (customerPhone.trim() || "0790000000")
-        : customerPhone.trim();
+      stationMode === "quick" ? customerPhone.trim() || "0790000000" : customerPhone.trim();
 
     if (stationMode !== "quick") {
       if (!finalCustomerName) {
@@ -379,8 +389,8 @@ export function PosOrderEntry() {
       customer_name: finalCustomerName,
       customer_phone: finalCustomerPhone,
       order_name: orderName.trim() || (stationMode === "quick" ? "كاشير محلي فوري" : undefined),
-      sender_phone: isGift ? (senderPhone.trim() || finalCustomerPhone) : undefined,
-      recipient_phone: isGift ? (recipientPhone.trim() || undefined) : undefined,
+      sender_phone: isGift ? senderPhone.trim() || finalCustomerPhone : undefined,
+      recipient_phone: isGift ? recipientPhone.trim() || undefined : undefined,
       method: effectiveMethod,
       area: effectiveMethod === "delivery" ? area : undefined,
       address: effectiveMethod === "delivery" ? address : undefined,
@@ -430,9 +440,7 @@ export function PosOrderEntry() {
       const pName = (p.name_ar || "").toLowerCase();
 
       if (activeTabObj && activeTabObj.keywords.length > 0) {
-        return activeTabObj.keywords.some(
-          (kw) => pCat.includes(kw) || pName.includes(kw),
-        );
+        return activeTabObj.keywords.some((kw) => pCat.includes(kw) || pName.includes(kw));
       }
 
       return p.category === selectedCategoryTab;
@@ -555,11 +563,17 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
               <div className="flex items-center justify-between border-b border-border/70 pb-3">
                 <div className="flex items-center gap-2.5">
                   <div className="grid h-9 w-9 place-items-center rounded-xl bg-amber-500/10 text-amber-600">
-                    {stationMode === "delivery" ? <Bike className="h-5 w-5" /> : <Cake className="h-5 w-5" />}
+                    {stationMode === "delivery" ? (
+                      <Bike className="h-5 w-5" />
+                    ) : (
+                      <Cake className="h-5 w-5" />
+                    )}
                   </div>
                   <div>
                     <h3 className="font-black text-sm text-foreground">
-                      {stationMode === "delivery" ? "بيانات عنوان وموعد التوصيل" : "استوديو تفصيل الكيك والحجز المسبق"}
+                      {stationMode === "delivery"
+                        ? "بيانات عنوان وموعد التوصيل"
+                        : "استوديو تفصيل الكيك والحجز المسبق"}
                     </h3>
                     <p className="text-[11px] font-bold text-muted-foreground">
                       أدخل تفاصيل العميل، موعد التسليم، والعبارة المكتوبة على الكيك
@@ -595,7 +609,9 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
 
                   {customerSuggestions.length > 0 && (
                     <div className="absolute z-20 mt-1 w-full rounded-2xl border border-border bg-card p-1.5 shadow-xl">
-                      <p className="px-2.5 py-1 text-[10px] font-black text-muted-foreground">عملاء سابقون مسجلون:</p>
+                      <p className="px-2.5 py-1 text-[10px] font-black text-muted-foreground">
+                        عملاء سابقون مسجلون:
+                      </p>
                       {customerSuggestions.map((sug) => (
                         <button
                           key={sug.phone}
@@ -604,7 +620,9 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
                           className="flex w-full items-center justify-between rounded-xl px-2.5 py-2 text-xs hover:bg-secondary cursor-pointer"
                         >
                           <span className="font-black text-foreground">{sug.name}</span>
-                          <span dir="ltr" className="text-muted-foreground font-bold">{sug.phone}</span>
+                          <span dir="ltr" className="text-muted-foreground font-bold">
+                            {sug.phone}
+                          </span>
                         </button>
                       ))}
                     </div>
@@ -612,7 +630,9 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-foreground mb-1">اسم العميل *</label>
+                  <label className="block text-xs font-bold text-foreground mb-1">
+                    اسم العميل *
+                  </label>
                   <input
                     type="text"
                     value={customerName}
@@ -638,7 +658,9 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
                 {isGift && (
                   <div className="mt-2.5 grid gap-2.5 sm:grid-cols-3 rounded-xl bg-card p-3 border border-border animate-in fade-in duration-150">
                     <div>
-                      <label className="block text-[11px] font-bold text-muted-foreground mb-1">اسم المستلم</label>
+                      <label className="block text-[11px] font-bold text-muted-foreground mb-1">
+                        اسم المستلم
+                      </label>
                       <input
                         type="text"
                         value={recipientName}
@@ -648,7 +670,9 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-muted-foreground mb-1">هاتف المستلم</label>
+                      <label className="block text-[11px] font-bold text-muted-foreground mb-1">
+                        هاتف المستلم
+                      </label>
                       <input
                         dir="ltr"
                         type="tel"
@@ -659,7 +683,9 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-muted-foreground mb-1">هاتف المشتري</label>
+                      <label className="block text-[11px] font-bold text-muted-foreground mb-1">
+                        هاتف المشتري
+                      </label>
                       <input
                         dir="ltr"
                         type="tel"
@@ -677,7 +703,9 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
               {(stationMode === "delivery" || method === "delivery") && (
                 <div className="grid gap-3 sm:grid-cols-2 rounded-2xl bg-blue-500/5 p-3.5 border border-blue-500/20">
                   <div>
-                    <label className="block text-xs font-bold text-foreground mb-1">منطقة التوصيل *</label>
+                    <label className="block text-xs font-bold text-foreground mb-1">
+                      منطقة التوصيل *
+                    </label>
                     <select
                       value={area}
                       onChange={(e) => setArea(e.target.value)}
@@ -707,7 +735,9 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-foreground mb-1">العنوان التفصيلي</label>
+                    <label className="block text-xs font-bold text-foreground mb-1">
+                      العنوان التفصيلي
+                    </label>
                     <input
                       type="text"
                       value={address}
@@ -722,7 +752,9 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
               {/* Schedule Dates & Time Slot */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                 <div>
-                  <label className="block text-xs font-bold text-foreground mb-1">تاريخ التسليم</label>
+                  <label className="block text-xs font-bold text-foreground mb-1">
+                    تاريخ التسليم
+                  </label>
                   <input
                     type="date"
                     value={requestedDate}
@@ -731,7 +763,9 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-foreground mb-1">وقت التسليم</label>
+                  <label className="block text-xs font-bold text-foreground mb-1">
+                    وقت التسليم
+                  </label>
                   <input
                     type="time"
                     value={requestedTime}
@@ -740,7 +774,9 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
                   />
                 </div>
                 <div className="col-span-2 sm:col-span-1">
-                  <label className="block text-xs font-bold text-foreground mb-1">اسم/مناسبة الطلب</label>
+                  <label className="block text-xs font-bold text-foreground mb-1">
+                    اسم/مناسبة الطلب
+                  </label>
                   <input
                     type="text"
                     value={orderName}
@@ -751,30 +787,26 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
                 </div>
               </div>
 
-              {/* HIGHLIGHTED CAKE INSCRIPTION STUDIO (شريط الكتابة على الكيك) */}
-              <div className="rounded-2xl border-2 border-amber-400 bg-amber-500/10 p-3.5 space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-black text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
-                    <span>✍️</span>
-                    <span>الكتابة المطلوبة على الكيكة (Inscription Ribbon):</span>
-                  </label>
-                  <span className="text-[10px] font-black text-amber-700 bg-card px-2 py-0.5 rounded-full border border-amber-300">
-                    تظهر بوضوح للمطبخ
-                  </span>
-                </div>
+              {/* Cake Inscription / Card Writing Field */}
+              <div>
+                <label className="block text-xs font-bold text-foreground mb-1">
+                  ✍️ الكتابة المطلوبة على الكيكة / الكرت
+                </label>
                 <input
                   type="text"
                   value={inscription}
                   onChange={(e) => setInscription(e.target.value)}
                   placeholder="مثال: Happy Birthday Sarah / ألف مبروك التخرج..."
-                  className="min-h-[46px] w-full rounded-xl border-2 border-amber-400 bg-card px-3 text-sm font-black text-foreground outline-none focus:border-amber-600"
+                  className="min-h-[42px] w-full rounded-xl border border-input bg-background px-3 text-xs font-bold text-foreground outline-none focus:border-primary"
                 />
               </div>
 
               {/* Card Note, Design Image URL & Notes */}
               <div className="grid gap-2.5 sm:grid-cols-2">
                 <div>
-                  <label className="block text-xs font-bold text-foreground mb-1">💌 عبارة كرت الإهداء</label>
+                  <label className="block text-xs font-bold text-foreground mb-1">
+                    💌 عبارة كرت الإهداء
+                  </label>
                   <input
                     type="text"
                     value={cardNote}
@@ -784,7 +816,9 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-foreground mb-1">🖼️ رابط صورة التصميم</label>
+                  <label className="block text-xs font-bold text-foreground mb-1">
+                    🖼️ رابط صورة التصميم
+                  </label>
                   <input
                     type="url"
                     value={designImageUrl || ""}
@@ -797,7 +831,9 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
 
               <div className="grid gap-2.5 sm:grid-cols-2">
                 <div>
-                  <label className="block text-xs font-bold text-foreground mb-1">💬 ملاحظات العميل</label>
+                  <label className="block text-xs font-bold text-foreground mb-1">
+                    💬 ملاحظات العميل
+                  </label>
                   <input
                     type="text"
                     value={notes}
@@ -807,7 +843,9 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-foreground mb-1">🔒 ملاحظات الفريق السرية</label>
+                  <label className="block text-xs font-bold text-foreground mb-1">
+                    🔒 ملاحظات الفريق السرية
+                  </label>
                   <input
                     type="text"
                     value={staffNotes}
@@ -931,7 +969,9 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
             <div className="grid h-64 place-items-center rounded-3xl border border-border bg-card">
               <div className="flex flex-col items-center gap-2">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="text-xs font-bold text-muted-foreground">جاري تحميل قائمة المنتجات...</p>
+                <p className="text-xs font-bold text-muted-foreground">
+                  جاري تحميل قائمة المنتجات...
+                </p>
               </div>
             </div>
           ) : filteredProducts.length === 0 ? (
@@ -997,9 +1037,7 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
                     </div>
 
                     <div className="mt-2 flex items-center justify-between pt-1.5 border-t border-border/40">
-                      <span className="font-black text-sm text-primary">
-                        {jd(prod.price || 0)}
-                      </span>
+                      <span className="font-black text-sm text-primary">{jd(prod.price || 0)}</span>
                       <span className="grid h-8 w-8 place-items-center rounded-xl bg-secondary/80 text-foreground group-hover:bg-primary group-hover:text-primary-foreground transition-colors shadow-2xs">
                         <Plus className="h-4 w-4" />
                       </span>
@@ -1086,7 +1124,9 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
                       </h4>
                       <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-0.5">
                         <span className="font-bold text-primary">{jd(item.unitPrice)}</span>
-                        <span>• الإجمالي: <strong>{jd(item.unitPrice * item.quantity)}</strong></span>
+                        <span>
+                          • الإجمالي: <strong>{jd(item.unitPrice * item.quantity)}</strong>
+                        </span>
                       </div>
                       {item.options.length > 0 && (
                         <p className="text-[10px] text-muted-foreground/80 truncate mt-0.5">
@@ -1275,7 +1315,9 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
                 >
                   <CreditCard className="h-4 w-4" />
                   <span>كليك / فيزا</span>
-                  {(paymentMethod === "cliq" || paymentMethod === "visa") && <Check className="h-4 w-4" />}
+                  {(paymentMethod === "cliq" || paymentMethod === "visa") && (
+                    <Check className="h-4 w-4" />
+                  )}
                 </button>
               </div>
 
@@ -1344,10 +1386,7 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
       {/* 4. MOBILE SLIDE-UP CHECKOUT SHEET */}
       {showMobileCheckout && (
         <div className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end bg-black/60 animate-in fade-in duration-200">
-          <div
-            className="fixed inset-0"
-            onClick={() => setShowMobileCheckout(false)}
-          />
+          <div className="fixed inset-0" onClick={() => setShowMobileCheckout(false)} />
           <div className="relative z-10 max-h-[88vh] w-full rounded-t-3xl border-t border-border bg-card shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-250">
             <div className="flex items-center justify-between p-3.5 border-b border-border">
               <div className="flex items-center gap-2">
@@ -1373,7 +1412,9 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
                   >
                     <div className="min-w-0 flex-1">
                       <h4 className="font-black text-xs text-foreground truncate">{item.name}</h4>
-                      <p className="text-[11px] font-bold text-primary">{jd(item.unitPrice * item.quantity)}</p>
+                      <p className="text-[11px] font-bold text-primary">
+                        {jd(item.unitPrice * item.quantity)}
+                      </p>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <button

@@ -5,9 +5,17 @@ export const Route = createFileRoute("/welcome")({
   head: () => ({
     meta: [
       { title: "DELISH Bakes | Small Joys, Baked Daily" },
-      { name: "description", content: "Closer to love with every bite. Handcrafted luxury cakes and signature pastries in Amman, Jordan." },
+      {
+        name: "description",
+        content:
+          "Closer to love with every bite. Handcrafted luxury cakes and signature pastries in Amman, Jordan.",
+      },
       { property: "og:title", content: "DELISH Bakes | Small Joys, Baked Daily" },
-      { property: "og:description", content: "Closer to love with every bite. Handcrafted luxury cakes and signature pastries in Amman, Jordan." },
+      {
+        property: "og:description",
+        content:
+          "Closer to love with every bite. Handcrafted luxury cakes and signature pastries in Amman, Jordan.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],

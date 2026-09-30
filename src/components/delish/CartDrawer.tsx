@@ -9,7 +9,6 @@ import { useServerFn } from "@tanstack/react-start";
 import { submitStorefrontOrder } from "@/lib/storefront-order.functions";
 import { useBrandPalette } from "@/lib/brand-palette";
 
-
 type Form = {
   name: string;
   phone: string;
@@ -95,7 +94,9 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
     L.push("");
     L.push(ar ? "*تفاصيل الطلب*" : "*Order items*");
     lines.forEach((l, i) => {
-      L.push(`${i + 1}. ${ar ? l.ar : l.en} × ${l.qty} — ${(l.unit * l.qty).toFixed(2)} ${ar ? "د.أ" : "JOD"}`);
+      L.push(
+        `${i + 1}. ${ar ? l.ar : l.en} × ${l.qty} — ${(l.unit * l.qty).toFixed(2)} ${ar ? "د.أ" : "JOD"}`,
+      );
       (ar ? l.detailsAr : l.detailsEn).forEach((d) => L.push(`   • ${d}`));
       if (l.notes) L.push(`   • ${ar ? "ملاحظة" : "Note"}: ${l.notes}`);
     });
@@ -105,7 +106,13 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
     L.push(`*${ar ? "الإجمالي" : "Total"}: ${total.toFixed(2)} ${ar ? "د.أ" : "JOD"}*`);
     L.push(
       `${ar ? "طريقة الدفع" : "Payment"}: ${
-        form.pay === "cash" ? (ar ? "نقداً عند التسليم" : "Cash on delivery") : ar ? "كليك CliQ" : "CliQ transfer"
+        form.pay === "cash"
+          ? ar
+            ? "نقداً عند التسليم"
+            : "Cash on delivery"
+          : ar
+            ? "كليك CliQ"
+            : "CliQ transfer"
       }`,
     );
     if (form.notes.trim()) {
@@ -179,7 +186,6 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
     openWhatsApp(url);
   };
 
-
   if (!open) return null;
 
   return (
@@ -231,7 +237,8 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
               </h3>
               {orderNumber != null && (
                 <p className="text-sm font-semibold">
-                  {lang === "ar" ? "رقم الطلب" : "Order number"}: <span dir="ltr">{orderNumber}</span>
+                  {lang === "ar" ? "رقم الطلب" : "Order number"}:{" "}
+                  <span dir="ltr">{orderNumber}</span>
                 </p>
               )}
               <p className="max-w-xs text-sm text-muted-foreground">
@@ -271,7 +278,10 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
 
           {stage === "cart" &&
             lines.map((l) => (
-              <div key={l.key} className="grid grid-cols-[auto_minmax(0,1fr)] gap-3 rounded-2xl border border-border p-3">
+              <div
+                key={l.key}
+                className="grid grid-cols-[auto_minmax(0,1fr)] gap-3 rounded-2xl border border-border p-3"
+              >
                 {l.image && (
                   <img
                     src={l.image}
@@ -299,7 +309,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                     ))}
                     {l.notes && <li>{l.notes}</li>}
                   </ul>
-                   <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-1 rounded-full border border-border px-1">
                       <button
                         onClick={() => setQty(l.key, l.qty - 1)}
@@ -308,7 +318,10 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                       >
                         <Minus className="h-4 w-4" aria-hidden="true" />
                       </button>
-                      <span className="min-w-6 text-center text-sm font-semibold" aria-live="polite">
+                      <span
+                        className="min-w-6 text-center text-sm font-semibold"
+                        aria-live="polite"
+                      >
                         {l.qty}
                       </span>
                       <button
@@ -330,7 +343,15 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
           {stage === "checkout" && (
             <div className="space-y-4">
               <Field label={t("name")} error={errors["name"]} errText={t("required")}>
-                {(p) => <input className={inputCls} autoComplete="name" value={form.name} onChange={(e) => set("name", e.target.value)} {...p} />}
+                {(p) => (
+                  <input
+                    className={inputCls}
+                    autoComplete="name"
+                    value={form.name}
+                    onChange={(e) => set("name", e.target.value)}
+                    {...p}
+                  />
+                )}
               </Field>
               <Field label={t("phone")} error={errors["phone"]} errText={t("required")}>
                 {(p) => (
@@ -363,7 +384,9 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                         backgroundColor: form.method === m ? palette.cardBg : undefined,
                       }}
                       className={`min-h-12 rounded-2xl border px-3 py-2.5 text-sm cursor-pointer transition-all ${
-                        form.method === m ? "font-semibold shadow-xs" : "border-border text-foreground hover:bg-secondary/20"
+                        form.method === m
+                          ? "font-semibold shadow-xs"
+                          : "border-border text-foreground hover:bg-secondary/20"
                       }`}
                     >
                       {m === "delivery" ? t("deliveryOpt") : t("pickup")}
@@ -388,7 +411,9 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                         backgroundColor: form.pay === option ? palette.cardBg : undefined,
                       }}
                       className={`min-h-12 rounded-2xl border px-3 py-2.5 text-sm cursor-pointer transition-all ${
-                        form.pay === option ? "font-semibold shadow-xs" : "border-border text-foreground hover:bg-secondary/20"
+                        form.pay === option
+                          ? "font-semibold shadow-xs"
+                          : "border-border text-foreground hover:bg-secondary/20"
                       }`}
                     >
                       {option === "cash"
@@ -425,9 +450,14 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                         onChange={(e) => set("area", e.target.value)}
                         {...p}
                       >
-                        <option value="">{lang === "ar" ? "اختر المنطقة" : "Select your area"}</option>
+                        <option value="">
+                          {lang === "ar" ? "اختر المنطقة" : "Select your area"}
+                        </option>
                         {DELIVERY_ZONES.map((zone) => (
-                          <optgroup key={zone.labelEn} label={lang === "ar" ? zone.labelAr : zone.labelEn}>
+                          <optgroup
+                            key={zone.labelEn}
+                            label={lang === "ar" ? zone.labelAr : zone.labelEn}
+                          >
                             {zone.areas.map((area) => (
                               <option key={`${zone.labelEn}-${area}`} value={area}>
                                 {area === OTHER_GOVERNORATES_AREA
@@ -474,12 +504,24 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
               <div className="grid gap-3 min-[360px]:grid-cols-2">
                 <Field label={t("date")} error={errors["date"]} errText={t("required")}>
                   {(p) => (
-                    <input type="date" className={inputCls} value={form.date} onChange={(e) => set("date", e.target.value)} {...p} />
+                    <input
+                      type="date"
+                      className={inputCls}
+                      value={form.date}
+                      onChange={(e) => set("date", e.target.value)}
+                      {...p}
+                    />
                   )}
                 </Field>
                 <Field label={t("time")} error={errors["time"]} errText={t("required")}>
                   {(p) => (
-                    <input type="time" className={inputCls} value={form.time} onChange={(e) => set("time", e.target.value)} {...p} />
+                    <input
+                      type="time"
+                      className={inputCls}
+                      value={form.time}
+                      onChange={(e) => set("time", e.target.value)}
+                      {...p}
+                    />
                   )}
                 </Field>
               </div>
@@ -519,7 +561,10 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                 >
                   {t("checkout")}
                 </button>
-                <button onClick={clear} className="min-h-11 w-full text-center text-xs text-foreground underline">
+                <button
+                  onClick={clear}
+                  className="min-h-11 w-full text-center text-xs text-foreground underline"
+                >
                   {t("clear")}
                 </button>
               </>
@@ -530,7 +575,11 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                   disabled={sending}
                   className="min-h-12 w-full rounded-full bg-whatsapp py-3.5 text-sm font-bold text-whatsapp-foreground transition-transform hover:scale-[1.01] disabled:opacity-70"
                 >
-                  {sending ? (lang === "ar" ? "جارٍ تسجيل الطلب…" : "Saving order…") : t("sendWhats")}
+                  {sending
+                    ? lang === "ar"
+                      ? "جارٍ تسجيل الطلب…"
+                      : "Saving order…"
+                    : t("sendWhats")}
                 </button>
                 {saveError && (
                   <p className="text-center text-xs font-semibold text-destructive">
@@ -573,10 +622,16 @@ function Field({
 }) {
   const id = useId();
   const errId = `${id}-error`;
-  const props: FieldProps = { id, ...(error ? { "aria-invalid": true as const, "aria-describedby": errId } : {}) };
+  const props: FieldProps = {
+    id,
+    ...(error ? { "aria-invalid": true as const, "aria-describedby": errId } : {}),
+  };
   return (
     <div>
-      <label htmlFor={id} className="mb-2 block text-xs font-bold tracking-wide text-muted-foreground uppercase">
+      <label
+        htmlFor={id}
+        className="mb-2 block text-xs font-bold tracking-wide text-muted-foreground uppercase"
+      >
         {label}
       </label>
       {children(props)}
@@ -592,7 +647,9 @@ function Field({
 function Row({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
   return (
     <div className="flex items-center justify-between text-sm">
-      <span className={strong ? "font-display text-base font-semibold" : "text-muted-foreground"}>{label}</span>
+      <span className={strong ? "font-display text-base font-semibold" : "text-muted-foreground"}>
+        {label}
+      </span>
       <span className={strong ? "font-display text-base font-semibold" : ""}>{value}</span>
     </div>
   );

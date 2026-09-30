@@ -46,11 +46,14 @@ const NO_AUTHORIZATION: StaffAuthorization = {
 type Ctx = { supabase: any; userId: string; claims: Record<string, unknown> };
 
 const staffName = (context: Ctx) =>
-  emailToUsername(typeof context.claims['email'] === "string" ? (context.claims['email'] as string) : "") ||
-  context.userId;
+  emailToUsername(
+    typeof context.claims["email"] === "string" ? (context.claims["email"] as string) : "",
+  ) || context.userId;
 
 /** Resolves what a staff account is actually allowed to do with money. */
-async function resolveAuthorization(context: Ctx): Promise<StaffAuthorization & { isAdmin: boolean }> {
+async function resolveAuthorization(
+  context: Ctx,
+): Promise<StaffAuthorization & { isAdmin: boolean }> {
   const roles = await getRoles(context);
   if (roles.includes("admin")) return { ...ADMIN_AUTHORIZATION, isAdmin: true };
   const { data } = await context.supabase
@@ -68,17 +71,20 @@ async function resolveAuthorization(context: Ctx): Promise<StaffAuthorization & 
 }
 
 /** Writes an immutable audit row through the signed-in staff session. */
-async function writeAudit(context: Ctx, entry: {
-  order_id: string | null;
-  order_number: string | null;
-  staff_user_id: string;
-  staff_name: string;
-  action: string;
-  original_amount: number | null;
-  modified_amount: number | null;
-  discount_percent: number | null;
-  reason: string | null;
-}) {
+async function writeAudit(
+  context: Ctx,
+  entry: {
+    order_id: string | null;
+    order_number: string | null;
+    staff_user_id: string;
+    staff_name: string;
+    action: string;
+    original_amount: number | null;
+    modified_amount: number | null;
+    discount_percent: number | null;
+    reason: string | null;
+  },
+) {
   const { error } = await context.supabase.rpc("record_staff_audit", {
     _order_id: entry.order_id,
     _order_number: entry.order_number,
@@ -114,7 +120,9 @@ export const listStaffAuthorizations = createServerFn({ method: "GET" })
     const [{ data: users }, { data: roleRows }, { data: perms }] = await Promise.all([
       supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 200 }),
       supabaseAdmin.from("user_roles").select("user_id, role"),
-      supabaseAdmin.from("staff_permissions").select("user_id, allow_price_override, allow_custom_discount, max_discount_percent"),
+      supabaseAdmin
+        .from("staff_permissions")
+        .select("user_id, allow_price_override, allow_custom_discount, max_discount_percent"),
     ]);
 
     const rolesByUser = new Map<string, string[]>();
@@ -181,7 +189,9 @@ export const listAuditLogs = createServerFn({ method: "GET" })
   .handler(async ({ context }): Promise<AuditEntry[]> => {
     const { data, error } = await context.supabase
       .from("audit_logs")
-      .select("id, order_id, order_number, staff_name, action, original_amount, modified_amount, discount_percent, reason, created_at")
+      .select(
+        "id, order_id, order_number, staff_name, action, original_amount, modified_amount, discount_percent, reason, created_at",
+      )
       .order("created_at", { ascending: false })
       .limit(400);
     if (error) throw new Error(error.message);
@@ -320,7 +330,7 @@ export const createOrderEditLink = createServerFn({ method: "POST" })
  * host (which sits behind the Lovable interface and would ask for a login).
  */
 function publicSiteOrigin(): string {
-  const configured = process.env['PUBLIC_SITE_URL'];
+  const configured = process.env["PUBLIC_SITE_URL"];
   if (configured) return configured.replace(/\/+$/, "");
   return "https://unknowncake.lovable.app";
 }
@@ -351,7 +361,9 @@ export const getOrderByEditToken = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: order, error } = await supabaseAdmin
       .from("orders")
-      .select("order_number, staff_code, customer_name, customer_phone, requested_date, requested_time, notes, inscription, area, address, method, total")
+      .select(
+        "order_number, staff_code, customer_name, customer_phone, requested_date, requested_time, notes, inscription, area, address, method, total",
+      )
       .eq("id", row.order_id)
       .single();
     if (error) throw publicError("order-edit.getOrder", error);
@@ -385,7 +397,9 @@ export const submitOrderEdit = createServerFn({ method: "POST" })
         inscription:
           input?.inscription === undefined ? undefined : String(input.inscription).slice(0, 200),
         customer_phone:
-          input?.customer_phone === undefined ? undefined : String(input.customer_phone).slice(0, 30),
+          input?.customer_phone === undefined
+            ? undefined
+            : String(input.customer_phone).slice(0, 30),
         requested_date: requestedDate,
         requested_time: requestedTime,
       };
@@ -399,7 +413,9 @@ export const submitOrderEdit = createServerFn({ method: "POST" })
 
     const { data: before } = await supabaseAdmin
       .from("orders")
-      .select("id, order_number, customer_name, customer_phone, requested_date, requested_time, method, area, address, order_name, sender_phone, recipient_phone, deposit_paid, notes, inscription, staff_notes, card_note, total, modifications")
+      .select(
+        "id, order_number, customer_name, customer_phone, requested_date, requested_time, method, area, address, order_name, sender_phone, recipient_phone, deposit_paid, notes, inscription, staff_notes, card_note, total, modifications",
+      )
       .eq("id", row.order_id)
       .single();
 
@@ -409,11 +425,13 @@ export const submitOrderEdit = createServerFn({ method: "POST" })
         data.requested_time.slice(0, 5) !== String(before?.requested_time ?? "").slice(0, 5));
 
     const nowIso = new Date().toISOString();
-    const currentMods = ((before?.modifications as OrderModification[] | null) ?? []);
+    const currentMods = (before?.modifications as OrderModification[] | null) ?? [];
     const newDiffs: OrderModification[] = [];
 
     // Preserve baseline if this is the first modification on this order
-    const hasBaseline = currentMods.some((m) => m.field.includes("الطلب الأساسي") || m.field.includes("النسخة الأصلية"));
+    const hasBaseline = currentMods.some(
+      (m) => m.field.includes("الطلب الأساسي") || m.field.includes("النسخة الأصلية"),
+    );
     if (!hasBaseline && before) {
       const { data: existingItems } = await supabaseAdmin
         .from("order_items")
@@ -439,7 +457,10 @@ export const submitOrderEdit = createServerFn({ method: "POST" })
       });
     }
 
-    if (data.requested_time && data.requested_time.slice(0, 5) !== String(before?.requested_time ?? "").slice(0, 5)) {
+    if (
+      data.requested_time &&
+      data.requested_time.slice(0, 5) !== String(before?.requested_time ?? "").slice(0, 5)
+    ) {
       newDiffs.push({
         field: "وقت الاستلام/التوصيل (رابط الزبون)",
         oldValue: before?.requested_time ? String(before.requested_time).slice(0, 5) : "غير محدد",
@@ -491,7 +512,9 @@ export const submitOrderEdit = createServerFn({ method: "POST" })
       }
     }
 
-    const updatedMods = (newDiffs.length > 0 ? [...currentMods, ...newDiffs] : currentMods).slice(-30);
+    const updatedMods = (newDiffs.length > 0 ? [...currentMods, ...newDiffs] : currentMods).slice(
+      -30,
+    );
 
     const { error } = await supabaseAdmin
       .from("orders")

@@ -12,7 +12,10 @@ export const Route = createFileRoute("/admin-setup")({
   head: () => ({
     meta: [
       { title: "تهيئة حساب المدير | Delish Admin Setup" },
-      { name: "description", content: "إنشاء حساب المدير الأول لإدارة متجر ديليش والموظفين والطلبات." },
+      {
+        name: "description",
+        content: "إنشاء حساب المدير الأول لإدارة متجر ديليش والموظفين والطلبات.",
+      },
       { name: "robots", content: "noindex, nofollow" },
       { property: "og:title", content: "تهيئة حساب المدير | Delish Admin Setup" },
       { property: "og:description", content: "One-time setup for the first Delish admin account." },
@@ -46,14 +49,21 @@ function AdminSetupPage() {
       await supabase.auth.signInWithPassword({ email: usernameToEmail(username), password });
       void navigate({ to: "/staff", search: { tab: "admin" as const }, replace: true });
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "تعذّر إنشاء الحساب · Could not create the account");
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "تعذّر إنشاء الحساب · Could not create the account",
+      );
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <main dir="rtl" className="relative grid min-h-dvh place-items-center overflow-hidden bg-background px-4 py-10">
+    <main
+      dir="rtl"
+      className="relative grid min-h-dvh place-items-center overflow-hidden bg-background px-4 py-10"
+    >
       <BackgroundCurves />
       <div className="relative z-10 w-full max-w-sm rounded-3xl border border-border bg-card p-7 shadow-[var(--shadow-soft)]">
         <div className="flex flex-col items-center text-center">
@@ -109,7 +119,10 @@ function AdminSetupPage() {
               />
             </label>
             {error && (
-              <p role="alert" className="rounded-xl bg-destructive/10 p-3 text-xs font-bold text-destructive">
+              <p
+                role="alert"
+                className="rounded-xl bg-destructive/10 p-3 text-xs font-bold text-destructive"
+              >
                 {error}
               </p>
             )}

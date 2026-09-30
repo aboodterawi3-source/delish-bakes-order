@@ -68,15 +68,7 @@ export const DELIVERY_ZONES: DeliveryZone[] = [
     fee: 5,
     labelAr: "توصيل ٥ د.أ",
     labelEn: "5 JD delivery",
-    areas: [
-      "مرج الحمام",
-      "البنيات",
-      "الظهير",
-      "البنيات الشمالي",
-      "طريق المطار",
-      "ناعور",
-      "يادودة",
-    ],
+    areas: ["مرج الحمام", "البنيات", "الظهير", "البنيات الشمالي", "طريق المطار", "ناعور", "يادودة"],
   },
   {
     fee: OTHER_FEE_MAX,
@@ -105,6 +97,17 @@ const normalise = (value: string) => value.trim().replace(/\s+/g, " ");
 /** Returns the fee for an area, or null when the area is not one we deliver to. */
 export function feeForArea(area: string | null | undefined): number | null {
   if (!area) return null;
-  const fee = AREA_FEES[normalise(area)];
+  // Fallback to static AREA_FEES only during initial SSR/build when store might not be ready
+  const activeMap = typeof window !== "undefined" ? undefined : AREA_FEES;
+
+  let feesMap = activeMap;
+  try {
+    const { getActiveAreaFees } = require("@/hooks/use-delivery-zones");
+    feesMap = getActiveAreaFees();
+  } catch (e) {
+    feesMap = AREA_FEES;
+  }
+
+  const fee = feesMap[normalise(area)];
   return fee === undefined ? null : fee;
 }

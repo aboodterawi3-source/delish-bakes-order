@@ -5,4 +5,3 @@ export const orderLabel = (orderNumber: string, staffCode?: number | null): stri
   }
   return `${orderNumber} [أونلاين]`;
 };
-

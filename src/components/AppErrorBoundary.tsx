@@ -16,7 +16,6 @@ export class AppErrorBoundary extends Component<{ children: ReactNode }, { faile
   }
 
   override componentDidCatch(error: unknown, info: ErrorInfo) {
-    // eslint-disable-next-line no-console
     console.error("[app-error-boundary]", error ?? "undefined thrown value", info.componentStack);
     reportLovableError(error ?? new Error("Undefined value thrown during render"), {
       boundary: "app_error_boundary",

@@ -13,7 +13,10 @@ export const Route = createFileRoute("/social-login")({
       { name: "description", content: "تسجيل دخول فريق السوشال ميديا لإدخال طلبات ديليش فوراً." },
       { name: "robots", content: "noindex, nofollow" },
       { property: "og:title", content: "بوابة طلبات السوشيال ميديا | Delish Social Media Portal" },
-      { property: "og:description", content: "Social media team sign in for the Delish order portal." },
+      {
+        property: "og:description",
+        content: "Social media team sign in for the Delish order portal.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -30,7 +33,8 @@ function SocialLoginPage() {
 
   useEffect(() => {
     void supabase.auth.getUser().then(({ data }) => {
-      if (data.user) void navigate({ to: "/staff", search: { tab: "social" as const }, replace: true });
+      if (data.user)
+        void navigate({ to: "/staff", search: { tab: "social" as const }, replace: true });
     });
   }, [navigate]);
 
@@ -38,7 +42,10 @@ function SocialLoginPage() {
     event.preventDefault();
     setBusy(true);
     setError(null);
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email: usernameToEmail(username), password });
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: usernameToEmail(username),
+      password,
+    });
     setBusy(false);
     if (signInError) {
       setError("بيانات الدخول غير صحيحة · Invalid name or password");
@@ -48,7 +55,10 @@ function SocialLoginPage() {
   };
 
   return (
-    <main dir="rtl" className="relative grid min-h-dvh place-items-center overflow-hidden bg-[#F9FBFC] px-4 py-10">
+    <main
+      dir="rtl"
+      className="relative grid min-h-dvh place-items-center overflow-hidden bg-[#F9FBFC] px-4 py-10"
+    >
       <BackgroundCurves />
       <div className="relative z-10 w-full max-w-sm rounded-3xl border border-[#B8860B]/20 bg-white p-7 shadow-[var(--shadow-soft)]">
         <div className="flex flex-col items-center text-center">
@@ -63,9 +73,12 @@ function SocialLoginPage() {
 
           <div className="max-w-[16rem]">
             <h1 className="font-display text-balance text-lg font-bold leading-snug text-[#3E2723] sm:text-xl">
-              بوابة طلبات السوشيال ميديا <span className="text-[#B8860B]">|</span> Social Media Portal
+              بوابة طلبات السوشيال ميديا <span className="text-[#B8860B]">|</span> Social Media
+              Portal
             </h1>
-            <p className="mt-1 text-xs text-[#8B4513]/80">استقبال طلبات المنصات · Social order intake</p>
+            <p className="mt-1 text-xs text-[#8B4513]/80">
+              استقبال طلبات المنصات · Social order intake
+            </p>
           </div>
         </div>
 
@@ -94,7 +107,10 @@ function SocialLoginPage() {
           </label>
 
           {error ? (
-            <p role="alert" className="rounded-xl bg-destructive/10 p-3 text-sm font-bold text-destructive">
+            <p
+              role="alert"
+              className="rounded-xl bg-destructive/10 p-3 text-sm font-bold text-destructive"
+            >
               {error}
             </p>
           ) : null}

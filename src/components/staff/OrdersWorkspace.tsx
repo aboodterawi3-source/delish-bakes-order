@@ -56,7 +56,7 @@ import {
   type SalesStatus,
   type ShiftReport,
 } from "@/lib/sales.functions";
-import { ModificationsHistoryBox } from "@/components/staff/ModificationsPanel";
+
 import { buildConfirmationMessage } from "@/lib/confirmation-message";
 import { esc, printDocument } from "@/lib/print";
 import { orderLabel } from "@/lib/order-label";
@@ -76,15 +76,58 @@ import {
 
 export const ORDERS_KEY = ["sales-orders"] as const;
 
-export const statusMeta: Record<SalesStatus, { ar: string; en: string; chip: string; dot: string }> = {
-  new: { ar: "قيد الانتظار", en: "Pending", chip: "bg-amber-100 text-amber-900 border-amber-300", dot: "bg-amber-500" },
-  confirmed: { ar: "مؤكد", en: "Confirmed", chip: "bg-blue-100 text-blue-900 border-blue-300", dot: "bg-blue-500" },
-  baking: { ar: "قيد التنفيذ والكريمة", en: "In production", chip: "bg-purple-100 text-purple-900 border-purple-300", dot: "bg-purple-500" },
-  ready: { ar: "جاهز بالمحل", en: "Ready at store", chip: "bg-emerald-100 text-emerald-900 border-emerald-300", dot: "bg-emerald-500" },
-  out_for_delivery: { ar: "مع السائق للتوصيل", en: "Out for delivery", chip: "bg-orange-100 text-orange-900 border-orange-300", dot: "bg-orange-500" },
-  completed: { ar: "مكتمل ومستلم", en: "Completed", chip: "bg-green-100 text-green-900 border-green-300", dot: "bg-green-500" },
-  delivered: { ar: "تم التسليم", en: "Delivered", chip: "bg-green-100 text-green-900 border-green-300", dot: "bg-green-500" },
-  cancelled: { ar: "ملغي", en: "Canceled", chip: "bg-rose-100 text-rose-900 border-rose-300", dot: "bg-rose-500" },
+export const statusMeta: Record<
+  SalesStatus,
+  { ar: string; en: string; chip: string; dot: string }
+> = {
+  new: {
+    ar: "قيد الانتظار",
+    en: "Pending",
+    chip: "bg-amber-100 text-amber-900 border-amber-300",
+    dot: "bg-amber-500",
+  },
+  confirmed: {
+    ar: "مؤكد",
+    en: "Confirmed",
+    chip: "bg-blue-100 text-blue-900 border-blue-300",
+    dot: "bg-blue-500",
+  },
+  baking: {
+    ar: "قيد التنفيذ والكريمة",
+    en: "In production",
+    chip: "bg-purple-100 text-purple-900 border-purple-300",
+    dot: "bg-purple-500",
+  },
+  ready: {
+    ar: "جاهز بالمحل",
+    en: "Ready at store",
+    chip: "bg-emerald-100 text-emerald-900 border-emerald-300",
+    dot: "bg-emerald-500",
+  },
+  out_for_delivery: {
+    ar: "مع السائق للتوصيل",
+    en: "Out for delivery",
+    chip: "bg-orange-100 text-orange-900 border-orange-300",
+    dot: "bg-orange-500",
+  },
+  completed: {
+    ar: "مكتمل ومستلم",
+    en: "Completed",
+    chip: "bg-green-100 text-green-900 border-green-300",
+    dot: "bg-green-500",
+  },
+  delivered: {
+    ar: "تم التسليم",
+    en: "Delivered",
+    chip: "bg-green-100 text-green-900 border-green-300",
+    dot: "bg-green-500",
+  },
+  cancelled: {
+    ar: "ملغي",
+    en: "Canceled",
+    chip: "bg-rose-100 text-rose-900 border-rose-300",
+    dot: "bg-rose-500",
+  },
 };
 
 export const payMeta: Record<PaymentMethod, { ar: string; en: string }> = {
@@ -106,8 +149,12 @@ export function printReceipt(order: SalesOrder) {
         .map(
           (item) =>
             `<tr><td><b>${item.quantity} × ${esc(item.name_ar)}</b>` +
-            (item.options_ar.length ? `<br><small style="color:#555;">${esc(item.options_ar.join(" · "))}</small>` : "") +
-            (item.notes ? `<br><small style="color:#8b4513;">ملاحظة: ${esc(item.notes)}</small>` : "") +
+            (item.options_ar.length
+              ? `<br><small style="color:#555;">${esc(item.options_ar.join(" · "))}</small>`
+              : "") +
+            (item.notes
+              ? `<br><small style="color:#8b4513;">ملاحظة: ${esc(item.notes)}</small>`
+              : "") +
             `<br><small>${item.unit_price.toFixed(2)} د.أ / حبة</small></td>` +
             `<td style="text-align:left;font-weight:bold;">${(item.unit_price * item.quantity).toFixed(2)}</td></tr>`,
         )
@@ -177,7 +224,11 @@ export function waNumber(phone: string) {
 function sendScheduleConfirmation(order: SalesOrder) {
   const message = `أهلاً بك من مخبز ديلش! 🌸 تم تحديث موعد طلبك رقم ${order.order_number} بنجاح إلى ${order.requested_date} الساعة ${order.requested_time.slice(0, 5)}. يسعدنا خدمتكم دائماً!`;
   void navigator.clipboard?.writeText(message).catch(() => undefined);
-  window.open(`https://wa.me/${waNumber(order.customer_phone)}?text=${encodeURIComponent(message)}`, "_blank", "noopener");
+  window.open(
+    `https://wa.me/${waNumber(order.customer_phone)}?text=${encodeURIComponent(message)}`,
+    "_blank",
+    "noopener",
+  );
   toast.success("تم تجهيز رسالة التأكيد للواتساب 📲");
 }
 
@@ -206,7 +257,11 @@ function sendCustomerWhatsApp(order: SalesOrder) {
     senderPhone: order.sender_phone ?? "",
   });
   void navigator.clipboard?.writeText(message).catch(() => undefined);
-  window.open(`https://wa.me/${waNumber(order.customer_phone)}?text=${encodeURIComponent(message)}`, "_blank", "noopener");
+  window.open(
+    `https://wa.me/${waNumber(order.customer_phone)}?text=${encodeURIComponent(message)}`,
+    "_blank",
+    "noopener",
+  );
   toast.success("تم فتح محادثة الواتساب مع العميل 📲");
 }
 
@@ -225,8 +280,10 @@ function applyPatch(order: SalesOrder, input: OrderPatch): SalesOrder {
   if (input.deposit_paid !== undefined) next.deposit_paid = input.deposit_paid;
   if (input.payment_method !== undefined) next.payment_method = input.payment_method;
   if (input.card_note !== undefined) next.card_note = input.card_note;
-  if (input.final_photo_requested !== undefined) next.final_photo_requested = input.final_photo_requested;
-  if (input.confirmation_message !== undefined) next.confirmation_message = input.confirmation_message;
+  if (input.final_photo_requested !== undefined)
+    next.final_photo_requested = input.final_photo_requested;
+  if (input.confirmation_message !== undefined)
+    next.confirmation_message = input.confirmation_message;
   if (input.order_name !== undefined) next.order_name = input.order_name;
   if (input.sender_phone !== undefined) next.sender_phone = input.sender_phone;
   if (input.recipient_phone !== undefined) next.recipient_phone = input.recipient_phone;
@@ -341,7 +398,9 @@ export function OrdersWorkspace({
     onMutate: (input) => {
       const previous = queryClient.getQueryData<SalesOrder[]>(ORDERS_KEY);
       queryClient.setQueryData<SalesOrder[]>(ORDERS_KEY, (rows) =>
-        (rows ?? []).map((order) => (order.id === input.orderId ? applyPatch(order, input) : order)),
+        (rows ?? []).map((order) =>
+          order.id === input.orderId ? applyPatch(order, input) : order,
+        ),
       );
       return { previous };
     },
@@ -439,12 +498,17 @@ export function OrdersWorkspace({
 
   // Statistics Summary
   const stats = useMemo(() => {
-    const totalCollected = rawList.reduce((sum, o) => sum + (o.status !== "cancelled" ? o.deposit_paid : 0), 0);
+    const totalCollected = rawList.reduce(
+      (sum, o) => sum + (o.status !== "cancelled" ? o.deposit_paid : 0),
+      0,
+    );
     const totalPendingBalance = rawList.reduce(
       (sum, o) => sum + (o.status !== "cancelled" ? Math.max(o.total - o.deposit_paid, 0) : 0),
       0,
     );
-    const activeCount = rawList.filter((o) => ["new", "baking", "ready", "out_for_delivery"].includes(o.status)).length;
+    const activeCount = rawList.filter((o) =>
+      ["new", "baking", "ready", "out_for_delivery"].includes(o.status),
+    ).length;
     return { totalCollected, totalPendingBalance, activeCount, totalOrders: rawList.length };
   }, [rawList]);
 
@@ -490,20 +554,34 @@ export function OrdersWorkspace({
         {/* Quick Analytics Counters */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
           <div className="rounded-2xl bg-secondary/40 p-3 border border-border/60">
-            <span className="text-[11px] font-bold text-muted-foreground block">إجمالي الطلبات</span>
+            <span className="text-[11px] font-bold text-muted-foreground block">
+              إجمالي الطلبات
+            </span>
             <span className="text-lg font-black text-foreground">{stats.totalOrders} طلب</span>
           </div>
           <div className="rounded-2xl bg-amber-500/10 p-3 border border-amber-500/20">
-            <span className="text-[11px] font-black text-amber-700 dark:text-amber-300 block">الطلبات النشطة الآن</span>
-            <span className="text-lg font-black text-amber-700 dark:text-amber-300">{stats.activeCount} قيد المتابعة</span>
+            <span className="text-[11px] font-black text-amber-700 dark:text-amber-300 block">
+              الطلبات النشطة الآن
+            </span>
+            <span className="text-lg font-black text-amber-700 dark:text-amber-300">
+              {stats.activeCount} قيد المتابعة
+            </span>
           </div>
           <div className="rounded-2xl bg-emerald-500/10 p-3 border border-emerald-500/20">
-            <span className="text-[11px] font-black text-emerald-700 dark:text-emerald-300 block">المبالغ المحصلة</span>
-            <span className="text-lg font-black text-emerald-700 dark:text-emerald-300">{jd(stats.totalCollected)}</span>
+            <span className="text-[11px] font-black text-emerald-700 dark:text-emerald-300 block">
+              المبالغ المحصلة
+            </span>
+            <span className="text-lg font-black text-emerald-700 dark:text-emerald-300">
+              {jd(stats.totalCollected)}
+            </span>
           </div>
           <div className="rounded-2xl bg-rose-500/10 p-3 border border-rose-500/20">
-            <span className="text-[11px] font-black text-rose-700 dark:text-rose-300 block">المتبقي عند التسليم</span>
-            <span className="text-lg font-black text-rose-700 dark:text-rose-300">{jd(stats.totalPendingBalance)}</span>
+            <span className="text-[11px] font-black text-rose-700 dark:text-rose-300 block">
+              المتبقي عند التسليم
+            </span>
+            <span className="text-lg font-black text-rose-700 dark:text-rose-300">
+              {jd(stats.totalPendingBalance)}
+            </span>
           </div>
         </div>
 
@@ -563,7 +641,9 @@ export function OrdersWorkspace({
               title="تحديث البيانات"
               className="grid h-11 w-11 place-items-center rounded-2xl border border-border bg-card text-foreground hover:bg-secondary cursor-pointer"
             >
-              <RefreshCw className={`h-4 w-4 ${orders.isFetching ? "animate-spin text-primary" : ""}`} />
+              <RefreshCw
+                className={`h-4 w-4 ${orders.isFetching ? "animate-spin text-primary" : ""}`}
+              />
             </button>
 
             {/* Clear All Orders Button */}
@@ -671,7 +751,9 @@ export function OrdersWorkspace({
         <div className="grid h-52 place-items-center rounded-3xl border border-dashed border-border bg-card p-6 text-center">
           <div>
             <CalendarClock className="mx-auto h-8 w-8 text-muted-foreground/40 mb-2" />
-            <p className="font-black text-sm text-muted-foreground">لا توجد طلبات مطابقة للبحث أو الفلتر المحدد</p>
+            <p className="font-black text-sm text-muted-foreground">
+              لا توجد طلبات مطابقة للبحث أو الفلتر المحدد
+            </p>
           </div>
         </div>
       ) : (
@@ -819,10 +901,12 @@ export function OrdersWorkspace({
                 تأكيد مسح وتنظيف كافة الطلبات
               </h3>
               <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
-                هل أنت متأكد من رغبتك في حذف وتنظيف جميع الطلبات المسجلة في الموقع؟
-                سيتم تفريغ جدول الطلبات وشاشات المطبخ والمبيعات بالكامل للبدء بسجل نظيف.
+                هل أنت متأكد من رغبتك في حذف وتنظيف جميع الطلبات المسجلة في الموقع؟ سيتم تفريغ جدول
+                الطلبات وشاشات المطبخ والمبيعات بالكامل للبدء بسجل نظيف.
                 <br />
-                <strong className="text-rose-600 block mt-1">هذا الإجراء نهائي ولا يمكن التراجع عنه.</strong>
+                <strong className="text-rose-600 block mt-1">
+                  هذا الإجراء نهائي ولا يمكن التراجع عنه.
+                </strong>
               </p>
             </div>
             <div className="flex flex-col sm:flex-row gap-2 pt-2">
@@ -832,7 +916,11 @@ export function OrdersWorkspace({
                 disabled={wiping}
                 className="flex-1 min-h-12 inline-flex items-center justify-center gap-2 rounded-2xl bg-rose-600 px-5 text-sm font-black text-white hover:bg-rose-700 disabled:opacity-50 transition cursor-pointer"
               >
-                {wiping ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                {wiping ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
                 <span>{wiping ? "جار التنظيف..." : "نعم، مسح كافة الطلبات فوراً"}</span>
               </button>
               <button
@@ -880,7 +968,10 @@ export function OrdersWorkspace({
               <div className="space-y-3 rounded-2xl bg-secondary/30 p-3.5 border border-border/70 text-xs">
                 {report.byMethod.map((row) => (
                   <div key={row.method} className="flex items-center justify-between font-bold">
-                    <span>{row.method === "unpaid" ? "غير محدد" : payMeta[row.method].ar} ({row.orders} طلب)</span>
+                    <span>
+                      {row.method === "unpaid" ? "غير محدد" : payMeta[row.method].ar} ({row.orders}{" "}
+                      طلب)
+                    </span>
                     <span className="text-foreground">{jd(row.collected)}</span>
                   </div>
                 ))}
@@ -894,7 +985,9 @@ export function OrdersWorkspace({
                 </div>
                 <div className="flex items-center justify-between text-muted-foreground">
                   <span>إجمالي الطلبات / الملغاة:</span>
-                  <span>{report.orders} مكتمل • {report.cancelled} ملغي</span>
+                  <span>
+                    {report.orders} مكتمل • {report.cancelled} ملغي
+                  </span>
                 </div>
 
                 <button
@@ -942,7 +1035,9 @@ const OrderRowCard = memo(function OrderRowCard({
       {/* Top Strip: Status, Order Number, Delivery Method, Date/Time */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-2.5">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-black border ${statusInfo.chip}`}>
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-black border ${statusInfo.chip}`}
+          >
             <span className={`h-2 w-2 rounded-full ${statusInfo.dot}`} />
             {statusInfo.ar}
           </span>
@@ -977,9 +1072,13 @@ const OrderRowCard = memo(function OrderRowCard({
         <div className="space-y-1.5 flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <span className="font-black text-foreground">{order.customer_name}</span>
-            <span dir="ltr" className="text-muted-foreground font-bold">{order.customer_phone}</span>
+            <span dir="ltr" className="text-muted-foreground font-bold">
+              {order.customer_phone}
+            </span>
             <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg bg-secondary text-foreground">
-              {order.method === "delivery" ? `🛵 توصيل (${order.area || "عمان"})` : "🏪 استلام محلي"}
+              {order.method === "delivery"
+                ? `🛵 توصيل (${order.area || "عمان"})`
+                : "🏪 استلام محلي"}
             </span>
           </div>
 
@@ -1287,9 +1386,15 @@ function OrderPanelDrawer({
           {/* Quick Financial Settle */}
           <div className="rounded-2xl border border-border bg-card p-3.5 space-y-2.5">
             <div className="flex items-center justify-between text-xs">
-              <span className="font-bold text-muted-foreground">الإجمالي: <strong className="text-foreground">{jd(liveTotal)}</strong></span>
-              <span className="font-bold text-muted-foreground">المدفوع: <strong className="text-emerald-600">{jd(Number(deposit) || 0)}</strong></span>
-              <span className={`font-black ${remaining > 0 ? "text-rose-600" : "text-emerald-600"}`}>
+              <span className="font-bold text-muted-foreground">
+                الإجمالي: <strong className="text-foreground">{jd(liveTotal)}</strong>
+              </span>
+              <span className="font-bold text-muted-foreground">
+                المدفوع: <strong className="text-emerald-600">{jd(Number(deposit) || 0)}</strong>
+              </span>
+              <span
+                className={`font-black ${remaining > 0 ? "text-rose-600" : "text-emerald-600"}`}
+              >
                 المتبقي: {jd(remaining)}
               </span>
             </div>
@@ -1339,11 +1444,18 @@ function OrderPanelDrawer({
 
             <div className="space-y-1.5 text-xs">
               {order.items.map((item, idx) => (
-                <div key={idx} className="flex justify-between items-start border-b border-border/30 pb-1 last:border-0">
+                <div
+                  key={idx}
+                  className="flex justify-between items-start border-b border-border/30 pb-1 last:border-0"
+                >
                   <div>
-                    <p className="font-black text-foreground">{item.quantity} × {item.name_ar}</p>
+                    <p className="font-black text-foreground">
+                      {item.quantity} × {item.name_ar}
+                    </p>
                     {item.options_ar.length > 0 && (
-                      <p className="text-[10px] text-muted-foreground">{item.options_ar.join(" • ")}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {item.options_ar.join(" • ")}
+                      </p>
                     )}
                   </div>
                   <span className="font-bold">{jd(item.unit_price * item.quantity)}</span>
@@ -1360,6 +1472,38 @@ function OrderPanelDrawer({
             {order.notes && (
               <div className="text-[11px] text-muted-foreground bg-secondary/30 p-2 rounded-xl">
                 ملاحظات: {order.notes}
+              </div>
+            )}
+
+            {order.staff_notes && (
+              <div className="text-[11px] text-amber-950 dark:text-amber-200 bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-xl space-y-1">
+                <span className="font-bold block text-foreground">
+                  ملاحظات الفريق والسوشيال / إشعار كليك:
+                </span>
+                <p className="whitespace-pre-wrap">{order.staff_notes}</p>
+              </div>
+            )}
+
+            {order.design_image_url && (
+              <div className="rounded-2xl border border-border bg-card p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-foreground flex items-center gap-1.5">
+                    🖼️ الصورة المرفقة بالطلب (تصميم / إشعار حوالة)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => onZoom(order.design_image_url as string)}
+                    className="text-xs font-bold text-primary hover:underline cursor-pointer"
+                  >
+                    تكبير 🔍
+                  </button>
+                </div>
+                <img
+                  src={order.design_image_url}
+                  alt="مرفق الطلب"
+                  onClick={() => onZoom(order.design_image_url as string)}
+                  className="max-h-48 w-full rounded-xl object-contain bg-slate-50 border border-slate-200 cursor-pointer hover:opacity-95 transition"
+                />
               </div>
             )}
           </div>
@@ -1386,7 +1530,9 @@ function OrderPanelDrawer({
               >
                 <option value="">— اختيار سائق التوصيل —</option>
                 {SAVED_DRIVERS.map((d) => (
-                  <option key={d.name} value={d.name}>{d.label}</option>
+                  <option key={d.name} value={d.name}>
+                    {d.label}
+                  </option>
                 ))}
               </select>
 
@@ -1448,16 +1594,6 @@ function OrderPanelDrawer({
               </>
             )}
           </div>
-
-          {/* Audit Log & Baseline Snapshot (Moved to end of sheet) */}
-          {(order.modifications?.length || order.last_edited_at) && (
-            <div className="pt-3 border-t border-border/50">
-              <ModificationsHistoryBox
-                modifications={order.modifications}
-                lastEditedAt={order.last_edited_at}
-              />
-            </div>
-          )}
         </div>
       </div>
     </div>

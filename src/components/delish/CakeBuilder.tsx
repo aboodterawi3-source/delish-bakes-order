@@ -1,6 +1,12 @@
 import { useMemo, useRef, useState } from "react";
 import { Check, ChevronLeft, ChevronRight, ImagePlus, X } from "lucide-react";
-import { builderFillings, builderFlavors, builderFrostings, builderSizes, type Option } from "@/lib/menu";
+import {
+  builderFillings,
+  builderFlavors,
+  builderFrostings,
+  builderSizes,
+  type Option,
+} from "@/lib/menu";
 import { builderImage } from "@/lib/images";
 import { Pic } from "@/components/delish/Pic";
 import { useLang } from "@/lib/i18n";
@@ -96,7 +102,10 @@ export function CakeBuilder({ onDone }: { onDone: () => void }) {
 
       <div className="surface-card rounded-3xl p-5">
         <div className="flex items-center justify-between">
-          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase" aria-live="polite">
+          <p
+            className="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
+            aria-live="polite"
+          >
             {t("step")} {step + 1} {t("of")} 4
           </p>
           <ol className="flex gap-1.5" aria-label={t("builderTitle")}>
@@ -114,7 +123,6 @@ export function CakeBuilder({ onDone }: { onDone: () => void }) {
 
         <h3 className="mt-4 font-display text-xl font-semibold">{current.title}</h3>
 
-
         <div className="mt-3 flex flex-wrap gap-2">
           {current.options.map((o) => (
             <Chip key={o.id} active={current.value.id === o.id} onClick={() => current.set(o)}>
@@ -127,7 +135,9 @@ export function CakeBuilder({ onDone }: { onDone: () => void }) {
 
         {step === 3 && (
           <div className="mt-5 space-y-4">
-            <p className="mb-2 text-xs font-bold tracking-wide text-muted-foreground uppercase">{t("message")}</p>
+            <p className="mb-2 text-xs font-bold tracking-wide text-muted-foreground uppercase">
+              {t("message")}
+            </p>
             <input
               value={message}
               onChange={(e) => setMessage(e.target.value)}
@@ -164,16 +174,31 @@ export function CakeBuilder({ onDone }: { onDone: () => void }) {
                   })();
                 }}
               />
-              {imageError && <p className="mt-2 text-xs font-semibold text-destructive">{imageError}</p>}
+              {imageError && (
+                <p className="mt-2 text-xs font-semibold text-destructive">{imageError}</p>
+              )}
               {designImage ? (
                 <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-border bg-background p-2">
-                  <img src={designImage} alt={lang === "ar" ? "معاينة تصميم الكيكة" : "Cake design preview"} className="h-20 w-full min-w-0 rounded-xl object-cover" />
-                  <button type="button" onClick={() => setDesignImage(undefined)} aria-label={lang === "ar" ? "إزالة الصورة" : "Remove image"} className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-border">
+                  <img
+                    src={designImage}
+                    alt={lang === "ar" ? "معاينة تصميم الكيكة" : "Cake design preview"}
+                    className="h-20 w-full min-w-0 rounded-xl object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setDesignImage(undefined)}
+                    aria-label={lang === "ar" ? "إزالة الصورة" : "Remove image"}
+                    className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-border"
+                  >
                     <X className="h-4 w-4" aria-hidden="true" />
                   </button>
                 </div>
               ) : (
-                <button type="button" onClick={() => fileRef.current?.click()} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-input bg-background px-4 text-sm font-semibold">
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-input bg-background px-4 text-sm font-semibold"
+                >
                   <ImagePlus className="h-4 w-4" aria-hidden="true" />
                   {lang === "ar" ? "أرفق صورة" : "Upload image"}
                 </button>

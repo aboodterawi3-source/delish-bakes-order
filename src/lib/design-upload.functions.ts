@@ -22,7 +22,12 @@ export const uploadDesignImage = createServerFn({ method: "POST" })
     const { error } = await supabaseAdmin.storage
       .from(BUCKET)
       .upload(path, data.binary, { contentType: data.contentType, upsert: false });
-    if (error) throw publicError("design-upload.store", error, "تعذّر رفع الصورة · Could not upload the photo");
+    if (error)
+      throw publicError(
+        "design-upload.store",
+        error,
+        "تعذّر رفع الصورة · Could not upload the photo",
+      );
 
     const { data: signed, error: signError } = await supabaseAdmin.storage
       .from(BUCKET)

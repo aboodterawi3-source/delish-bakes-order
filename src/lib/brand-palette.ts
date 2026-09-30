@@ -6,14 +6,14 @@ export interface BrandPalette {
   id: string;
   nameEn: string;
   nameAr: string;
-  main: string;        // Primary Accent e.g. #B8801C, #8C6D3B, #E11D48, #16A34A, #6E3917
-  secondary: string;   // Text & secondary accent
-  cardBg: string;      // Light Tint background e.g. #FEF7EB, #FAF5EB, #FDF2F4, #F0FDF4, #FAF5F0
-  border: string;      // Border color e.g. #FDE68A, #EFE8DC, #FBCFE8, #BBF7D0, #E4D5C7
-  badgeBg: string;     // Badge background
-  badgeText: string;   // Badge text color
-  btnBg: string;       // Button background
-  btnHoverBg: string;  // Button hover background e.g. #9E6C14, #70552B, #BE123C, #15803D, #552B11
+  main: string; // Primary Accent e.g. #B8801C, #8C6D3B, #E11D48, #16A34A, #6E3917
+  secondary: string; // Text & secondary accent
+  cardBg: string; // Light Tint background e.g. #FEF7EB, #FAF5EB, #FDF2F4, #F0FDF4, #FAF5F0
+  border: string; // Border color e.g. #FDE68A, #EFE8DC, #FBCFE8, #BBF7D0, #E4D5C7
+  badgeBg: string; // Badge background
+  badgeText: string; // Badge text color
+  btnBg: string; // Button background
+  btnHoverBg: string; // Button hover background e.g. #9E6C14, #70552B, #BE123C, #15803D, #552B11
   highlightBg: string; // Soft highlight background
 }
 
@@ -175,9 +175,10 @@ export function useBrandPalette() {
   }, []);
 
   // Determine active palette ID: database value takes precedence if available
-  const activePaletteId = storeSettings?.card_color_palette && BRAND_PALETTES[storeSettings.card_color_palette]
-    ? storeSettings.card_color_palette
-    : localPaletteId;
+  const activePaletteId =
+    storeSettings?.card_color_palette && BRAND_PALETTES[storeSettings.card_color_palette]
+      ? storeSettings.card_color_palette
+      : localPaletteId;
 
   const fallbackPalette = BRAND_PALETTES["gold"]!;
   const activePalette: BrandPalette = BRAND_PALETTES[activePaletteId] ?? fallbackPalette;

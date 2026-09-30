@@ -32,7 +32,8 @@ const clean = (value: unknown, max: number, label: string) => {
 export const submitCustomerMessage = createServerFn({ method: "POST" })
   .inputValidator((input: { name: string; phone: string; message: string }) => {
     const phone = clean(input?.phone, 25, "رقم الهاتف");
-    if (!/^[0-9+\s-]{7,25}$/.test(phone)) throw new Error("رقم هاتف غير صحيح · Invalid phone number");
+    if (!/^[0-9+\s-]{7,25}$/.test(phone))
+      throw new Error("رقم هاتف غير صحيح · Invalid phone number");
     return {
       name: clean(input?.name, 80, "الاسم"),
       phone,
@@ -43,7 +44,11 @@ export const submitCustomerMessage = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.from("customer_messages").insert(data);
     if (error) {
-      throw publicError("messages.insert", error, "تعذّر إرسال الرسالة · Could not send your message");
+      throw publicError(
+        "messages.insert",
+        error,
+        "تعذّر إرسال الرسالة · Could not send your message",
+      );
     }
     return { ok: true };
   });

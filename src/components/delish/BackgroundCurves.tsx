@@ -2,7 +2,10 @@ import React from "react";
 
 export function BackgroundCurves({ className = "" }: { className?: string }) {
   return (
-    <div className={`pointer-events-none absolute inset-0 overflow-hidden ${className}`} aria-hidden="true">
+    <div
+      className={`pointer-events-none absolute inset-0 overflow-hidden ${className}`}
+      aria-hidden="true"
+    >
       <svg
         className="absolute inset-0 h-full w-full opacity-45"
         viewBox="0 0 1000 1200"

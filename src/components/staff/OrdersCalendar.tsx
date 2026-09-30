@@ -20,7 +20,12 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { updateSalesOrder, type OrderPatch, type SalesOrder, type SalesStatus } from "@/lib/sales.functions";
+import {
+  updateSalesOrder,
+  type OrderPatch,
+  type SalesOrder,
+  type SalesStatus,
+} from "@/lib/sales.functions";
 import { orderLabel } from "@/lib/order-label";
 import { esc, printDocument } from "@/lib/print";
 
@@ -161,7 +166,10 @@ interface PositionedOrder {
  * Calculates multi-column parallel sub-column layout for orders occurring at the same hour
  * timeline bounds: 06:00 AM to 11:00 PM (18 hours total = 1080 mins)
  */
-function computeHourlyMultiColumnLayout(orders: SalesOrder[], pixelsPerHour = 72): PositionedOrder[] {
+function computeHourlyMultiColumnLayout(
+  orders: SalesOrder[],
+  pixelsPerHour = 72,
+): PositionedOrder[] {
   const START_DAY_MINUTES = 6 * 60; // 06:00 AM
   const DEFAULT_DURATION = 60; // 1 hour block height
 
@@ -179,7 +187,7 @@ function computeHourlyMultiColumnLayout(orders: SalesOrder[], pixelsPerHour = 72
   });
 
   // Sort by start time, then by longer duration first
-  items.sort((a, b) => a.start - b.start || (b.end - b.start) - (a.end - a.start));
+  items.sort((a, b) => a.start - b.start || b.end - b.start - (a.end - a.start));
 
   // Find overlapping clusters
   const clusters: (typeof items)[] = [];
@@ -243,7 +251,9 @@ function computeHourlyMultiColumnLayout(orders: SalesOrder[], pixelsPerHour = 72
 
 /** Print single order receipt */
 function printOrderReceipt(order: SalesOrder) {
-  const payLabel = order.payment_method ? (PAYMENT_METHOD_MAP[order.payment_method] ?? order.payment_method) : "—";
+  const payLabel = order.payment_method
+    ? (PAYMENT_METHOD_MAP[order.payment_method] ?? order.payment_method)
+    : "—";
   const remaining = order.total - order.deposit_paid;
   const itemsRows = (order.items ?? [])
     .map(
@@ -446,7 +456,9 @@ export const OrdersCalendar = memo(function OrdersCalendar({
       if (onPatch) {
         onPatch({ orderId: orderToMove.id, requested_time: targetTimeStr });
       } else {
-        updateOrderServerFn({ data: { orderId: orderToMove.id, requested_time: targetTimeStr } }).catch(() => {
+        updateOrderServerFn({
+          data: { orderId: orderToMove.id, requested_time: targetTimeStr },
+        }).catch(() => {
           toast.error("تعذر تحديث موعد الطلب");
         });
       }
@@ -651,7 +663,9 @@ export const OrdersCalendar = memo(function OrdersCalendar({
           type="button"
           onClick={() => setStatusFilter("all")}
           className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold transition-all ${
-            statusFilter === "all" ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted text-muted-foreground hover:bg-accent"
+            statusFilter === "all"
+              ? "bg-primary text-primary-foreground shadow-sm"
+              : "bg-muted text-muted-foreground hover:bg-accent"
           }`}
         >
           الكل ({orders.length})
@@ -689,8 +703,8 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                 d.isSelected
                   ? "bg-primary text-primary-foreground font-black shadow-md ring-2 ring-primary/40"
                   : d.isToday
-                  ? "bg-primary/10 text-primary border border-primary/30 font-bold"
-                  : "bg-background border border-border text-foreground hover:bg-muted"
+                    ? "bg-primary/10 text-primary border border-primary/30 font-bold"
+                    : "bg-background border border-border text-foreground hover:bg-muted"
               }`}
             >
               <span className="text-[11px] opacity-80">{d.dayName}</span>
@@ -744,14 +758,16 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                       cell.isToday
                         ? "bg-primary text-primary-foreground font-black shadow-sm"
                         : cell.isCurrentMonth
-                        ? "text-foreground group-hover:bg-accent"
-                        : "text-muted-foreground"
+                          ? "text-foreground group-hover:bg-accent"
+                          : "text-muted-foreground"
                     }`}
                   >
                     {cell.dayNum}
                   </span>
                   {cell.orders.length > 0 ? (
-                    <span className="text-[10px] font-bold text-muted-foreground">{cell.orders.length} طلبات</span>
+                    <span className="text-[10px] font-bold text-muted-foreground">
+                      {cell.orders.length} طلبات
+                    </span>
                   ) : null}
                 </div>
 
@@ -795,7 +811,10 @@ export const OrdersCalendar = memo(function OrdersCalendar({
       ) : (
         /* DAY HOURLY TIMELINE VIEW (06:00 AM to 11:00 PM) WITH TOUCH LONG-PRESS DRAG & DROP */
         <div className="relative flex flex-col bg-background">
-          <div className="max-h-[640px] overflow-y-auto overflow-x-hidden relative" ref={timelineRef}>
+          <div
+            className="max-h-[640px] overflow-y-auto overflow-x-hidden relative"
+            ref={timelineRef}
+          >
             {/* Hourly Rows Grid */}
             <div className="relative min-h-[1296px] w-full border-b border-border">
               {/* 18 Hours Rows (06:00 AM to 11:00 PM) */}
@@ -835,28 +854,28 @@ export const OrdersCalendar = memo(function OrdersCalendar({
               ) : null}
 
               {/* LIVE CURRENT TIME INDICATOR BAR */}
-              {currentDate.toDateString() === new Date().toDateString() ? (
-                (() => {
-                  const now = new Date();
-                  const currentMins = now.getHours() * 60 + now.getMinutes();
-                  const startMins = 6 * 60;
-                  if (currentMins >= startMins && currentMins <= 23 * 60) {
-                    const topPx = ((currentMins - startMins) / 60) * 72;
-                    return (
-                      <div
-                        style={{ top: `${topPx}px` }}
-                        className="absolute inset-x-0 z-20 flex items-center pointer-events-none"
-                      >
-                        <div className="mr-14 sm:mr-18 flex items-center gap-1 w-full">
-                          <div className="h-3 w-3 rounded-full bg-rose-500 ring-4 ring-rose-500/20 shadow-sm" />
-                          <div className="h-0.5 w-full bg-rose-500 shadow-xs" />
+              {currentDate.toDateString() === new Date().toDateString()
+                ? (() => {
+                    const now = new Date();
+                    const currentMins = now.getHours() * 60 + now.getMinutes();
+                    const startMins = 6 * 60;
+                    if (currentMins >= startMins && currentMins <= 23 * 60) {
+                      const topPx = ((currentMins - startMins) / 60) * 72;
+                      return (
+                        <div
+                          style={{ top: `${topPx}px` }}
+                          className="absolute inset-x-0 z-20 flex items-center pointer-events-none"
+                        >
+                          <div className="mr-14 sm:mr-18 flex items-center gap-1 w-full">
+                            <div className="h-3 w-3 rounded-full bg-rose-500 ring-4 ring-rose-500/20 shadow-sm" />
+                            <div className="h-0.5 w-full bg-rose-500 shadow-xs" />
+                          </div>
                         </div>
-                      </div>
-                    );
-                  }
-                  return null;
-                })()
-              ) : null}
+                      );
+                    }
+                    return null;
+                  })()
+                : null}
 
               {/* POSITIONED MULTI-COLUMN EVENT CARDS WITH TOUCH LONG-PRESS DRAG */}
               <div className="absolute top-0 bottom-0 right-16 sm:right-20 left-0 z-10">
@@ -870,7 +889,8 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                     const cfg = STATUS_CONFIG[ord.status] ?? STATUS_CONFIG.new;
                     const code = orderLabel(ord.order_number, ord.staff_code);
                     const mainItem = ord.items?.[0]?.name_ar ?? "كيكة مخصصة";
-                    const locationText = ord.method === "delivery" ? ord.area ?? "توصيل" : "استلام من المحل";
+                    const locationText =
+                      ord.method === "delivery" ? (ord.area ?? "توصيل") : "استلام من المحل";
                     const timeWindow = `${formatMinutesArabic(parseTimeInMinutes(ord.requested_time))} - ${formatMinutesArabic(parseTimeInMinutes(ord.requested_time) + 60)}`;
 
                     // RTL Sub-column placement logic
@@ -906,7 +926,9 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                           <span className="inline-flex items-center gap-1 rounded-md bg-black/10 px-1.5 py-0.5 font-mono text-[11px] font-black dir-ltr">
                             {code}
                           </span>
-                          <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-black ${cfg.badgeBg} ${cfg.badgeText}`}>
+                          <span
+                            className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-black ${cfg.badgeBg} ${cfg.badgeText}`}
+                          >
                             {cfg.ar}
                           </span>
                         </div>
@@ -914,7 +936,11 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                         {/* Card Body: Customer & Location */}
                         <div className="mt-1 space-y-0.5 pointer-events-none">
                           <div className="flex items-center gap-1 text-xs font-black truncate">
-                            {ord.method === "delivery" ? <Truck className="h-3.5 w-3.5 text-blue-600 shrink-0" /> : <Store className="h-3.5 w-3.5 text-amber-600 shrink-0" />}
+                            {ord.method === "delivery" ? (
+                              <Truck className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+                            ) : (
+                              <Store className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                            )}
                             <span className="truncate">{ord.customer_name}</span>
                           </div>
                           <div className="text-[11px] font-bold opacity-90 truncate flex items-center gap-1">
@@ -930,7 +956,11 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                           {!isKitchen && (ord.total ?? 0) > 0 ? (
                             <span>{(ord.total ?? 0).toFixed(2)} د.أ</span>
                           ) : isKitchen ? (
-                            <span>{ord.items.length ? `${ord.items.reduce((s, it) => s + it.quantity, 0)} قطع` : ""}</span>
+                            <span>
+                              {ord.items.length
+                                ? `${ord.items.reduce((s, it) => s + it.quantity, 0)} قطع`
+                                : ""}
+                            </span>
                           ) : null}
                         </div>
                       </div>
@@ -974,7 +1004,10 @@ export const OrdersCalendar = memo(function OrdersCalendar({
 
       {/* 4. STRUCTURED ORDER DETAILS MODAL / SHEET */}
       {selectedOrder ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200" dir="rtl">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200"
+          dir="rtl"
+        >
           <div className="relative w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl border border-border bg-card text-card-foreground shadow-2xl transition-all">
             {/* Modal Header */}
             <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-card/95 px-5 py-4 backdrop-blur-md">
@@ -984,10 +1017,14 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                 </div>
                 <div>
                   <h3 className="text-base font-black text-foreground flex items-center gap-2">
-                    {selectedOrder.area ?? (selectedOrder.method === "delivery" ? "توصيل" : "استلام محل")} • {orderLabel(selectedOrder.order_number, selectedOrder.staff_code)}
+                    {selectedOrder.area ??
+                      (selectedOrder.method === "delivery" ? "توصيل" : "استلام محل")}{" "}
+                    • {orderLabel(selectedOrder.order_number, selectedOrder.staff_code)}
                   </h3>
                   <p className="text-xs font-bold text-muted-foreground">
-                    نافذة التسليم: {formatMinutesArabic(parseTimeInMinutes(selectedOrder.requested_time))} - {formatMinutesArabic(parseTimeInMinutes(selectedOrder.requested_time) + 60)}
+                    نافذة التسليم:{" "}
+                    {formatMinutesArabic(parseTimeInMinutes(selectedOrder.requested_time))} -{" "}
+                    {formatMinutesArabic(parseTimeInMinutes(selectedOrder.requested_time) + 60)}
                   </p>
                 </div>
               </div>
@@ -1007,7 +1044,9 @@ export const OrdersCalendar = memo(function OrdersCalendar({
               <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-muted/40 p-3 border border-border">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold text-muted-foreground">حالة الأوردر:</span>
-                  <span className={`rounded-full px-3 py-1 text-xs font-black ${(STATUS_CONFIG[selectedOrder.status] ?? STATUS_CONFIG.new).badgeBg} ${(STATUS_CONFIG[selectedOrder.status] ?? STATUS_CONFIG.new).badgeText}`}>
+                  <span
+                    className={`rounded-full px-3 py-1 text-xs font-black ${(STATUS_CONFIG[selectedOrder.status] ?? STATUS_CONFIG.new).badgeBg} ${(STATUS_CONFIG[selectedOrder.status] ?? STATUS_CONFIG.new).badgeText}`}
+                  >
                     {(STATUS_CONFIG[selectedOrder.status] ?? STATUS_CONFIG.new).ar}
                   </span>
                 </div>
@@ -1023,9 +1062,13 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-xs font-bold text-muted-foreground">العميل</span>
-                    <h4 className="text-base font-black text-foreground">{selectedOrder.customer_name}</h4>
+                    <h4 className="text-base font-black text-foreground">
+                      {selectedOrder.customer_name}
+                    </h4>
                   </div>
-                  <span className="font-mono text-sm font-bold text-muted-foreground">{selectedOrder.customer_phone}</span>
+                  <span className="font-mono text-sm font-bold text-muted-foreground">
+                    {selectedOrder.customer_phone}
+                  </span>
                 </div>
 
                 {/* 1-Tap Call & WhatsApp Buttons */}
@@ -1055,12 +1098,18 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                   <Clock className="h-4 w-4 text-primary" /> موعد ونوع التسليم
                 </h4>
                 <div className="text-sm font-bold text-foreground">
-                  📅 {selectedOrder.requested_date} — الساعة {formatMinutesArabic(parseTimeInMinutes(selectedOrder.requested_time))}
+                  📅 {selectedOrder.requested_date} — الساعة{" "}
+                  {formatMinutesArabic(parseTimeInMinutes(selectedOrder.requested_time))}
                 </div>
                 <div className="text-xs font-bold text-muted-foreground flex items-center gap-1">
                   {selectedOrder.method === "delivery" ? (
                     <>
-                      <Truck className="h-4 w-4 text-blue-500" /> توصيل إلى: {selectedOrder.area ?? "منطقة غير محددة"} {selectedOrder.address ? `— ${selectedOrder.address}` : ""} {selectedOrder.delivery_fee ? `(أجرة: ${selectedOrder.delivery_fee.toFixed(2)} د.أ)` : ""}
+                      <Truck className="h-4 w-4 text-blue-500" /> توصيل إلى:{" "}
+                      {selectedOrder.area ?? "منطقة غير محددة"}{" "}
+                      {selectedOrder.address ? `— ${selectedOrder.address}` : ""}{" "}
+                      {selectedOrder.delivery_fee
+                        ? `(أجرة: ${selectedOrder.delivery_fee.toFixed(2)} د.أ)`
+                        : ""}
                     </>
                   ) : (
                     <>
@@ -1079,7 +1128,9 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                   {selectedOrder.items?.map((it) => (
                     <div key={it.id} className="py-2 first:pt-0 last:pb-0">
                       <div className="flex items-center justify-between text-sm font-bold">
-                        <span>{it.name_ar} (x{it.quantity})</span>
+                        <span>
+                          {it.name_ar} (x{it.quantity})
+                        </span>
                         {it.unit_price && it.unit_price > 0 ? (
                           <span>{(it.unit_price * it.quantity).toFixed(2)} د.أ</span>
                         ) : null}
@@ -1097,7 +1148,9 @@ export const OrdersCalendar = memo(function OrdersCalendar({
               {/* Inscription Text */}
               {selectedOrder.inscription ? (
                 <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4">
-                  <h4 className="text-xs font-black text-primary mb-1">✍️ الكتابة على الكيك / القاعدة:</h4>
+                  <h4 className="text-xs font-black text-primary mb-1">
+                    ✍️ الكتابة على الكيك / القاعدة:
+                  </h4>
                   <p className="text-sm font-bold text-foreground bg-background p-2.5 rounded-xl border border-border">
                     "{selectedOrder.inscription}"
                   </p>
@@ -1107,13 +1160,19 @@ export const OrdersCalendar = memo(function OrdersCalendar({
               {/* Notes & Design Reference Image */}
               {selectedOrder.notes || selectedOrder.design_image_url ? (
                 <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
-                  <h4 className="text-xs font-black text-muted-foreground">📝 ملاحظات خاصة وصورة التصميم</h4>
+                  <h4 className="text-xs font-black text-muted-foreground">
+                    📝 ملاحظات خاصة وصورة التصميم
+                  </h4>
                   {selectedOrder.notes ? (
-                    <p className="text-xs font-bold text-foreground bg-muted p-2.5 rounded-xl">{selectedOrder.notes}</p>
+                    <p className="text-xs font-bold text-foreground bg-muted p-2.5 rounded-xl">
+                      {selectedOrder.notes}
+                    </p>
                   ) : null}
                   {selectedOrder.design_image_url ? (
                     <div>
-                      <span className="text-[11px] font-bold text-muted-foreground block mb-1">صورة التصميم المرفقة:</span>
+                      <span className="text-[11px] font-bold text-muted-foreground block mb-1">
+                        صورة التصميم المرفقة:
+                      </span>
                       <img
                         src={selectedOrder.design_image_url}
                         alt="Design Reference"
@@ -1128,7 +1187,9 @@ export const OrdersCalendar = memo(function OrdersCalendar({
               {/* Financial Calculation & Payment (Hidden in kitchen mode) */}
               {!isKitchen && (selectedOrder.total > 0 || selectedOrder.payment_method) ? (
                 <div className="rounded-2xl border border-border bg-card p-4 space-y-2 text-xs font-bold">
-                  <h4 className="text-xs font-black text-muted-foreground mb-2">💵 الحساب المالي وطريقة الدفع</h4>
+                  <h4 className="text-xs font-black text-muted-foreground mb-2">
+                    💵 الحساب المالي وطريقة الدفع
+                  </h4>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">المجموع الفرعي:</span>
                     <span>{(selectedOrder.subtotal ?? 0).toFixed(2)} د.أ</span>
@@ -1147,7 +1208,9 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                   ) : null}
                   <div className="flex justify-between text-sm font-black pt-1 border-t border-border">
                     <span>الإجمالي النهائي:</span>
-                    <span className="text-primary">{(selectedOrder.total ?? 0).toFixed(2)} د.أ</span>
+                    <span className="text-primary">
+                      {(selectedOrder.total ?? 0).toFixed(2)} د.أ
+                    </span>
                   </div>
                   <div className="flex justify-between text-emerald-600">
                     <span>المدفوع (العربون):</span>
@@ -1155,49 +1218,81 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                   </div>
                   <div className="flex justify-between text-amber-600 font-black text-sm">
                     <span>المتبقي المطلوب:</span>
-                    <span>{((selectedOrder.total ?? 0) - (selectedOrder.deposit_paid ?? 0)).toFixed(2)} د.أ</span>
+                    <span>
+                      {((selectedOrder.total ?? 0) - (selectedOrder.deposit_paid ?? 0)).toFixed(2)}{" "}
+                      د.أ
+                    </span>
                   </div>
                   <div className="pt-2 border-t border-border flex items-center justify-between text-muted-foreground">
                     <span>طريقة الدفع:</span>
                     <span className="font-bold text-foreground">
-                      {selectedOrder.payment_method ? (PAYMENT_METHOD_MAP[selectedOrder.payment_method] ?? selectedOrder.payment_method) : "لم تحدد"}
+                      {selectedOrder.payment_method
+                        ? (PAYMENT_METHOD_MAP[selectedOrder.payment_method] ??
+                          selectedOrder.payment_method)
+                        : "لم تحدد"}
                     </span>
                   </div>
                 </div>
               ) : null}
 
               {/* تفاصيل البنود التي تم تعديلها */}
-              {(selectedOrder.modifications && selectedOrder.modifications.length > 0) || selectedOrder.last_edited_at || selectedOrder.schedule_updated_at ? (
+              {(selectedOrder.modifications && selectedOrder.modifications.length > 0) ||
+              selectedOrder.last_edited_at ||
+              selectedOrder.schedule_updated_at ? (
                 <div className="rounded-2xl border-2 border-amber-500/80 bg-gradient-to-b from-amber-500/10 via-amber-500/5 to-amber-500/15 p-4 space-y-3 shadow-xs">
                   <div className="flex items-center justify-between border-b border-amber-500/30 pb-2">
                     <span className="flex items-center gap-1.5 text-xs font-black text-amber-900 dark:text-amber-200">
                       <span>📝</span>
                       <span>
-                        تفاصيل البنود التي تم تعديلها {selectedOrder.modifications && selectedOrder.modifications.length > 0 ? `(${selectedOrder.modifications.length} تفاصيل)` : "⚠️"}
+                        تفاصيل البنود التي تم تعديلها{" "}
+                        {selectedOrder.modifications && selectedOrder.modifications.length > 0
+                          ? `(${selectedOrder.modifications.length} تفاصيل)`
+                          : "⚠️"}
                       </span>
                     </span>
                     {(selectedOrder.last_edited_at || selectedOrder.schedule_updated_at) && (
                       <span className="text-[10px] font-mono text-muted-foreground" dir="ltr">
-                        {new Date(selectedOrder.last_edited_at || selectedOrder.schedule_updated_at || Date.now()).toLocaleTimeString("ar-JO", { hour: "2-digit", minute: "2-digit" })}
+                        {new Date(
+                          selectedOrder.last_edited_at ||
+                            selectedOrder.schedule_updated_at ||
+                            Date.now(),
+                        ).toLocaleTimeString("ar-JO", { hour: "2-digit", minute: "2-digit" })}
                       </span>
                     )}
                   </div>
 
                   {/* Detailed changes list */}
                   <div className="space-y-2">
-                    {selectedOrder.modifications && selectedOrder.modifications.filter((m) => !m.field.includes("الطلب الأساسي") && !m.field.includes("النسخة الأصلية")).length > 0 ? (
+                    {selectedOrder.modifications &&
+                    selectedOrder.modifications.filter(
+                      (m) =>
+                        !m.field.includes("الطلب الأساسي") && !m.field.includes("النسخة الأصلية"),
+                    ).length > 0 ? (
                       selectedOrder.modifications
-                        .filter((m) => !m.field.includes("الطلب الأساسي") && !m.field.includes("النسخة الأصلية"))
+                        .filter(
+                          (m) =>
+                            !m.field.includes("الطلب الأساسي") &&
+                            !m.field.includes("النسخة الأصلية"),
+                        )
                         .map((mod, idx) => (
-                          <div key={idx} className="rounded-xl bg-card p-2.5 border border-amber-300/60 dark:border-amber-700/60 space-y-1.5 shadow-2xs">
+                          <div
+                            key={idx}
+                            className="rounded-xl bg-card p-2.5 border border-amber-300/60 dark:border-amber-700/60 space-y-1.5 shadow-2xs"
+                          >
                             <div className="flex items-center justify-between text-xs font-black text-foreground">
                               <span className="flex items-center gap-1 text-primary">
                                 <span>🔹</span>
                                 <span>{mod.field}</span>
                               </span>
                               {mod.updatedAt && (
-                                <span className="text-[10px] text-muted-foreground font-mono" dir="ltr">
-                                  {new Date(mod.updatedAt).toLocaleTimeString("ar-JO", { hour: "2-digit", minute: "2-digit" })}
+                                <span
+                                  className="text-[10px] text-muted-foreground font-mono"
+                                  dir="ltr"
+                                >
+                                  {new Date(mod.updatedAt).toLocaleTimeString("ar-JO", {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })}
                                 </span>
                               )}
                             </div>
@@ -1207,7 +1302,9 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                                   <span className="block text-[10px] font-bold text-red-700 dark:text-red-400 mb-0.5">
                                     ❌ السابق:
                                   </span>
-                                  <span className="line-through font-bold break-words">{mod.oldValue}</span>
+                                  <span className="line-through font-bold break-words">
+                                    {mod.oldValue}
+                                  </span>
                                 </div>
                               )}
                               {mod.newValue && (
@@ -1228,7 +1325,9 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                           <span className="flex items-center gap-1 text-primary">
                             <span>🔹</span>
                             <span>
-                              {selectedOrder.schedule_updated_at ? "تعديل موعد التسليم (عبر رابط العميل)" : "تعديل مواصفات الطلب بمكتب المبيعات"}
+                              {selectedOrder.schedule_updated_at
+                                ? "تعديل موعد التسليم (عبر رابط العميل)"
+                                : "تعديل مواصفات الطلب بمكتب المبيعات"}
                             </span>
                           </span>
                         </div>
@@ -1238,7 +1337,9 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                               ❌ الحالة:
                             </span>
                             <span className="font-bold break-words">
-                              {selectedOrder.schedule_updated_at ? "تم تعديل موعد الاستلام/التوصيل من قبل الزبون" : "تم تعديل تفاصيل ومواصفات الطلب بمكتب المبيعات"}
+                              {selectedOrder.schedule_updated_at
+                                ? "تم تعديل موعد الاستلام/التوصيل من قبل الزبون"
+                                : "تم تعديل تفاصيل ومواصفات الطلب بمكتب المبيعات"}
                             </span>
                           </div>
                           <div className="rounded-lg bg-emerald-500/10 p-2 border border-emerald-500/25 text-emerald-950 dark:text-emerald-200">
@@ -1246,7 +1347,10 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                               ✅ المعتمد حالياً للتجهيز:
                             </span>
                             <span className="font-black break-words">
-                              {selectedOrder.requested_date} ⏰ {selectedOrder.requested_time ? selectedOrder.requested_time.slice(0, 5) : ""}
+                              {selectedOrder.requested_date} ⏰{" "}
+                              {selectedOrder.requested_time
+                                ? selectedOrder.requested_time.slice(0, 5)
+                                : ""}
                             </span>
                           </div>
                         </div>
@@ -1268,7 +1372,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                         type="button"
                         onClick={() => {
                           onKitchenStage(selectedOrder.id, "baking");
-                          setSelectedOrder((prev) => prev ? { ...prev, status: "baking" } : null);
+                          setSelectedOrder((prev) => (prev ? { ...prev, status: "baking" } : null));
                         }}
                         className="flex-1 min-h-10 rounded-xl bg-blue-600 text-white font-bold text-xs hover:bg-blue-700 transition"
                       >
@@ -1280,7 +1384,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                         type="button"
                         onClick={() => {
                           onKitchenStage(selectedOrder.id, "ready");
-                          setSelectedOrder((prev) => prev ? { ...prev, status: "ready" } : null);
+                          setSelectedOrder((prev) => (prev ? { ...prev, status: "ready" } : null));
                         }}
                         className="flex-1 min-h-10 rounded-xl bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 transition"
                       >
@@ -1335,7 +1439,11 @@ export const OrdersCalendar = memo(function OrdersCalendar({
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4"
         >
           <div className="relative max-w-3xl max-h-[90vh]">
-            <img src={zoomImage} alt="Zoomed view" className="max-h-[85vh] max-w-full rounded-2xl object-contain" />
+            <img
+              src={zoomImage}
+              alt="Zoomed view"
+              className="max-h-[85vh] max-w-full rounded-2xl object-contain"
+            />
             <button
               type="button"
               onClick={() => setZoomImage(null)}

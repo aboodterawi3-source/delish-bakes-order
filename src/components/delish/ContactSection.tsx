@@ -21,7 +21,8 @@ export function ContactSection() {
   const [message, setMessage] = useState("");
 
   const mutation = useMutation({
-    mutationFn: () => send({ data: { name: name.trim(), phone: phone.trim(), message: message.trim() } }),
+    mutationFn: () =>
+      send({ data: { name: name.trim(), phone: phone.trim(), message: message.trim() } }),
     onSuccess: () => {
       setName("");
       setPhone("");
@@ -34,7 +35,10 @@ export function ContactSection() {
   const label = "mb-1.5 block text-xs font-bold uppercase tracking-wide text-muted-foreground";
 
   return (
-    <section aria-labelledby="contact-heading" className="space-y-3 rounded-3xl border border-border bg-card/80 p-5 shadow-sm">
+    <section
+      aria-labelledby="contact-heading"
+      className="space-y-3 rounded-3xl border border-border bg-card/80 p-5 shadow-sm"
+    >
       <div>
         <h3 id="contact-heading" className="text-sm font-bold text-foreground sm:text-base">
           {ar ? "ملاحظات أو مشكلة؟ راسلنا" : "Comments or an issue? Message us"}
@@ -64,7 +68,14 @@ export function ContactSection() {
               <label htmlFor={nameId} className={label}>
                 {ar ? "الاسم" : "Name"}
               </label>
-              <input id={nameId} value={name} onChange={(e) => setName(e.target.value)} className={field} required maxLength={80} />
+              <input
+                id={nameId}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className={field}
+                required
+                maxLength={80}
+              />
             </div>
             <div>
               <label htmlFor={phoneId} className={label}>
@@ -99,7 +110,9 @@ export function ContactSection() {
           </div>
           {mutation.isError && (
             <p className="text-xs font-bold text-destructive">
-              {ar ? "تعذّر إرسال الرسالة، حاول مرة أخرى." : "Could not send your message, please try again."}
+              {ar
+                ? "تعذّر إرسال الرسالة، حاول مرة أخرى."
+                : "Could not send your message, please try again."}
             </p>
           )}
           <button

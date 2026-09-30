@@ -9,6 +9,7 @@ import {
   Cake,
   Calendar,
   CheckCircle2,
+  ClipboardCopy,
   Clock,
   CreditCard,
   Gift,
@@ -34,6 +35,13 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import {
+  buildConfirmationMessage,
+  buildModificationMessage,
+  formatArabicDate,
+  formatArabicTime,
+} from "@/lib/confirmation-message";
+
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useOrdersRealtime } from "@/hooks/use-orders-realtime";
 import { orderLabel } from "@/lib/order-label";
@@ -57,11 +65,7 @@ import {
   type SalesStatus,
 } from "@/lib/sales.functions";
 import { applyOrderDiscount, getMyAuthorization } from "@/lib/authorization.functions";
-import {
-  DELIVERY_ZONES,
-  OTHER_GOVERNORATES_AREA,
-  feeForArea,
-} from "@/lib/delivery-zones";
+import { DELIVERY_ZONES, OTHER_GOVERNORATES_AREA, feeForArea } from "@/lib/delivery-zones";
 import { useStorefrontContent } from "@/hooks/use-storefront-content";
 import type { StorefrontProduct } from "@/lib/storefront-content";
 import { WebsiteRebuildPanel } from "@/components/staff/WebsiteRebuildPanel";
@@ -108,11 +112,11 @@ export function ModificationsHistoryBox({
     );
   }
 
-  const baselineMod = (modifications ?? []).find((m) =>
-    m.field.includes("الطلب الأساسي") || m.field.includes("النسخة الأصلية")
+  const baselineMod = (modifications ?? []).find(
+    (m) => m.field.includes("الطلب الأساسي") || m.field.includes("النسخة الأصلية"),
   );
   const regularMods = (modifications ?? []).filter(
-    (m) => !m.field.includes("الطلب الأساسي") && !m.field.includes("النسخة الأصلية")
+    (m) => !m.field.includes("الطلب الأساسي") && !m.field.includes("النسخة الأصلية"),
   );
 
   return (
@@ -191,13 +195,17 @@ export function ModificationsHistoryBox({
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[11px]">
                       {mod.oldValue && (
                         <div className="rounded-lg bg-rose-500/10 p-2 text-rose-900 border border-rose-400/30">
-                          <span className="font-bold block text-[10px] text-rose-700">❌ القيمة الأصلية:</span>
+                          <span className="font-bold block text-[10px] text-rose-700">
+                            ❌ القيمة الأصلية:
+                          </span>
                           <span className="line-through font-semibold">{mod.oldValue}</span>
                         </div>
                       )}
                       {mod.newValue && (
                         <div className="rounded-lg bg-emerald-500/10 p-2 text-emerald-950 font-black border border-emerald-400/30">
-                          <span className="font-bold block text-[10px] text-emerald-700">✨ القيمة المعدلة (الجديدة):</span>
+                          <span className="font-bold block text-[10px] text-emerald-700">
+                            ✨ القيمة المعدلة (الجديدة):
+                          </span>
                           <span>{mod.newValue}</span>
                         </div>
                       )}
@@ -389,7 +397,8 @@ export function ModificationsPanel({
                 </span>
               </div>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                تحكم كامل وفوري ببيانات الطلب، الحشوات، أرقام الشموع، البالونات، أوقات التسليم، الحسابات والخصومات.
+                تحكم كامل وفوري ببيانات الطلب، الحشوات، أرقام الشموع، البالونات، أوقات التسليم،
+                الحسابات والخصومات.
               </p>
             </div>
           </div>
@@ -416,9 +425,7 @@ export function ModificationsPanel({
       <div className="grid gap-4 lg:grid-cols-12 min-w-0 items-start">
         {/* RIGHT COLUMN: Order Navigator (4 cols on lg) */}
         <aside
-          className={`space-y-3 lg:col-span-4 min-w-0 ${
-            selected ? "hidden lg:block" : "block"
-          }`}
+          className={`space-y-3 lg:col-span-4 min-w-0 ${selected ? "hidden lg:block" : "block"}`}
         >
           <div className="rounded-3xl border border-border/80 bg-card p-3.5 sm:p-4 shadow-sm space-y-3">
             {/* Search Input */}
@@ -537,9 +544,7 @@ export function ModificationsPanel({
 
                       {/* Right Total & Balance */}
                       <div className="text-end shrink-0">
-                        <div className="text-xs font-black text-foreground">
-                          {jd(order.total)}
-                        </div>
+                        <div className="text-xs font-black text-foreground">{jd(order.total)}</div>
                         {remaining > 0 ? (
                           <div className="text-[10px] font-bold text-rose-600">
                             متبقي: {jd(remaining)}
@@ -680,9 +685,7 @@ function MasterOrderEditor({
   const [notes, setNotes] = useState(order.notes ?? "");
   const [staffNotes, setStaffNotes] = useState(order.staff_notes ?? "");
   const [deposit, setDeposit] = useState(String(order.deposit_paid));
-  const [discountPercent, setDiscountPercent] = useState(
-    String(order.discount_percent || ""),
-  );
+  const [discountPercent, setDiscountPercent] = useState(String(order.discount_percent || ""));
   const [discountReason, setDiscountReason] = useState("");
 
   useEffect(() => {
@@ -736,6 +739,54 @@ function MasterOrderEditor({
     "Welcome Baby 👶",
   ];
 
+  const modificationText = useMemo(() => {
+    const rawMods = order.modifications ?? [];
+    const formattedMods = rawMods.map((m) => {
+      const fieldLabels: Record<string, string> = {
+        area: "توصيل منطقة",
+        address: "العنوان",
+        method: "طريقة التسليم",
+        total: "المبلغ الإجمالي",
+        requested_date: "التاريخ",
+        requested_time: "الوقت",
+        inscription: "الكتابة على الكيك",
+        card_note: "الكرت",
+        notes: "ملاحظات",
+      };
+      const label = fieldLabels[m.field] || m.field;
+      return `${label}: ${m.newValue ?? ""}`;
+    });
+
+    return buildModificationMessage({
+      orderNumber: orderLabel(order.order_number, order.staff_code),
+      time: `${formatArabicDate(date)} الساعة ${formatArabicTime(time)}`.trim(),
+      fulfilment:
+        order.method === "delivery" ? order.area || address || "توصيل" : "استلام من المحل",
+      orderDetails:
+        order.items.map((i) => `${i.quantity} × ${i.name_ar}`).join(" · ") ||
+        order.order_name ||
+        "نفس البكج يلي بالصوره",
+      designNotes: [
+        ...(inscription ? [`الكتابة: ${inscription}`] : []),
+        ...(notes ? [notes] : []),
+        ...(cardNote ? [`الكرت: ${cardNote}`] : []),
+      ],
+      modifications:
+        formattedMods.length > 0 ? formattedMods : staffNotes ? [staffNotes] : undefined,
+    });
+  }, [order, date, time, address, inscription, notes, cardNote, staffNotes]);
+
+  const copyModification = () => {
+    void navigator.clipboard
+      ?.writeText(modificationText)
+      .then(() => {
+        toast.success("تم نسخ مسج التعديل (🛑🛑🛑تعديل) بنجاح 📋✨");
+      })
+      .catch(() => {
+        toast.error("تعذر النسخ التلقائي — انسخ يدوياً");
+      });
+  };
+
   return (
     <div className="space-y-4 pb-20">
       {/* Top Sticky Command Header */}
@@ -769,6 +820,17 @@ function MasterOrderEditor({
 
           {/* Header Action Buttons */}
           <div className="flex flex-wrap items-center gap-2">
+            {/* Copy Modification Message Button */}
+            <button
+              type="button"
+              onClick={copyModification}
+              className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-rose-300 bg-rose-50 px-3 text-xs font-black text-rose-800 hover:bg-rose-100 transition cursor-pointer"
+              title="نسخ مسج التعديل (🛑🛑🛑تعديل)"
+            >
+              <ClipboardCopy className="h-4 w-4 text-rose-600" />
+              <span>🛑 نسخ مسج التعديل</span>
+            </button>
+
             {/* Print Receipt */}
             <button
               type="button"
@@ -780,16 +842,16 @@ function MasterOrderEditor({
               <span className="hidden sm:inline">إيصال حراري</span>
             </button>
 
-            {/* WhatsApp Contact */}
+            {/* WhatsApp Contact with Modification text */}
             <a
-              href={`https://wa.me/${waNumber(order.customer_phone)}`}
+              href={`https://wa.me/${waNumber(order.customer_phone)}?text=${encodeURIComponent(modificationText)}`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-emerald-300 bg-emerald-50 px-3 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition"
-              title="محادثة واتساب"
+              title="إرسال التعديل على واتساب"
             >
               <MessageCircle className="h-4 w-4 text-emerald-600" />
-              <span className="hidden sm:inline">واتساب</span>
+              <span className="hidden sm:inline">واتساب التعديل</span>
             </a>
 
             {/* Master Save Button */}
@@ -949,7 +1011,9 @@ function MasterOrderEditor({
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-foreground">تاريخ التسليم المطلوب · Date</label>
+              <label className="text-xs font-bold text-foreground">
+                تاريخ التسليم المطلوب · Date
+              </label>
               <div className="flex items-center gap-1 text-[11px]">
                 <button
                   type="button"
@@ -1714,7 +1778,11 @@ function InteractiveItemEditorCard({
           onClick={() => setShowWebsiteOptions((prev) => !prev)}
           className="text-[11px] font-bold text-primary hover:underline flex items-center gap-1 cursor-pointer"
         >
-          <span>{showWebsiteOptions ? "▲ إخفاء خيارات كتالوج الموقع" : "▼ خيارات كتالوج الموقع (أحجام، حشوات متقدمة)"}</span>
+          <span>
+            {showWebsiteOptions
+              ? "▲ إخفاء خيارات كتالوج الموقع"
+              : "▼ خيارات كتالوج الموقع (أحجام، حشوات متقدمة)"}
+          </span>
         </button>
 
         {showWebsiteOptions && (

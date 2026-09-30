@@ -13,8 +13,13 @@ import {
   type Customization,
 } from "./CakeCustomizationPanel";
 
-
-export function ProductModal({ product, onClose }: { product: Product | null; onClose: () => void }) {
+export function ProductModal({
+  product,
+  onClose,
+}: {
+  product: Product | null;
+  onClose: () => void;
+}) {
   const { t, lang } = useLang();
   const { add } = useCart();
   const [sizeId, setSizeId] = useState<string | null>(null);
@@ -26,7 +31,6 @@ export function ProductModal({ product, onClose }: { product: Product | null; on
   const notesId = useId();
 
   useDismissable(Boolean(product), onClose);
-
 
   useEffect(() => {
     if (product) {
@@ -115,13 +119,14 @@ export function ProductModal({ product, onClose }: { product: Product | null; on
           </button>
         </div>
 
-
         <div className="space-y-5 p-5">
           <div>
             <h2 id={titleId} className="font-display text-xl font-semibold">
               {lang === "ar" ? product.ar : product.en}
             </h2>
-            <p className="mt-1 text-sm text-muted-foreground">{lang === "ar" ? product.descAr : product.descEn}</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {lang === "ar" ? product.descAr : product.descEn}
+            </p>
           </div>
 
           {product.sizes && (
@@ -149,7 +154,10 @@ export function ProductModal({ product, onClose }: { product: Product | null; on
           <CakeCustomizationPanel value={customization} onChange={setCustomization} />
 
           <div>
-            <label htmlFor={notesId} className="mb-2 block text-xs font-bold tracking-wide text-muted-foreground uppercase">
+            <label
+              htmlFor={notesId}
+              className="mb-2 block text-xs font-bold tracking-wide text-muted-foreground uppercase"
+            >
               {t("notes")}
             </label>
             <textarea
@@ -198,14 +206,15 @@ export function ProductModal({ product, onClose }: { product: Product | null; on
         </div>
       </div>
     </div>
-
   );
 }
 
 function Group({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <p className="mb-2 text-xs font-bold tracking-wide text-muted-foreground uppercase">{title}</p>
+      <p className="mb-2 text-xs font-bold tracking-wide text-muted-foreground uppercase">
+        {title}
+      </p>
       <div className="flex flex-wrap gap-2">{children}</div>
     </div>
   );

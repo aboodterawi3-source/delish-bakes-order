@@ -10,7 +10,15 @@ import { useDismissable } from "@/lib/a11y";
 
 type DialogKind = "cake" | "shop" | null;
 
-export function OrderingDialogs({ kind, onClose, onCart }: { kind: DialogKind; onClose: () => void; onCart: () => void }) {
+export function OrderingDialogs({
+  kind,
+  onClose,
+  onCart,
+}: {
+  kind: DialogKind;
+  onClose: () => void;
+  onCart: () => void;
+}) {
   const { lang } = useLang();
   const titleId = useId();
   useDismissable(Boolean(kind), onClose);
@@ -18,18 +26,49 @@ export function OrderingDialogs({ kind, onClose, onCart }: { kind: DialogKind; o
 
   return (
     <div className="fixed inset-0 z-50 flex max-w-full items-end justify-center overflow-x-hidden bg-foreground/45 sm:items-center sm:p-5">
-      <button type="button" tabIndex={-1} aria-label="Close" onClick={onClose} className="absolute inset-0 cursor-default" />
-      <section role="dialog" aria-modal="true" aria-labelledby={titleId} className="relative max-h-[94dvh] w-full max-w-5xl min-w-0 overflow-x-hidden overflow-y-auto rounded-t-3xl bg-card shadow-[var(--shadow-soft)] sm:rounded-3xl">
+      <button
+        type="button"
+        tabIndex={-1}
+        aria-label="Close"
+        onClick={onClose}
+        className="absolute inset-0 cursor-default"
+      />
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="relative max-h-[94dvh] w-full max-w-5xl min-w-0 overflow-x-hidden overflow-y-auto rounded-t-3xl bg-card shadow-[var(--shadow-soft)] sm:rounded-3xl"
+      >
         <header className="sticky top-0 z-10 grid grid-cols-[minmax(0,1fr)_auto] items-center border-b border-border bg-card px-5 py-3">
           <h2 id={titleId} className="truncate font-display text-xl font-bold">
-            {kind === "cake" ? (lang === "ar" ? "صمّم كيكتك" : "Design your cake") : lang === "ar" ? "قائمة ديليش" : "Delish menu"}
+            {kind === "cake"
+              ? lang === "ar"
+                ? "صمّم كيكتك"
+                : "Design your cake"
+              : lang === "ar"
+                ? "قائمة ديليش"
+                : "Delish menu"}
           </h2>
-          <button type="button" onClick={onClose} aria-label={lang === "ar" ? "إغلاق" : "Close"} className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-border">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={lang === "ar" ? "إغلاق" : "Close"}
+            className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-border"
+          >
             <X className="h-5 w-5" aria-hidden="true" />
           </button>
         </header>
         <div className="p-4 sm:p-7">
-          {kind === "cake" ? <CakeBuilder onDone={() => { onClose(); onCart(); }} /> : <QuickShop onCart={onCart} />}
+          {kind === "cake" ? (
+            <CakeBuilder
+              onDone={() => {
+                onClose();
+                onCart();
+              }}
+            />
+          ) : (
+            <QuickShop onCart={onCart} />
+          )}
         </div>
       </section>
     </div>
@@ -43,7 +82,16 @@ function QuickShop({ onCart }: { onCart: () => void }) {
 
   const addProduct = (product: Product) => {
     const qty = quantities[product.id] ?? 1;
-    add({ ar: product.ar, en: product.en, unit: product.price, qty, image: imageSets[product.image]?.src, detailsAr: [], detailsEn: [], spec: { kind: "catalog", productId: product.id } });
+    add({
+      ar: product.ar,
+      en: product.en,
+      unit: product.price,
+      qty,
+      image: imageSets[product.image]?.src,
+      detailsAr: [],
+      detailsEn: [],
+      spec: { kind: "catalog", productId: product.id },
+    });
   };
 
   return (
@@ -53,18 +101,48 @@ function QuickShop({ onCart }: { onCart: () => void }) {
         const imageSet = imageSets[product.image];
         if (!imageSet) return null;
         return (
-          <article key={product.id} className="overflow-hidden rounded-2xl border border-border bg-background">
-            <Pic set={imageSet} alt={lang === "ar" ? product.ar : product.en} sizes="(min-width: 1024px) 300px, 50vw" className="aspect-4/3 w-full object-cover" />
+          <article
+            key={product.id}
+            className="overflow-hidden rounded-2xl border border-border bg-background"
+          >
+            <Pic
+              set={imageSet}
+              alt={lang === "ar" ? product.ar : product.en}
+              sizes="(min-width: 1024px) 300px, 50vw"
+              className="aspect-4/3 w-full object-cover"
+            />
             <div className="p-4">
               <h3 className="font-display font-bold">{lang === "ar" ? product.ar : product.en}</h3>
-              <p className="mt-1 text-xs text-muted-foreground">{lang === "ar" ? product.descAr : product.descEn}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {lang === "ar" ? product.descAr : product.descEn}
+              </p>
               <div className="mt-4 flex flex-wrap items-center gap-3">
                 <div className="flex items-center rounded-full border border-border">
-                  <button type="button" onClick={() => setQuantities((q) => ({ ...q, [product.id]: Math.max(1, qty - 1) }))} aria-label="Decrease" className="grid h-12 w-10 place-items-center"><Minus className="h-4 w-4" /></button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setQuantities((q) => ({ ...q, [product.id]: Math.max(1, qty - 1) }))
+                    }
+                    aria-label="Decrease"
+                    className="grid h-12 w-10 place-items-center"
+                  >
+                    <Minus className="h-4 w-4" />
+                  </button>
                   <span className="w-6 text-center text-sm font-bold">{qty}</span>
-                  <button type="button" onClick={() => setQuantities((q) => ({ ...q, [product.id]: qty + 1 }))} aria-label="Increase" className="grid h-12 w-10 place-items-center"><Plus className="h-4 w-4" /></button>
+                  <button
+                    type="button"
+                    onClick={() => setQuantities((q) => ({ ...q, [product.id]: qty + 1 }))}
+                    aria-label="Increase"
+                    className="grid h-12 w-10 place-items-center"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
                 </div>
-                <button type="button" onClick={() => addProduct(product)} className="min-h-12 min-w-0 flex-1 rounded-full bg-primary px-4 text-sm font-bold text-primary-foreground">
+                <button
+                  type="button"
+                  onClick={() => addProduct(product)}
+                  className="min-h-12 min-w-0 flex-1 rounded-full bg-primary px-4 text-sm font-bold text-primary-foreground"
+                >
                   {product.price.toFixed(2)} {t("jod")} · {t("addToCart")}
                 </button>
               </div>
@@ -72,7 +150,11 @@ function QuickShop({ onCart }: { onCart: () => void }) {
           </article>
         );
       })}
-      <button type="button" onClick={onCart} className="sm:col-span-2 lg:col-span-3 inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-primary font-bold text-primary">
+      <button
+        type="button"
+        onClick={onCart}
+        className="sm:col-span-2 lg:col-span-3 inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-primary font-bold text-primary"
+      >
         <ShoppingBag className="h-4 w-4" /> {t("cart")}
       </button>
     </div>

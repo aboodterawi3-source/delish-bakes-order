@@ -39,7 +39,11 @@ export function MessagesPanel() {
     };
     const channel = supabase
       .channel(`customer-messages-live-${Math.random().toString(36).slice(2)}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "customer_messages" }, invalidate)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "customer_messages" },
+        invalidate,
+      )
       .subscribe();
     return () => {
       void supabase.removeChannel(channel);
@@ -70,9 +74,13 @@ export function MessagesPanel() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <span className={`rounded-full px-3.5 py-1 text-xs font-black transition-all ${
-            openCount > 0 ? "bg-amber-100 text-amber-800 border border-amber-300 animate-pulse" : "bg-emerald-100 text-emerald-800 border border-emerald-300"
-          }`}>
+          <span
+            className={`rounded-full px-3.5 py-1 text-xs font-black transition-all ${
+              openCount > 0
+                ? "bg-amber-100 text-amber-800 border border-amber-300 animate-pulse"
+                : "bg-emerald-100 text-emerald-800 border border-emerald-300"
+            }`}
+          >
             {openCount > 0 ? `جديدة: ${openCount} 📬` : "كل الرسائل مجابة ✅"}
           </span>
         </div>
@@ -95,7 +103,9 @@ export function MessagesPanel() {
           {rows.map((row) => {
             const handled = row.status === "handled";
             const waPhone = formatWhatsappPhone(row.phone);
-            const waText = encodeURIComponent(`مرحباً ${row.name} الكريم، معك فريق مخبز ديليش بخصوص رسالتك/ملاحظتك 🌸`);
+            const waText = encodeURIComponent(
+              `مرحباً ${row.name} الكريم، معك فريق مخبز ديليش بخصوص رسالتك/ملاحظتك 🌸`,
+            );
             const waUrl = `https://wa.me/${waPhone}?text=${waText}`;
 
             return (
@@ -153,7 +163,9 @@ export function MessagesPanel() {
                   <button
                     type="button"
                     disabled={update.isPending}
-                    onClick={() => update.mutate({ id: row.id, status: handled ? "new" : "handled" })}
+                    onClick={() =>
+                      update.mutate({ id: row.id, status: handled ? "new" : "handled" })
+                    }
                     className={`inline-flex min-h-10 items-center gap-1.5 rounded-full px-4 text-xs font-bold transition-all disabled:opacity-60 cursor-pointer ${
                       handled
                         ? "border border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200"

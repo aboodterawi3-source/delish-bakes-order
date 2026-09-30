@@ -1,6 +1,6 @@
-import { DelishLogo } from '@/components/delish/DelishLogo';
-import type { SalesOrder } from '@/lib/sales.functions';
-import { orderLabel } from '@/lib/order-label';
+import { DelishLogo } from "@/components/delish/DelishLogo";
+import type { SalesOrder } from "@/lib/sales.functions";
+import { orderLabel } from "@/lib/order-label";
 
 interface EditOrderHeaderProps {
   order?: SalesOrder | null;

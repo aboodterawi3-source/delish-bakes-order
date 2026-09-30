@@ -9,8 +9,10 @@ const KITCHEN_ROLES: StaffRoleName[] = ["kitchen", "admin"];
  * Gift flags and sender/recipient phone numbers are commercial details, not
  * preparation details, so they are stripped before options reach the kitchen.
  */
-const PREP_ONLY = /هدية|هاتف|رقم|gift|phone|whatsapp|\+?\d[\d\s-]{5,}/i;
-const prepOptions = (options: string[]): string[] => options.filter((option) => !PREP_ONLY.test(option));
+const PREP_ONLY =
+  /هدية|هاتف|رقم|موبايل|واتساب|واتس|انستغرام|فيسبوك|تيك توك|موقع|المصدر|مصدر|كليك|حوالة|gift|phone|whatsapp|instagram|facebook|tiktok|source|cliq|\+?\d[\d\s-]{5,}/i;
+const prepOptions = (options: string[]): string[] =>
+  options.filter((option) => !PREP_ONLY.test(option));
 
 /**
  * Kitchen staff must never see contact numbers, even when a phone number was
@@ -20,7 +22,6 @@ const prepOptions = (options: string[]): string[] => options.filter((option) => 
 const PHONE_LIKE = /\+?\d[\d\s-]{6,}\d/g;
 const stripPhones = (text: string | null): string | null =>
   text ? text.replace(PHONE_LIKE, "—") : text;
-
 
 export type OrderModification = {
   field: string;
@@ -54,6 +55,7 @@ export type KdsOrder = {
   requested_time: string;
   status: string;
   inscription: string | null;
+  card_note?: string | null;
   design_image_url: string | null;
   /** Customer-facing notes only; staff notes and money fields never reach the kitchen. */
   notes: string | null;
@@ -135,7 +137,9 @@ export const getKitchenOrders = createServerFn({ method: "GET" })
     const categoryByProduct = new Map(productRows.map((p) => [p.id, p.category]));
 
     // Category priority is the fallback whenever a product has none of its own.
-    const categoryIds = [...new Set(productRows.map((p) => p.category_id).filter((id): id is string => Boolean(id)))];
+    const categoryIds = [
+      ...new Set(productRows.map((p) => p.category_id).filter((id): id is string => Boolean(id))),
+    ];
     const { data: categoryRows } = categoryIds.length
       ? await context.supabase
           .from("storefront_categories")
@@ -143,15 +147,15 @@ export const getKitchenOrders = createServerFn({ method: "GET" })
           .in("id", categoryIds)
       : { data: [] as { id: string; priority_color: PriorityColor | null }[] };
     const priorityByCategory = new Map(
-      ((categoryRows ?? []) as { id: string; priority_color: PriorityColor | null }[]).map((row) => [
-        row.id,
-        row.priority_color,
-      ]),
+      ((categoryRows ?? []) as { id: string; priority_color: PriorityColor | null }[]).map(
+        (row) => [row.id, row.priority_color],
+      ),
     );
     const priorityByProduct = new Map(
       productRows.map((p) => [
         p.id,
-        p.priority_color ?? (p.category_id ? priorityByCategory.get(p.category_id) ?? null : null),
+        p.priority_color ??
+          (p.category_id ? (priorityByCategory.get(p.category_id) ?? null) : null),
       ]),
     );
 
@@ -175,16 +179,24 @@ export const getKitchenOrders = createServerFn({ method: "GET" })
     // Explicitly load modifications from orders table because get_kitchen_orders RPC on remote DB
     // may not declare the modifications jsonb column in its return table.
     const modsMap = new Map<string, OrderModification[]>();
+    const cardNoteMap = new Map<string, string | null>();
     if (orderIds.length > 0) {
       try {
         const { data: directMods } = await context.supabase
           .from("orders")
-          .select("id, modifications")
+          .select("id, modifications, card_note")
           .in("id", orderIds);
         if (directMods && Array.isArray(directMods)) {
           for (const row of directMods) {
-            if (row.modifications && Array.isArray(row.modifications) && row.modifications.length > 0) {
+            if (
+              row.modifications &&
+              Array.isArray(row.modifications) &&
+              row.modifications.length > 0
+            ) {
               modsMap.set(row.id, row.modifications as OrderModification[]);
+            }
+            if (row.card_note) {
+              cardNoteMap.set(row.id, row.card_note);
             }
           }
         }
@@ -193,7 +205,7 @@ export const getKitchenOrders = createServerFn({ method: "GET" })
       }
 
       // If direct read yielded no modifications and service key is present, fallback to admin client
-      if (modsMap.size === 0 && process.env['SUPABASE_SERVICE_ROLE_KEY']) {
+      if (modsMap.size === 0 && process.env["SUPABASE_SERVICE_ROLE_KEY"]) {
         try {
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
           const { data: adminMods } = await supabaseAdmin
@@ -202,7 +214,11 @@ export const getKitchenOrders = createServerFn({ method: "GET" })
             .in("id", orderIds);
           if (adminMods && Array.isArray(adminMods)) {
             for (const row of adminMods) {
-              if (row.modifications && Array.isArray(row.modifications) && row.modifications.length > 0) {
+              if (
+                row.modifications &&
+                Array.isArray(row.modifications) &&
+                row.modifications.length > 0
+              ) {
                 modsMap.set(row.id, row.modifications as OrderModification[]);
               }
             }
@@ -214,7 +230,8 @@ export const getKitchenOrders = createServerFn({ method: "GET" })
     }
 
     return (data ?? []).map((order: any) => {
-      let mods = modsMap.get(order.id) ?? (Array.isArray(order.modifications) ? order.modifications : []);
+      let mods =
+        modsMap.get(order.id) ?? (Array.isArray(order.modifications) ? order.modifications : []);
 
       // If modifications array is still empty but order has edit timestamps, synthesize explicit diff entries
       if (mods.length === 0) {
@@ -252,6 +269,7 @@ export const getKitchenOrders = createServerFn({ method: "GET" })
         requested_time: order.requested_time ?? "",
         status: order.status,
         inscription: stripPhones(order.inscription),
+        card_note: stripPhones(cardNoteMap.get(order.id) ?? order.card_note ?? null),
         design_image_url: order.design_image_url,
         notes: stripPhones(order.notes),
         schedule_updated_at: order.schedule_updated_at,
@@ -306,7 +324,7 @@ export const acknowledgeOrderModification = createServerFn({ method: "POST" })
       /* ignore */
     }
 
-    if (!orderRow && process.env['SUPABASE_SERVICE_ROLE_KEY']) {
+    if (!orderRow && process.env["SUPABASE_SERVICE_ROLE_KEY"]) {
       try {
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { data: adminRow } = await supabaseAdmin
@@ -346,7 +364,7 @@ export const acknowledgeOrderModification = createServerFn({ method: "POST" })
       .update({ modifications: updatedMods as any })
       .eq("id", data.orderId);
 
-    if (error && process.env['SUPABASE_SERVICE_ROLE_KEY']) {
+    if (error && process.env["SUPABASE_SERVICE_ROLE_KEY"]) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       await supabaseAdmin
         .from("orders")

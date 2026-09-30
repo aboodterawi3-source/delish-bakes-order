@@ -44,7 +44,6 @@ td:last-child{width:26%;text-align:left}
 .note{font-size:11px;font-weight:700}
 small{font-size:11px}`;
 
-
 /**
  * Prints an HTML fragment (body content only) on the user's selected printer.
  * Returns false when the browser refuses to create the print surface.
@@ -58,7 +57,8 @@ ${extraStyle}</style></head><body><div class="receipt">${bodyHtml}</div></body><
 
   const frame = document.createElement("iframe");
   frame.setAttribute("aria-hidden", "true");
-  frame.style.cssText = "position:fixed;left:-10000px;top:0;width:80mm;height:100vh;border:0;visibility:hidden";
+  frame.style.cssText =
+    "position:fixed;left:-10000px;top:0;width:80mm;height:100vh;border:0;visibility:hidden";
   document.body.appendChild(frame);
 
   const cleanup = () => {

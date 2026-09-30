@@ -8,14 +8,22 @@ import { useStorefrontContent } from "@/hooks/use-storefront-content";
 
 export const Route = createFileRoute("/product-details")({
   validateSearch: (search: Record<string, unknown>) => ({
-    id: typeof search['id'] === "string" ? search['id'] : undefined,
+    id: typeof search["id"] === "string" ? search["id"] : undefined,
   }),
   head: () => ({
     meta: [
       { title: "Product Details | DELISH Bakes" },
-      { name: "description", content: "Choose your size, add candles, balloons or an acrylic name, and order your cake from DELISH Bakes." },
+      {
+        name: "description",
+        content:
+          "Choose your size, add candles, balloons or an acrylic name, and order your cake from DELISH Bakes.",
+      },
       { property: "og:title", content: "Product Details | DELISH Bakes" },
-      { property: "og:description", content: "Choose your size, add candles, balloons or an acrylic name, and order your cake from DELISH Bakes." },
+      {
+        property: "og:description",
+        content:
+          "Choose your size, add candles, balloons or an acrylic name, and order your cake from DELISH Bakes.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],

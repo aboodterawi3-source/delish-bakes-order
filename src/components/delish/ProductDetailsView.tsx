@@ -1,6 +1,15 @@
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ChevronLeft, ShoppingBag, ChevronDown, Plus, Minus, Check, Loader2, ImageOff } from "lucide-react";
+import {
+  ChevronLeft,
+  ShoppingBag,
+  ChevronDown,
+  Plus,
+  Minus,
+  Check,
+  Loader2,
+  ImageOff,
+} from "lucide-react";
 import { DelishLogo } from "./DelishLogo";
 import { BackgroundCurves } from "./BackgroundCurves";
 import {
@@ -85,7 +94,9 @@ export function ProductDetailsView({
     <div
       dir={dir}
       className={`relative flex min-h-dvh w-full max-w-full flex-col justify-between overflow-x-hidden overflow-y-auto bg-background text-foreground ${
-        isEmbedded ? "min-h-[740px] max-h-[820px] rounded-[38px] border-4 border-cocoa shadow-2xl" : ""
+        isEmbedded
+          ? "min-h-[740px] max-h-[820px] rounded-[38px] border-4 border-cocoa shadow-2xl"
+          : ""
       }`}
     >
       <BackgroundCurves />
@@ -113,7 +124,10 @@ export function ProductDetailsView({
 
         <div className="flex min-w-0 flex-col items-center">
           <DelishLogo size="sm" />
-          <span style={{ color: palette.main }} className="-mt-0.5 truncate text-[9px] font-bold uppercase tracking-[0.24em]">
+          <span
+            style={{ color: palette.main }}
+            className="-mt-0.5 truncate text-[9px] font-bold uppercase tracking-[0.24em]"
+          >
             {t("celebrationCakes")}
           </span>
         </div>
@@ -213,7 +227,9 @@ export function ProductDetailsView({
                     />
                   </button>
                   {descriptionOpen && (
-                    <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{description}</p>
+                    <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                      {description}
+                    </p>
                   )}
                 </div>
               )}
@@ -266,7 +282,9 @@ export function ProductDetailsView({
             </div>
             <a
               href={`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(
-                ar ? `مرحباً، أريد معرفة سعر: ${product.name_ar}` : `Hello, I would like the price for: ${product.name_en}`,
+                ar
+                  ? `مرحباً، أريد معرفة سعر: ${product.name_ar}`
+                  : `Hello, I would like the price for: ${product.name_en}`,
               )}`}
               target="_blank"
               rel="noopener noreferrer"
@@ -277,31 +295,34 @@ export function ProductDetailsView({
           </>
         ) : (
           <>
-        <div className="flex min-w-0 flex-col">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            {t("from")}
-          </span>
-          <span style={{ color: palette.main }} className="font-sans text-xl font-extrabold sm:text-3xl">
-            {formatJod(currentPrice, lang)}
-          </span>
-        </div>
+            <div className="flex min-w-0 flex-col">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {t("from")}
+              </span>
+              <span
+                style={{ color: palette.main }}
+                className="font-sans text-xl font-extrabold sm:text-3xl"
+              >
+                {formatJod(currentPrice, lang)}
+              </span>
+            </div>
 
-        <button
-          type="button"
-          onClick={handleAdd}
-          disabled={!product}
-          style={{ backgroundColor: palette.btnBg }}
-          className="inline-flex min-h-[50px] min-w-0 items-center justify-center gap-2 rounded-full px-4 py-3.5 text-center text-xs font-bold uppercase text-white shadow-sm transition-all hover:scale-[1.02] hover:opacity-90 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 sm:flex-none sm:px-7 sm:text-sm cursor-pointer"
-        >
-          {addedAnimation ? (
-            <>
-              <Check className="h-4 w-4" />
-              <span>{ar ? "تمت الإضافة!" : "ADDED!"}</span>
-            </>
-          ) : (
-            <span>{t("addToCart")}</span>
-          )}
-        </button>
+            <button
+              type="button"
+              onClick={handleAdd}
+              disabled={!product}
+              style={{ backgroundColor: palette.btnBg }}
+              className="inline-flex min-h-[50px] min-w-0 items-center justify-center gap-2 rounded-full px-4 py-3.5 text-center text-xs font-bold uppercase text-white shadow-sm transition-all hover:scale-[1.02] hover:opacity-90 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 sm:flex-none sm:px-7 sm:text-sm cursor-pointer"
+            >
+              {addedAnimation ? (
+                <>
+                  <Check className="h-4 w-4" />
+                  <span>{ar ? "تمت الإضافة!" : "ADDED!"}</span>
+                </>
+              ) : (
+                <span>{t("addToCart")}</span>
+              )}
+            </button>
           </>
         )}
       </footer>

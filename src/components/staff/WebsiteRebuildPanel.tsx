@@ -1,7 +1,10 @@
 import { useMemo, useState } from "react";
 import { Plus, RefreshCcw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { StorefrontProductModal, type ModalAddPayload } from "@/components/delish/StorefrontProductModal";
+import {
+  StorefrontProductModal,
+  type ModalAddPayload,
+} from "@/components/delish/StorefrontProductModal";
 import { customizationSummary } from "@/components/delish/CakeCustomizationPanel";
 import type { StorefrontProduct } from "@/lib/storefront-content";
 import type { RebuildLine, SalesOrder } from "@/lib/sales.functions";
@@ -43,7 +46,8 @@ export function WebsiteRebuildPanel({
       if (category && product.category !== category) return false;
       if (!needle) return true;
       return (
-        product.name_ar.toLowerCase().includes(needle) || product.name_en.toLowerCase().includes(needle)
+        product.name_ar.toLowerCase().includes(needle) ||
+        product.name_en.toLowerCase().includes(needle)
       );
     });
   }, [category, products, query]);
@@ -83,7 +87,10 @@ export function WebsiteRebuildPanel({
     );
 
   return (
-    <section dir="rtl" className="space-y-4 rounded-3xl border border-primary/30 bg-secondary/20 p-4">
+    <section
+      dir="rtl"
+      className="space-y-4 rounded-3xl border border-primary/30 bg-secondary/20 p-4"
+    >
       <header className="flex flex-wrap items-center gap-2">
         <h3 className="min-w-0 flex-1 font-display text-base font-bold text-foreground">
           إعادة بناء الطلب بواجهة الموقع · Website builder
@@ -130,7 +137,6 @@ export function WebsiteRebuildPanel({
             onClick={() => setPicked(product)}
             className="min-w-0 rounded-xl border border-border bg-card p-2.5 text-start shadow-xs transition-colors hover:border-primary hover:bg-secondary/40"
           >
-
             <div className="space-y-1 p-3">
               <p className="break-words text-sm font-bold text-foreground">{product.name_ar}</p>
               <p className="text-xs font-bold text-primary">
@@ -165,7 +171,9 @@ export function WebsiteRebuildPanel({
                   </span>
                   <button
                     type="button"
-                    onClick={() => setLines((current) => current.filter((row) => row.key !== line.key))}
+                    onClick={() =>
+                      setLines((current) => current.filter((row) => row.key !== line.key))
+                    }
                     aria-label="حذف الصنف"
                     className="grid h-10 w-10 place-items-center rounded-full border border-destructive/40 text-destructive"
                   >
@@ -178,7 +186,9 @@ export function WebsiteRebuildPanel({
                   </p>
                 ) : null}
                 {line.notes ? (
-                  <p className="mt-1 break-words text-xs text-muted-foreground">ملاحظة: {line.notes}</p>
+                  <p className="mt-1 break-words text-xs text-muted-foreground">
+                    ملاحظة: {line.notes}
+                  </p>
                 ) : null}
                 <div className="mt-2 grid gap-2 sm:grid-cols-2">
                   <label className="block text-xs font-bold text-foreground">
@@ -190,7 +200,9 @@ export function WebsiteRebuildPanel({
                       onChange={(event) => {
                         const qty = Math.max(1, Math.trunc(Number(event.target.value) || 1));
                         setLines((current) =>
-                          current.map((row, at) => (at === index ? { ...row, quantity: qty } : row)),
+                          current.map((row, at) =>
+                            at === index ? { ...row, quantity: qty } : row,
+                          ),
                         );
                       }}
                       className="mt-1 min-h-11 w-full rounded-xl border border-input bg-card px-2 text-center text-sm font-bold"
@@ -206,7 +218,9 @@ export function WebsiteRebuildPanel({
                       onChange={(event) => {
                         const price = Math.max(0, Number(event.target.value) || 0);
                         setLines((current) =>
-                          current.map((row, at) => (at === index ? { ...row, unitPrice: price } : row)),
+                          current.map((row, at) =>
+                            at === index ? { ...row, unitPrice: price } : row,
+                          ),
                         );
                       }}
                       className="mt-1 min-h-11 w-full rounded-xl border border-input bg-card px-2 text-center text-sm font-bold"
@@ -221,11 +235,7 @@ export function WebsiteRebuildPanel({
         <button
           type="button"
           disabled={busy || lines.length === 0}
-          onClick={() =>
-            onReplace(
-              lines.map(({ key: _key, ...line }) => line),
-            )
-          }
+          onClick={() => onReplace(lines.map(({ key: _key, ...line }) => line))}
           className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-primary px-5 text-sm font-extrabold text-primary-foreground disabled:opacity-50"
         >
           <Plus className="h-4 w-4" aria-hidden /> استبدال أصناف الطلب · Replace items

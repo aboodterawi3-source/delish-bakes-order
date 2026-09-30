@@ -64,7 +64,7 @@ export function StorefrontProductModal({
   const ar = lang === "ar";
   const titleId = useId();
   const { palette } = useBrandPalette();
-  
+
   const [size, setSize] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [flavor, setFlavor] = useState("VANILLA");
@@ -90,7 +90,7 @@ export function StorefrontProductModal({
   }, [product]);
 
   const baseUnitPrice = useMemo(() => (product ? priceForSize(product, size) : 0), [product, size]);
-  
+
   // Calculate price including size offsets if present
   const activeOffset = useMemo(() => {
     const match = SERVING_SIZE_OFFSETS.find((s) => s.label === size);
@@ -102,9 +102,14 @@ export function StorefrontProductModal({
   if (!product) return null;
 
   const name = ar ? product.name_ar : product.name_en;
-  const description = ar ? product.description_ar : product.description_en ?? (ar ? "كيك فاخر مغطى بالكريمة والسكر" : "Cake covered with sugar");
+  const description = ar
+    ? product.description_ar
+    : (product.description_en ??
+      (ar ? "كيك فاخر مغطى بالكريمة والسكر" : "Cake covered with sugar"));
   const askUrl = `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(
-    ar ? `مرحباً، أريد معرفة سعر: ${product.name_ar}` : `Hello, I would like the price for: ${product.name_en}`,
+    ar
+      ? `مرحباً، أريد معرفة سعر: ${product.name_ar}`
+      : `Hello, I would like the price for: ${product.name_en}`,
   )}`;
 
   return (
@@ -155,7 +160,10 @@ export function StorefrontProductModal({
         <div className="w-full md:w-1/2 p-5 sm:p-7 flex flex-col justify-between overflow-y-auto space-y-4 max-h-[65vh] md:max-h-[90vh]">
           {/* Header row: Badge & Close Button */}
           <div className="flex items-center justify-between border-b border-[#EFE8DC] pb-3">
-            <span style={{ color: palette.main }} className="text-[11px] font-black uppercase tracking-wider">
+            <span
+              style={{ color: palette.main }}
+              className="text-[11px] font-black uppercase tracking-wider"
+            >
               TRENDING · الأكثر طلباً
             </span>
             <button
@@ -173,9 +181,7 @@ export function StorefrontProductModal({
             <h2 id={titleId} className="font-sans text-2xl font-black text-[#26160F] leading-tight">
               {name}
             </h2>
-            <p className="text-xs font-medium text-[#4A3B32]/70 leading-relaxed">
-              {description}
-            </p>
+            <p className="text-xs font-medium text-[#4A3B32]/70 leading-relaxed">{description}</p>
           </div>
 
           {product.price_on_request ? (
@@ -212,56 +218,58 @@ export function StorefrontProductModal({
                   {ar ? "يكفي لـ" : "Serves up to"}
                 </label>
                 <div className="flex flex-wrap gap-2">
-                  {product.sizes.length > 0 ? (
-                    product.sizes.map((option) => {
-                      const active = size === option.label;
-                      return (
-                        <button
-                          key={option.label}
-                          type="button"
-                          aria-pressed={active}
-                          onClick={() => setSize(option.label)}
-                          style={{
-                            backgroundColor: active ? palette.btnBg : undefined,
-                            color: active ? "#ffffff" : undefined,
-                            borderColor: active ? palette.btnBg : palette.border,
-                          }}
-                          className={`rounded-xl px-3.5 py-2 text-xs font-bold transition-all cursor-pointer ${
-                            active
-                              ? "shadow-xs scale-[1.02]"
-                              : "border bg-white text-[#4A3B32] hover:bg-[#FEF7EB]"
-                          }`}
-                        >
-                          {option.label} ({formatJod(option.price, lang)})
-                        </button>
-                      );
-                    })
-                  ) : (
-                    SERVING_SIZE_OFFSETS.map((option) => {
-                      const active = size === option.label;
-                      const displayPrice = baseUnitPrice + option.offset;
-                      return (
-                        <button
-                          key={option.label}
-                          type="button"
-                          aria-pressed={active}
-                          onClick={() => setSize(option.label)}
-                          style={{
-                            backgroundColor: active ? palette.btnBg : undefined,
-                            color: active ? "#ffffff" : undefined,
-                            borderColor: active ? palette.btnBg : palette.border,
-                          }}
-                          className={`rounded-xl px-3.5 py-2 text-xs font-bold transition-all cursor-pointer ${
-                            active
-                              ? "shadow-xs scale-[1.02]"
-                              : "border bg-white text-[#4A3B32] hover:bg-[#FEF7EB]"
-                          }`}
-                        >
-                          {ar ? option.ar : option.label} ({option.offset > 0 ? `+${option.offset}.00 JOD` : formatJod(displayPrice, lang)})
-                        </button>
-                      );
-                    })
-                  )}
+                  {product.sizes.length > 0
+                    ? product.sizes.map((option) => {
+                        const active = size === option.label;
+                        return (
+                          <button
+                            key={option.label}
+                            type="button"
+                            aria-pressed={active}
+                            onClick={() => setSize(option.label)}
+                            style={{
+                              backgroundColor: active ? palette.btnBg : undefined,
+                              color: active ? "#ffffff" : undefined,
+                              borderColor: active ? palette.btnBg : palette.border,
+                            }}
+                            className={`rounded-xl px-3.5 py-2 text-xs font-bold transition-all cursor-pointer ${
+                              active
+                                ? "shadow-xs scale-[1.02]"
+                                : "border bg-white text-[#4A3B32] hover:bg-[#FEF7EB]"
+                            }`}
+                          >
+                            {option.label} ({formatJod(option.price, lang)})
+                          </button>
+                        );
+                      })
+                    : SERVING_SIZE_OFFSETS.map((option) => {
+                        const active = size === option.label;
+                        const displayPrice = baseUnitPrice + option.offset;
+                        return (
+                          <button
+                            key={option.label}
+                            type="button"
+                            aria-pressed={active}
+                            onClick={() => setSize(option.label)}
+                            style={{
+                              backgroundColor: active ? palette.btnBg : undefined,
+                              color: active ? "#ffffff" : undefined,
+                              borderColor: active ? palette.btnBg : palette.border,
+                            }}
+                            className={`rounded-xl px-3.5 py-2 text-xs font-bold transition-all cursor-pointer ${
+                              active
+                                ? "shadow-xs scale-[1.02]"
+                                : "border bg-white text-[#4A3B32] hover:bg-[#FEF7EB]"
+                            }`}
+                          >
+                            {ar ? option.ar : option.label} (
+                            {option.offset > 0
+                              ? `+${option.offset}.00 JOD`
+                              : formatJod(displayPrice, lang)}
+                            )
+                          </button>
+                        );
+                      })}
                 </div>
               </div>
 
@@ -333,8 +341,14 @@ export function StorefrontProductModal({
                   }}
                   className="flex w-full items-center justify-between rounded-xl border px-3.5 py-2.5 text-xs font-bold transition-colors hover:opacity-90 cursor-pointer"
                 >
-                  <span>{ar ? "✨ إضافات خاصة (شموع، بالونات، توبر، هدية)" : "✨ Extra Options (Candles, Balloons, Gift)"}</span>
-                  <ChevronDown className={`h-4 w-4 transition-transform ${showExtras ? "rotate-180" : ""}`} />
+                  <span>
+                    {ar
+                      ? "✨ إضافات خاصة (شموع، بالونات، توبر، هدية)"
+                      : "✨ Extra Options (Candles, Balloons, Gift)"}
+                  </span>
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform ${showExtras ? "rotate-180" : ""}`}
+                  />
                 </button>
                 {showExtras && (
                   <div className="mt-3 pt-2 border-t border-[#EFE8DC]">
@@ -355,7 +369,9 @@ export function StorefrontProductModal({
                   >
                     <Minus className="h-3.5 w-3.5" aria-hidden />
                   </button>
-                  <span className="min-w-6 text-center text-xs font-bold text-[#26160F]">{quantity}</span>
+                  <span className="min-w-6 text-center text-xs font-bold text-[#26160F]">
+                    {quantity}
+                  </span>
                   <button
                     type="button"
                     onClick={() => setQuantity(quantity + 1)}
@@ -399,4 +415,3 @@ export function StorefrontProductModal({
     </div>
   );
 }
-

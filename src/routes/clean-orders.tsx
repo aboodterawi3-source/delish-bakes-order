@@ -1,7 +1,16 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { CheckCircle2, Loader2, Sparkles, Trash2, ArrowRight, ShieldAlert, ShoppingBag, ClipboardList } from "lucide-react";
+import {
+  CheckCircle2,
+  Loader2,
+  Sparkles,
+  Trash2,
+  ArrowRight,
+  ShieldAlert,
+  ShoppingBag,
+  ClipboardList,
+} from "lucide-react";
 import { toast } from "sonner";
 import { clearAllSalesOrders } from "@/lib/sales.functions";
 import { DelishLogo } from "@/components/delish/DelishLogo";
@@ -53,7 +62,10 @@ function CleanOrdersPage() {
   }, [search.auto]);
 
   return (
-    <main dir="rtl" className="relative grid min-h-dvh place-items-center overflow-hidden bg-[#FDFBF7] px-4 py-10">
+    <main
+      dir="rtl"
+      className="relative grid min-h-dvh place-items-center overflow-hidden bg-[#FDFBF7] px-4 py-10"
+    >
       <BackgroundCurves />
       <div className="relative z-10 w-full max-w-lg rounded-3xl border border-border bg-card p-6 sm:p-8 shadow-xl text-center space-y-5">
         <div className="flex flex-col items-center">
@@ -69,8 +81,8 @@ function CleanOrdersPage() {
             تنظيف ومسح كافة الطلبات من الموقع
           </h1>
           <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
-            تقوم هذه الأداة بمسح جميع الطلبات التجريبية والسابقة وبنودها من قاعدة البيانات
-            بشكل كامل ونهائي، لتفريغ شاشات المبيعات، المطبخ، والجدول لتبدأ من جديد.
+            تقوم هذه الأداة بمسح جميع الطلبات التجريبية والسابقة وبنودها من قاعدة البيانات بشكل كامل
+            ونهائي، لتفريغ شاشات المبيعات، المطبخ، والجدول لتبدأ من جديد.
           </p>
         </div>
 
@@ -90,7 +102,8 @@ function CleanOrdersPage() {
                 تم تنظيف كافة الطلبات بنجاح!
               </h3>
               <p className="text-xs text-emerald-800 mt-1">
-                قاعدة بيانات الطلبات فارغة تماماً الآن (0 طلبات). شاشات المطبخ، الكاشير وجدول الطلبات أصبحت جاهزة ونظيفة للطلبات الحقيقية.
+                قاعدة بيانات الطلبات فارغة تماماً الآن (0 طلبات). شاشات المطبخ، الكاشير وجدول
+                الطلبات أصبحت جاهزة ونظيفة للطلبات الحقيقية.
               </p>
             </div>
 
@@ -121,7 +134,8 @@ function CleanOrdersPage() {
                 <span>تنبيه هام:</span>
               </div>
               <p>
-                هذا الإجراء سيقوم بحذف جميع الطلبات وعناصرها وسجل التعديلات نهائياً من قاعدة البيانات.
+                هذا الإجراء سيقوم بحذف جميع الطلبات وعناصرها وسجل التعديلات نهائياً من قاعدة
+                البيانات.
               </p>
             </div>
 

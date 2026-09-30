@@ -85,63 +85,63 @@ export const imageSets: Record<string, ImageSet> = {
     width: 800,
     height: 800,
   },
-  "cheesecake": {
+  cheesecake: {
     src: cheesecake_jpg,
     avif: `${cheesecake_400_avif} 400w, ${cheesecake_800_avif} 800w`,
     webp: `${cheesecake_400_webp} 400w, ${cheesecake_800_webp} 800w`,
     width: 800,
     height: 800,
   },
-  "cupcakes": {
+  cupcakes: {
     src: cupcakes_jpg,
     avif: `${cupcakes_400_avif} 400w, ${cupcakes_800_avif} 800w`,
     webp: `${cupcakes_400_webp} 400w, ${cupcakes_800_webp} 800w`,
     width: 800,
     height: 800,
   },
-  "cookies": {
+  cookies: {
     src: cookies_jpg,
     avif: `${cookies_400_avif} 400w, ${cookies_800_avif} 800w`,
     webp: `${cookies_400_webp} 400w, ${cookies_800_webp} 800w`,
     width: 800,
     height: 800,
   },
-  "brownies": {
+  brownies: {
     src: brownies_jpg,
     avif: `${brownies_400_avif} 400w, ${brownies_800_avif} 800w`,
     webp: `${brownies_400_webp} 400w, ${brownies_800_webp} 800w`,
     width: 800,
     height: 800,
   },
-  "knafeh": {
+  knafeh: {
     src: knafeh_jpg,
     avif: `${knafeh_400_avif} 400w, ${knafeh_800_avif} 800w`,
     webp: `${knafeh_400_webp} 400w, ${knafeh_800_webp} 800w`,
     width: 800,
     height: 800,
   },
-  "baklava": {
+  baklava: {
     src: baklava_jpg,
     avif: `${baklava_400_avif} 400w, ${baklava_800_avif} 800w`,
     webp: `${baklava_400_webp} 400w, ${baklava_800_webp} 800w`,
     width: 800,
     height: 800,
   },
-  "mahalabia": {
+  mahalabia: {
     src: mahalabia_jpg,
     avif: `${mahalabia_400_avif} 400w, ${mahalabia_800_avif} 800w`,
     webp: `${mahalabia_400_webp} 400w, ${mahalabia_800_webp} 800w`,
     width: 800,
     height: 800,
   },
-  "builder": {
+  builder: {
     src: builder_jpg,
     avif: `${builder_400_avif} 400w, ${builder_800_avif} 800w`,
     webp: `${builder_400_webp} 400w, ${builder_800_webp} 800w`,
     width: 1000,
     height: 1000,
   },
-  "hero": {
+  hero: {
     src: hero_jpg,
     avif: `${hero_700_avif} 700w, ${hero_1400_avif} 1400w`,
     webp: `${hero_700_webp} 700w, ${hero_1400_webp} 1400w`,
@@ -156,4 +156,3 @@ export const images: Record<string, string> = Object.fromEntries(
 
 export const heroImage = imageSets["hero"]!;
 export const builderImage = imageSets["builder"]!;
-

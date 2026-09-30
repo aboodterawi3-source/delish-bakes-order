@@ -45,6 +45,7 @@ import {
   setKitchenStage,
   type KdsOrder,
   type KitchenStage,
+  type OrderModification,
 } from "@/lib/kds.functions";
 import { OrdersCalendar } from "@/components/staff/OrdersCalendar";
 import type { SalesOrder, SalesStatus } from "@/lib/sales.functions";
@@ -53,6 +54,27 @@ import { esc, printDocument } from "@/lib/print";
 import bellAsset from "@/assets/Bell.mp3.asset.json";
 import { orderLabel } from "@/lib/order-label";
 import { isoDay, matchesDateFilter, type CustomRange, type DateFilterKey } from "@/lib/date-filter";
+import { formatArabicDate } from "@/lib/confirmation-message";
+
+/** Strips out marketing, communication channel tags (WhatsApp, Instagram, etc.), and payment meta from kitchen views */
+function isChannelOrMeta(text: string): boolean {
+  if (!text) return false;
+  const t = text.trim();
+  return (
+    t.startsWith("المصدر:") ||
+    t.startsWith("مصدر:") ||
+    t.includes("المصدر: ") ||
+    t.includes("واتساب") ||
+    t.includes("انستغرام") ||
+    t.includes("فيسبوك") ||
+    t.includes("تيك توك") ||
+    t.includes("كليك") ||
+    t.includes("حوالة") ||
+    t.includes("gift") ||
+    t.includes("source") ||
+    t.startsWith("طلب هدية")
+  );
+}
 
 /** Formats relative time in Arabic (e.g., قبل 5 دقائق) */
 function formatRelativeTime(dateString: string) {
@@ -90,7 +112,10 @@ function formatTimeSlotArabic(timeStr: string): string {
 /** Audio synth chime fallback to guarantee alert sound */
 function playKitchenChimeSound() {
   try {
-    const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+    const ctx = new (
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+    )();
     if (ctx.state === "suspended") {
       void ctx.resume();
     }
@@ -107,6 +132,44 @@ function playKitchenChimeSound() {
     osc.stop(ctx.currentTime + 0.4);
   } catch (e) {
     console.error("Audio synth error:", e);
+  }
+}
+
+/** Distinctive double-tone chime for kitchen order modifications */
+function playKitchenModificationChimeSound() {
+  try {
+    const ctx = new (
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+    )();
+    if (ctx.state === "suspended") {
+      void ctx.resume();
+    }
+    // Tone 1
+    const osc1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+    osc1.type = "sine";
+    osc1.frequency.setValueAtTime(659.25, ctx.currentTime);
+    gain1.gain.setValueAtTime(0.35, ctx.currentTime);
+    gain1.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+    osc1.connect(gain1);
+    gain1.connect(ctx.destination);
+    osc1.start(ctx.currentTime);
+    osc1.stop(ctx.currentTime + 0.2);
+
+    // Tone 2 (higher frequency chime)
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = "sine";
+    osc2.frequency.setValueAtTime(987.77, ctx.currentTime + 0.15);
+    gain2.gain.setValueAtTime(0.35, ctx.currentTime + 0.15);
+    gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.45);
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+    osc2.start(ctx.currentTime + 0.15);
+    osc2.stop(ctx.currentTime + 0.45);
+  } catch (e) {
+    console.error("Audio synth mod error:", e);
   }
 }
 
@@ -140,7 +203,9 @@ function printKitchenTicket(order: KdsOrder) {
             (item.options_ar.length
               ? `<div class="opt" style="font-size:14px;color:#222;font-weight:bold;margin-top:2px;">${item.options_ar.map((o) => `• ${esc(o)}`).join("<br>")}</div>`
               : "") +
-            (item.notes ? `<div class="note" style="font-size:13px;color:#8b4513;font-weight:bold;margin-top:2px;">ملاحظة: ${esc(item.notes)}</div>` : "") +
+            (item.notes
+              ? `<div class="note" style="font-size:13px;color:#8b4513;font-weight:bold;margin-top:2px;">ملاحظة: ${esc(item.notes)}</div>`
+              : "") +
             `</div>`,
         )
         .join("")
@@ -160,15 +225,47 @@ ${lines}
 ${order.inscription ? `<div style="background:#FFF3CD;padding:8px;border:2px solid #000;border-radius:6px;margin:8px 0;font-size:18px;font-weight:bold;">✍️ الكتابة على الكيك:<br><span style="font-size:20px;">${esc(order.inscription)}</span></div>` : ""}
 ${order.notes ? `<div style="margin-top:6px;font-size:13px;background:#f5f5f5;padding:6px;border-radius:4px;"><b>ملاحظات العميل:</b> ${esc(order.notes)}</div>` : ""}`;
 
-  printDocument(`تذكرة مطبخ ${order.order_number}`, body, "body{font-family:sans-serif;font-size:14px;}");
+  printDocument(
+    `تذكرة مطبخ ${order.order_number}`,
+    body,
+    "body{font-family:sans-serif;font-size:14px;}",
+  );
 }
 
 const ORDERS_KEY = ["kds-orders"] as const;
 
-const STAGES: { key: KitchenStage; ar: string; en: string; icon: string; border: string; bgBadge: string }[] = [
-  { key: "new", ar: "طلبات جديدة بانتظار البدء", en: "Incoming Queue", icon: "🆕", border: "border-t-4 border-t-amber-500", bgBadge: "bg-amber-100 text-amber-900 border-amber-300" },
-  { key: "baking", ar: "قيد الخبز والتزيين والكريمة", en: "In Baking / Decorating", icon: "👩‍🍳", border: "border-t-4 border-t-blue-500", bgBadge: "bg-blue-100 text-blue-900 border-blue-300" },
-  { key: "ready", ar: "جاهزة ومكتملة للتسليم", en: "Ready for Handover", icon: "✨", border: "border-t-4 border-t-emerald-500", bgBadge: "bg-emerald-100 text-emerald-900 border-emerald-300" },
+const STAGES: {
+  key: KitchenStage;
+  ar: string;
+  en: string;
+  icon: string;
+  border: string;
+  bgBadge: string;
+}[] = [
+  {
+    key: "new",
+    ar: "طلبات جديدة بانتظار البدء",
+    en: "Incoming Queue",
+    icon: "🆕",
+    border: "border-t-4 border-t-amber-500",
+    bgBadge: "bg-amber-100 text-amber-900 border-amber-300",
+  },
+  {
+    key: "baking",
+    ar: "قيد الخبز والتزيين والكريمة",
+    en: "In Baking / Decorating",
+    icon: "👩‍🍳",
+    border: "border-t-4 border-t-blue-500",
+    bgBadge: "bg-blue-100 text-blue-900 border-blue-300",
+  },
+  {
+    key: "ready",
+    ar: "جاهزة ومكتملة للتسليم",
+    en: "Ready for Handover",
+    icon: "✨",
+    border: "border-t-4 border-t-emerald-500",
+    bgBadge: "bg-emerald-100 text-emerald-900 border-emerald-300",
+  },
 ];
 
 const stageOf = (status: string): KitchenStage =>
@@ -176,7 +273,8 @@ const stageOf = (status: string): KitchenStage =>
 
 /** Formats time remaining with exact SLA color indicators: Safe (>45m), Urgent (<20m), Overdue (Late) */
 function getCountdownText(requestedDate: string, requestedTime: string) {
-  if (!requestedDate || !requestedTime) return { text: "الموعد غير محدد", status: "normal" as const };
+  if (!requestedDate || !requestedTime)
+    return { text: "الموعد غير محدد", status: "normal" as const };
 
   try {
     const timeClean = requestedTime.slice(0, 5);
@@ -187,7 +285,8 @@ function getCountdownText(requestedDate: string, requestedTime: string) {
 
     if (diffMins < 0) {
       const lateMins = Math.abs(diffMins);
-      const lateStr = lateMins >= 60 ? `${Math.floor(lateMins / 60)}س ${lateMins % 60}د` : `${lateMins}د`;
+      const lateStr =
+        lateMins >= 60 ? `${Math.floor(lateMins / 60)}س ${lateMins % 60}د` : `${lateMins}د`;
       return { text: `متأخر: -${lateStr}`, status: "overdue" as const, mins: diffMins };
     }
 
@@ -201,7 +300,11 @@ function getCountdownText(requestedDate: string, requestedTime: string) {
 
     const hours = Math.floor(diffMins / 60);
     const remMins = diffMins % 60;
-    return { text: `باقي: ${hours > 0 ? `${hours}س ` : ""}${remMins}د`, status: "safe" as const, mins: diffMins };
+    return {
+      text: `باقي: ${hours > 0 ? `${hours}س ` : ""}${remMins}د`,
+      status: "safe" as const,
+      mins: diffMins,
+    };
   } catch {
     return { text: requestedTime.slice(0, 5), status: "normal" as const, mins: 999 };
   }
@@ -244,6 +347,55 @@ function getPriorityStyles(color: PriorityColor) {
   }
 }
 
+/**
+ * Checks if a modification is relevant to kitchen / cake preparation staff.
+ * Strictly filters out financial, billing, payment, and channel metadata changes.
+ */
+function isKitchenRelevantModification(mod: OrderModification): boolean {
+  const f = (mod.field || "").toLowerCase();
+  const irrelevant = [
+    "عربون",
+    "العربون",
+    "مبلغ",
+    "المبلغ",
+    "إجمالي",
+    "الاجمالي",
+    "دفع",
+    "الدفع",
+    "كليك",
+    "حوالة",
+    "سعر",
+    "رسوم",
+    "توصيل_fee",
+    "مصدر",
+    "المصدر",
+    "واتساب",
+    "انستغرام",
+    "هاتف",
+    "موبايل",
+    "تواصل",
+    "total",
+    "deposit",
+    "payment",
+    "price",
+    "fee",
+    "source",
+    "phone",
+    "الطلب الأساسي",
+    "النسخة الأصلية",
+    "حالة الطلب",
+    "موظفين",
+    "staff_notes",
+  ];
+  // Also filter records where both values are generic/empty noise
+  const isGenericNoise =
+    (mod.newValue ?? "").includes("تم حفظ وتحديث") ||
+    (mod.newValue ?? "").includes("تم إجراء أول تعديل") ||
+    (mod.oldValue ?? "").includes("البيانات السابقة للطلب");
+  if (isGenericNoise) return false;
+  return !irrelevant.some((kw) => f.includes(kw));
+}
+
 const KdsCleanCard = memo(function KdsCleanCard({
   order,
   busy,
@@ -251,6 +403,7 @@ const KdsCleanCard = memo(function KdsCleanCard({
   onAck,
   onStage,
   onZoom,
+  onOpenDetails,
 }: {
   order: KdsOrder;
   stageBorder: string;
@@ -259,21 +412,38 @@ const KdsCleanCard = memo(function KdsCleanCard({
   onAck: (id: string) => void;
   onStage: (id: string, stage: KitchenStage) => void;
   onZoom: (url: string) => void;
+  onOpenDetails: (order: KdsOrder) => void;
 }) {
   const stage = stageOf(order.status);
-  const priorityMeta = PRIORITY_META[order.priority_color ?? "soft_green"] || PRIORITY_META["soft_green"];
+  const priorityMeta =
+    PRIORITY_META[order.priority_color ?? "soft_green"] || PRIORITY_META["soft_green"];
   const orderPrio = getPriorityStyles(order.priority_color ?? "soft_green");
   const countdown = useMemo(
     () => getCountdownText(order.requested_date, order.requested_time),
     [order.requested_date, order.requested_time],
   );
 
-  const unackMods = (order.modifications ?? []).filter((m) => !m.acknowledgedAt);
+  // Filter modifications to only include kitchen preparation relevant changes
+  const kitchenMods = useMemo(() => {
+    return (order.modifications ?? []).filter(isKitchenRelevantModification);
+  }, [order.modifications]);
+
+  const unackMods = kitchenMods.filter((m) => !m.acknowledgedAt);
   const hasUnack = unackMods.length > 0;
-  const isEdited = hasUnack || alerted || Boolean(order.last_edited_at || order.schedule_updated_at);
+  const isEdited = hasUnack || kitchenMods.length > 0;
 
   // Filter out packaging accessories to show as a compact secondary summary
-  const packagingKeywords = ["شمعة", "شموع", "بالون", "بالونات", "توبر", "كرت", "topper", "candle", "balloon"];
+  const packagingKeywords = [
+    "شمعة",
+    "شموع",
+    "بالون",
+    "بالونات",
+    "توبر",
+    "كرت",
+    "topper",
+    "candle",
+    "balloon",
+  ];
   const mainItems = order.items.filter(
     (it) => !packagingKeywords.some((kw) => (it.name_ar || "").toLowerCase().includes(kw)),
   );
@@ -283,7 +453,9 @@ const KdsCleanCard = memo(function KdsCleanCard({
 
   return (
     <article
-      className={`relative flex flex-col justify-between rounded-3xl border p-4 shadow-sm hover:shadow-md transition-all ${orderPrio.cardBg}`}
+      className={`relative flex flex-col justify-between rounded-3xl border p-4 shadow-sm hover:shadow-md transition-all ${orderPrio.cardBg} ${
+        hasUnack ? "ring-2 ring-amber-500 border-amber-400 shadow-md shadow-amber-500/20" : ""
+      }`}
     >
       {/* Top Priority Accent Strip */}
       <div
@@ -293,22 +465,26 @@ const KdsCleanCard = memo(function KdsCleanCard({
 
       <div className="space-y-3 pt-1.5">
         {/* Card Header: Order Number, Method, SLA countdown, Delivery Time */}
-        <div className="flex items-start justify-between gap-2 border-b border-border/80 pb-3">
+        <div
+          onClick={() => onOpenDetails(order)}
+          className="flex items-start justify-between gap-2 border-b border-border/80 pb-3 cursor-pointer group/hdr hover:opacity-95 transition"
+          title="اضغط لفتح صفحة وتفاصيل الطلب كاملة"
+        >
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="font-black text-lg sm:text-xl text-foreground leading-tight">
+              <h2 className="font-black text-lg sm:text-xl text-foreground leading-tight group-hover/hdr:text-primary transition">
                 {orderLabel(order.order_number, order.staff_code)}
               </h2>
               {isEdited && (
                 <span
-                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-black border ${
+                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-black border shadow-2xs ${
                     hasUnack
                       ? "bg-amber-500 text-white border-amber-400 animate-pulse"
                       : "bg-amber-100 text-amber-900 border-amber-300"
                   }`}
                 >
-                  <PencilLine className="h-3 w-3" />
-                  معدّل
+                  <PencilLine className="h-3.5 w-3.5" />
+                  {hasUnack ? "⚠️ طلب معدّل - انتبه!" : "معدّل ✓"}
                 </span>
               )}
             </div>
@@ -374,18 +550,20 @@ const KdsCleanCard = memo(function KdsCleanCard({
                 )}
               </div>
 
-              {item.options_ar.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 pt-0.5">
-                  {item.options_ar.map((option, idx) => (
-                    <span
-                      key={idx}
-                      className="inline-flex items-center rounded-xl bg-amber-500/15 px-2.5 py-1 text-xs font-black text-amber-900 dark:text-amber-200 border border-amber-500/30"
-                    >
-                      {option}
-                    </span>
-                  ))}
-                </div>
-              )}
+              {(() => {
+                const cleanOptions = item.options_ar.filter((opt) => !isChannelOrMeta(opt));
+                if (cleanOptions.length === 0) return null;
+                return (
+                  <ul className="space-y-1 text-xs font-bold text-foreground/90 pt-1 pr-1 border-r-2 border-amber-400/60 mr-0.5">
+                    {cleanOptions.map((option, idx) => (
+                      <li key={idx} className="flex items-start gap-1.5 leading-snug">
+                        <span className="text-amber-800 dark:text-amber-300 font-black">•</span>
+                        <span>{option}</span>
+                      </li>
+                    ))}
+                  </ul>
+                );
+              })()}
 
               {item.notes && (
                 <p className="text-xs font-black text-amber-900 dark:text-amber-200 bg-amber-500/10 p-2 rounded-xl border border-amber-500/20">
@@ -395,21 +573,28 @@ const KdsCleanCard = memo(function KdsCleanCard({
             </div>
           ))}
 
-          {/* THE GOLDEN CAKE RIBBON: Highlighted Inscription Banner */}
+          {/* Simple compact card / cake writing line among order info */}
           {order.inscription && (
-            <div className="rounded-2xl border-2 border-amber-400 bg-gradient-to-r from-amber-500/20 via-amber-400/10 to-amber-500/20 p-3.5 text-xs shadow-xs space-y-1.5">
-              <div className="flex items-center justify-between text-amber-950 dark:text-amber-100 font-black">
-                <span className="flex items-center gap-1.5 text-sm">
-                  <span>🎂</span>
-                  <span>الكتابة المطلوبة على الكيكة:</span>
-                </span>
-                <span className="bg-amber-600 text-white text-[10px] px-2.5 py-0.5 rounded-full font-black uppercase">
-                  مهم جداً للكريمة
-                </span>
-              </div>
-              <p className="font-black text-foreground bg-card p-3 rounded-xl border-2 border-amber-400 text-lg sm:text-xl leading-relaxed select-all shadow-xs text-center">
+            <div className="flex items-start gap-2 rounded-xl bg-amber-500/10 p-2.5 text-xs border border-amber-500/20">
+              <span className="font-black text-amber-900 dark:text-amber-200 shrink-0 flex items-center gap-1">
+                <span>🎂</span>
+                <span>الكتابة المطلوبة / الكرت:</span>
+              </span>
+              <span className="font-bold text-foreground break-words select-all">
                 "{order.inscription}"
-              </p>
+              </span>
+            </div>
+          )}
+
+          {order.card_note && order.card_note !== order.inscription && (
+            <div className="flex items-start gap-2 rounded-xl bg-amber-500/10 p-2.5 text-xs border border-amber-500/20">
+              <span className="font-black text-amber-900 dark:text-amber-200 shrink-0 flex items-center gap-1">
+                <span>💌</span>
+                <span>الكتابة على الكرت:</span>
+              </span>
+              <span className="font-bold text-foreground break-words select-all">
+                "{order.card_note}"
+              </span>
             </div>
           )}
 
@@ -438,7 +623,9 @@ const KdsCleanCard = memo(function KdsCleanCard({
               </button>
               <button
                 type="button"
-                onClick={() => void downloadDesignImage(order.design_image_url as string, order.order_number)}
+                onClick={() =>
+                  void downloadDesignImage(order.design_image_url as string, order.order_number)
+                }
                 title="تنزيل للطباعة الغذائية"
                 className="grid h-11 w-11 place-items-center rounded-xl border border-border text-foreground hover:bg-secondary cursor-pointer"
               >
@@ -455,124 +642,67 @@ const KdsCleanCard = memo(function KdsCleanCard({
           )}
         </div>
 
-        {/* تفاصيل البنود التي تم تعديلها */}
-        {(isEdited || (order.modifications && order.modifications.length > 0)) && (
-          <div className="rounded-2xl border-2 border-amber-500/80 bg-gradient-to-b from-amber-500/10 via-amber-500/5 to-amber-500/15 p-3.5 space-y-2.5 shadow-xs animate-in fade-in duration-150">
-            {/* Header: تفاصيل البنود التي تم تعديلها */}
-            <div className="flex items-center justify-between border-b border-amber-500/30 pb-2">
-              <div className="flex items-center gap-2 font-black text-amber-900 dark:text-amber-200 text-xs sm:text-sm">
-                <span>📝</span>
-                <span>تفاصيل البنود التي تم تعديلها</span>
+        {/* شريط تنبيه التعديلات الإنتاجية المدمج والأنيق للمطبخ */}
+        {kitchenMods.length > 0 && hasUnack && (
+          <div className="rounded-2xl border border-amber-400/80 bg-amber-500/10 p-2.5 sm:p-3 space-y-2 animate-in fade-in duration-150 shadow-2xs">
+            <div className="flex items-center justify-between gap-2 border-b border-amber-400/30 pb-1.5">
+              <div className="flex items-center gap-1.5 text-xs font-black text-amber-950 dark:text-amber-200">
+                <span className="text-amber-600 animate-pulse">⚠️</span>
+                <span>تعديل في مواصفات الطلب:</span>
               </div>
-              {hasUnack ? (
-                <span className="bg-red-600 text-white text-[10px] px-2.5 py-0.5 rounded-full font-black animate-pulse shadow-xs">
-                  ⚠️ غير معتمد بالمطبخ
-                </span>
-              ) : (
-                <span className="bg-emerald-600 text-white text-[10px] px-2.5 py-0.5 rounded-full font-black shadow-xs">
-                  تم الاطلاع ✓
-                </span>
-              )}
-            </div>
-
-            {/* List of Specific Field Changes */}
-            <div className="space-y-2">
-                {order.modifications && order.modifications.filter((m) => !m.field.includes("الطلب الأساسي") && !m.field.includes("النسخة الأصلية")).length > 0 ? (
-                  order.modifications
-                    .filter((m) => !m.field.includes("الطلب الأساسي") && !m.field.includes("النسخة الأصلية"))
-                    .map((mod, idx) => (
-                      <div
-                        key={idx}
-                        className="rounded-xl bg-card p-2.5 border border-amber-300/60 dark:border-amber-700/60 space-y-1.5 shadow-2xs"
-                      >
-                        <div className="flex items-center justify-between text-xs font-black text-foreground">
-                          <span className="flex items-center gap-1 text-primary">
-                            <span>🔹</span>
-                            <span>{mod.field}</span>
-                          </span>
-                          {mod.updatedAt && (
-                            <span className="text-[10px] text-muted-foreground font-mono" dir="ltr">
-                              {formatRelativeTime(mod.updatedAt)}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Before / After visual Diff */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                          {mod.oldValue && (
-                            <div className="rounded-lg bg-red-500/10 p-2 border border-red-500/20 text-red-950 dark:text-red-200">
-                              <span className="block text-[10px] font-bold text-red-700 dark:text-red-400 mb-0.5">
-                                ❌ السابق (قبل التعديل):
-                              </span>
-                              <span className="line-through font-bold break-words">{mod.oldValue}</span>
-                            </div>
-                          )}
-                          {mod.newValue && (
-                            <div className="rounded-lg bg-emerald-500/10 p-2 border border-emerald-500/25 text-emerald-950 dark:text-emerald-200">
-                              <span className="block text-[10px] font-black text-emerald-700 dark:text-emerald-400 mb-0.5">
-                                ✅ الجديد (المعتمد حالياً):
-                              </span>
-                              <span className="font-black break-words">{mod.newValue}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))
-                ) : (
-                  /* Fallback when modifications array is empty but order is flagged as edited */
-                  <div className="rounded-xl bg-card p-3 border border-amber-300/60 dark:border-amber-700/60 space-y-2 shadow-2xs">
-                    <div className="flex items-center justify-between text-xs font-black text-foreground">
-                      <span className="flex items-center gap-1 text-primary">
-                        <span>🔹</span>
-                        <span>
-                          {order.schedule_updated_at ? "تعديل موعد التسليم (عبر رابط العميل)" : "تعديل تفاصيل ومواصفات الطلب بمكتب المبيعات"}
-                        </span>
-                      </span>
-                      {(order.schedule_updated_at || order.last_edited_at) && (
-                        <span className="text-[10px] text-muted-foreground font-mono" dir="ltr">
-                          {formatRelativeTime(order.schedule_updated_at || order.last_edited_at || new Date().toISOString())}
-                        </span>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                      <div className="rounded-lg bg-red-500/10 p-2 border border-red-500/20 text-red-950 dark:text-red-200">
-                        <span className="block text-[10px] font-bold text-red-700 dark:text-red-400 mb-0.5">
-                          ❌ الحالة:
-                        </span>
-                        <span className="font-bold break-words">
-                          {order.schedule_updated_at ? "تم تعديل موعد الاستلام/التوصيل من قبل الزبون" : "تم تعديل تفاصيل ومواصفات الطلب بمكتب المبيعات"}
-                        </span>
-                      </div>
-                      <div className="rounded-lg bg-emerald-500/10 p-2 border border-emerald-500/25 text-emerald-950 dark:text-emerald-200">
-                        <span className="block text-[10px] font-black text-emerald-700 dark:text-emerald-400 mb-0.5">
-                          ✅ المعتمد حالياً للتجهيز:
-                        </span>
-                        <span className="font-black break-words">
-                          {order.requested_date} ⏰ {formatTimeSlotArabic(order.requested_time)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-            {/* Acknowledge Button for Kitchen */}
-            {hasUnack && (
               <button
                 type="button"
-                onClick={() => onAck(order.id)}
-                className="w-full min-h-[46px] rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAck(order.id);
+                }}
+                className="min-h-[30px] px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black text-[11px] shadow-xs transition-all flex items-center gap-1 cursor-pointer shrink-0"
+                title="اعتماد التعديل في المطبخ"
               >
-                <CheckCircle2 className="h-4 w-4" />
-                [ تم الاطلاع واعتماد هذا التعديل في المطبخ ✓ ]
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                <span>اعتمدت ✓</span>
               </button>
-            )}
+            </div>
+
+            <div className="space-y-1.5 text-xs">
+              {kitchenMods.map((mod, idx) => (
+                <div
+                  key={idx}
+                  className="flex flex-wrap items-center gap-1.5 font-bold text-foreground"
+                >
+                  <span className="font-black text-amber-900 dark:text-amber-300">
+                    🔹 {mod.field}:
+                  </span>
+                  {mod.newValue && mod.newValue !== "— (تم حذفه)" && (
+                    <span className="font-black text-emerald-800 dark:text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-lg">
+                      {mod.newValue}
+                    </span>
+                  )}
+                  {(mod.newValue === "— (تم حذفه)" || !mod.newValue) && mod.oldValue && (
+                    <span className="font-black text-rose-700 dark:text-rose-400 bg-rose-500/10 border border-rose-400/30 px-2 py-0.5 rounded-lg line-through opacity-70">
+                      {mod.oldValue}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
 
       {/* FOOTER & ACTIONS (Large tactile touch buttons) */}
       <div className="mt-4 pt-3 border-t border-border/80 space-y-2">
+        {/* Open Order Details Modal Button */}
+        <button
+          type="button"
+          onClick={() => onOpenDetails(order)}
+          title="عرض تفاصيل ومواصفات الطلب كاملة بشكل سلس"
+          className="w-full min-h-[44px] inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-950 dark:text-amber-100 border border-amber-500/30 text-xs font-black shadow-2xs active:scale-[0.98] transition cursor-pointer"
+        >
+          <Eye className="h-4 w-4 text-amber-700 dark:text-amber-300" />
+          <span>📋 فتح صفحة الطلب (عرض سلس مثل مسج التثبيت)</span>
+        </button>
+
         <button
           type="button"
           onClick={() => printKitchenTicket(order)}
@@ -591,8 +721,8 @@ const KdsCleanCard = memo(function KdsCleanCard({
             disabled={busy}
             className="w-full min-h-[52px] inline-flex items-center justify-center gap-2 rounded-2xl bg-amber-600 text-white font-black text-sm shadow-md hover:bg-amber-700 active:scale-95 disabled:opacity-60 cursor-pointer"
           >
-            {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <Play className="h-5 w-5" />}
-            [ بدء الخبز والتزيين والكريمة 👩‍🍳 ]
+            {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <Play className="h-5 w-5" />}[
+            بدء الخبز والتزيين والكريمة 👩‍🍳 ]
           </button>
         )}
 
@@ -603,7 +733,11 @@ const KdsCleanCard = memo(function KdsCleanCard({
             disabled={busy}
             className="w-full min-h-[52px] inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 text-white font-black text-sm shadow-md hover:bg-blue-700 active:scale-95 disabled:opacity-60 cursor-pointer"
           >
-            {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle2 className="h-5 w-5" />}
+            {busy ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <CheckCircle2 className="h-5 w-5" />
+            )}
             [ تم الانتهاء وجاهز للتسليم ✨ ]
           </button>
         )}
@@ -629,6 +763,332 @@ const KdsCleanCard = memo(function KdsCleanCard({
   );
 });
 
+/**
+ * Detailed Order Page / Modal for Kitchen Staff
+ * Displays preparation specifications smoothly like the confirmation message / structured list
+ * without communication channels or fragmented keywords.
+ */
+function KitchenOrderDetailsModal({
+  order,
+  onClose,
+  onStage,
+  onPrintTicket,
+  onZoom,
+}: {
+  order: KdsOrder;
+  onClose: () => void;
+  onStage: (id: string, stage: KitchenStage) => void;
+  onPrintTicket: (order: KdsOrder) => void;
+  onZoom: (url: string) => void;
+}) {
+  const stage = stageOf(order.status);
+  const kitchenMods = useMemo(() => {
+    return (order.modifications ?? []).filter(isKitchenRelevantModification);
+  }, [order.modifications]);
+  const packagingKeywords = [
+    "شمعة",
+    "شموع",
+    "بالون",
+    "بالونات",
+    "توبر",
+    "كرت",
+    "topper",
+    "candle",
+    "balloon",
+  ];
+  const mainItems = order.items.filter(
+    (it) => !packagingKeywords.some((kw) => (it.name_ar || "").toLowerCase().includes(kw)),
+  );
+  const accessoryItems = order.items.filter((it) =>
+    packagingKeywords.some((kw) => (it.name_ar || "").toLowerCase().includes(kw)),
+  );
+
+  return (
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-150"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="relative w-full max-w-2xl max-h-[92vh] flex flex-col rounded-3xl bg-card border border-border shadow-2xl overflow-hidden"
+      >
+        {/* Modal Sticky Header */}
+        <div className="flex items-center justify-between border-b border-border p-4 bg-secondary/30 shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="grid h-10 w-10 place-items-center rounded-2xl bg-amber-500 text-white shadow-xs">
+              <Cake className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="font-black text-lg text-foreground">
+                  طلب {orderLabel(order.order_number, order.staff_code)}
+                </h2>
+                <span className="text-[11px] font-black px-2.5 py-0.5 rounded-full bg-secondary text-foreground border border-border">
+                  {order.method === "delivery" ? "توصيل 🛵" : "استلام من المحل 🏪"}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground font-bold">
+                العميل: <strong className="text-foreground">{order.customer_name}</strong>
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="grid h-9 w-9 place-items-center rounded-full bg-secondary text-foreground hover:bg-secondary/80 transition cursor-pointer"
+            title="إغلاق"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Modal Scrollable Body formatted smoothly like Confirmation Message */}
+        <div className="p-4 sm:p-6 overflow-y-auto space-y-4 text-foreground">
+          {/* 1. Time & Fulfilment Banner */}
+          <div className="rounded-2xl border border-amber-300/80 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-amber-500/10 p-3.5 space-y-1.5">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-black text-amber-950 dark:text-amber-100">
+              <span className="flex items-center gap-1.5 text-sm">
+                <span>📅</span>
+                <span>موعد التجهيز والتسليم:</span>
+              </span>
+              <span className="text-sm font-black text-amber-900 dark:text-amber-200">
+                {formatArabicDate(order.requested_date)} ⏰{" "}
+                {formatTimeSlotArabic(order.requested_time)}
+              </span>
+            </div>
+            <div className="flex items-center gap-3 text-xs font-bold text-muted-foreground pt-1 border-t border-amber-300/40">
+              <span>
+                🚗 طريقة التسليم:{" "}
+                <strong className="text-foreground">
+                  {order.method === "delivery" ? "توصيل" : "استلام من المحل"}
+                </strong>
+              </span>
+              <span>•</span>
+              <span>
+                👤 العميل: <strong className="text-foreground">{order.customer_name}</strong>
+              </span>
+            </div>
+          </div>
+
+          {/* Modifications Notice (if any) */}
+          {kitchenMods.length > 0 && (
+            <div className="rounded-2xl border border-amber-400 bg-amber-500/10 p-3.5 space-y-2 text-xs">
+              <span className="font-black text-amber-950 dark:text-amber-200 flex items-center gap-1.5">
+                <span>📝</span>
+                <span>تعديلات الطلب المعتمدة للتجهيز بالمطبخ:</span>
+              </span>
+              <div className="space-y-1.5">
+                {kitchenMods.map((mod, idx) => (
+                  <div
+                    key={idx}
+                    className="flex flex-wrap items-center gap-1.5 font-bold text-foreground"
+                  >
+                    <span className="font-black text-amber-900 dark:text-amber-300">
+                      • {mod.field}:
+                    </span>
+                    {mod.oldValue && (
+                      <span className="line-through text-muted-foreground text-[11px] bg-secondary/80 px-1.5 py-0.5 rounded">
+                        {mod.oldValue}
+                      </span>
+                    )}
+                    {mod.oldValue && mod.newValue && (
+                      <span className="text-amber-700 dark:text-amber-400 font-black">⬅️</span>
+                    )}
+                    {mod.newValue && (
+                      <span className="font-black text-emerald-800 dark:text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-lg">
+                        {mod.newValue}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 2. Items & Preparation Specs List */}
+          <div className="rounded-2xl border border-border bg-secondary/30 p-4 space-y-3">
+            <h3 className="font-black text-sm text-[#5D2E17] dark:text-amber-300 flex items-center gap-2 border-b border-border/60 pb-2">
+              <span>🎂</span>
+              <span>تفاصيل ومواصفات الطلب للتجهيز:</span>
+            </h3>
+
+            <div className="space-y-3">
+              {(mainItems.length > 0 ? mainItems : order.items).map((item, idx) => {
+                const cleanOptions = item.options_ar.filter((opt) => !isChannelOrMeta(opt));
+                return (
+                  <div
+                    key={item.id || idx}
+                    className="rounded-xl bg-card p-3 border border-border/80 space-y-2 shadow-2xs"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-black text-base text-foreground">
+                        {item.quantity} × {item.name_ar}
+                      </span>
+                      {item.category && (
+                        <span className="text-[11px] font-bold text-muted-foreground bg-secondary px-2.5 py-0.5 rounded-full">
+                          {item.category}
+                        </span>
+                      )}
+                    </div>
+
+                    {cleanOptions.length > 0 && (
+                      <ul className="space-y-1 text-xs font-bold text-foreground/90 pr-2 border-r-2 border-amber-400">
+                        {cleanOptions.map((opt, oIdx) => (
+                          <li key={oIdx} className="flex items-start gap-1.5">
+                            <span className="text-amber-800 dark:text-amber-300 font-black">•</span>
+                            <span>{opt}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+
+                    {item.notes && (
+                      <p className="text-xs font-bold text-amber-950 dark:text-amber-100 bg-amber-500/10 p-2 rounded-lg border border-amber-500/20">
+                        <span className="font-black text-amber-800 dark:text-amber-300">
+                          ملاحظة الصنف:{" "}
+                        </span>
+                        <span>{item.notes}</span>
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 3. Inscription / Card Writing */}
+          {(order.inscription || order.card_note) && (
+            <div className="rounded-2xl border border-amber-300/80 bg-amber-50/70 dark:bg-amber-950/20 p-3.5 space-y-2">
+              <h3 className="font-black text-xs text-amber-950 dark:text-amber-100 flex items-center gap-1.5">
+                <span>🎀</span>
+                <span>الكتابة المطلوبة على الكرت أو الكيكة:</span>
+              </h3>
+              {order.inscription && (
+                <p className="font-black text-foreground bg-card p-2.5 rounded-xl border border-amber-300/60 text-sm select-all">
+                  "{order.inscription}"
+                </p>
+              )}
+              {order.card_note && order.card_note !== order.inscription && (
+                <p className="font-black text-foreground bg-card p-2.5 rounded-xl border border-amber-300/60 text-sm select-all">
+                  <span className="text-xs text-muted-foreground block mb-0.5">نص الكرت:</span>"
+                  {order.card_note}"
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* 4. Accessories */}
+          {accessoryItems.length > 0 && (
+            <div className="rounded-2xl border border-border bg-secondary/40 p-3 text-xs">
+              <span className="font-black text-foreground block mb-1">
+                📦 ملحقات التغليف والشموع:
+              </span>
+              <ul className="list-disc list-inside space-y-0.5 text-muted-foreground font-bold">
+                {accessoryItems.map((acc, aIdx) => (
+                  <li key={aIdx}>
+                    {acc.quantity} × {acc.name_ar}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* 5. Reference Design Image */}
+          {order.design_image_url && (
+            <div className="rounded-2xl border border-border bg-card p-3 flex items-center justify-between gap-3">
+              <div
+                onClick={() => onZoom(order.design_image_url as string)}
+                className="flex items-center gap-3 cursor-pointer group"
+              >
+                <img
+                  src={order.design_image_url}
+                  alt="تصميم الكيك"
+                  className="h-16 w-16 rounded-xl object-cover border border-border shadow-xs group-hover:scale-105 transition"
+                />
+                <div>
+                  <span className="font-black text-xs text-primary group-hover:underline block">
+                    صورة التصميم المرجعية (اضغط للتكبير) 🔍
+                  </span>
+                  <span className="text-[11px] text-muted-foreground font-bold">
+                    معاينة الشكل والديكور المعتمد
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() =>
+                  void downloadDesignImage(order.design_image_url as string, order.order_number)
+                }
+                className="grid h-10 w-10 place-items-center rounded-xl border border-border text-foreground hover:bg-secondary cursor-pointer"
+                title="تنزيل للطباعة"
+              >
+                <Download className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+
+          {/* 6. Customer Notes */}
+          {order.notes && (
+            <div className="rounded-2xl border border-border/70 bg-secondary/30 p-3 text-xs">
+              <span className="font-black text-foreground block mb-0.5">💬 ملاحظات العميل:</span>
+              <span className="text-muted-foreground font-bold">{order.notes}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Modal Sticky Footer Actions */}
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border p-3.5 bg-card shrink-0">
+          <button
+            type="button"
+            onClick={() => onPrintTicket(order)}
+            className="min-h-[44px] px-4 rounded-xl bg-secondary text-foreground hover:bg-secondary/80 border border-border text-xs font-black flex items-center gap-1.5 transition cursor-pointer"
+          >
+            <Printer className="h-4 w-4" />
+            <span>طباعة تذكرة المطبخ</span>
+          </button>
+
+          <div className="flex items-center gap-2">
+            {stage === "new" && (
+              <button
+                type="button"
+                onClick={() => {
+                  void onStage(order.id, "baking");
+                  onClose();
+                }}
+                className="min-h-[44px] px-5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-black shadow-sm transition active:scale-95 cursor-pointer"
+              >
+                [ بدء الخبز والتزيين والكريمة 👨‍🍳 ]
+              </button>
+            )}
+
+            {stage === "baking" && (
+              <button
+                type="button"
+                onClick={() => {
+                  void onStage(order.id, "ready");
+                  onClose();
+                }}
+                className="min-h-[44px] px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-sm transition active:scale-95 cursor-pointer"
+              >
+                [ تم تجهيز الكيكة بالكامل والتغليف ✅ ]
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="min-h-[44px] px-4 rounded-xl border border-border bg-background text-foreground hover:bg-secondary text-xs font-bold transition cursor-pointer"
+            >
+              إغلاق
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function KitchenPanel() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -644,6 +1104,7 @@ export function KitchenPanel() {
   const [alerts, setAlerts] = useState<string[]>([]);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [zoom, setZoom] = useState<string | null>(null);
+  const [selectedKitchenOrder, setSelectedKitchenOrder] = useState<KdsOrder | null>(null);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -676,24 +1137,58 @@ export function KitchenPanel() {
   // Realtime subscription (refetches the kitchen queue on any order change)
   useOrdersRealtime(ORDERS_KEY, true, "kitchen-live");
 
-  // Any newly appearing order raises a visual alert and rings the bell.
+  // Any newly appearing order or modification raises an alert and rings the kitchen chime.
   const knownIds = useRef<Set<string> | null>(null);
+  const knownModTimestamps = useRef<Map<string, string>>(new Map());
+
   useEffect(() => {
     const rows = orders.data;
     if (!rows) return;
     const ids = rows.map((row) => row.id);
+
     if (!knownIds.current) {
       knownIds.current = new Set(ids);
+      rows.forEach((r) => {
+        const unack = (r.modifications || [])
+          .filter(isKitchenRelevantModification)
+          .filter((m) => !m.acknowledgedAt);
+        if (unack.length > 0) {
+          knownModTimestamps.current.set(r.id, unack[0]?.updatedAt || r.last_edited_at || "init");
+        }
+      });
       return;
     }
+
     const fresh = ids.filter((id) => !knownIds.current!.has(id));
     knownIds.current = new Set(ids);
-    if (fresh.length === 0) return;
+
+    // Detect newly modified orders with unacknowledged changes relevant to kitchen
+    const newlyModified: string[] = [];
+    rows.forEach((r) => {
+      const unack = (r.modifications || [])
+        .filter(isKitchenRelevantModification)
+        .filter((m) => !m.acknowledgedAt);
+      if (unack.length > 0) {
+        const timeKey = unack[0]?.updatedAt || r.last_edited_at || r.schedule_updated_at || "mod";
+        if (knownModTimestamps.current.get(r.id) !== timeKey) {
+          newlyModified.push(r.id);
+          knownModTimestamps.current.set(r.id, timeKey);
+        }
+      }
+    });
+
+    const toAlert = [...fresh, ...newlyModified];
+    if (toAlert.length === 0) return;
+
     if (soundEnabled) {
-      if (audioRef.current) audioRef.current.play().catch(() => playKitchenChimeSound());
-      else playKitchenChimeSound();
+      if (newlyModified.length > 0) {
+        playKitchenModificationChimeSound();
+      } else {
+        if (audioRef.current) audioRef.current.play().catch(() => playKitchenChimeSound());
+        else playKitchenChimeSound();
+      }
     }
-    setAlerts((curr) => [...curr, ...fresh.filter((id) => !curr.includes(id))]);
+    setAlerts((curr) => [...curr, ...toAlert.filter((id) => !curr.includes(id))]);
   }, [orders.data, soundEnabled]);
 
   const rawOrdersList = useMemo(() => orders.data ?? [], [orders.data]);
@@ -732,7 +1227,11 @@ export function KitchenPanel() {
       card_note: null,
       final_photo_requested: false,
       confirmation_message: null,
-      status: (k.status === "ready" ? "ready" : k.status === "baking" ? "baking" : "new") as SalesStatus,
+      status: (k.status === "ready"
+        ? "ready"
+        : k.status === "baking"
+          ? "baking"
+          : "new") as SalesStatus,
       schedule_updated_at: k.schedule_updated_at ?? null,
       created_at: k.requested_date || new Date().toISOString(),
       updated_at: k.requested_date || new Date().toISOString(),
@@ -807,6 +1306,15 @@ export function KitchenPanel() {
     [ackModFn, queryClient],
   );
 
+  const unackModsCount = useMemo(() => {
+    return rawOrdersList.filter((ord) => {
+      const unack = (ord.modifications || [])
+        .filter(isKitchenRelevantModification)
+        .filter((m) => !m.acknowledgedAt);
+      return unack.length > 0 || alerts.includes(ord.id);
+    }).length;
+  }, [rawOrdersList, alerts]);
+
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
     void navigate({ to: "/auth", replace: true });
@@ -825,7 +1333,9 @@ export function KitchenPanel() {
       <main dir="rtl" className="grid min-h-dvh place-items-center bg-background px-4 text-center">
         <div className="max-w-sm space-y-3">
           <h1 className="text-xl font-black text-foreground">لا تملك صلاحية المطبخ</h1>
-          <p className="text-xs text-muted-foreground">هذا الحساب لا يملك صلاحيات الوصول لشاشة المطبخ (KDS).</p>
+          <p className="text-xs text-muted-foreground">
+            هذا الحساب لا يملك صلاحيات الوصول لشاشة المطبخ (KDS).
+          </p>
           <button
             type="button"
             onClick={signOut}
@@ -839,7 +1349,10 @@ export function KitchenPanel() {
   }
 
   return (
-    <div dir="rtl" className="min-h-screen w-full bg-background text-foreground pb-20 font-sans select-none">
+    <div
+      dir="rtl"
+      className="min-h-screen w-full bg-background text-foreground pb-20 font-sans select-none"
+    >
       {/* 1. MASTER PRODUCTION COMMAND BAR */}
       <header className="sticky top-0 z-30 border-b border-border/80 bg-card/95 backdrop-blur-md px-4 py-3 shadow-xs">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
@@ -848,7 +1361,7 @@ export function KitchenPanel() {
               <ChefHat className="h-6 w-6" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="font-black text-lg text-foreground leading-none">
                   شاشة المطبخ والإنتاج • Delish Bakery KDS
                 </h1>
@@ -856,6 +1369,11 @@ export function KitchenPanel() {
                   <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
                   مباشر FIFO
                 </span>
+                {unackModsCount > 0 && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500 text-white px-2.5 py-0.5 text-[11px] font-black animate-pulse shadow-sm">
+                    ⚠️ {unackModsCount} طلب معدّل بانتظار الاعتماد
+                  </span>
+                )}
               </div>
               <p className="text-xs font-bold text-muted-foreground mt-1">
                 ترتيب زمني تلقائي • الأقرب موعداً في الصدارة دائماً • إبراز فوري للعبارة المكتوبة
@@ -941,7 +1459,11 @@ export function KitchenPanel() {
                   : "bg-secondary text-muted-foreground border-border"
               }`}
             >
-              {soundEnabled ? <BellRing className="h-4 w-4 text-amber-500" /> : <Bell className="h-4 w-4" />}
+              {soundEnabled ? (
+                <BellRing className="h-4 w-4 text-amber-500" />
+              ) : (
+                <Bell className="h-4 w-4" />
+              )}
               <span>{soundEnabled ? "رنين التنبيهات شغال" : "صامت"}</span>
             </button>
 
@@ -952,7 +1474,9 @@ export function KitchenPanel() {
               title="تحديث الطلبات"
               className="grid h-11 w-11 place-items-center rounded-xl border border-border bg-card text-foreground hover:bg-secondary cursor-pointer"
             >
-              <RefreshCw className={`h-4 w-4 ${orders.isFetching ? "animate-spin text-primary" : ""}`} />
+              <RefreshCw
+                className={`h-4 w-4 ${orders.isFetching ? "animate-spin text-primary" : ""}`}
+              />
             </button>
           </div>
         </div>
@@ -966,7 +1490,7 @@ export function KitchenPanel() {
             isKitchen={true}
             onOpen={(id) => {
               const k = rawOrdersList.find((x) => x.id === id);
-              if (k?.design_image_url) setZoom(k.design_image_url);
+              if (k) setSelectedKitchenOrder(k);
             }}
             onKitchenStage={(id, stage) => {
               void onStage(id, stage);
@@ -979,52 +1503,67 @@ export function KitchenPanel() {
         </main>
       ) : (
         <main className="mx-auto max-w-7xl px-3 sm:px-4 py-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
-          {STAGES.map((stage) => {
-            const list = visible.filter((o) => stageOf(o.status) === stage.key);
-            return (
-              <section
-                key={stage.key}
-                className={`flex flex-col rounded-3xl bg-card border border-border/80 shadow-xs overflow-hidden ${stage.border}`}
-              >
-                {/* Stage Header */}
-                <div className="flex items-center justify-between p-3.5 border-b border-border/60 bg-secondary/30">
-                  <div className="flex items-center gap-2">
-                    <span className="text-base">{stage.icon}</span>
-                    <h3 className="font-black text-sm text-foreground">{stage.ar}</h3>
-                    <span className="grid h-6 min-w-6 place-items-center px-2 rounded-full bg-primary text-[11px] font-black text-primary-foreground shadow-2xs">
-                      {list.length}
-                    </span>
-                  </div>
-                  <span className="text-[10px] font-bold text-muted-foreground">{stage.en}</span>
-                </div>
-
-                {/* Orders Column List */}
-                <div className="p-3 space-y-3.5 min-h-[58vh]">
-                  {list.length > 0 ? (
-                    list.map((order) => (
-                      <KdsCleanCard
-                        key={order.id}
-                        order={order}
-                        stageBorder={stage.border}
-                        busy={pending === order.id}
-                        alerted={alerts.includes(order.id)}
-                        onAck={acknowledge}
-                        onStage={onStage}
-                        onZoom={setZoom}
-                      />
-                    ))
-                  ) : (
-                    <div className="grid h-48 place-items-center rounded-2xl border border-dashed border-border/80 text-center text-xs font-bold text-muted-foreground/60 p-4">
-                      لا توجد طلبات في هذه المرحلة حالياً
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+            {STAGES.map((stage) => {
+              const list = visible
+                .filter((o) => stageOf(o.status) === stage.key)
+                .sort((a, b) => {
+                  const aHasUnack =
+                    (a.modifications || [])
+                      .filter(isKitchenRelevantModification)
+                      .some((m) => !m.acknowledgedAt) || alerts.includes(a.id);
+                  const bHasUnack =
+                    (b.modifications || [])
+                      .filter(isKitchenRelevantModification)
+                      .some((m) => !m.acknowledgedAt) || alerts.includes(b.id);
+                  if (aHasUnack && !bHasUnack) return -1;
+                  if (!aHasUnack && bHasUnack) return 1;
+                  return 0;
+                });
+              return (
+                <section
+                  key={stage.key}
+                  className={`flex flex-col rounded-3xl bg-card border border-border/80 shadow-xs overflow-hidden ${stage.border}`}
+                >
+                  {/* Stage Header */}
+                  <div className="flex items-center justify-between p-3.5 border-b border-border/60 bg-secondary/30">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">{stage.icon}</span>
+                      <h3 className="font-black text-sm text-foreground">{stage.ar}</h3>
+                      <span className="grid h-6 min-w-6 place-items-center px-2 rounded-full bg-primary text-[11px] font-black text-primary-foreground shadow-2xs">
+                        {list.length}
+                      </span>
                     </div>
-                  )}
-                </div>
-              </section>
-            );
-          })}
-        </div>
-      </main>
+                    <span className="text-[10px] font-bold text-muted-foreground">{stage.en}</span>
+                  </div>
+
+                  {/* Orders Column List */}
+                  <div className="p-3 space-y-3.5 min-h-[58vh]">
+                    {list.length > 0 ? (
+                      list.map((order) => (
+                        <KdsCleanCard
+                          key={order.id}
+                          order={order}
+                          stageBorder={stage.border}
+                          busy={pending === order.id}
+                          alerted={alerts.includes(order.id)}
+                          onAck={acknowledge}
+                          onStage={onStage}
+                          onZoom={setZoom}
+                          onOpenDetails={setSelectedKitchenOrder}
+                        />
+                      ))
+                    ) : (
+                      <div className="grid h-48 place-items-center rounded-2xl border border-dashed border-border/80 text-center text-xs font-bold text-muted-foreground/60 p-4">
+                        لا توجد طلبات في هذه المرحلة حالياً
+                      </div>
+                    )}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
+        </main>
       )}
 
       {/* 3. FULLSCREEN REFERENCE DESIGN IMAGE MODAL */}
@@ -1052,6 +1591,17 @@ export function KitchenPanel() {
             </button>
           </div>
         </div>
+      )}
+
+      {/* 4. DETAILED ORDER SPECIFICATIONS MODAL (Clean list & Confirmation style) */}
+      {selectedKitchenOrder && (
+        <KitchenOrderDetailsModal
+          order={selectedKitchenOrder}
+          onClose={() => setSelectedKitchenOrder(null)}
+          onStage={onStage}
+          onPrintTicket={printKitchenTicket}
+          onZoom={setZoom}
+        />
       )}
     </div>
   );

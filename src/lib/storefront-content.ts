@@ -211,9 +211,9 @@ export function parseSizes(value: unknown): SizePrice[] {
 export function normaliseProduct(row: Record<string, unknown>): StorefrontProduct {
   return {
     ...(row as unknown as StorefrontProduct),
-    price: Number(row['price'] ?? 0),
-    price_on_request: row['price_on_request'] === true,
-    sizes: parseSizes(row['sizes']),
+    price: Number(row["price"] ?? 0),
+    price_on_request: row["price_on_request"] === true,
+    sizes: parseSizes(row["sizes"]),
   };
 }
 

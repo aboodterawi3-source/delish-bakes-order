@@ -43,7 +43,9 @@ export function DiscoverView({
       .filter((product) => (selectedCategory ? product.category_id === selectedCategory : true))
       .filter((product) =>
         needle
-          ? `${product.name_en} ${product.name_ar} ${product.category}`.toLowerCase().includes(needle)
+          ? `${product.name_en} ${product.name_ar} ${product.category}`
+              .toLowerCase()
+              .includes(needle)
           : true,
       );
   }, [products, selectedCategory, searchQuery]);
@@ -59,7 +61,9 @@ export function DiscoverView({
     <div
       dir={dir}
       className={`relative flex min-h-dvh w-full max-w-full flex-col overflow-x-hidden overflow-y-auto bg-[#FDFBF7] text-[#4A3B32] ${
-        isEmbedded ? "min-h-[740px] max-h-[820px] rounded-[38px] shadow-2xl border-4 border-[#6E3917]" : ""
+        isEmbedded
+          ? "min-h-[740px] max-h-[820px] rounded-[38px] shadow-2xl border-4 border-[#6E3917]"
+          : ""
       }`}
     >
       <BackgroundCurves />
@@ -135,18 +139,30 @@ export function DiscoverView({
             className="relative overflow-hidden rounded-3xl border bg-gradient-to-br from-[#FDFBF7] via-[#FAF5EB] to-[#F5ECE0] p-5 sm:p-6 shadow-sm transition-all hover:shadow-md"
           >
             {/* Ambient background glow decorative elements */}
-            <div className="absolute -left-12 -top-12 h-40 w-40 rounded-full blur-3xl" style={{ backgroundColor: `${palette.main}1A` }} />
-            <div className="absolute -right-12 -bottom-12 h-40 w-40 rounded-full blur-3xl" style={{ backgroundColor: `${palette.secondary}1A` }} />
+            <div
+              className="absolute -left-12 -top-12 h-40 w-40 rounded-full blur-3xl"
+              style={{ backgroundColor: `${palette.main}1A` }}
+            />
+            <div
+              className="absolute -right-12 -bottom-12 h-40 w-40 rounded-full blur-3xl"
+              style={{ backgroundColor: `${palette.secondary}1A` }}
+            />
 
             <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-5 sm:gap-6">
               {/* Left Content Side: Purely Dynamic Headline & Subtitle */}
               <div className="flex-1 min-w-0 space-y-3 text-start">
                 <h2 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight text-[#26160F] leading-snug">
-                  {banner.discount_text || (lang === "ar" ? "كيكات مميزة تُصنع بحب لمناسباتكم الخاصة 🎂" : "Signature Celebration Cakes 🎂")}
+                  {banner.discount_text ||
+                    (lang === "ar"
+                      ? "كيكات مميزة تُصنع بحب لمناسباتكم الخاصة 🎂"
+                      : "Signature Celebration Cakes 🎂")}
                 </h2>
 
                 <p className="text-xs sm:text-sm font-medium text-[#6E3917]/80 leading-relaxed max-w-lg">
-                  {banner.subtitle || (lang === "ar" ? "سواء كان حفل تخرج، عيد ميلاد، أو ذكرى مميزة.. نصمم لك كيكة استثنائية تناسب ذوقك وتليق بلحظاتك السعيدة." : "We craft exceptional cakes tailored to your special moments.")}
+                  {banner.subtitle ||
+                    (lang === "ar"
+                      ? "سواء كان حفل تخرج، عيد ميلاد، أو ذكرى مميزة.. نصمم لك كيكة استثنائية تناسب ذوقك وتليق بلحظاتك السعيدة."
+                      : "We craft exceptional cakes tailored to your special moments.")}
                 </p>
 
                 {/* Visual Value Badges */}
@@ -155,10 +171,14 @@ export function DiscoverView({
                     🍰 {lang === "ar" ? "خبيز طازج يومياً بأجود المكونات" : "Baked Fresh Daily"}
                   </span>
                   <span className="inline-flex items-center gap-1.5 rounded-xl border border-[#EFE8DC] bg-white/90 px-2.5 py-1 text-[11px] font-bold text-[#4A3B32] shadow-2xs">
-                    🚗 {lang === "ar" ? "توصيل مبرد وآمن في كافة مناطق عمّان" : "Refrigerated Amman Delivery"}
+                    🚗{" "}
+                    {lang === "ar"
+                      ? "توصيل مبرد وآمن في كافة مناطق عمّان"
+                      : "Refrigerated Amman Delivery"}
                   </span>
                   <span className="inline-flex items-center gap-1.5 rounded-xl border border-[#EFE8DC] bg-white/90 px-2.5 py-1 text-[11px] font-bold text-[#4A3B32] shadow-2xs">
-                    ⚡ {lang === "ar" ? "دفع ميسر وسريع عبر كليك أو كاش" : "Easy CliQ & Cash Payment"}
+                    ⚡{" "}
+                    {lang === "ar" ? "دفع ميسر وسريع عبر كليك أو كاش" : "Easy CliQ & Cash Payment"}
                   </span>
                 </div>
               </div>
@@ -179,7 +199,9 @@ export function DiscoverView({
         {categories.length > 0 && (
           <section aria-label="Discover by category" className="space-y-3">
             <div className="flex items-center justify-between px-1">
-              <h3 className="text-sm font-bold text-[#26160F] sm:text-base">{t("discoverByCategory")}</h3>
+              <h3 className="text-sm font-bold text-[#26160F] sm:text-base">
+                {t("discoverByCategory")}
+              </h3>
             </div>
 
             <div className="no-scrollbar flex w-full max-w-full gap-3.5 sm:gap-5 overflow-x-auto overscroll-x-contain pb-2 pt-1 px-1">
@@ -248,7 +270,11 @@ export function DiscoverView({
         <section aria-label="Popular cakes" className="space-y-4 pb-8">
           <div className="flex items-center justify-between px-1">
             <h3 className="text-base font-black text-[#26160F] sm:text-lg">
-              {activeCategoryName ? activeCategoryName : (lang === "ar" ? "قائمة المنتجات" : "Product Catalog")}
+              {activeCategoryName
+                ? activeCategoryName
+                : lang === "ar"
+                  ? "قائمة المنتجات"
+                  : "Product Catalog"}
             </h3>
           </div>
 
@@ -289,9 +315,10 @@ const ProductCard = memo(function ProductCard({
 }) {
   const { palette } = useBrandPalette();
   const name = lang === "ar" ? product.name_ar : product.name_en;
-  const description = lang === "ar"
-    ? product.description_ar || "كيك فاخر مغطى بالسكر والكريمة"
-    : product.description_en || "Cake covered with sugar";
+  const description =
+    lang === "ar"
+      ? product.description_ar || "كيك فاخر مغطى بالسكر والكريمة"
+      : product.description_en || "Cake covered with sugar";
   const unitPrice = product.price;
 
   return (
@@ -329,7 +356,10 @@ const ProductCard = memo(function ProductCard({
             className="h-full w-full object-contain drop-shadow-md transition-transform duration-500 ease-out group-hover:scale-105"
           />
         ) : (
-          <span className="grid h-full w-full place-items-center text-xs font-bold" style={{ color: palette.main }}>
+          <span
+            className="grid h-full w-full place-items-center text-xs font-bold"
+            style={{ color: palette.main }}
+          >
             {name}
           </span>
         )}
@@ -337,15 +367,16 @@ const ProductCard = memo(function ProductCard({
 
       {/* Card Body Content */}
       <div className="mt-3 flex-1 space-y-1 px-1">
-        <span className="block text-[9px] font-black uppercase tracking-wider" style={{ color: palette.main }}>
+        <span
+          className="block text-[9px] font-black uppercase tracking-wider"
+          style={{ color: palette.main }}
+        >
           TRENDING
         </span>
         <h4 className="font-bold text-[#26160F] text-sm sm:text-base leading-tight line-clamp-1 transition-colors">
           {name}
         </h4>
-        <p className="text-[11px] font-medium text-[#4A3B32]/70 line-clamp-1">
-          {description}
-        </p>
+        <p className="text-[11px] font-medium text-[#4A3B32]/70 line-clamp-1">{description}</p>
       </div>
 
       {/* Card Footer Row: Price & Prominent [+] Action Button */}
@@ -372,4 +403,3 @@ const ProductCard = memo(function ProductCard({
     </div>
   );
 });
-

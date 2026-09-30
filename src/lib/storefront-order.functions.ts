@@ -1,5 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
-import { deliveryFeeFor, priceLine, type CmsSpec, type LineSpec, type PricedLine } from "@/lib/order-pricing";
+import {
+  deliveryFeeFor,
+  priceLine,
+  type CmsSpec,
+  type LineSpec,
+  type PricedLine,
+} from "@/lib/order-pricing";
 import { decodeValidatedImage } from "@/lib/image-validation";
 import { publicError } from "@/lib/public-error";
 
@@ -42,7 +48,8 @@ const MAX_LINES = 40;
 const MAX_QTY = 50;
 const MAX_IMAGE_BYTES = 1_500_000;
 /** Signed link returned by uploadDesignImage for photos kept in Cloud storage. */
-const STORAGE_URL = /^https:\/\/zmeijwtivmniqpwyxezk\.supabase\.co\/storage\/v1\/object\/sign\/order-designs\/[\w./-]+\?[\w=%&.-]+$/i;
+const STORAGE_URL =
+  /^https:\/\/zmeijwtivmniqpwyxezk\.supabase\.co\/storage\/v1\/object\/sign\/order-designs\/[\w./-]+\?[\w=%&.-]+$/i;
 
 const text = (value: unknown, max: number, label: string, required = false) => {
   const trimmed = typeof value === "string" ? value.trim() : "";
@@ -87,7 +94,12 @@ function validate(input: StorefrontOrderRequest) {
   if (rawLines.length > MAX_LINES) throw new Error("عدد الأصناف كبير جداً · Too many items");
 
   const priced: PricedLine[] = [];
-  const cmsLines: { spec: CmsSpec; quantity: number; notes: string | null; extras: { ar: string[]; en: string[] } }[] = [];
+  const cmsLines: {
+    spec: CmsSpec;
+    quantity: number;
+    notes: string | null;
+    extras: { ar: string[]; en: string[] };
+  }[] = [];
 
   for (const line of rawLines) {
     const quantity = Math.floor(Number(line?.quantity));
@@ -120,9 +132,24 @@ function validate(input: StorefrontOrderRequest) {
   }
 
   const payment: "cash" | "cliq" | null =
-    input?.payment_method === "cash" || input?.payment_method === "cliq" ? input.payment_method : null;
+    input?.payment_method === "cash" || input?.payment_method === "cliq"
+      ? input.payment_method
+      : null;
 
-  return { name, phone, method, area, address, date, time, notes, payment, designImage, priced, cmsLines } as const;
+  return {
+    name,
+    phone,
+    method,
+    area,
+    address,
+    date,
+    time,
+    notes,
+    payment,
+    designImage,
+    priced,
+    cmsLines,
+  } as const;
 }
 
 /**
@@ -144,7 +171,11 @@ export const submitStorefrontOrder = createServerFn({ method: "POST" })
         .select("id, name_ar, name_en, price, sizes, is_available")
         .in("id", ids);
       if (productError) {
-        throw publicError("checkout.loadProducts", productError, "تعذّر حفظ الطلب · Could not save the order");
+        throw publicError(
+          "checkout.loadProducts",
+          productError,
+          "تعذّر حفظ الطلب · Could not save the order",
+        );
       }
       for (const line of data.cmsLines) {
         const product = (rows ?? []).find((row) => row.id === line.spec.productId);
@@ -153,15 +184,21 @@ export const submitStorefrontOrder = createServerFn({ method: "POST" })
             "أحد المنتجات في السلة غير متوفر، يرجى تحديث الصفحة · An item in your cart is no longer available, please refresh the page",
           );
         }
-        const sizes = Array.isArray(product.sizes) ? (product.sizes as { label?: string; price?: number }[]) : [];
-        const size = line.spec.size ? sizes.find((entry) => entry?.label === line.spec.size) : undefined;
+        const sizes = Array.isArray(product.sizes)
+          ? (product.sizes as { label?: string; price?: number }[])
+          : [];
+        const size = line.spec.size
+          ? sizes.find((entry) => entry?.label === line.spec.size)
+          : undefined;
         const unit = Number(size?.price ?? product.price ?? 0);
         lines.push({
           name_ar: product.name_ar,
           name_en: product.name_en,
           unit_price: Number.isFinite(unit) ? unit : 0,
           quantity: line.quantity,
-          options_ar: [size?.label ? `الحجم: ${size.label}` : "", ...line.extras.ar].filter(Boolean),
+          options_ar: [size?.label ? `الحجم: ${size.label}` : "", ...line.extras.ar].filter(
+            Boolean,
+          ),
           options_en: [size?.label ? `Size: ${size.label}` : "", ...line.extras.en].filter(Boolean),
           notes: line.notes,
           message: null,

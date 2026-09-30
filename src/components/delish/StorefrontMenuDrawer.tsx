@@ -51,8 +51,8 @@ export function StorefrontMenuDrawer({ open, onClose }: StorefrontMenuDrawerProp
       feedbackCategory === "complaint"
         ? "شكوى / ملاحظة"
         : feedbackCategory === "inquiry"
-        ? "استفسار خاص"
-        : "اقتراح وتحسين";
+          ? "استفسار خاص"
+          : "اقتراح وتحسين";
 
     const fullMessage = `[${catLabel}] ${rawMsg}`;
 
@@ -82,7 +82,9 @@ export function StorefrontMenuDrawer({ open, onClose }: StorefrontMenuDrawerProp
         setFeedbackPhone("");
         setFeedbackMessage("");
       } catch (fallbackErr: any) {
-        toast.error(err?.message || fallbackErr?.message || "تعذّر إرسال الرسالة، يرجى المحاولة لاحقاً");
+        toast.error(
+          err?.message || fallbackErr?.message || "تعذّر إرسال الرسالة، يرجى المحاولة لاحقاً",
+        );
       }
     } finally {
       setSubmitting(false);
@@ -125,7 +127,10 @@ export function StorefrontMenuDrawer({ open, onClose }: StorefrontMenuDrawerProp
         </header>
 
         {/* Tab Navigation */}
-        <nav aria-label="أقسام القائمة" className="no-scrollbar flex overflow-x-auto border-b border-[#EFE8DC] bg-[#FAF5EB] p-1.5 gap-1">
+        <nav
+          aria-label="أقسام القائمة"
+          className="no-scrollbar flex overflow-x-auto border-b border-[#EFE8DC] bg-[#FAF5EB] p-1.5 gap-1"
+        >
           {[
             { id: "story", label: "قصتنا 🌸", icon: Heart },
             { id: "location", label: "موقعنا وساعات العمل 📍", icon: MapPin },
@@ -163,7 +168,9 @@ export function StorefrontMenuDrawer({ open, onClose }: StorefrontMenuDrawerProp
                   صنِع بحب في عمّان 🤍
                 </h3>
                 <p className="text-xs leading-relaxed text-[#4A3B32]/80">
-                  في مخبز ديليش، نؤمن بأن كل كيكة تحمل قصة احتفال دافئة. نستخدم أجود أنواع الشوكولاتة البلجيكية، الفواكه الطازجة يومياً، والزبدة النيرلاندية الفاخرة لنقدم لكم تجربة تذوّق ممتعة لا تُنسى.
+                  في مخبز ديليش، نؤمن بأن كل كيكة تحمل قصة احتفال دافئة. نستخدم أجود أنواع
+                  الشوكولاتة البلجيكية، الفواكه الطازجة يومياً، والزبدة النيرلاندية الفاخرة لنقدم
+                  لكم تجربة تذوّق ممتعة لا تُنسى.
                 </p>
               </div>
 
@@ -207,12 +214,16 @@ export function StorefrontMenuDrawer({ open, onClose }: StorefrontMenuDrawerProp
                   <span className="flex items-center gap-1 font-bold text-[#26160F]">
                     <Clock className="h-3.5 w-3.5 text-[#B8801C]" /> ساعات العمل:
                   </span>
-                  <span className="text-[#6E3917] font-bold">9:00 صباحاً - 11:00 مساءً (يومياً)</span>
+                  <span className="text-[#6E3917] font-bold">
+                    9:00 صباحاً - 11:00 مساءً (يومياً)
+                  </span>
                 </div>
               </div>
 
               <div className="rounded-2xl border border-[#B8801C]/20 bg-[#FEF7EB] p-4 text-center space-y-1">
-                <p className="text-xs font-bold text-[#26160F]">📞 للطلب المباشر أو المساعدة عبر الهاتف:</p>
+                <p className="text-xs font-bold text-[#26160F]">
+                  📞 للطلب المباشر أو المساعدة عبر الهاتف:
+                </p>
                 <a
                   href="tel:0790000000"
                   dir="ltr"
@@ -232,7 +243,8 @@ export function StorefrontMenuDrawer({ open, onClose }: StorefrontMenuDrawerProp
                   <Clock className="h-4 w-4 text-[#B8801C]" /> مبيعات اليوم والكيك السريع
                 </h4>
                 <p className="text-[#4A3B32]/80 leading-relaxed">
-                  الطلب متاح طوال اليوم. يتم تجهيز كيك المبيعات والحلويات اليومية خلال 60 إلى 90 دقيقة للتوصيل في عمّان.
+                  الطلب متاح طوال اليوم. يتم تجهيز كيك المبيعات والحلويات اليومية خلال 60 إلى 90
+                  دقيقة للتوصيل في عمّان.
                 </p>
               </div>
 
@@ -250,7 +262,8 @@ export function StorefrontMenuDrawer({ open, onClose }: StorefrontMenuDrawerProp
                   <ShieldCheck className="h-4 w-4 text-[#B8801C]" /> الحفاظ على جودة الكيك
                 </h4>
                 <p className="text-[#4A3B32]/80 leading-relaxed">
-                  يتم نقل الطلبات في سيارات التوصيل المبردة. يُحفظ الكيك في الثلاجة مباشرة عند الاستلام ويُخرج قبل التقديم بـ 15 دقيقة لضمان القوام المثالي.
+                  يتم نقل الطلبات في سيارات التوصيل المبردة. يُحفظ الكيك في الثلاجة مباشرة عند
+                  الاستلام ويُخرج قبل التقديم بـ 15 دقيقة لضمان القوام المثالي.
                 </p>
               </div>
             </div>
@@ -258,7 +271,10 @@ export function StorefrontMenuDrawer({ open, onClose }: StorefrontMenuDrawerProp
 
           {/* TAB 4: COMPLAINTS & FEEDBACK FORM */}
           {activeTab === "feedback" && (
-            <form onSubmit={handleFeedbackSubmit} className="space-y-3 animate-in fade-in duration-200">
+            <form
+              onSubmit={handleFeedbackSubmit}
+              className="space-y-3 animate-in fade-in duration-200"
+            >
               <div className="rounded-2xl border border-[#EFE8DC] bg-white p-4 space-y-3 shadow-xs">
                 <h4 className="font-bold text-[#26160F] text-sm flex items-center gap-1.5">
                   <MessageSquare className="h-4 w-4 text-[#B8801C]" /> خدمة العملاء والآراء
@@ -341,12 +357,9 @@ export function StorefrontMenuDrawer({ open, onClose }: StorefrontMenuDrawerProp
             <MessageSquare className="h-4 w-4" />
             <span>تواصل مباشرة عبر واتساب الدعم</span>
           </a>
-          <p className="text-center text-[10px] text-[#4A3B32]/60">
-            DELISH Bakes · Amman, Jordan
-          </p>
+          <p className="text-center text-[10px] text-[#4A3B32]/60">DELISH Bakes · Amman, Jordan</p>
         </footer>
       </aside>
     </div>
   );
 }
-

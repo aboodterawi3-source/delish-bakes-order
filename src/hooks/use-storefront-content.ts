@@ -16,8 +16,17 @@ export const STOREFRONT_CONTENT_KEY = ["storefront-content"] as const;
 /** Public banner + category ribbon + product grid, exactly as sales published it. */
 async function fetchStorefrontContent(): Promise<StorefrontContent> {
   const [banner, categories, products] = await Promise.all([
-    supabase.from("storefront_banner").select(BANNER_SELECT).eq("is_active", true).limit(1).maybeSingle(),
-    supabase.from("storefront_categories").select(CATEGORY_SELECT).eq("is_active", true).order("sort_order"),
+    supabase
+      .from("storefront_banner")
+      .select(BANNER_SELECT)
+      .eq("is_active", true)
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("storefront_categories")
+      .select(CATEGORY_SELECT)
+      .eq("is_active", true)
+      .order("sort_order"),
     supabase
       .from("products")
       .select(PRODUCT_SELECT)
@@ -28,7 +37,7 @@ async function fetchStorefrontContent(): Promise<StorefrontContent> {
 
   return {
     banner: (banner.data as StorefrontBanner | null) ?? null,
-    categories: ((categories.data ?? []) as StorefrontCategory[]),
+    categories: (categories.data ?? []) as StorefrontCategory[],
     products: ((products.data ?? []) as Record<string, unknown>[]).map(normaliseProduct),
   };
 }
@@ -48,14 +57,23 @@ export function useStorefrontContent() {
   });
 
   useEffect(() => {
-    const invalidate = () => void queryClient.invalidateQueries({ queryKey: STOREFRONT_CONTENT_KEY });
+    const invalidate = () =>
+      void queryClient.invalidateQueries({ queryKey: STOREFRONT_CONTENT_KEY });
     // Unique channel name per hook instance: several components can listen at
     // once without Supabase rejecting the extra subscription.
     const channel = supabase
       .channel(`storefront-content-live-${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "products" }, invalidate)
-      .on("postgres_changes", { event: "*", schema: "public", table: "storefront_categories" }, invalidate)
-      .on("postgres_changes", { event: "*", schema: "public", table: "storefront_banner" }, invalidate)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "storefront_categories" },
+        invalidate,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "storefront_banner" },
+        invalidate,
+      )
       .subscribe();
     return () => {
       void supabase.removeChannel(channel);

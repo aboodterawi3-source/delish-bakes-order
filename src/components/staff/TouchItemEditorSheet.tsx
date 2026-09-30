@@ -220,10 +220,7 @@ export function TouchItemEditorSheet({
   };
 
   // Calculate live total for CTA
-  const extrasTotal = useMemo(
-    () => extras.reduce((sum, e) => sum + e.price * e.qty, 0),
-    [extras],
-  );
+  const extrasTotal = useMemo(() => extras.reduce((sum, e) => sum + e.price * e.qty, 0), [extras]);
   const liveLineTotal = useMemo(
     () => (unitPrice + extrasTotal) * quantity,
     [unitPrice, extrasTotal, quantity],
@@ -456,7 +453,8 @@ export function TouchItemEditorSheet({
                       className="flex items-center justify-between rounded-xl border border-border bg-background p-2.5"
                     >
                       <span className="text-xs font-bold text-foreground">
-                        {ex.icon} {ex.name} <span className="text-muted-foreground">({jd(ex.price)})</span>
+                        {ex.icon} {ex.name}{" "}
+                        <span className="text-muted-foreground">({jd(ex.price)})</span>
                       </span>
 
                       <div className="flex items-center gap-2">
@@ -617,9 +615,7 @@ export function TouchItemSummaryCard({
           <h5 className="font-display text-base font-extrabold text-foreground break-words">
             {item.name_ar}
           </h5>
-          <p className="text-xs text-muted-foreground">
-            سعر الحبة: {jd(item.unit_price)}
-          </p>
+          <p className="text-xs text-muted-foreground">سعر الحبة: {jd(item.unit_price)}</p>
         </div>
 
         <div className="text-end shrink-0">
@@ -700,4 +696,3 @@ export function TouchItemSummaryCard({
     </div>
   );
 }
-

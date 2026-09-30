@@ -13,9 +13,15 @@ export const Route = createFileRoute("/discover")({
   head: () => ({
     meta: [
       { title: "Discover | DELISH Bakes Luxury Patisserie" },
-      { name: "description", content: "Explore freshly baked croissants, celebration cakes, and signature macarons." },
+      {
+        name: "description",
+        content: "Explore freshly baked croissants, celebration cakes, and signature macarons.",
+      },
       { property: "og:title", content: "Discover | DELISH Bakes Luxury Patisserie" },
-      { property: "og:description", content: "Explore freshly baked croissants, celebration cakes, and signature macarons." },
+      {
+        property: "og:description",
+        content: "Explore freshly baked croissants, celebration cakes, and signature macarons.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],

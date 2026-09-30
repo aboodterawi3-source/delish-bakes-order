@@ -8,7 +8,6 @@ import {
   Loader2,
   Pencil,
   Plus,
-
   Trash2,
   X,
   Save,
@@ -85,7 +84,11 @@ export function CmsPanel() {
 
   return (
     <section className="min-w-0 space-y-5 overflow-x-hidden">
-      <div className="no-scrollbar flex max-w-full gap-2 overflow-x-auto" role="tablist" aria-label="إدارة الموقع">
+      <div
+        className="no-scrollbar flex max-w-full gap-2 overflow-x-auto"
+        role="tablist"
+        aria-label="إدارة الموقع"
+      >
         {tabs.map((item) => (
           <button
             key={item.value}
@@ -167,8 +170,17 @@ function ImageField({
             </span>
           )}
         </div>
-        <button type="button" onClick={() => inputRef.current?.click()} disabled={busy} className={ghostBtn}>
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <ImagePlus className="h-4 w-4" aria-hidden />}
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          disabled={busy}
+          className={ghostBtn}
+        >
+          {busy ? (
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+          ) : (
+            <ImagePlus className="h-4 w-4" aria-hidden />
+          )}
           {busy ? "جار الرفع…" : "رفع صورة · Upload"}
         </button>
         {value && (
@@ -235,7 +247,13 @@ function PriorityPicker({
 
 /* -------------------------------- tint picker ------------------------------- */
 
-function TintPicker({ value, onChange }: { value: string | null; onChange: (tint: string) => void }) {
+function TintPicker({
+  value,
+  onChange,
+}: {
+  value: string | null;
+  onChange: (tint: string) => void;
+}) {
   return (
     <div className="space-y-2">
       <span className={label}>لون البطاقة · Card tint</span>
@@ -260,12 +278,23 @@ function TintPicker({ value, onChange }: { value: string | null; onChange: (tint
 
 /* --------------------------------- banner ---------------------------------- */
 
-function BannerEditor({ banner }: { banner: { discount_text: string; subtitle: string; button_text: string; image_url: string | null } | null }) {
+function BannerEditor({
+  banner,
+}: {
+  banner: {
+    discount_text: string;
+    subtitle: string;
+    button_text: string;
+    image_url: string | null;
+  } | null;
+}) {
   const queryClient = useQueryClient();
   const saveFn = useServerFn(saveBanner);
   const [form, setForm] = useState({
     discount_text: banner?.discount_text ?? "كيكات مميزة تُصنع بحب لمناسباتكم الخاصة 🎂",
-    subtitle: banner?.subtitle ?? "سواء كان حفل تخرج، عيد ميلاد، أو ذكرى مميزة.. نصمم لك كيكة استثنائية تناسب ذوقك وتليق بلحظاتك السعيدة.",
+    subtitle:
+      banner?.subtitle ??
+      "سواء كان حفل تخرج، عيد ميلاد، أو ذكرى مميزة.. نصمم لك كيكة استثنائية تناسب ذوقك وتليق بلحظاتك السعيدة.",
     button_text: banner?.button_text ?? "طلب مخصص",
     image_url: banner?.image_url ?? null,
   });
@@ -305,7 +334,11 @@ function BannerEditor({ banner }: { banner: { discount_text: string; subtitle: s
           disabled={save.isPending}
           className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-primary px-6 text-xs sm:text-sm font-bold text-primary-foreground shadow-sm transition hover:opacity-90 disabled:opacity-60 cursor-pointer"
         >
-          {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Save className="h-4 w-4" aria-hidden />}
+          {save.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+          ) : (
+            <Save className="h-4 w-4" aria-hidden />
+          )}
           <span>💾 حفظ ونشر البانر على الموقع / Save & Publish</span>
         </button>
       </div>
@@ -350,7 +383,11 @@ function BannerEditor({ banner }: { banner: { discount_text: string; subtitle: s
           disabled={save.isPending}
           className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-primary px-7 text-sm font-bold text-primary-foreground shadow-md transition hover:opacity-90 disabled:opacity-60 cursor-pointer"
         >
-          {save.isPending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Save className="h-4 w-4" aria-hidden />}
+          {save.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+          ) : (
+            <Save className="h-4 w-4" aria-hidden />
+          )}
           <span>💾 حفظ ونشر البانر على الموقع / Save & Publish</span>
         </button>
       </div>
@@ -406,8 +443,14 @@ function CategoriesEditor({ categories }: { categories: StorefrontCategory[] }) 
       refresh();
     },
   });
-  const remove = useMutation({ mutationFn: (id: string) => deleteFn({ data: { id } }), onSuccess: refresh });
-  const reorder = useMutation({ mutationFn: (ids: string[]) => reorderFn({ data: { ids } }), onSuccess: refresh });
+  const remove = useMutation({
+    mutationFn: (id: string) => deleteFn({ data: { id } }),
+    onSuccess: refresh,
+  });
+  const reorder = useMutation({
+    mutationFn: (ids: string[]) => reorderFn({ data: { ids } }),
+    onSuccess: refresh,
+  });
 
   const move = (index: number, direction: -1 | 1) => {
     const ids = categories.map((category) => category.id);
@@ -434,7 +477,12 @@ function CategoriesEditor({ categories }: { categories: StorefrontCategory[] }) 
           >
             <div className="h-12 w-12 overflow-hidden rounded-2xl bg-card/80">
               {category.image_url ? (
-                <img src={category.image_url} alt="" loading="lazy" className="h-full w-full object-cover" />
+                <img
+                  src={category.image_url}
+                  alt=""
+                  loading="lazy"
+                  className="h-full w-full object-cover"
+                />
               ) : (
                 <span className="grid h-full w-full place-items-center text-xs font-bold text-muted-foreground">
                   {category.name_en.slice(0, 1)}
@@ -449,10 +497,20 @@ function CategoriesEditor({ categories }: { categories: StorefrontCategory[] }) 
                 {category.is_active ? "ظاهر للعميل" : "مخفي"} · #{category.sort_order}
               </p>
             </div>
-            <button type="button" aria-label="أعلى" onClick={() => move(index, -1)} className={ghostBtn}>
+            <button
+              type="button"
+              aria-label="أعلى"
+              onClick={() => move(index, -1)}
+              className={ghostBtn}
+            >
               <ArrowUp className="h-4 w-4" aria-hidden />
             </button>
-            <button type="button" aria-label="أسفل" onClick={() => move(index, 1)} className={ghostBtn}>
+            <button
+              type="button"
+              aria-label="أسفل"
+              onClick={() => move(index, 1)}
+              className={ghostBtn}
+            >
               <ArrowDown className="h-4 w-4" aria-hidden />
             </button>
             <button
@@ -501,14 +559,28 @@ function CategoriesEditor({ categories }: { categories: StorefrontCategory[] }) 
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="space-y-1.5">
                   <span className={label}>الاسم بالعربية</span>
-                  <input value={draft.name_ar} onChange={(e) => setDraft({ ...draft, name_ar: e.target.value })} className={field} required />
+                  <input
+                    value={draft.name_ar}
+                    onChange={(e) => setDraft({ ...draft, name_ar: e.target.value })}
+                    className={field}
+                    required
+                  />
                 </label>
                 <label className="space-y-1.5">
                   <span className={label}>Name in English</span>
-                  <input value={draft.name_en} onChange={(e) => setDraft({ ...draft, name_en: e.target.value })} className={field} required />
+                  <input
+                    value={draft.name_en}
+                    onChange={(e) => setDraft({ ...draft, name_en: e.target.value })}
+                    className={field}
+                    required
+                  />
                 </label>
               </div>
-              <ImageField value={draft.image_url} folder="categories" onChange={(url) => setDraft({ ...draft, image_url: url })} />
+              <ImageField
+                value={draft.image_url}
+                folder="categories"
+                onChange={(url) => setDraft({ ...draft, image_url: url })}
+              />
               <TintPicker value={draft.tint} onChange={(tint) => setDraft({ ...draft, tint })} />
               <PriorityPicker
                 value={draft.priority_color}
@@ -524,14 +596,19 @@ function CategoriesEditor({ categories }: { categories: StorefrontCategory[] }) 
                 />
                 ظاهر عند العميل · Visible
               </label>
-       <div className="grid grid-cols-1 gap-3 sm:flex sm:flex-wrap sm:items-center">
+              <div className="grid grid-cols-1 gap-3 sm:flex sm:flex-wrap sm:items-center">
                 <button type="submit" disabled={save.isPending} className={primaryBtn}>
-                  {save.isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />} حفظ · Save
+                  {save.isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />} حفظ ·
+                  Save
                 </button>
                 <button type="button" onClick={() => setDraft(null)} className={ghostBtn}>
                   إلغاء
                 </button>
-                {save.isError && <span className="text-xs font-bold text-destructive">{(save.error as Error).message}</span>}
+                {save.isError && (
+                  <span className="text-xs font-bold text-destructive">
+                    {(save.error as Error).message}
+                  </span>
+                )}
               </div>
             </form>
           )}
@@ -658,7 +735,10 @@ function ProductsEditor({
     onSuccess: refresh,
   });
 
-  const remove = useMutation({ mutationFn: (id: string) => deleteFn({ data: { id } }), onSuccess: refresh });
+  const remove = useMutation({
+    mutationFn: (id: string) => deleteFn({ data: { id } }),
+    onSuccess: refresh,
+  });
 
   const list = useMemo(() => {
     const needle = search.trim().toLowerCase();
@@ -671,7 +751,13 @@ function ProductsEditor({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <button type="button" onClick={() => setDraft({ ...emptyProduct, sizes: emptyProduct.sizes.map((s) => ({ ...s })) })} className={primaryBtn}>
+        <button
+          type="button"
+          onClick={() =>
+            setDraft({ ...emptyProduct, sizes: emptyProduct.sizes.map((s) => ({ ...s })) })
+          }
+          className={primaryBtn}
+        >
           <Plus className="h-4 w-4" aria-hidden /> منتج جديد · New product
         </button>
         <input
@@ -687,51 +773,74 @@ function ProductsEditor({
         {list.map((product) => (
           <li
             key={product.id}
-           className={`grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-3xl border border-border p-4 sm:flex sm:flex-wrap ${tintFill(product.tint)}`}
+            className={`grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-3xl border border-border p-4 sm:flex sm:flex-wrap ${tintFill(product.tint)}`}
           >
             <div className="h-14 w-14 overflow-hidden rounded-2xl bg-card/80">
               {product.image_url ? (
-                <img src={product.image_url} alt="" loading="lazy" className="h-full w-full object-cover" />
+                <img
+                  src={product.image_url}
+                  alt=""
+                  loading="lazy"
+                  className="h-full w-full object-cover"
+                />
               ) : (
-                <span className="grid h-full w-full place-items-center text-[10px] text-muted-foreground">لا صورة</span>
+                <span className="grid h-full w-full place-items-center text-[10px] text-muted-foreground">
+                  لا صورة
+                </span>
               )}
             </div>
-             <div className="min-w-0 sm:me-auto">
-               <p className="break-words text-sm font-bold text-foreground">
+            <div className="min-w-0 sm:me-auto">
+              <p className="break-words text-sm font-bold text-foreground">
                 {product.name_ar} · {product.name_en}
               </p>
-               <p className="flex min-w-0 flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+              <p className="flex min-w-0 flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
                 <span>{product.price.toFixed(2)} د.أ</span>
-                {product.sizes.length > 0 && <span>{product.sizes.map((s) => s.label).join(" · ")}</span>}
-                {product.price_on_request && <span className="font-bold text-primary">السعر عند الطلب</span>}
+                {product.sizes.length > 0 && (
+                  <span>{product.sizes.map((s) => s.label).join(" · ")}</span>
+                )}
+                {product.price_on_request && (
+                  <span className="font-bold text-primary">السعر عند الطلب</span>
+                )}
                 {product.filling_ar && <span>حشوة: {product.filling_ar}</span>}
               </p>
             </div>
 
-             <label className="col-span-2 inline-flex min-w-0 items-center gap-2 text-xs font-bold text-foreground sm:col-auto">
+            <label className="col-span-2 inline-flex min-w-0 items-center gap-2 text-xs font-bold text-foreground sm:col-auto">
               <input
                 type="checkbox"
                 checked={product.is_available}
-                onChange={(event) => toggle.mutate({ id: product.id, is_available: event.target.checked })}
+                onChange={(event) =>
+                  toggle.mutate({ id: product.id, is_available: event.target.checked })
+                }
                 className="h-5 w-5 rounded border-input"
               />
               {product.is_available ? "متوفر · Active" : "غير متوفر · Out of stock"}
             </label>
 
-             <label className="col-span-2 inline-flex min-w-0 items-center gap-2 text-xs font-bold text-foreground sm:col-auto">
+            <label className="col-span-2 inline-flex min-w-0 items-center gap-2 text-xs font-bold text-foreground sm:col-auto">
               <input
                 type="checkbox"
                 checked={product.is_popular}
-                onChange={(event) => toggle.mutate({ id: product.id, is_popular: event.target.checked })}
+                onChange={(event) =>
+                  toggle.mutate({ id: product.id, is_popular: event.target.checked })
+                }
                 className="h-5 w-5 rounded border-input"
               />
               في الأشهر · Popular
             </label>
 
-             <button type="button" onClick={() => setDraft(toDraft(product))} className={`${ghostBtn} col-span-1`}>
+            <button
+              type="button"
+              onClick={() => setDraft(toDraft(product))}
+              className={`${ghostBtn} col-span-1`}
+            >
               <Pencil className="h-4 w-4" aria-hidden /> تعديل · Edit
             </button>
-             <button type="button" onClick={() => remove.mutate(product.id)} className={`${ghostBtn} col-span-1 text-destructive`}>
+            <button
+              type="button"
+              onClick={() => remove.mutate(product.id)}
+              className={`${ghostBtn} col-span-1 text-destructive`}
+            >
               <Trash2 className="h-4 w-4" aria-hidden /> حذف
             </button>
           </li>
@@ -754,160 +863,207 @@ function ProductsEditor({
                 </DialogTitle>
               </DialogHeader>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="space-y-1.5">
-              <span className={label}>الاسم بالعربية</span>
-              <input value={draft.name_ar} onChange={(e) => setDraft({ ...draft, name_ar: e.target.value })} className={field} required />
-            </label>
-            <label className="space-y-1.5">
-              <span className={label}>Name in English</span>
-              <input value={draft.name_en} onChange={(e) => setDraft({ ...draft, name_en: e.target.value })} className={field} required />
-            </label>
-            <label className="space-y-1.5">
-              <span className={label}>الوصف بالعربية</span>
-              <textarea
-                value={draft.description_ar}
-                onChange={(e) => setDraft({ ...draft, description_ar: e.target.value })}
-                rows={3}
-                className="w-full rounded-2xl border border-input bg-background p-3 text-sm"
-              />
-            </label>
-            <label className="space-y-1.5">
-              <span className={label}>Description in English</span>
-              <textarea
-                value={draft.description_en}
-                onChange={(e) => setDraft({ ...draft, description_en: e.target.value })}
-                rows={3}
-                className="w-full rounded-2xl border border-input bg-background p-3 text-sm"
-              />
-            </label>
-            <label className="space-y-1.5">
-              <span className={label}>القسم · Category</span>
-              <select
-                value={draft.category_id ?? ""}
-                onChange={(e) => setDraft({ ...draft, category_id: e.target.value || null })}
-                className={field}
-              >
-                <option value="">— بدون قسم —</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name_ar} · {category.name_en}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="space-y-1.5">
-              <span className={label}>التصنيف الداخلي · Internal tag</span>
-              <input value={draft.category} onChange={(e) => setDraft({ ...draft, category: e.target.value })} className={field} required />
-            </label>
-            {/* Price is optional once the product is priced on request. */}
-            {draft.price_on_request ? (
-              <p className="rounded-xl border border-border bg-secondary/30 p-3 text-xs font-bold text-foreground">
-                لا حاجة لسعر ثابت — سيظهر زر «اطلب السعر» على الموقع.
-              </p>
-            ) : (
-              <label className="space-y-1.5">
-                <span className={label}>السعر الأساسي · Base price</span>
-                <input type="number" min="0" step="0.01" value={draft.price} onChange={(e) => setDraft({ ...draft, price: e.target.value })} className={field} required />
-              </label>
-            )}
-            <label className="space-y-1.5">
-              <span className={label}>نوع الحشوة · Filling (عربي)</span>
-              <input value={draft.filling_ar} onChange={(e) => setDraft({ ...draft, filling_ar: e.target.value })} placeholder="نوتيلا، لوتس، فراولة…" className={field} />
-            </label>
-            <label className="space-y-1.5">
-              <span className={label}>Filling type (English)</span>
-              <input value={draft.filling_en} onChange={(e) => setDraft({ ...draft, filling_en: e.target.value })} placeholder="Nutella, Lotus, Strawberry…" className={field} />
-            </label>
-            <label className="inline-flex items-center gap-2 text-xs font-bold text-foreground sm:col-span-2">
-              <input
-                type="checkbox"
-                checked={draft.price_on_request}
-                onChange={(e) => setDraft({ ...draft, price_on_request: e.target.checked })}
-                className="h-5 w-5 rounded border-input"
-              />
-              السعر عند الطلب · Price on request (يخفي السعر ويظهر زر «اطلب السعر»)
-            </label>
-          </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="space-y-1.5">
+                  <span className={label}>الاسم بالعربية</span>
+                  <input
+                    value={draft.name_ar}
+                    onChange={(e) => setDraft({ ...draft, name_ar: e.target.value })}
+                    className={field}
+                    required
+                  />
+                </label>
+                <label className="space-y-1.5">
+                  <span className={label}>Name in English</span>
+                  <input
+                    value={draft.name_en}
+                    onChange={(e) => setDraft({ ...draft, name_en: e.target.value })}
+                    className={field}
+                    required
+                  />
+                </label>
+                <label className="space-y-1.5">
+                  <span className={label}>الوصف بالعربية</span>
+                  <textarea
+                    value={draft.description_ar}
+                    onChange={(e) => setDraft({ ...draft, description_ar: e.target.value })}
+                    rows={3}
+                    className="w-full rounded-2xl border border-input bg-background p-3 text-sm"
+                  />
+                </label>
+                <label className="space-y-1.5">
+                  <span className={label}>Description in English</span>
+                  <textarea
+                    value={draft.description_en}
+                    onChange={(e) => setDraft({ ...draft, description_en: e.target.value })}
+                    rows={3}
+                    className="w-full rounded-2xl border border-input bg-background p-3 text-sm"
+                  />
+                </label>
+                <label className="space-y-1.5">
+                  <span className={label}>القسم · Category</span>
+                  <select
+                    value={draft.category_id ?? ""}
+                    onChange={(e) => setDraft({ ...draft, category_id: e.target.value || null })}
+                    className={field}
+                  >
+                    <option value="">— بدون قسم —</option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name_ar} · {category.name_en}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="space-y-1.5">
+                  <span className={label}>التصنيف الداخلي · Internal tag</span>
+                  <input
+                    value={draft.category}
+                    onChange={(e) => setDraft({ ...draft, category: e.target.value })}
+                    className={field}
+                    required
+                  />
+                </label>
+                {/* Price is optional once the product is priced on request. */}
+                {draft.price_on_request ? (
+                  <p className="rounded-xl border border-border bg-secondary/30 p-3 text-xs font-bold text-foreground">
+                    لا حاجة لسعر ثابت — سيظهر زر «اطلب السعر» على الموقع.
+                  </p>
+                ) : (
+                  <label className="space-y-1.5">
+                    <span className={label}>السعر الأساسي · Base price</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={draft.price}
+                      onChange={(e) => setDraft({ ...draft, price: e.target.value })}
+                      className={field}
+                      required
+                    />
+                  </label>
+                )}
+                <label className="space-y-1.5">
+                  <span className={label}>نوع الحشوة · Filling (عربي)</span>
+                  <input
+                    value={draft.filling_ar}
+                    onChange={(e) => setDraft({ ...draft, filling_ar: e.target.value })}
+                    placeholder="نوتيلا، لوتس، فراولة…"
+                    className={field}
+                  />
+                </label>
+                <label className="space-y-1.5">
+                  <span className={label}>Filling type (English)</span>
+                  <input
+                    value={draft.filling_en}
+                    onChange={(e) => setDraft({ ...draft, filling_en: e.target.value })}
+                    placeholder="Nutella, Lotus, Strawberry…"
+                    className={field}
+                  />
+                </label>
+                <label className="inline-flex items-center gap-2 text-xs font-bold text-foreground sm:col-span-2">
+                  <input
+                    type="checkbox"
+                    checked={draft.price_on_request}
+                    onChange={(e) => setDraft({ ...draft, price_on_request: e.target.checked })}
+                    className="h-5 w-5 rounded border-input"
+                  />
+                  السعر عند الطلب · Price on request (يخفي السعر ويظهر زر «اطلب السعر»)
+                </label>
+              </div>
 
-          <fieldset className="space-y-2">
-            <legend className={label}>الأحجام والأسعار · Sizes &amp; prices</legend>
-            <div className="grid gap-2 sm:grid-cols-3">
-              {draft.sizes.map((size, index) => (
-                 <div key={index} className="grid min-w-0 grid-cols-2 gap-2">
-                  <input
-                    value={size.label}
-                    onChange={(e) => {
-                      const sizes = draft.sizes.map((row, i) => (i === index ? { ...row, label: e.target.value } : row));
-                      setDraft({ ...draft, sizes });
-                    }}
-                    placeholder="6 inch"
-                    className={field}
-                    aria-label="حجم"
-                  />
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={size.price}
-                    onChange={(e) => {
-                      const sizes = draft.sizes.map((row, i) => (i === index ? { ...row, price: e.target.value } : row));
-                      setDraft({ ...draft, sizes });
-                    }}
-                    placeholder="السعر"
-                    className={field}
-                    aria-label="سعر الحجم"
-                  />
+              <fieldset className="space-y-2">
+                <legend className={label}>الأحجام والأسعار · Sizes &amp; prices</legend>
+                <div className="grid gap-2 sm:grid-cols-3">
+                  {draft.sizes.map((size, index) => (
+                    <div key={index} className="grid min-w-0 grid-cols-2 gap-2">
+                      <input
+                        value={size.label}
+                        onChange={(e) => {
+                          const sizes = draft.sizes.map((row, i) =>
+                            i === index ? { ...row, label: e.target.value } : row,
+                          );
+                          setDraft({ ...draft, sizes });
+                        }}
+                        placeholder="6 inch"
+                        className={field}
+                        aria-label="حجم"
+                      />
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={size.price}
+                        onChange={(e) => {
+                          const sizes = draft.sizes.map((row, i) =>
+                            i === index ? { ...row, price: e.target.value } : row,
+                          );
+                          setDraft({ ...draft, sizes });
+                        }}
+                        placeholder="السعر"
+                        className={field}
+                        aria-label="سعر الحجم"
+                      />
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <button
-              type="button"
-              onClick={() => setDraft({ ...draft, sizes: [...draft.sizes, { label: "", price: "" }] })}
-              className={ghostBtn}
-            >
-              <Plus className="h-4 w-4" aria-hidden /> حجم إضافي
-            </button>
-          </fieldset>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setDraft({ ...draft, sizes: [...draft.sizes, { label: "", price: "" }] })
+                  }
+                  className={ghostBtn}
+                >
+                  <Plus className="h-4 w-4" aria-hidden /> حجم إضافي
+                </button>
+              </fieldset>
 
-          <ImageField value={draft.image_url} folder="products" onChange={(url) => setDraft({ ...draft, image_url: url })} />
-          <TintPicker value={draft.tint} onChange={(tint) => setDraft({ ...draft, tint })} />
-          <PriorityPicker
-            value={draft.priority_color}
-            onChange={(priority_color) => setDraft({ ...draft, priority_color })}
-            hint="اتركها فارغة ليأخذ المنتج أولوية قسمه أو الأولوية الأساسية تلقائياً."
-          />
-
-
-          <div className="flex flex-wrap gap-5">
-            <label className="flex items-center gap-3 text-sm font-bold text-foreground">
-              <input
-                type="checkbox"
-                checked={draft.is_available}
-                onChange={(e) => setDraft({ ...draft, is_available: e.target.checked })}
-                className="h-5 w-5 rounded border-input"
+              <ImageField
+                value={draft.image_url}
+                folder="products"
+                onChange={(url) => setDraft({ ...draft, image_url: url })}
               />
-              متوفر · Active
-            </label>
-            <label className="flex items-center gap-3 text-sm font-bold text-foreground">
-              <input
-                type="checkbox"
-                checked={draft.is_popular}
-                onChange={(e) => setDraft({ ...draft, is_popular: e.target.checked })}
-                className="h-5 w-5 rounded border-input"
+              <TintPicker value={draft.tint} onChange={(tint) => setDraft({ ...draft, tint })} />
+              <PriorityPicker
+                value={draft.priority_color}
+                onChange={(priority_color) => setDraft({ ...draft, priority_color })}
+                hint="اتركها فارغة ليأخذ المنتج أولوية قسمه أو الأولوية الأساسية تلقائياً."
               />
-              يظهر في Popular Cakes
-            </label>
-          </div>
+
+              <div className="flex flex-wrap gap-5">
+                <label className="flex items-center gap-3 text-sm font-bold text-foreground">
+                  <input
+                    type="checkbox"
+                    checked={draft.is_available}
+                    onChange={(e) => setDraft({ ...draft, is_available: e.target.checked })}
+                    className="h-5 w-5 rounded border-input"
+                  />
+                  متوفر · Active
+                </label>
+                <label className="flex items-center gap-3 text-sm font-bold text-foreground">
+                  <input
+                    type="checkbox"
+                    checked={draft.is_popular}
+                    onChange={(e) => setDraft({ ...draft, is_popular: e.target.checked })}
+                    className="h-5 w-5 rounded border-input"
+                  />
+                  يظهر في Popular Cakes
+                </label>
+              </div>
 
               <div className="flex flex-wrap items-center gap-3">
                 <button type="submit" disabled={save.isPending} className={primaryBtn}>
-                  {save.isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />} حفظ ونشر · Save
+                  {save.isPending && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />} حفظ
+                  ونشر · Save
                 </button>
                 <button type="button" onClick={() => setDraft(null)} className={ghostBtn}>
                   إلغاء
                 </button>
-                {save.isError && <span className="text-xs font-bold text-destructive">{(save.error as Error).message}</span>}
+                {save.isError && (
+                  <span className="text-xs font-bold text-destructive">
+                    {(save.error as Error).message}
+                  </span>
+                )}
               </div>
             </form>
           )}

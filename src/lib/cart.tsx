@@ -19,7 +19,6 @@ export type CartLine = {
   spec?: LineSpec | undefined;
 };
 
-
 type Ctx = {
   lines: CartLine[];
   add: (l: Omit<CartLine, "key"> & { key?: string }) => void;
@@ -79,7 +78,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const add: Ctx["add"] = (line) => {
-    const key = line.key ?? `${line.en}|${line.detailsEn.join(",")}|${line.notes ?? ""}|${line.unit}`;
+    const key =
+      line.key ?? `${line.en}|${line.detailsEn.join(",")}|${line.notes ?? ""}|${line.unit}`;
     setLines((prev) => {
       const found = prev.find((l) => l.key === key);
       if (found) return prev.map((l) => (l.key === key ? { ...l, qty: l.qty + line.qty } : l));
@@ -89,7 +89,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const remove = (key: string) => setLines((p) => p.filter((l) => l.key !== key));
   const setQty = (key: string, qty: number) =>
-    setLines((p) => (qty <= 0 ? p.filter((l) => l.key !== key) : p.map((l) => (l.key === key ? { ...l, qty } : l))));
+    setLines((p) =>
+      qty <= 0 ? p.filter((l) => l.key !== key) : p.map((l) => (l.key === key ? { ...l, qty } : l)),
+    );
   const clear = () => setLines([]);
 
   const value = useMemo(

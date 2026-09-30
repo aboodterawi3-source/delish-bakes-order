@@ -17,7 +17,9 @@ export function WelcomeView({ onExplore, isEmbedded = false }: WelcomeViewProps)
   return (
     <div
       className={`relative isolate flex min-h-dvh w-full flex-col justify-between overflow-hidden bg-background text-foreground select-none ${
-        isEmbedded ? "min-h-[740px] max-h-[820px] rounded-[38px] shadow-2xl border-4 border-[#2A2421]" : ""
+        isEmbedded
+          ? "min-h-[740px] max-h-[820px] rounded-[38px] shadow-2xl border-4 border-[#2A2421]"
+          : ""
       }`}
     >
       {/* Organic sweeping background contours */}

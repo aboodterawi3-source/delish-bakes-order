@@ -40,11 +40,7 @@ import { clearAllSalesOrders } from "@/lib/sales.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { useOrdersRealtime } from "@/hooks/use-orders-realtime";
 import { BRAND_PALETTES, useBrandPalette } from "@/lib/brand-palette";
-import {
-  useCliqAccounts,
-  type CliqAccountConfig,
-  DEFAULT_CLIQ_ACCOUNTS,
-} from "@/lib/cliq-config";
+import { useCliqAccounts, type CliqAccountConfig, DEFAULT_CLIQ_ACCOUNTS } from "@/lib/cliq-config";
 import {
   createStaff,
   getAdminAccess,
@@ -57,6 +53,8 @@ import {
   type OrderLog,
   type StaffRole,
 } from "@/lib/admin.functions";
+import { useDeliveryZonesStore } from "@/hooks/use-delivery-zones";
+import type { DeliveryZone } from "@/lib/delivery-zones";
 import {
   getStaffPermissionMatrix,
   updateStaffProductPermission,
@@ -190,7 +188,9 @@ export function AdminPanel() {
       <main dir="rtl" className="grid min-h-dvh place-items-center bg-[#FDFBF7] px-4">
         <div className="max-w-sm rounded-3xl border border-[#EFE8DC] bg-white p-6 text-center shadow-lg">
           <h1 className="font-display text-lg font-bold text-[#26160F]">هذه اللوحة للمديرين فقط</h1>
-          <p className="mt-2 text-sm text-[#4A3B32]">This dashboard is limited to admin accounts.</p>
+          <p className="mt-2 text-sm text-[#4A3B32]">
+            This dashboard is limited to admin accounts.
+          </p>
           <button
             type="button"
             onClick={() => void signOut()}
@@ -206,14 +206,21 @@ export function AdminPanel() {
   const data = analytics.data;
 
   return (
-    <main dir="rtl" className="min-h-dvh w-full overflow-x-hidden bg-[#FDFBF7] text-[#4A3B32] pb-16">
+    <main
+      dir="rtl"
+      className="min-h-dvh w-full overflow-x-hidden bg-[#FDFBF7] text-[#4A3B32] pb-16"
+    >
       {/* Top Main Navigation Header */}
       <header className="sticky top-0 z-20 border-b border-[#EFE8DC] bg-white/95 backdrop-blur-md shadow-xs">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6">
           <div className="flex items-center gap-3">
             <div className="flex flex-col">
-              <span className="font-serif text-2xl font-bold tracking-wider text-[#B8801C] uppercase">DELISH</span>
-              <span className="-mt-1.5 font-script text-xl italic text-[#6E3917]">Bakes Admin Center</span>
+              <span className="font-serif text-2xl font-bold tracking-wider text-[#B8801C] uppercase">
+                DELISH
+              </span>
+              <span className="-mt-1.5 font-script text-xl italic text-[#6E3917]">
+                Bakes Admin Center
+              </span>
             </div>
             <span className="hidden sm:inline-block rounded-full bg-[#FEF7EB] px-3 py-1 text-xs font-extrabold text-[#B8801C] border border-[#EFE8DC]">
               مركز الإدارة والتحكم الشامل
@@ -247,12 +254,27 @@ export function AdminPanel() {
         </div>
 
         {/* Unified 4-Tab Admin Navigation Bar */}
-        <nav aria-label="أقسام اللوحة" className="no-scrollbar mx-auto flex w-full max-w-7xl gap-2 overflow-x-auto overscroll-x-contain px-4 sm:px-6 pb-3 pt-1">
+        <nav
+          aria-label="أقسام اللوحة"
+          className="no-scrollbar mx-auto flex w-full max-w-7xl gap-2 overflow-x-auto overscroll-x-contain px-4 sm:px-6 pb-3 pt-1"
+        >
           {[
-            { id: "analytics", label: "📊 لوحة المؤشرات والتقارير", desc: "Analytics & Sales Reports" },
-            { id: "staff", label: "👥 الموظفون والصلاحيات وسجل التدقيق", desc: "Staff & Audit Logs" },
+            {
+              id: "analytics",
+              label: "📊 لوحة المؤشرات والتقارير",
+              desc: "Analytics & Sales Reports",
+            },
+            {
+              id: "staff",
+              label: "👥 الموظفون والصلاحيات وسجل التدقيق",
+              desc: "Staff & Audit Logs",
+            },
             { id: "menu", label: "🎂 إعدادات المتجر ومنيو الكيك", desc: "Store & Menu CMS" },
-            { id: "settings", label: "⚙️ إعدادات النظام والدفع والتوصيل", desc: "Settings & Operations" },
+            {
+              id: "settings",
+              label: "⚙️ إعدادات النظام والدفع والتوصيل",
+              desc: "Settings & Operations",
+            },
           ].map((tab) => {
             const active = activeTab === tab.id;
             return (
@@ -282,7 +304,9 @@ export function AdminPanel() {
             {analytics.isLoading && (
               <div className="flex items-center justify-center gap-3 rounded-2xl border border-[#EFE8DC] bg-white p-8 shadow-xs">
                 <Loader2 className="h-6 w-6 animate-spin text-[#B8801C]" />
-                <span className="text-sm font-bold text-[#6E3917]">جاري تحميل التحليلات والتقارير…</span>
+                <span className="text-sm font-bold text-[#6E3917]">
+                  جاري تحميل التحليلات والتقارير…
+                </span>
               </div>
             )}
             {analytics.isError && (
@@ -292,7 +316,9 @@ export function AdminPanel() {
                   حدث خطأ أثناء جلب تحليلات الإيرادات والطلبات
                 </p>
                 <p className="text-xs text-red-700 bg-white/80 p-3 rounded-xl border border-red-200">
-                  {analytics.error instanceof Error ? analytics.error.message : "خطأ غير معروف أثناء الاتصال بالسيرفر"}
+                  {analytics.error instanceof Error
+                    ? analytics.error.message
+                    : "خطأ غير معروف أثناء الاتصال بالسيرفر"}
                 </p>
                 <button
                   type="button"
@@ -311,9 +337,24 @@ export function AdminPanel() {
                     لوحة الإيرادات والأداء اليومي
                   </h2>
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    <KpiCard icon={TrendingUp} label="💵 مبيعات اليوم (Gross)" value={jod(data.revenue.gross)} badge="تحديث مباشر" />
-                    <KpiCard icon={Wallet} label="📈 المبلغ المحصّل (Collected)" value={jod(data.revenue.collected)} badge="نقدي + كليك" />
-                    <KpiCard icon={Ban} label="⏳ المتبقي على العملاء (Outstanding)" value={jod(data.revenue.outstanding)} badge="مستحقات" />
+                    <KpiCard
+                      icon={TrendingUp}
+                      label="💵 مبيعات اليوم (Gross)"
+                      value={jod(data.revenue.gross)}
+                      badge="تحديث مباشر"
+                    />
+                    <KpiCard
+                      icon={Wallet}
+                      label="📈 المبلغ المحصّل (Collected)"
+                      value={jod(data.revenue.collected)}
+                      badge="نقدي + كليك"
+                    />
+                    <KpiCard
+                      icon={Ban}
+                      label="⏳ المتبقي على العملاء (Outstanding)"
+                      value={jod(data.revenue.outstanding)}
+                      badge="مستحقات"
+                    />
                     <KpiCard
                       icon={BadgeCheck}
                       label="🎂 إجمالي الطلبات (Orders)"
@@ -330,10 +371,19 @@ export function AdminPanel() {
                   </h2>
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     {data.payments.map((row) => (
-                      <div key={row.method} className="rounded-2xl border border-[#EFE8DC] bg-white p-4 shadow-xs">
-                        <p className="text-xs font-bold text-[#6E3917]">{PAYMENT_LABEL[row.method] ?? row.method}</p>
-                        <p className="mt-1 font-sans text-xl font-black text-[#26160F]">{jod(row.collected)}</p>
-                        <p className="text-xs font-medium text-[#4A3B32]/70">{row.orders} طلب مسجّل</p>
+                      <div
+                        key={row.method}
+                        className="rounded-2xl border border-[#EFE8DC] bg-white p-4 shadow-xs"
+                      >
+                        <p className="text-xs font-bold text-[#6E3917]">
+                          {PAYMENT_LABEL[row.method] ?? row.method}
+                        </p>
+                        <p className="mt-1 font-sans text-xl font-black text-[#26160F]">
+                          {jod(row.collected)}
+                        </p>
+                        <p className="text-xs font-medium text-[#4A3B32]/70">
+                          {row.orders} طلب مسجّل
+                        </p>
                       </div>
                     ))}
                   </div>
@@ -350,15 +400,23 @@ export function AdminPanel() {
                       <table className="w-full text-start text-xs sm:text-sm">
                         <thead className="bg-[#FAF5EB] text-xs font-bold text-[#26160F]">
                           <tr>
-                            <th scope="col" className="p-3 text-start">الموظف</th>
-                            <th scope="col" className="p-3 text-start">عدد الطلبات</th>
-                            <th scope="col" className="p-3 text-start">حجم المبيعات</th>
+                            <th scope="col" className="p-3 text-start">
+                              الموظف
+                            </th>
+                            <th scope="col" className="p-3 text-start">
+                              عدد الطلبات
+                            </th>
+                            <th scope="col" className="p-3 text-start">
+                              حجم المبيعات
+                            </th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-[#EFE8DC]">
                           {data.agents.length === 0 ? (
                             <tr>
-                              <td colSpan={3} className="p-4 text-center text-xs text-[#4A3B32]/70">لا توجد طلبات مسجلة بعد.</td>
+                              <td colSpan={3} className="p-4 text-center text-xs text-[#4A3B32]/70">
+                                لا توجد طلبات مسجلة بعد.
+                              </td>
                             </tr>
                           ) : (
                             data.agents.map((row) => (
@@ -381,7 +439,8 @@ export function AdminPanel() {
                     </h2>
                     <div className="rounded-2xl border border-[#EFE8DC] bg-white p-5 space-y-4 shadow-xs">
                       <p className="text-xs text-[#4A3B32]/80 leading-relaxed">
-                        قم بتنزيل تقارير المبيعات ودليل العملاء مباشرة بصيغة Excel CSV مع ترميز UTF-8 باللغة العربية.
+                        قم بتنزيل تقارير المبيعات ودليل العملاء مباشرة بصيغة Excel CSV مع ترميز
+                        UTF-8 باللغة العربية.
                       </p>
                       <div className="flex flex-wrap gap-3">
                         <button
@@ -389,7 +448,19 @@ export function AdminPanel() {
                           onClick={() =>
                             downloadCsv(
                               "delish-sales-report",
-                              ["رقم الطلب", "العميل", "الهاتف", "الحالة", "الطريقة", "التاريخ", "الوقت", "الإجمالي", "المدفوع", "طريقة الدفع", "سبب الإلغاء"],
+                              [
+                                "رقم الطلب",
+                                "العميل",
+                                "الهاتف",
+                                "الحالة",
+                                "الطريقة",
+                                "التاريخ",
+                                "الوقت",
+                                "الإجمالي",
+                                "المدفوع",
+                                "طريقة الدفع",
+                                "سبب الإلغاء",
+                              ],
                               [...data.active, ...data.completed, ...data.cancelled].map((row) => [
                                 row.order_number,
                                 row.customer_name,
@@ -415,7 +486,13 @@ export function AdminPanel() {
                             downloadCsv(
                               "delish-customers",
                               ["الهاتف", "الاسم", "عدد الطلبات", "إجمالي الشراء", "آخر طلب"],
-                              data.customers.map((row) => [row.phone, row.name, row.orders, row.spend, row.last_order]),
+                              data.customers.map((row) => [
+                                row.phone,
+                                row.name,
+                                row.orders,
+                                row.spend,
+                                row.last_order,
+                              ]),
                             )
                           }
                           className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#EFE8DC] bg-[#FAF5EB] px-4 text-xs font-bold text-[#26160F] hover:bg-[#FEF7EB] active:scale-95"
@@ -430,7 +507,11 @@ export function AdminPanel() {
                 {/* Orders Tables */}
                 <OrderLogs title="الطلبات النشطة اليوم" rows={data.active} />
                 <OrderLogs title="الطلبات المكتملة" rows={data.completed} />
-                <OrderLogs title="الطلبات الملغاة (مع ذكر السبب)" rows={data.cancelled} showReason />
+                <OrderLogs
+                  title="الطلبات الملغاة (مع ذكر السبب)"
+                  rows={data.cancelled}
+                  showReason
+                />
 
                 <CustomerDirectory customers={data.customers} />
               </>
@@ -456,7 +537,19 @@ export function AdminPanel() {
   );
 }
 
-function KpiCard({ icon: Icon, label, value, badge, subText }: { icon: typeof TrendingUp; label: string; value: string; badge?: string; subText?: string }) {
+function KpiCard({
+  icon: Icon,
+  label,
+  value,
+  badge,
+  subText,
+}: {
+  icon: typeof TrendingUp;
+  label: string;
+  value: string;
+  badge?: string;
+  subText?: string;
+}) {
   return (
     <div className="rounded-2xl border border-[#EFE8DC] bg-white p-4 shadow-xs space-y-1">
       <div className="flex items-center justify-between">
@@ -475,7 +568,15 @@ function KpiCard({ icon: Icon, label, value, badge, subText }: { icon: typeof Tr
   );
 }
 
-function OrderLogs({ title, rows, showReason }: { title: string; rows: OrderLog[]; showReason?: boolean }) {
+function OrderLogs({
+  title,
+  rows,
+  showReason,
+}: {
+  title: string;
+  rows: OrderLog[];
+  showReason?: boolean;
+}) {
   return (
     <section className="space-y-3">
       <h2 className="font-sans text-base font-black text-[#26160F]">
@@ -485,18 +586,37 @@ function OrderLogs({ title, rows, showReason }: { title: string; rows: OrderLog[
         <table className="w-full text-start text-xs sm:text-sm">
           <thead className="bg-[#FAF5EB] text-xs font-bold text-[#26160F]">
             <tr>
-              <th scope="col" className="p-3 text-start">الطلب</th>
-              <th scope="col" className="p-3 text-start">العميل</th>
-              <th scope="col" className="p-3 text-start">الموعد</th>
-              <th scope="col" className="p-3 text-start">الإجمالي</th>
-              <th scope="col" className="p-3 text-start">الحالة</th>
-              {showReason && <th scope="col" className="p-3 text-start">السبب</th>}
+              <th scope="col" className="p-3 text-start">
+                الطلب
+              </th>
+              <th scope="col" className="p-3 text-start">
+                العميل
+              </th>
+              <th scope="col" className="p-3 text-start">
+                الموعد
+              </th>
+              <th scope="col" className="p-3 text-start">
+                الإجمالي
+              </th>
+              <th scope="col" className="p-3 text-start">
+                الحالة
+              </th>
+              {showReason && (
+                <th scope="col" className="p-3 text-start">
+                  السبب
+                </th>
+              )}
             </tr>
           </thead>
           <tbody className="divide-y divide-[#EFE8DC]">
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={showReason ? 6 : 5} className="p-4 text-center text-xs text-[#4A3B32]/70">لا توجد طلبات مسجلة في هذا القسم.</td>
+                <td
+                  colSpan={showReason ? 6 : 5}
+                  className="p-4 text-center text-xs text-[#4A3B32]/70"
+                >
+                  لا توجد طلبات مسجلة في هذا القسم.
+                </td>
               </tr>
             ) : (
               rows.map((row) => (
@@ -504,12 +624,20 @@ function OrderLogs({ title, rows, showReason }: { title: string; rows: OrderLog[
                   <td className="p-3 font-bold text-[#26160F]">{row.order_number}</td>
                   <td className="p-3">
                     <span className="font-bold text-[#26160F]">{row.customer_name}</span>
-                    <span className="block text-xs text-[#4A3B32]/60" dir="ltr">{row.customer_phone}</span>
+                    <span className="block text-xs text-[#4A3B32]/60" dir="ltr">
+                      {row.customer_phone}
+                    </span>
                   </td>
-                  <td className="p-3 text-xs text-[#4A3B32]" dir="ltr">{row.requested_date} {row.requested_time.slice(0, 5)}</td>
+                  <td className="p-3 text-xs text-[#4A3B32]" dir="ltr">
+                    {row.requested_date} {row.requested_time.slice(0, 5)}
+                  </td>
                   <td className="p-3 font-black text-[#6E3917]">{jod(row.total)}</td>
-                  <td className="p-3 font-bold text-[#B8801C]">{STATUS_LABEL[row.status] ?? row.status}</td>
-                  {showReason && <td className="p-3 text-xs text-[#4A3B32]/70">{row.cancel_reason ?? "—"}</td>}
+                  <td className="p-3 font-bold text-[#B8801C]">
+                    {STATUS_LABEL[row.status] ?? row.status}
+                  </td>
+                  {showReason && (
+                    <td className="p-3 text-xs text-[#4A3B32]/70">{row.cancel_reason ?? "—"}</td>
+                  )}
                 </tr>
               ))
             )}
@@ -520,7 +648,11 @@ function OrderLogs({ title, rows, showReason }: { title: string; rows: OrderLog[
   );
 }
 
-function CustomerDirectory({ customers }: { customers: { phone: string; name: string; orders: number; spend: number; last_order: string }[] }) {
+function CustomerDirectory({
+  customers,
+}: {
+  customers: { phone: string; name: string; orders: number; spend: number; last_order: string }[];
+}) {
   const [query, setQuery] = useState("");
   const debounced = useDebouncedValue(query, 180);
   const filtered = useMemo(() => {
@@ -535,7 +667,10 @@ function CustomerDirectory({ customers }: { customers: { phone: string; name: st
         📖 دليل العملاء وسجل المشتريات
       </h2>
       <div className="relative max-w-md">
-        <Search className="pointer-events-none absolute inset-y-0 start-3 my-auto h-4 w-4 text-[#4A3B32]/50" aria-hidden />
+        <Search
+          className="pointer-events-none absolute inset-y-0 start-3 my-auto h-4 w-4 text-[#4A3B32]/50"
+          aria-hidden
+        />
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
@@ -547,22 +682,34 @@ function CustomerDirectory({ customers }: { customers: { phone: string; name: st
         <table className="w-full text-start text-xs sm:text-sm">
           <thead className="bg-[#FAF5EB] text-xs font-bold text-[#26160F]">
             <tr>
-              <th scope="col" className="p-3 text-start">الاسم</th>
-              <th scope="col" className="p-3 text-start">الهاتف</th>
-              <th scope="col" className="p-3 text-start">الطلبات</th>
-              <th scope="col" className="p-3 text-start">إجمالي الشراء</th>
+              <th scope="col" className="p-3 text-start">
+                الاسم
+              </th>
+              <th scope="col" className="p-3 text-start">
+                الهاتف
+              </th>
+              <th scope="col" className="p-3 text-start">
+                الطلبات
+              </th>
+              <th scope="col" className="p-3 text-start">
+                إجمالي الشراء
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#EFE8DC]">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={4} className="p-4 text-center text-xs text-[#4A3B32]/70">لا نتائج مطابقة.</td>
+                <td colSpan={4} className="p-4 text-center text-xs text-[#4A3B32]/70">
+                  لا نتائج مطابقة.
+                </td>
               </tr>
             ) : (
               filtered.map((row) => (
                 <tr key={row.phone} className="hover:bg-[#FEF7EB]">
                   <td className="p-3 font-bold text-[#26160F]">{row.name}</td>
-                  <td className="p-3 font-semibold text-[#4A3B32]" dir="ltr">{row.phone}</td>
+                  <td className="p-3 font-semibold text-[#4A3B32]" dir="ltr">
+                    {row.phone}
+                  </td>
                   <td className="p-3 font-bold text-[#B8801C]">{row.orders}</td>
                   <td className="p-3 font-black text-[#6E3917]">{jod(row.spend)}</td>
                 </tr>
@@ -710,8 +857,22 @@ function StaffPanel() {
         </h2>
       </div>
 
-      {error && <p role="alert" className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-xs font-bold text-rose-700">{error}</p>}
-      {notice && <p role="status" className="rounded-xl bg-[#FEF7EB] border border-[#EFE8DC] p-3 text-xs font-bold text-[#B8801C]">{notice}</p>}
+      {error && (
+        <p
+          role="alert"
+          className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-xs font-bold text-rose-700"
+        >
+          {error}
+        </p>
+      )}
+      {notice && (
+        <p
+          role="status"
+          className="rounded-xl bg-[#FEF7EB] border border-[#EFE8DC] p-3 text-xs font-bold text-[#B8801C]"
+        >
+          {notice}
+        </p>
+      )}
 
       <form
         onSubmit={(event) => {
@@ -731,9 +892,26 @@ function StaffPanel() {
         }}
         className="grid gap-3 rounded-2xl border border-[#EFE8DC] bg-white p-5 sm:grid-cols-2 lg:grid-cols-4 shadow-xs"
       >
-        <Text label="اسم الموظف / المستخدم *" type="text" value={username} onChange={setUsername} required />
-        <Text label="كلمة المرور (8 أحرف+) *" type="password" value={password} onChange={setPassword} required />
-        <Text label="رقم الموظف (موظف #1, #2...)" type="number" value={newStaffCode} onChange={setNewStaffCode} />
+        <Text
+          label="اسم الموظف / المستخدم *"
+          type="text"
+          value={username}
+          onChange={setUsername}
+          required
+        />
+        <Text
+          label="كلمة المرور (8 أحرف+) *"
+          type="password"
+          value={password}
+          onChange={setPassword}
+          required
+        />
+        <Text
+          label="رقم الموظف (موظف #1, #2...)"
+          type="number"
+          value={newStaffCode}
+          onChange={setNewStaffCode}
+        />
         <label className="block text-xs font-bold text-[#26160F]">
           الدور والصلاحية *
           <select
@@ -742,7 +920,9 @@ function StaffPanel() {
             className="mt-1 min-h-11 w-full rounded-xl border border-[#EFE8DC] bg-[#FDFBF7] px-3 text-xs font-bold text-[#26160F]"
           >
             {(Object.keys(ROLE_LABEL) as StaffRole[]).map((key) => (
-              <option key={key} value={key}>{ROLE_LABEL[key]}</option>
+              <option key={key} value={key}>
+                {ROLE_LABEL[key]}
+              </option>
             ))}
           </select>
         </label>
@@ -756,7 +936,11 @@ function StaffPanel() {
             disabled={createMutation.isPending || password.length < 8 || !username.trim()}
             className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#B8801C] px-5 text-xs font-bold text-white shadow-xs hover:bg-[#9E6C14] disabled:opacity-50"
           >
-            {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Plus className="h-4 w-4" aria-hidden />}
+            {createMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+            ) : (
+              <Plus className="h-4 w-4" aria-hidden />
+            )}
             إنشاء حساب موظف جديد
           </button>
         </div>
@@ -817,8 +1001,13 @@ function StaffRow({
           )}
         </div>
         <p className="text-xs font-medium text-[#4A3B32]/70 mt-0.5">
-          الدور الحالي: <span className="font-bold text-[#6E3917]">{member.roles.map((r) => ROLE_LABEL[r]).join(" · ") || "بدون دور"}</span>
-          {member.last_sign_in_at ? ` · آخر تسجيل دخول: ${member.last_sign_in_at.slice(0, 10)}` : ""}
+          الدور الحالي:{" "}
+          <span className="font-bold text-[#6E3917]">
+            {member.roles.map((r) => ROLE_LABEL[r]).join(" · ") || "بدون دور"}
+          </span>
+          {member.last_sign_in_at
+            ? ` · آخر تسجيل دخول: ${member.last_sign_in_at.slice(0, 10)}`
+            : ""}
         </p>
       </div>
 
@@ -829,7 +1018,9 @@ function StaffRow({
           className="min-h-10 rounded-xl border border-[#EFE8DC] bg-[#FDFBF7] px-2.5 text-xs font-bold text-[#26160F]"
         >
           {(Object.keys(ROLE_LABEL) as StaffRole[]).map((key) => (
-            <option key={key} value={key}>{ROLE_LABEL[key]}</option>
+            <option key={key} value={key}>
+              {ROLE_LABEL[key]}
+            </option>
           ))}
         </select>
 
@@ -910,7 +1101,8 @@ function AuthorizationPanel() {
   });
 
   const save = useMutation({
-    mutationFn: (input: { userId: string } & Partial<StaffAuthorizationRow>) => saveFn({ data: input }),
+    mutationFn: (input: { userId: string } & Partial<StaffAuthorizationRow>) =>
+      saveFn({ data: input }),
     onSuccess: () => {
       setError(null);
       void queryClient.invalidateQueries({ queryKey: ["admin", "authorizations"] });
@@ -940,26 +1132,36 @@ function AuthorizationPanel() {
           مصفوفة صلاحيات تعديل الأسعار والخصومات المباشرة
         </h2>
         <p className="text-xs text-[#4A3B32]/80 leading-relaxed">
-          قم بتفعيل أو إلغاء صلاحية تعديل الأسعار والخصومات لكل موظف مبيعات وسوشال ميديا، وحدّد أقصى نسبة خصم مسموحة.
+          قم بتفعيل أو إلغاء صلاحية تعديل الأسعار والخصومات لكل موظف مبيعات وسوشال ميديا، وحدّد أقصى
+          نسبة خصم مسموحة.
         </p>
 
         {error ? (
-          <p className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-xs font-bold text-rose-700">{error}</p>
+          <p className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-xs font-bold text-rose-700">
+            {error}
+          </p>
         ) : null}
 
         {rows.isPending ? (
           <p className="flex items-center gap-2 text-xs text-[#4A3B32]/70">
-            <Loader2 className="h-4 w-4 animate-spin text-[#B8801C]" aria-hidden="true" /> جارٍ التحميل…
+            <Loader2 className="h-4 w-4 animate-spin text-[#B8801C]" aria-hidden="true" /> جارٍ
+            التحميل…
           </p>
         ) : (
           <div className="space-y-3">
             {(rows.data ?? []).map((row) => (
-              <div key={row.user_id} className="rounded-2xl border border-[#EFE8DC] bg-[#FDFBF7] p-4 space-y-3">
+              <div
+                key={row.user_id}
+                className="rounded-2xl border border-[#EFE8DC] bg-[#FDFBF7] p-4 space-y-3"
+              >
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#EFE8DC] pb-2">
                   <span className="font-bold text-[#26160F] text-sm">{row.username}</span>
                   <div className="flex items-center gap-1">
                     {row.roles.map((role) => (
-                      <span key={role} className="rounded-full bg-[#FEF7EB] px-2.5 py-0.5 text-[10px] font-bold text-[#B8801C] border border-[#EFE8DC]">
+                      <span
+                        key={role}
+                        className="rounded-full bg-[#FEF7EB] px-2.5 py-0.5 text-[10px] font-bold text-[#B8801C] border border-[#EFE8DC]"
+                      >
                         {ROLE_LABEL[role as keyof typeof ROLE_LABEL] ?? role}
                       </span>
                     ))}
@@ -971,7 +1173,10 @@ function AuthorizationPanel() {
                   <button
                     type="button"
                     onClick={() =>
-                      save.mutate({ userId: row.user_id, allow_price_override: !row.allow_price_override })
+                      save.mutate({
+                        userId: row.user_id,
+                        allow_price_override: !row.allow_price_override,
+                      })
                     }
                     className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-xs font-bold transition-all ${
                       row.allow_price_override
@@ -979,15 +1184,26 @@ function AuthorizationPanel() {
                         : "border border-[#EFE8DC] bg-white text-[#4A3B32] hover:bg-[#FEF7EB]"
                     }`}
                   >
-                    {row.allow_price_override ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
-                    <span>{row.allow_price_override ? "تعديل الأسعار (مسموح) 🔓" : "تعديل الأسعار (مقيد) 🔒"}</span>
+                    {row.allow_price_override ? (
+                      <Unlock className="h-4 w-4" />
+                    ) : (
+                      <Lock className="h-4 w-4" />
+                    )}
+                    <span>
+                      {row.allow_price_override
+                        ? "تعديل الأسعار (مسموح) 🔓"
+                        : "تعديل الأسعار (مقيد) 🔒"}
+                    </span>
                   </button>
 
                   {/* Toggle Custom Discount */}
                   <button
                     type="button"
                     onClick={() =>
-                      save.mutate({ userId: row.user_id, allow_custom_discount: !row.allow_custom_discount })
+                      save.mutate({
+                        userId: row.user_id,
+                        allow_custom_discount: !row.allow_custom_discount,
+                      })
                     }
                     className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-xs font-bold transition-all ${
                       row.allow_custom_discount
@@ -995,8 +1211,16 @@ function AuthorizationPanel() {
                         : "border border-[#EFE8DC] bg-white text-[#4A3B32] hover:bg-[#FEF7EB]"
                     }`}
                   >
-                    {row.allow_custom_discount ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
-                    <span>{row.allow_custom_discount ? "الخصم الخاص (مسموح) 🏷️" : "الخصم الخاص (مقيد) 🔒"}</span>
+                    {row.allow_custom_discount ? (
+                      <Unlock className="h-4 w-4" />
+                    ) : (
+                      <Lock className="h-4 w-4" />
+                    )}
+                    <span>
+                      {row.allow_custom_discount
+                        ? "الخصم الخاص (مسموح) 🏷️"
+                        : "الخصم الخاص (مقيد) 🔒"}
+                    </span>
                   </button>
 
                   {/* Max Discount Input */}
@@ -1028,8 +1252,12 @@ function AuthorizationPanel() {
       <div className="rounded-3xl border border-[#EFE8DC] bg-white p-5 sm:p-6 shadow-xs space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EFE8DC] pb-3">
           <div>
-            <h3 className="text-base font-black text-[#26160F]">📜 سجل التدقيق الأمني والعمليات (Audit Log)</h3>
-            <p className="mt-0.5 text-xs text-[#4A3B32]/70">سجل توثيقي غير قابل للتعديل لجميع تعديلات الأسعار والخصومات.</p>
+            <h3 className="text-base font-black text-[#26160F]">
+              📜 سجل التدقيق الأمني والعمليات (Audit Log)
+            </h3>
+            <p className="mt-0.5 text-xs text-[#4A3B32]/70">
+              سجل توثيقي غير قابل للتعديل لجميع تعديلات الأسعار والخصومات.
+            </p>
           </div>
           <div className="relative max-w-xs w-full sm:w-auto">
             <Search className="pointer-events-none absolute inset-y-0 start-3 my-auto h-4 w-4 text-[#4A3B32]/50" />
@@ -1060,24 +1288,39 @@ function AuthorizationPanel() {
             <tbody className="divide-y divide-[#EFE8DC]">
               {filteredAudit.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="p-4 text-center text-xs text-[#4A3B32]/70">لا توجد سجلات مطابقة.</td>
+                  <td colSpan={8} className="p-4 text-center text-xs text-[#4A3B32]/70">
+                    لا توجد سجلات مطابقة.
+                  </td>
                 </tr>
               ) : (
                 filteredAudit.map((entry) => {
-                  const badge = AUDIT_ACTION_LABEL[entry.action] ?? { ar: entry.action, class: "bg-slate-100 text-slate-700" };
+                  const badge = AUDIT_ACTION_LABEL[entry.action] ?? {
+                    ar: entry.action,
+                    class: "bg-slate-100 text-slate-700",
+                  };
                   return (
                     <tr key={entry.id} className="hover:bg-[#FEF7EB]">
                       <td className="p-3 font-bold text-[#26160F]">{entry.staff_name}</td>
                       <td className="p-3 font-bold text-[#6E3917]">{entry.order_number ?? "—"}</td>
                       <td className="p-3">
-                        <span className={`inline-block rounded-full border px-2.5 py-0.5 text-[10px] font-extrabold ${badge.class}`}>
+                        <span
+                          className={`inline-block rounded-full border px-2.5 py-0.5 text-[10px] font-extrabold ${badge.class}`}
+                        >
                           {badge.ar}
                         </span>
                       </td>
-                      <td className="p-3 font-semibold text-[#4A3B32]">{entry.original_amount ? jod(entry.original_amount) : "—"}</td>
-                      <td className="p-3 font-bold text-[#26160F]">{entry.modified_amount ? jod(entry.modified_amount) : "—"}</td>
-                      <td className="p-3 font-bold text-[#B8801C]">{entry.discount_percent != null ? `${entry.discount_percent}%` : "—"}</td>
-                      <td className="p-3 text-xs text-[#4A3B32]">{entry.reason ?? "تعديل عبر النظام"}</td>
+                      <td className="p-3 font-semibold text-[#4A3B32]">
+                        {entry.original_amount ? jod(entry.original_amount) : "—"}
+                      </td>
+                      <td className="p-3 font-bold text-[#26160F]">
+                        {entry.modified_amount ? jod(entry.modified_amount) : "—"}
+                      </td>
+                      <td className="p-3 font-bold text-[#B8801C]">
+                        {entry.discount_percent != null ? `${entry.discount_percent}%` : "—"}
+                      </td>
+                      <td className="p-3 text-xs text-[#4A3B32]">
+                        {entry.reason ?? "تعديل عبر النظام"}
+                      </td>
                       <td className="p-3 text-xs text-[#4A3B32]/70" dir="ltr">
                         {new Date(entry.created_at).toLocaleString("ar-JO")}
                       </td>
@@ -1150,11 +1393,16 @@ function StoreCmsPanel() {
       <div className="rounded-3xl border border-[#EFE8DC] bg-white p-5 sm:p-6 shadow-xs space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EFE8DC] pb-3">
           <div>
-            <h2 id="cms-heading" className="text-base font-black text-[#26160F] flex items-center gap-2">
+            <h2
+              id="cms-heading"
+              className="text-base font-black text-[#26160F] flex items-center gap-2"
+            >
               <Sparkles className="h-5 w-5 text-[#B8801C]" />
               إدارة البانر العلوي للمتجر (Hero Banner Management)
             </h2>
-            <p className="text-xs text-[#4A3B32]/70 mt-0.5">تعديل ونشر البانر البارز في أعلى الصفحة الرئيسية للمتجر.</p>
+            <p className="text-xs text-[#4A3B32]/70 mt-0.5">
+              تعديل ونشر البانر البارز في أعلى الصفحة الرئيسية للمتجر.
+            </p>
           </div>
           <button
             type="button"
@@ -1162,7 +1410,11 @@ function StoreCmsPanel() {
             disabled={saveMutation.isPending}
             className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-[#B8801C] px-4 text-xs font-bold text-white shadow-xs hover:bg-[#9E6C14] cursor-pointer"
           >
-            {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            {saveMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4" />
+            )}
             <span>💾 حفظ ونشر البانر على الموقع / Save & Publish</span>
           </button>
         </div>
@@ -1248,9 +1500,21 @@ function StoreCmsPanel() {
                 <div className="space-y-1">
                   <span className="block text-xs font-black text-[#26160F]">{theme.nameAr}</span>
                   <div className="flex justify-center gap-1">
-                    <span className="h-3 w-3 rounded-full border border-black/10" style={{ backgroundColor: theme.cardBg }} title="خلفية الصورة" />
-                    <span className="h-3 w-3 rounded-full border border-black/10" style={{ backgroundColor: theme.main }} title="اللون الرئيسي" />
-                    <span className="h-3 w-3 rounded-full border border-black/10" style={{ backgroundColor: theme.secondary }} title="النصوص واللمسات" />
+                    <span
+                      className="h-3 w-3 rounded-full border border-black/10"
+                      style={{ backgroundColor: theme.cardBg }}
+                      title="خلفية الصورة"
+                    />
+                    <span
+                      className="h-3 w-3 rounded-full border border-black/10"
+                      style={{ backgroundColor: theme.main }}
+                      title="اللون الرئيسي"
+                    />
+                    <span
+                      className="h-3 w-3 rounded-full border border-black/10"
+                      style={{ backgroundColor: theme.secondary }}
+                      title="النصوص واللمسات"
+                    />
                   </div>
                 </div>
               </button>
@@ -1272,7 +1536,11 @@ function StoreOperationsPanel() {
   const [wiping, setWiping] = useState(false);
 
   // CliQ accounts management
-  const { accounts: cliqAccounts, saveAll: saveCliqAccounts, resetAll: resetCliqAccounts } = useCliqAccounts();
+  const {
+    accounts: cliqAccounts,
+    saveAll: saveCliqAccounts,
+    resetAll: resetCliqAccounts,
+  } = useCliqAccounts();
   const [localCliqAccounts, setLocalCliqAccounts] = useState<CliqAccountConfig[]>(cliqAccounts);
 
   useEffect(() => {
@@ -1281,7 +1549,7 @@ function StoreOperationsPanel() {
 
   const handleCliqLabelChange = (id: string, newLabel: string) => {
     setLocalCliqAccounts((prev) =>
-      prev.map((acc) => (acc.id === id ? { ...acc, label: newLabel } : acc))
+      prev.map((acc) => (acc.id === id ? { ...acc, label: newLabel } : acc)),
     );
   };
 
@@ -1297,6 +1565,36 @@ function StoreOperationsPanel() {
       toast.success("تمت استعادة الأسماء الافتراضية لحسابات كليك 🔄");
     }
   };
+
+  // Delivery Zones management
+  const { zones: deliveryZones, setZones: saveDeliveryZones, resetZones } = useDeliveryZonesStore();
+  const [localZones, setLocalZones] = useState<DeliveryZone[]>(deliveryZones);
+
+  useEffect(() => {
+    setLocalZones(deliveryZones);
+  }, [deliveryZones]);
+
+  const handleZoneChange = (index: number, field: keyof DeliveryZone, value: any) => {
+    setLocalZones((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  };
+
+  const handleSaveZones = () => {
+    saveDeliveryZones(localZones);
+    toast.success("تم حفظ أسعار ومناطق التوصيل بنجاح وستُطبَّق على الطلبات الجديدة 🚗");
+  };
+
+  const handleResetZones = () => {
+    if (window.confirm("هل تريد استعادة أسعار التوصيل الافتراضية؟")) {
+      resetZones();
+      // The useEffect will catch the update from store and update local state automatically
+      toast.success("تمت استعادة أسعار التوصيل الافتراضية 🔄");
+    }
+  };
+
 
   const handleSaveSettings = () => {
     toast.success("تم حفظ بيانات الفرع الرئيسي بنجاح 🌸");
@@ -1329,7 +1627,10 @@ function StoreOperationsPanel() {
       {/* Branch Information */}
       <div className="rounded-3xl border border-[#EFE8DC] bg-white p-5 sm:p-6 shadow-xs space-y-4">
         <div className="flex items-center justify-between border-b border-[#EFE8DC] pb-3">
-          <h2 id="settings-heading" className="text-base font-black text-[#26160F] flex items-center gap-2">
+          <h2
+            id="settings-heading"
+            className="text-base font-black text-[#26160F] flex items-center gap-2"
+          >
             <Building2 className="h-5 w-5 text-[#B8801C]" />
             بيانات فرع عمّان الرئيسي (Single Physical Branch)
           </h2>
@@ -1376,7 +1677,8 @@ function StoreOperationsPanel() {
               <span>إعدادات وتعديل أسماء حسابات كليك (شاشة إنشاء الطلب)</span>
             </h3>
             <p className="text-xs text-[#4A3B32]/80 mt-1">
-              تعديل النصوص والأسماء التي تظهر داخل أيقونات كليك عند اختيار (دفع كامل أو عربون عبر كليك)
+              تعديل النصوص والأسماء التي تظهر داخل أيقونات كليك عند اختيار (دفع كامل أو عربون عبر
+              كليك)
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -1402,14 +1704,22 @@ function StoreOperationsPanel() {
         {/* Inputs for accounts */}
         <div className="grid gap-4 sm:grid-cols-3">
           {localCliqAccounts.map((acc, idx) => (
-            <div key={acc.id} className="rounded-2xl border border-[#EFE8DC] bg-[#FDFBF7] p-4 space-y-3">
+            <div
+              key={acc.id}
+              className="rounded-2xl border border-[#EFE8DC] bg-[#FDFBF7] p-4 space-y-3"
+            >
               <div className="flex items-center gap-2.5">
                 <span className="text-2xl p-2 rounded-xl bg-white border border-[#EFE8DC] shadow-xs">
                   {acc.icon}
                 </span>
                 <div>
                   <span className="text-xs font-black text-[#26160F] block">
-                    الخيار {idx + 1}: {acc.id === "staff" ? "حساب موظفة" : acc.id === "shop" ? "حساب المحل" : "الحساب الرئيسي"}
+                    الخيار {idx + 1}:{" "}
+                    {acc.id === "staff"
+                      ? "حساب موظفة"
+                      : acc.id === "shop"
+                        ? "حساب المحل"
+                        : "الحساب الرئيسي"}
                   </span>
                   <span className="text-[10px] text-muted-foreground">معرف الحساب: {acc.id}</span>
                 </div>
@@ -1454,22 +1764,84 @@ function StoreOperationsPanel() {
 
       {/* Delivery Zones */}
       <div className="rounded-3xl border border-[#EFE8DC] bg-white p-5 sm:p-6 shadow-xs space-y-4">
-        <h3 className="text-base font-black text-[#26160F] flex items-center gap-2">
-          <MapPin className="h-5 w-5 text-[#B8801C]" />
-          مناطق وأجور التوصيل المعتمدة في عمّان (Amman Delivery Zones)
-        </h3>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-[#EFE8DC] pb-3">
+          <div>
+            <h3 className="text-base font-black text-[#26160F] flex items-center gap-2">
+              <MapPin className="h-5 w-5 text-[#B8801C]" />
+              مناطق وأجور التوصيل المعتمدة في عمّان (Amman Delivery Zones)
+            </h3>
+            <p className="text-xs text-[#4A3B32]/80 mt-1">
+              تعديل أسعار التوصيل حسب المناطق. اكتب المناطق مفصولة بفاصلة (،).
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleResetZones}
+              className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              <span>استعادة الأساسية</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveZones}
+              className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-[#8B4513] px-4 text-xs font-bold text-white shadow-xs hover:bg-[#6D340E] transition cursor-pointer"
+            >
+              <Save className="h-3.5 w-3.5" />
+              <span>حفظ خيارات التوصيل</span>
+            </button>
+          </div>
+        </div>
+
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {DELIVERY_ZONES.map((zone) => (
-            <div key={zone.labelAr} className="rounded-2xl border border-[#EFE8DC] bg-[#FDFBF7] p-4 space-y-2">
-              <div className="flex items-center justify-between border-b border-[#EFE8DC] pb-2">
-                <span className="font-bold text-[#26160F] text-xs">{zone.labelAr}</span>
-                <span className="rounded-full bg-[#FEF7EB] px-2.5 py-0.5 text-xs font-extrabold text-[#B8801C] border border-[#EFE8DC]">
-                  {jod(zone.fee)}
-                </span>
+          {localZones.map((zone, idx) => (
+            <div
+              key={idx}
+              className="rounded-2xl border border-[#EFE8DC] bg-[#FDFBF7] p-4 space-y-3"
+            >
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={zone.labelAr}
+                  onChange={(e) => handleZoneChange(idx, "labelAr", e.target.value)}
+                  className="w-full h-9 rounded-lg border border-[#EFE8DC] bg-white px-2 text-xs font-bold text-[#26160F] focus:outline-none focus:ring-2 focus:ring-[#B8801C]"
+                  placeholder="اسم الفئة (عربي)"
+                />
+                <div className="flex items-center gap-1 shrink-0 rounded-lg border border-[#EFE8DC] bg-white px-2 h-9">
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    value={zone.fee}
+                    onChange={(e) => handleZoneChange(idx, "fee", parseFloat(e.target.value) || 0)}
+                    className="w-14 text-center text-xs font-bold text-[#B8801C] outline-none"
+                  />
+                  <span className="text-xs font-bold text-[#B8801C]">د.أ</span>
+                </div>
               </div>
-              <p className="text-[11px] text-[#4A3B32]/80 leading-relaxed">
-                المناطق: {zone.areas.join("، ")}
-              </p>
+
+              <div>
+                <label className="block text-[10px] font-bold text-[#4A3B32] mb-1">
+                  المناطق المشمولة:
+                </label>
+                <textarea
+                  value={zone.areas.join("، ")}
+                  onChange={(e) =>
+                    handleZoneChange(
+                      idx,
+                      "areas",
+                      e.target.value
+                        .split("،")
+                        .map((s) => s.trim())
+                        .filter(Boolean),
+                    )
+                  }
+                  rows={3}
+                  className="w-full rounded-lg border border-[#EFE8DC] bg-white p-2 text-[11px] text-[#4A3B32] leading-relaxed focus:outline-none focus:ring-2 focus:ring-[#B8801C] resize-none"
+                  placeholder="ماركا، طبربور، عبدون..."
+                />
+              </div>
             </div>
           ))}
         </div>
@@ -1498,7 +1870,8 @@ function StoreOperationsPanel() {
           </button>
         </div>
         <p className="text-[11px] text-rose-800">
-          ⚠️ تحذير: هذا الإجراء يحذف جميع سجلات جدول الطلبات، بنود الأصناف، وتعديلات الطلبات بشكل دائم ولا يمكن التراجع عنه.
+          ⚠️ تحذير: هذا الإجراء يحذف جميع سجلات جدول الطلبات، بنود الأصناف، وتعديلات الطلبات بشكل
+          دائم ولا يمكن التراجع عنه.
         </p>
       </div>
     </section>

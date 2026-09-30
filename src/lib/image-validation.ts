@@ -25,7 +25,8 @@ export const UPLOAD_SIZE_ERROR = () =>
 
 /** Detects the real type from the file header, ignoring name and MIME claims. */
 export function sniffImageType(bytes: Uint8Array): "jpeg" | "png" | "webp" | null {
-  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "jpeg";
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff)
+    return "jpeg";
   if (
     bytes.length >= 8 &&
     bytes[0] === 0x89 &&

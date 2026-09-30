@@ -38,7 +38,10 @@ const clean = (value: unknown, max: number, label: string, required = false) => 
 };
 
 const slugify = (value: string) =>
-  value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || `product-${Date.now()}`;
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "") || `product-${Date.now()}`;
 
 /* --------------------------------- reading --------------------------------- */
 
@@ -86,11 +89,18 @@ export const saveBanner = createServerFn({ method: "POST" })
   }))
   .handler(async ({ data, context }) => {
     await assertRole(context, CMS_ROLES);
-    const existing = await context.supabase.from("storefront_banner").select("id").limit(1).maybeSingle();
+    const existing = await context.supabase
+      .from("storefront_banner")
+      .select("id")
+      .limit(1)
+      .maybeSingle();
     if (existing.error) throw new Error(existing.error.message);
 
     const { error } = existing.data?.id
-      ? await context.supabase.from("storefront_banner").update(data as never).eq("id", existing.data.id)
+      ? await context.supabase
+          .from("storefront_banner")
+          .update(data as never)
+          .eq("id", existing.data.id)
       : await context.supabase.from("storefront_banner").insert(data as never);
     if (error) throw new Error(error.message);
     return { ok: true };
@@ -126,7 +136,10 @@ export const saveCategory = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertRole(context, CMS_ROLES);
     const { error } = data.id
-      ? await context.supabase.from("storefront_categories").update(data.row as never).eq("id", data.id)
+      ? await context.supabase
+          .from("storefront_categories")
+          .update(data.row as never)
+          .eq("id", data.id)
       : await context.supabase.from("storefront_categories").insert(data.row as never);
     if (error) throw new Error(error.message);
     return { ok: true };
@@ -140,7 +153,10 @@ export const deleteCategory = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     await assertRole(context, CMS_ROLES);
-    const { error } = await context.supabase.from("storefront_categories").delete().eq("id", data.id);
+    const { error } = await context.supabase
+      .from("storefront_categories")
+      .delete()
+      .eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -149,7 +165,9 @@ export const deleteCategory = createServerFn({ method: "POST" })
 export const reorderCategories = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { ids: string[] }) => {
-    const ids = Array.isArray(input?.ids) ? input.ids.filter((id) => typeof id === "string" && id) : [];
+    const ids = Array.isArray(input?.ids)
+      ? input.ids.filter((id) => typeof id === "string" && id)
+      : [];
     if (ids.length === 0) throw new Error("لا توجد أقسام · No categories to reorder");
     if (ids.length > 60) throw new Error("عدد الأقسام كبير جداً · Too many categories");
     return { ids };
@@ -224,7 +242,10 @@ export const saveStorefrontProduct = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<StorefrontProduct> => {
     await assertRole(context, CMS_ROLES);
     const query = data.id
-      ? context.supabase.from("products").update(data.row as never).eq("id", data.id)
+      ? context.supabase
+          .from("products")
+          .update(data.row as never)
+          .eq("id", data.id)
       : context.supabase.from("products").insert(data.row as never);
     const { data: saved, error } = await query.select(PRODUCT_SELECT).single();
     if (error) throw new Error(error.message);
@@ -241,8 +262,8 @@ export const setProductVisibility = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<StorefrontProduct> => {
     await assertRole(context, CMS_ROLES);
     const patch: Record<string, boolean> = {};
-    if (typeof data.is_available === "boolean") patch['is_available'] = data.is_available;
-    if (typeof data.is_popular === "boolean") patch['is_popular'] = data.is_popular;
+    if (typeof data.is_available === "boolean") patch["is_available"] = data.is_available;
+    if (typeof data.is_popular === "boolean") patch["is_popular"] = data.is_popular;
     if (Object.keys(patch).length === 0) throw new Error("لا يوجد تغيير · Nothing to update");
 
     const { data: saved, error } = await context.supabase
@@ -278,7 +299,8 @@ export const uploadSiteImage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { data_url: string; folder?: string }) => {
     const image = decodeValidatedImage(input?.data_url, MAX_IMAGE_BYTES);
-    const folder = input?.folder === "banner" || input?.folder === "categories" ? input.folder : "products";
+    const folder =
+      input?.folder === "banner" || input?.folder === "categories" ? input.folder : "products";
     return { ...image, folder };
   })
   .handler(async ({ data, context }) => {
@@ -296,7 +318,9 @@ export const uploadSiteImage = createServerFn({ method: "POST" })
       .from(SITE_BUCKET)
       .createSignedUrl(path, SIGNED_URL_TTL);
     if (signError || !signed?.signedUrl) {
-      throw new Error(signError?.message ?? "تعذّر إنشاء رابط الصورة · Could not create the image link");
+      throw new Error(
+        signError?.message ?? "تعذّر إنشاء رابط الصورة · Could not create the image link",
+      );
     }
     return { url: signed.signedUrl, path };
   });

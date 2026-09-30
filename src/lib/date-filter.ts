@@ -25,11 +25,7 @@ export const isoDay = (offsetDays = 0): string => {
 export type CustomRange = { from: string; to: string };
 
 /** True when a requested date (YYYY-MM-DD) belongs to the chosen filter. */
-export function matchesDateFilter(
-  date: string,
-  key: DateFilterKey,
-  custom?: CustomRange,
-): boolean {
+export function matchesDateFilter(date: string, key: DateFilterKey, custom?: CustomRange): boolean {
   const today = isoDay(0);
   switch (key) {
     case "today":

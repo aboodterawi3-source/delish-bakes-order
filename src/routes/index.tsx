@@ -2,14 +2,19 @@ import { createFileRoute } from "@tanstack/react-router";
 import { WelcomeView } from "@/components/delish/WelcomeView";
 
 const TITLE = "DELISH Bakes | Luxury Bakery in Amman";
-const DESCRIPTION = "Handcrafted celebration cakes, artisan pastries, and signature macarons from Delish Cake & Bake in Amman, Jordan.";
+const DESCRIPTION =
+  "Handcrafted celebration cakes, artisan pastries, and signature macarons from Delish Cake & Bake in Amman, Jordan.";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: TITLE },
       { name: "description", content: DESCRIPTION },
-      { name: "keywords", content: "Delish Jordan, custom cakes Amman, pastries Amman, luxury bakery Jordan, macarons" },
+      {
+        name: "keywords",
+        content:
+          "Delish Jordan, custom cakes Amman, pastries Amman, luxury bakery Jordan, macarons",
+      },
       { property: "og:title", content: TITLE },
       { property: "og:description", content: DESCRIPTION },
       { property: "og:type", content: "website" },
