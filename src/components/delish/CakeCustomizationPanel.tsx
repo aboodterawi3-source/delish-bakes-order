@@ -192,12 +192,14 @@ export function CakeCustomizationPanel({
   value,
   onChange,
   hideGift = false,
+  hidePhoto = false,
   errors = {},
   onClearError,
 }: {
   value: Customization;
   onChange: (next: Customization) => void;
   hideGift?: boolean;
+  hidePhoto?: boolean;
   errors?: CakeCustomizationErrors;
   onClearError?: (key: keyof CakeCustomizationErrors) => void;
 }) {
@@ -207,12 +209,6 @@ export function CakeCustomizationPanel({
   const clear = (key: keyof CakeCustomizationErrors) => {
     if (onClearError) onClearError(key);
   };
-
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-  const [savedSize, setSavedSize] = useState<{ before: number; after: number } | null>(null);
-  const upload = useServerFn(uploadDesignImage);
 
   // Derive active modes
   const candleMode =
@@ -226,9 +222,8 @@ export function CakeCustomizationPanel({
 
   const [balloonMode, setBalloonMode] = useState<"none" | "yes">(value.balloons ? "yes" : "none");
   const [topperMode, setTopperMode] = useState<"none" | "yes">(value.topper ? "yes" : "none");
-  const [photoMode, setPhotoMode] = useState<"none" | "yes">(value.designImageUrl ? "yes" : "none");
 
-  // Keep the three yes/no switches in step with the values the parent owns, so a
+  // Keep the two yes/no switches in step with the values the parent owns, so a
   // reset, a prefilled order or a product switch cannot leave a confirmed "no
   // balloons" line sitting next to balloons the customer asked for.
   useEffect(() => {
@@ -237,27 +232,6 @@ export function CakeCustomizationPanel({
   useEffect(() => {
     setTopperMode(value.topper ? "yes" : "none");
   }, [value.topper]);
-  useEffect(() => {
-    setPhotoMode(value.designImageUrl ? "yes" : "none");
-  }, [value.designImageUrl]);
-
-  const handleFile = async (file: File | undefined) => {
-    if (!file) return;
-    setUploadError(null);
-    setUploading(true);
-    try {
-      const converted = await convertToWebp(file);
-      const saved = await upload({ data: { data_url: converted.dataUrl } });
-      onChange({ ...value, designImageUrl: saved.url });
-      setSavedSize({ before: converted.originalBytes, after: converted.bytes });
-      clear("photo");
-    } catch (error) {
-      setUploadError(error instanceof Error ? error.message : "تعذّر رفع الصورة · Upload failed");
-    } finally {
-      setUploading(false);
-      if (fileRef.current) fileRef.current.value = "";
-    }
-  };
 
   return (
     <div className="space-y-5">
@@ -703,127 +677,15 @@ export function CakeCustomizationPanel({
         ) : null}
       </div>
 
-      {/* 5. REFERENCE PHOTO */}
-      <div
-        id="custom-field-photo"
-        className={`rounded-2xl border p-4 transition-all ${
-          errors?.photo ? "border-red-400 bg-red-50/30 shadow-xs" : "border-slate-200/90 bg-white"
-        }`}
-      >
-        <div className="flex items-center justify-between mb-2">
-          <label className="block text-sm font-bold text-[#3E2723]">
-            الصورة المرجعية للتصميم · Reference Photo <span className="text-red-500">*</span>
-          </label>
-          <span className="text-[11px] font-bold text-amber-800 bg-amber-100/70 px-2 py-0.5 rounded-md">
-            إجباري *
-          </span>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2 mb-2.5">
-          <button
-            type="button"
-            onClick={() => {
-              setPhotoMode("none");
-              onChange({ ...value, designImageUrl: null });
-              setSavedSize(null);
-              clear("photo");
-            }}
-            className={`min-h-11 rounded-xl px-3 py-2 text-xs font-bold transition-all ${
-              photoMode === "none"
-                ? "border-2 border-[#8B4513] bg-[#8B4513] text-white shadow-xs"
-                : "border border-slate-200 bg-[#F9FBFC] text-[#5D2E17] hover:bg-amber-50"
-            }`}
-          >
-            🚫 بدون صورة مرجعية
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setPhotoMode("yes");
-            }}
-            className={`min-h-11 rounded-xl px-3 py-2 text-xs font-bold transition-all ${
-              photoMode === "yes"
-                ? "border-2 border-[#8B4513] bg-[#8B4513] text-white shadow-xs"
-                : "border border-slate-200 bg-[#F9FBFC] text-[#5D2E17] hover:bg-amber-50"
-            }`}
-          >
-            📷 إرفاق صورة تصميم
-          </button>
-        </div>
-
-        {photoMode === "none" ? (
-          <div className="rounded-xl border border-slate-200 bg-[#F9FBFC] p-3 text-xs font-semibold text-slate-600">
-            ✓ تم تأكيد الاختيار: طلب الكيك بالتصميم القياسي المتوفر (بدون صورة خاصة).
-          </div>
-        ) : (
-          <div
-            className={`rounded-xl border p-4 bg-[#F9FBFC] ${
-              errors?.photo ? "border-red-400 bg-red-50/20" : "border-slate-200"
-            }`}
-          >
-            <input
-              ref={fileRef}
-              type="file"
-              accept={IMAGE_ACCEPT}
-              className="sr-only"
-              onChange={(e) => void handleFile(e.target.files?.[0])}
-            />
-            {value.designImageUrl ? (
-              <div className="space-y-2">
-                <img
-                  src={value.designImageUrl}
-                  alt="التصميم المرجعي"
-                  className="max-h-56 w-full rounded-xl object-cover border border-amber-200"
-                />
-                {savedSize && (
-                  <p className="text-[11px] text-[#5A4A42]">
-                    تم ضغط الصورة تلقائياً {formatBytes(savedSize.before)} ←{" "}
-                    {formatBytes(savedSize.after)} WebP
-                  </p>
-                )}
-                <button
-                  type="button"
-                  onClick={() => {
-                    onChange({ ...value, designImageUrl: null });
-                    setSavedSize(null);
-                  }}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-50"
-                >
-                  <Trash2 className="h-3.5 w-3.5" /> إزالة الصورة
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                disabled={uploading}
-                className="flex w-full flex-col items-center gap-2 rounded-xl border border-dashed border-[#B8860B] bg-white p-6 text-[#7B3F00] transition hover:bg-amber-50/50 disabled:opacity-60"
-              >
-                {uploading ? (
-                  <Loader2 className="h-6 w-6 animate-spin" />
-                ) : (
-                  <ImageUp className="h-6 w-6" />
-                )}
-                <span className="text-xs font-bold">
-                  {uploading
-                    ? "جاري معالجة الصورة وتحويلها لـ WebP…"
-                    : "اضغط هنا لاختيار صورة التصميم (JPG, PNG, WebP)"}
-                </span>
-              </button>
-            )}
-            {uploadError && (
-              <p className="mt-2 text-xs font-semibold text-red-600">{uploadError}</p>
-            )}
-          </div>
-        )}
-
-        {errors?.photo ? (
-          <p className="mt-1.5 flex items-center gap-1 text-xs font-bold text-red-600 animate-pulse">
-            <AlertCircle className="h-4 w-4 shrink-0" />
-            {errors.photo}
-          </p>
-        ) : null}
-      </div>
+      {/* 5. REFERENCE PHOTO — hosted by the screen when hidePhoto is set */}
+      {!hidePhoto && (
+        <DesignPhotoSection
+          value={value}
+          onChange={onChange}
+          errors={errors}
+          onClearError={onClearError}
+        />
+      )}
 
       {/* 6. SPECIAL NOTES */}
       <div
@@ -945,6 +807,178 @@ export function CakeCustomizationPanel({
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * The reference-photo step on its own, so an order-entry screen can place it
+ * directly under the order name instead of inside the cake customisation list.
+ * Same markup, same state and same upload behaviour as the panel section.
+ */
+export function DesignPhotoSection({
+  value,
+  onChange,
+  errors = {},
+  onClearError,
+}: {
+  value: Customization;
+  onChange: (next: Customization) => void;
+  errors?: CakeCustomizationErrors;
+  onClearError?: ((key: keyof CakeCustomizationErrors) => void) | undefined;
+}) {
+  const clear = (key: keyof CakeCustomizationErrors) => {
+    if (onClearError) onClearError(key);
+  };
+
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [savedSize, setSavedSize] = useState<{ before: number; after: number } | null>(null);
+  const upload = useServerFn(uploadDesignImage);
+
+  const [photoMode, setPhotoMode] = useState<"none" | "yes">(value.designImageUrl ? "yes" : "none");
+
+  useEffect(() => {
+    setPhotoMode(value.designImageUrl ? "yes" : "none");
+  }, [value.designImageUrl]);
+
+  const handleFile = async (file: File | undefined) => {
+    if (!file) return;
+    setUploadError(null);
+    setUploading(true);
+    try {
+      const converted = await convertToWebp(file);
+      const saved = await upload({ data: { data_url: converted.dataUrl } });
+      onChange({ ...value, designImageUrl: saved.url });
+      setSavedSize({ before: converted.originalBytes, after: converted.bytes });
+      clear("photo");
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : "تعذّر رفع الصورة · Upload failed");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
+  return (
+    <div
+      id="custom-field-photo"
+      className={`rounded-2xl border p-4 transition-all ${
+        errors?.photo ? "border-red-400 bg-red-50/30 shadow-xs" : "border-slate-200/90 bg-white"
+      }`}
+    >
+      <div className="flex items-center justify-between mb-2">
+        <label className="block text-sm font-bold text-[#3E2723]">
+          الصورة المرجعية للتصميم · Reference Photo <span className="text-red-500">*</span>
+        </label>
+        <span className="text-[11px] font-bold text-amber-800 bg-amber-100/70 px-2 py-0.5 rounded-md">
+          إجباري *
+        </span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 mb-2.5">
+        <button
+          type="button"
+          onClick={() => {
+            setPhotoMode("none");
+            onChange({ ...value, designImageUrl: null });
+            setSavedSize(null);
+            clear("photo");
+          }}
+          className={`min-h-11 rounded-xl px-3 py-2 text-xs font-bold transition-all ${
+            photoMode === "none"
+              ? "border-2 border-[#8B4513] bg-[#8B4513] text-white shadow-xs"
+              : "border border-slate-200 bg-[#F9FBFC] text-[#5D2E17] hover:bg-amber-50"
+          }`}
+        >
+          🚫 بدون صورة مرجعية
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setPhotoMode("yes");
+          }}
+          className={`min-h-11 rounded-xl px-3 py-2 text-xs font-bold transition-all ${
+            photoMode === "yes"
+              ? "border-2 border-[#8B4513] bg-[#8B4513] text-white shadow-xs"
+              : "border border-slate-200 bg-[#F9FBFC] text-[#5D2E17] hover:bg-amber-50"
+          }`}
+        >
+          📷 إرفاق صورة تصميم
+        </button>
+      </div>
+
+      {photoMode === "none" ? (
+        <div className="rounded-xl border border-slate-200 bg-[#F9FBFC] p-3 text-xs font-semibold text-slate-600">
+          ✓ تم تأكيد الاختيار: طلب الكيك بالتصميم القياسي المتوفر (بدون صورة خاصة).
+        </div>
+      ) : (
+        <div
+          className={`rounded-xl border p-4 bg-[#F9FBFC] ${
+            errors?.photo ? "border-red-400 bg-red-50/20" : "border-slate-200"
+          }`}
+        >
+          <input
+            ref={fileRef}
+            type="file"
+            accept={IMAGE_ACCEPT}
+            className="sr-only"
+            onChange={(e) => void handleFile(e.target.files?.[0])}
+          />
+          {value.designImageUrl ? (
+            <div className="space-y-2">
+              <img
+                src={value.designImageUrl}
+                alt="التصميم المرجعي"
+                className="max-h-56 w-full rounded-xl object-cover border border-amber-200"
+              />
+              {savedSize && (
+                <p className="text-[11px] text-[#5A4A42]">
+                  تم ضغط الصورة تلقائياً {formatBytes(savedSize.before)} ←{" "}
+                  {formatBytes(savedSize.after)} WebP
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  onChange({ ...value, designImageUrl: null });
+                  setSavedSize(null);
+                }}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-50"
+              >
+                <Trash2 className="h-3.5 w-3.5" /> إزالة الصورة
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading}
+              className="flex w-full flex-col items-center gap-2 rounded-xl border border-dashed border-[#B8860B] bg-white p-6 text-[#7B3F00] transition hover:bg-amber-50/50 disabled:opacity-60"
+            >
+              {uploading ? (
+                <Loader2 className="h-6 w-6 animate-spin" />
+              ) : (
+                <ImageUp className="h-6 w-6" />
+              )}
+              <span className="text-xs font-bold">
+                {uploading
+                  ? "جاري معالجة الصورة وتحويلها لـ WebP…"
+                  : "اضغط هنا لاختيار صورة التصميم (JPG, PNG, WebP)"}
+              </span>
+            </button>
+          )}
+          {uploadError && <p className="mt-2 text-xs font-semibold text-red-600">{uploadError}</p>}
+        </div>
+      )}
+
+      {errors?.photo ? (
+        <p className="mt-1.5 flex items-center gap-1 text-xs font-bold text-red-600 animate-pulse">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          {errors.photo}
+        </p>
+      ) : null}
     </div>
   );
 }

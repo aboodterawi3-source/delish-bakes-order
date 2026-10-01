@@ -35,6 +35,7 @@ import { useStorefrontContent } from "@/hooks/use-storefront-content";
 import type { StorefrontProduct, SizePrice } from "@/lib/storefront-content";
 import {
   CakeCustomizationPanel,
+  DesignPhotoSection,
   customizationSummary,
   emptyCustomization,
   type CakeCustomizationErrors,
@@ -831,6 +832,14 @@ export function SocialOrderEntryForm({
           </div>
         )}
 
+        {/* DESIGN REFERENCE PHOTO — sits directly under the order name */}
+        <DesignPhotoSection
+          value={customization}
+          onChange={setCustomization}
+          errors={customErrors}
+          onClearError={(key) => setCustomErrors((prev) => ({ ...prev, [key]: undefined }))}
+        />
+
         {/* STOREFRONT MENU / CATALOG SELECTOR */}
         <div className="rounded-2xl border border-[#B8860B]/30 bg-[#FFFDF9] p-3.5 space-y-3 shadow-xs">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#B8860B]/20 pb-2">
@@ -1010,6 +1019,7 @@ export function SocialOrderEntryForm({
             value={customization}
             onChange={setCustomization}
             hideGift={true}
+            hidePhoto={true}
             errors={customErrors}
             onClearError={(key) => setCustomErrors((prev) => ({ ...prev, [key]: undefined }))}
           />
