@@ -3,6 +3,7 @@ import { publicError } from "@/lib/public-error";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertRole, getRoles, type StaffRoleName } from "@/lib/role-guard";
 import { emailToUsername } from "@/lib/username";
+import type { Ctx } from "@/lib/server-shared";
 
 const SALES_ROLES: StaffRoleName[] = ["sales", "admin"];
 
@@ -43,7 +44,7 @@ const NO_AUTHORIZATION: StaffAuthorization = {
   max_discount_percent: 0,
 };
 
-type Ctx = { supabase: any; userId: string; claims: Record<string, unknown> };
+
 
 const staffName = (context: Ctx) =>
   emailToUsername(

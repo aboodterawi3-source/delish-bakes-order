@@ -9,10 +9,17 @@ export const CURRENCY_SYMBOL: Record<CurrencyLang, string> = {
   en: "JOD",
 };
 
-export function formatJod(value: number, lang: CurrencyLang = "ar"): string {
-  const amount = Number.isFinite(value) ? value : 0;
+export function formatJod(
+  value: number | null | undefined,
+  lang: CurrencyLang = "ar",
+): string {
+  const num = typeof value === "number" ? value : Number(value);
+  const amount = Number.isFinite(num) ? num : 0;
   return `${amount.toFixed(2)} ${CURRENCY_SYMBOL[lang]}`;
 }
 
 /** Arabic-first label used on staff screens, which are always RTL. */
-export const jod = (value: number) => formatJod(value, "ar");
+export const jod = (value: number | null | undefined) => formatJod(value, "ar");
+
+/** Shorthand alias used across cashier and staff screens. */
+export const jd = jod;

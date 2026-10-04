@@ -15,8 +15,7 @@ import { toast } from "sonner";
 
 import type { StorefrontProduct } from "@/lib/storefront-content";
 import type { SalesItem } from "@/lib/sales.functions";
-
-const jd = (val: number) => `${val.toFixed(2)} د.أ`;
+import { jd } from "@/lib/currency";
 
 // Predefined Bakery Attributes & Extras
 const PREDEFINED_SIZES = [

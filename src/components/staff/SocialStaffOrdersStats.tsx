@@ -16,21 +16,8 @@ import {
 } from "lucide-react";
 import { getSocialStaffStats, type SocialStaffStatsResult } from "@/lib/social.functions";
 import { jordanDay } from "@/lib/date-filter";
-
-const statusBadges: Record<string, { label: string; bg: string; text: string }> = {
-  new: { label: "جديد", bg: "bg-blue-50 border-blue-200", text: "text-blue-700" },
-  confirmed: { label: "مؤكد", bg: "bg-indigo-50 border-indigo-200", text: "text-indigo-700" },
-  baking: { label: "قيد التحضير", bg: "bg-amber-50 border-amber-200", text: "text-amber-700" },
-  ready: { label: "جاهز", bg: "bg-purple-50 border-purple-200", text: "text-purple-700" },
-  out_for_delivery: { label: "مع السائق", bg: "bg-sky-50 border-sky-200", text: "text-sky-700" },
-  delivered: {
-    label: "تم التسليم",
-    bg: "bg-emerald-50 border-emerald-200",
-    text: "text-emerald-700",
-  },
-  completed: { label: "مكتمل", bg: "bg-emerald-50 border-emerald-200", text: "text-emerald-700" },
-  cancelled: { label: "ملغي", bg: "bg-rose-50 border-rose-200", text: "text-rose-700" },
-};
+import { getWhatsAppChatUrl } from "@/lib/whatsapp";
+import { OrderStatusBadge } from "@/components/staff/OrderStatusBadge";
 
 export function SocialStaffOrdersStats() {
   const fetchStats = useServerFn(getSocialStaffStats);
@@ -271,14 +258,9 @@ export function SocialStaffOrdersStats() {
         ) : (
           <div className="grid gap-2.5">
             {filteredOrders.map((ord) => {
-              const badge = statusBadges[ord.status] || {
-                label: ord.status,
-                bg: "bg-slate-100 border-slate-200",
-                text: "text-slate-700",
-              };
-
-              const cleanPhone = ord.customer_phone.replace(/\D/g, "");
-              const waUrl = cleanPhone ? `https://wa.me/${cleanPhone}` : null;
+              const waUrl = ord.customer_phone
+                ? getWhatsAppChatUrl(ord.customer_phone)
+                : null;
 
               return (
                 <div
@@ -294,11 +276,7 @@ export function SocialStaffOrdersStats() {
                           {ord.order_name}
                         </span>
                       )}
-                      <span
-                        className={`rounded-full border px-2 py-0.5 text-[10px] font-black ${badge.bg} ${badge.text}`}
-                      >
-                        {badge.label}
-                      </span>
+                      <OrderStatusBadge status={ord.status} size="sm" />
                     </div>
 
                     <div className="flex items-center gap-2 text-[11px] font-bold text-muted-foreground">

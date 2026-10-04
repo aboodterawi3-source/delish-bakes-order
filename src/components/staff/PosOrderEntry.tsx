@@ -42,6 +42,7 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useStorefrontContent } from "@/hooks/use-storefront-content";
 import type { StorefrontProduct } from "@/lib/storefront-content";
 import { DELIVERY_ZONES, OTHER_GOVERNORATES_AREA, feeForArea } from "@/lib/delivery-zones";
+import { DeliveryZoneSelect } from "@/components/delish/DeliveryZoneSelect";
 import {
   createSalesOrder,
   getSalesOrders,
@@ -50,15 +51,10 @@ import {
   type SalesOrder,
 } from "@/lib/sales.functions";
 import { printReceipt, ORDERS_KEY } from "@/components/staff/OrdersWorkspace";
-import { esc, printDocument } from "@/lib/print";
+import { printKitchenTicket } from "@/lib/receipt-templates";
 import { orderLabel } from "@/lib/order-label";
-
-const jd = (val: number) => `${val.toFixed(2)} د.أ`;
-
-const todayIso = () => {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-};
+import { jd } from "@/lib/currency";
+import { todayIso } from "@/lib/date-filter";
 
 const defaultTimeSlot = () => {
   const now = new Date();
@@ -458,24 +454,19 @@ export function PosOrderEntry() {
       toast.error("السلة فارغة");
       return;
     }
-    const itemRows = cart
-      .map(
-        (it) =>
-          `<tr><td style="padding:6px 0;border-bottom:1px dashed #ccc;"><b>${it.quantity} × ${esc(it.name)}</b>${it.options.length ? `<br><small style="color:#555;">${esc(it.options.join(" • "))}</small>` : ""}${it.notes ? `<br><small style="color:#8b4513;">ملاحظة: ${esc(it.notes)}</small>` : ""}</td></tr>`,
-      )
-      .join("");
-    const body = `<h1 style="text-align:center;font-size:22px;margin-bottom:6px;font-weight:900;">Delish Bakery • بون المطبخ</h1>
-<div style="text-align:center;font-size:13px;margin-bottom:8px;font-weight:bold;">التاريخ: ${requestedDate} | الوقت: ${requestedTime}</div>
-<div style="border-top:2px dashed #000;margin:6px 0;"></div>
-<div style="font-size:14px;margin-bottom:4px;"><b>نوع الطلب:</b> ${stationMode === "quick" ? "كاشير محلي فوري (Takeaway)" : effectiveMethod === "delivery" ? `توصيل منازل (${esc(area || "عمان")})` : "حجز مسبق واستلام"}</div>
-<div style="font-size:14px;margin-bottom:4px;"><b>العميل:</b> ${esc(customerName || (stationMode === "quick" ? "زبون محلي" : "بدون اسم"))}</div>
-${orderName ? `<div style="font-size:13px;margin-bottom:4px;"><b>اسم الطلب:</b> ${esc(orderName)}</div>` : ""}
-${inscription ? `<div style="font-size:16px;font-weight:bold;margin:8px 0;padding:6px;border:2px solid #000;background:#fff9e6;border-radius:4px;">الكتابة على الكيك: ${esc(inscription)}</div>` : ""}
-<div style="border-top:2px dashed #000;margin:6px 0;"></div>
-<table style="width:100%;font-size:15px;border-collapse:collapse;">${itemRows}</table>
-${notes ? `<div style="border-top:2px dashed #000;margin:6px 0;padding-top:4px;"><b>ملاحظات:</b> ${esc(notes)}</div>` : ""}
-${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:4px;color:#444;font-size:12px;"><b>ملاحظات الفريق:</b> ${esc(staffNotes)}</div>` : ""}`;
-    printDocument("بون المطبخ", body);
+    printKitchenTicket({
+      is_quick: stationMode === "quick",
+      method: stationMode === "quick" ? "quick" : effectiveMethod,
+      area: area || "عمان",
+      customer_name: customerName || (stationMode === "quick" ? "زبون محلي" : "بدون اسم"),
+      order_name: orderName,
+      requested_date: requestedDate,
+      requested_time: requestedTime,
+      inscription,
+      notes,
+      staff_notes: staffNotes,
+      items: cart,
+    });
   };
 
   return (
@@ -706,32 +697,13 @@ ${staffNotes ? `<div style="border-top:1px dashed #777;margin:6px 0;padding-top:
                     <label className="block text-xs font-bold text-foreground mb-1">
                       منطقة التوصيل *
                     </label>
-                    <select
+                    <DeliveryZoneSelect
                       value={area}
-                      onChange={(e) => setArea(e.target.value)}
+                      onChange={(selectedArea) => setArea(selectedArea)}
+                      placeholder="— اختر المنطقة لحساب الأجرة —"
                       className="min-h-[44px] w-full rounded-xl border border-input bg-card px-3 text-xs font-black text-foreground outline-none focus:border-primary"
-                    >
-                      <option value="">— اختر المنطقة لحساب الأجرة —</option>
-                      {DELIVERY_ZONES.map((zone) => (
-                        <optgroup key={zone.labelEn} label={zone.labelAr}>
-                          {zone.areas.map((a) => (
-                            <option key={a} value={a}>
-                              {a} — {zone.fee} د.أ
-                            </option>
-                          ))}
-                        </optgroup>
-                      ))}
-                      <option value={OTHER_GOVERNORATES_AREA}>
-                        {OTHER_GOVERNORATES_AREA} (٥–٨ د.أ)
-                      </option>
-                    </select>
-                    {area && (
-                      <span className="mt-1 block text-[11px] font-black text-blue-600">
-                        {area === OTHER_GOVERNORATES_AREA
-                          ? "أجرة التوصيل ٥–٨ د.أ (تحدد مع السائق)"
-                          : `أجرة التوصيل المعتمدة: ${deliveryFee.toFixed(2)} د.أ`}
-                      </span>
-                    )}
+                      noteClassName="mt-1 block text-[11px] font-black text-blue-600"
+                    />
                   </div>
 
                   <div>

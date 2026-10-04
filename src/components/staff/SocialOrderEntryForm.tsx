@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { createSocialOrder, type SocialOrderInput } from "@/lib/social.functions";
 import { DELIVERY_ZONES, OTHER_GOVERNORATES_AREA, feeForArea } from "@/lib/delivery-zones";
+import { DeliveryZoneSelect } from "@/components/delish/DeliveryZoneSelect";
 import {
   buildConfirmationMessage,
   buildModificationMessage,
@@ -85,11 +86,6 @@ const emptyForm = {
   design_notes: "",
   staff_notes: "",
 };
-
-/** Official Delish store WhatsApp number (international format, no "+"). */
-const WHATSAPP_NUMBER = "962779179995";
-const whatsappUrl = (text: string) =>
-  `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`;
 
 const CHANNEL_CONFIG: Record<OrderSource, { ar: string; color: string; icon: typeof Instagram }> = {
   instagram: {
@@ -1058,32 +1054,13 @@ export function SocialOrderEntryForm({
           <div className="grid gap-4 sm:grid-cols-2 bg-blue-50/30 p-4 rounded-2xl border border-blue-200/60">
             <label className="block text-sm font-bold text-[#3E2723]">
               منطقة التوصيل · Delivery area
-              <select
+              <DeliveryZoneSelect
                 required
                 value={form.area}
-                onChange={(event) => set("area", event.target.value)}
+                onChange={(area) => set("area", area)}
                 className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
-              >
-                <option value="">اختر المنطقة</option>
-                {DELIVERY_ZONES.map((zone) => (
-                  <optgroup key={zone.labelEn} label={`${zone.labelAr} · ${zone.labelEn}`}>
-                    {zone.areas.map((area) => (
-                      <option key={`${zone.labelEn}-${area}`} value={area}>
-                        {area === OTHER_GOVERNORATES_AREA
-                          ? `${area} (٥–٨ د.أ)`
-                          : `${area} — ${zone.fee.toFixed(2)} د.أ`}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
-              <span className="mt-1 block text-xs font-normal text-[#7A6458]">
-                {form.area === OTHER_GOVERNORATES_AREA
-                  ? "أجرة التوصيل للمحافظات الأخرى من ٥ إلى ٨ د.أ — يحددها الفريق عند تأكيد العنوان."
-                  : areaFee !== null
-                    ? `أجرة التوصيل لهذه المنطقة: ${areaFee.toFixed(2)} د.أ`
-                    : "تُحسب الأجرة تلقائياً بعد اختيار المنطقة."}
-              </span>
+                noteClassName="mt-1 block text-xs font-normal text-[#7A6458]"
+              />
             </label>
 
             <label className="block text-sm font-bold text-[#3E2723]">

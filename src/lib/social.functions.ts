@@ -3,6 +3,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertRole, type StaffRoleName } from "@/lib/role-guard";
 import { feeForArea } from "@/lib/delivery-zones";
 import { jordanDay } from "@/lib/date-filter";
+import { getStaffCodeForUser, STORAGE_URL, extraList } from "@/lib/server-shared";
 
 const SOCIAL_ROLES: StaffRoleName[] = ["social", "sales", "admin"];
 
@@ -47,21 +48,6 @@ export type SocialOrderInput = {
   receipt_image_url?: string | null;
 };
 
-const MAX_EXTRAS = 20;
-const MAX_EXTRA_LENGTH = 160;
-/** Signed link returned by uploadDesignImage for photos kept in Cloud storage. */
-const STORAGE_URL =
-  /^https:\/\/zmeijwtivmniqpwyxezk\.supabase\.co\/storage\/v1\/object\/sign\/order-designs\/[\w./-]+\?[\w=%&.-]+$/i;
-
-/** Extras are plain labels; keep them short, single-line and bounded. */
-const extraList = (value: unknown): string[] => {
-  if (!Array.isArray(value)) return [];
-  return value
-    .map((entry) => (typeof entry === "string" ? entry.replace(/[\r\n]+/g, " ").trim() : ""))
-    .filter((entry) => entry.length > 0)
-    .slice(0, MAX_EXTRAS)
-    .map((entry) => entry.slice(0, MAX_EXTRA_LENGTH));
-};
 
 /** Confirms the signed-in user may use the social media portal. */
 export const getSocialAccess = createServerFn({ method: "GET" })
@@ -137,13 +123,7 @@ export const createSocialOrder = createServerFn({ method: "POST" })
         ? data.confirmation_message
         : null;
 
-    const { data: codeRow } = await context.supabase
-      .from("staff_codes")
-      .select("staff_code")
-      .eq("user_id", context.userId)
-      .maybeSingle();
-
-    const staffCode = codeRow?.staff_code ? Number(codeRow.staff_code) : null;
+    const staffCode = await getStaffCodeForUser(context.supabase, context.userId);
 
     const { data: order, error: orderError } = await context.supabase
       .from("orders")
@@ -269,13 +249,7 @@ export const getSocialStaffStats = createServerFn({ method: "GET" })
     const currentUserId = context.userId;
 
     // 1. Get current staff code
-    const { data: codeRow } = await context.supabase
-      .from("staff_codes")
-      .select("staff_code")
-      .eq("user_id", currentUserId)
-      .maybeSingle();
-
-    const currentStaffCode = codeRow?.staff_code ? Number(codeRow.staff_code) : null;
+    const currentStaffCode = await getStaffCodeForUser(context.supabase, currentUserId);
 
     // Get current user's email/username without admin service key
     let currentUsername = currentStaffCode ? `موظفة #${currentStaffCode}` : "موظفة السوشال";

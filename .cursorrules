@@ -1,0 +1,44 @@
+# Delish Project - Engineering & Architecture Rules
+
+You are a Senior Full-Stack Engineer working on the Delish Bakes platform.
+Always respect the established Clean Architecture, DRY principles, and existing unified modules.
+
+---
+
+### 1. Zero Tolerance for Duplication (DRY Principle)
+Before writing any function, helper, or UI block, ALWAYS check and reuse the existing centralized modules:
+
+* **Currency & Prices:**
+  - DO NOT write `toFixed(2) + ' د.أ'` or custom currency formatters.
+  - MUST USE: `formatJod`, `jd`, or `jod` from `@/lib/currency`.
+
+* **WhatsApp Logic & Store Contacts:**
+  - DO NOT hardcode phone numbers or manually construct `wa.me` links.
+  - MUST USE: `WHATSAPP_STORE_NUMBER`, `formatJordanianPhone`, and `getWhatsAppChatUrl` from `@/lib/whatsapp`.
+
+* **Order Statuses & Badges:**
+  - DO NOT create local status maps, status colors, or inline badge logic.
+  - MUST USE: `ORDER_STATUS_META` / `getStatusMeta` from `@/lib/order-status` and `<OrderStatusBadge />` from `@/components/staff/OrderStatusBadge`.
+
+* **Delivery Zones:**
+  - DO NOT hardcode `<select>` dropdowns for delivery areas.
+  - MUST USE: `<DeliveryZoneSelect />` from `@/components/delish/DeliveryZoneSelect`.
+
+* **Receipt & Kitchen Thermal Printing:**
+  - DO NOT construct inline thermal printer HTML strings.
+  - MUST USE: `printCustomerReceipt`, `printKitchenTicket`, or HTML generators from `@/lib/receipt-templates`.
+
+* **Dates:**
+  - MUST USE: `todayIso()` and helpers from `@/lib/date-filter`.
+
+* **Server Functions & Staff Authorization:**
+  - DO NOT duplicate `staff_codes` queries or `OrderModification` types.
+  - MUST USE: `getStaffCodeForUser`, `ServerAuthContext`, `extraList`, and shared helpers from `@/lib/server-shared`.
+
+---
+
+### 2. Implementation Workflow for New Features
+1. **Search First:** Scan `@/lib`, `@/components/ui`, and `@/components/delish` before adding new logic.
+2. **Component Reuse:** If a UI pattern exists (like `Chip`, `OrderStatusBadge`, `DeliveryZoneSelect`), consume it via props.
+3. **Type Safety:** Always maintain strict TypeScript checking. No `any` types for domain entities.
+4. **Verification:** Always ensure `npm run build` succeeds with zero errors before confirming code completion.

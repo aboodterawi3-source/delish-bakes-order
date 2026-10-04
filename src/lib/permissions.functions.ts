@@ -1,8 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertRole, getRoles } from "@/lib/role-guard";
-
-type Ctx = { supabase: any; userId: string; claims: Record<string, unknown> };
+import type { Ctx } from "@/lib/server-shared";
 
 export type ProductPermissionRecord = {
   id: string;

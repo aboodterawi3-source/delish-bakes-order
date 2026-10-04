@@ -8,16 +8,9 @@ import {
   type CustomerMessage,
 } from "@/lib/customer-messages.functions";
 import { supabase } from "@/integrations/supabase/client";
+import { getWhatsAppChatUrl } from "@/lib/whatsapp";
 
 const MESSAGES_KEY = ["staff", "customer-messages"] as const;
-
-function formatWhatsappPhone(phone: string): string {
-  const digits = phone.replace(/\D/g, "");
-  if (digits.startsWith("962")) return digits;
-  if (digits.startsWith("07") && digits.length === 10) return `962${digits.slice(1)}`;
-  if (digits.startsWith("7") && digits.length === 9) return `962${digits}`;
-  return digits;
-}
 
 /** Customer comments and complaints sent from the public website. */
 export function MessagesPanel() {
@@ -102,11 +95,10 @@ export function MessagesPanel() {
         <ul className="space-y-3.5">
           {rows.map((row) => {
             const handled = row.status === "handled";
-            const waPhone = formatWhatsappPhone(row.phone);
-            const waText = encodeURIComponent(
+            const waUrl = getWhatsAppChatUrl(
+              row.phone,
               `مرحباً ${row.name} الكريم، معك فريق مخبز ديليش بخصوص رسالتك/ملاحظتك 🌸`,
             );
-            const waUrl = `https://wa.me/${waPhone}?text=${waText}`;
 
             return (
               <li

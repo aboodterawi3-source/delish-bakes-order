@@ -27,7 +27,10 @@ import {
   type SalesStatus,
 } from "@/lib/sales.functions";
 import { orderLabel } from "@/lib/order-label";
-import { esc, printDocument } from "@/lib/print";
+import { printCustomerReceipt } from "@/lib/receipt-templates";
+import { todayIso } from "@/lib/date-filter";
+import { getWhatsAppChatUrl } from "@/lib/whatsapp";
+import { OrderStatusBadge } from "@/components/staff/OrderStatusBadge";
 
 export type CalendarViewMode = "month" | "day";
 
@@ -251,46 +254,7 @@ function computeHourlyMultiColumnLayout(
 
 /** Print single order receipt */
 function printOrderReceipt(order: SalesOrder) {
-  const payLabel = order.payment_method
-    ? (PAYMENT_METHOD_MAP[order.payment_method] ?? order.payment_method)
-    : "—";
-  const remaining = order.total - order.deposit_paid;
-  const itemsRows = (order.items ?? [])
-    .map(
-      (item) => `
-    <div class="item">
-      <div class="row"><b>${esc(item.name_ar)} x${item.quantity}</b><b>${(item.unit_price * item.quantity).toFixed(2)}</b></div>
-      ${item.options_ar?.length ? `<div class="opt">${esc(item.options_ar.join(" ، "))}</div>` : ""}
-      ${item.notes ? `<div class="note">ملاحظة: ${esc(item.notes)}</div>` : ""}
-    </div>`,
-    )
-    .join("");
-
-  const body = `
-    <h1>ديليش كيك DELISH BAKES</h1>
-    <div style="text-align:center;font-weight:700">بون الطلب الإداري</div>
-    <div class="line"></div>
-    <div class="row"><span>رقم الأوردر:</span><b>${esc(orderLabel(order.order_number, order.staff_code))}</b></div>
-    <div class="row"><span>تاريخ وموعد التسليم:</span><span>${esc(order.requested_date)} ${esc(order.requested_time.slice(0, 5))}</span></div>
-    <div class="row"><span>العميل:</span><span>${esc(order.customer_name)} (${esc(order.customer_phone)})</span></div>
-    <div class="row"><span>نوع التسليم:</span><span>${order.method === "delivery" ? `توصيل: ${esc(order.area ?? "")} ${esc(order.address ?? "")}` : "استلام من المحل"}</span></div>
-    ${order.inscription ? `<div class="line"></div><div class="note">✍️ الكتابة: ${esc(order.inscription)}</div>` : ""}
-    ${order.notes ? `<div class="note">📝 ملاحظات: ${esc(order.notes)}</div>` : ""}
-    <div class="line"></div>
-    ${itemsRows}
-    <div class="line"></div>
-    <div class="row"><span>المجموع الفرعي</span><span>${order.subtotal.toFixed(2)} د.أ</span></div>
-    ${order.delivery_fee ? `<div class="row"><span>أجرة التوصيل</span><span>${order.delivery_fee.toFixed(2)} د.أ</span></div>` : ""}
-    ${order.discount_amount ? `<div class="row"><span>الخصم</span><span>-${order.discount_amount.toFixed(2)} د.أ</span></div>` : ""}
-    <div class="row"><b>الإجمالي</b><b>${order.total.toFixed(2)} د.أ</b></div>
-    <div class="row"><span>المدفوع</span><span>${order.deposit_paid.toFixed(2)} د.أ</span></div>
-    <div class="row"><b>المتبقي</b><b>${remaining.toFixed(2)} د.أ</b></div>
-    <div class="row"><span>طريقة الدفع</span><span>${esc(payLabel)}</span></div>
-    <div class="line"></div>
-    <div style="text-align:center">شكراً لاختياركم ديليش 🤍</div>
-  `;
-
-  if (!printDocument(`إيصال ${order.order_number}`, body, "b{font-size:13px}")) {
+  if (!printCustomerReceipt(order)) {
     toast.error("تعذر فتح نافذة الطباعة");
   }
 }
@@ -542,7 +506,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
     }
 
     // Current month days
-    const todayISO = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-${String(new Date().getDate()).padStart(2, "0")}`;
+    const todayISO = todayIso();
     for (let dayNum = 1; dayNum <= totalDays; dayNum++) {
       const d = new Date(year, month, dayNum);
       const iso = `${year}-${String(month + 1).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
@@ -573,13 +537,6 @@ export const OrdersCalendar = memo(function OrdersCalendar({
 
     return grid;
   }, [currentDate, filteredOrders]);
-
-  // Clean customer phone number for WhatsApp
-  const getCleanPhone = (phoneStr: string) => {
-    let clean = phoneStr.replace(/\D/g, "");
-    if (clean.startsWith("07")) clean = "962" + clean.slice(1);
-    return clean;
-  };
 
   return (
     <div
@@ -1044,11 +1001,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
               <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-muted/40 p-3 border border-border">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold text-muted-foreground">حالة الأوردر:</span>
-                  <span
-                    className={`rounded-full px-3 py-1 text-xs font-black ${(STATUS_CONFIG[selectedOrder.status] ?? STATUS_CONFIG.new).badgeBg} ${(STATUS_CONFIG[selectedOrder.status] ?? STATUS_CONFIG.new).badgeText}`}
-                  >
-                    {(STATUS_CONFIG[selectedOrder.status] ?? STATUS_CONFIG.new).ar}
-                  </span>
+                  <OrderStatusBadge status={selectedOrder.status} size="md" />
                 </div>
                 {selectedOrder.staff_code ? (
                   <span className="text-xs font-bold text-muted-foreground">
@@ -1081,7 +1034,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                       <Phone className="h-4 w-4" /> 📞 اتصال مباشر
                     </a>
                     <a
-                      href={`https://wa.me/${getCleanPhone(selectedOrder.customer_phone)}`}
+                      href={getWhatsAppChatUrl(selectedOrder.customer_phone)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-500 text-white font-bold text-xs shadow-sm hover:bg-emerald-600 transition-colors"

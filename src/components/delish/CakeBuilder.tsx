@@ -11,7 +11,7 @@ import { builderImage } from "@/lib/images";
 import { Pic } from "@/components/delish/Pic";
 import { useLang } from "@/lib/i18n";
 import { useCart } from "@/lib/cart";
-import { Chip } from "./ProductModal";
+import { Chip } from "@/components/ui/Chip";
 import { IMAGE_ACCEPT } from "@/lib/image-validation";
 import { convertToWebp } from "@/lib/image-webp";
 

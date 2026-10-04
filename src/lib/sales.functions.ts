@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertRole, type StaffRoleName } from "@/lib/role-guard";
 import { feeForArea } from "@/lib/delivery-zones";
+import { getStaffCodeForUser, type OrderModification } from "@/lib/server-shared";
 
 /** The order desk: sales, social media and admins all manage the same orders. */
 const SALES_ROLES: StaffRoleName[] = ["sales", "admin", "social"];
@@ -184,13 +185,7 @@ export const createSalesOrder = createServerFn({ method: "POST" })
     const discountPercent = data.discount_percent ?? 0;
     const total = Math.max(subtotal + deliveryFee - discountAmount, 0);
 
-    const { data: codeRow } = await context.supabase
-      .from("staff_codes")
-      .select("staff_code")
-      .eq("user_id", context.userId)
-      .maybeSingle();
-
-    const staffCode = codeRow?.staff_code ? Number(codeRow.staff_code) : null;
+    const staffCode = await getStaffCodeForUser(context.supabase, context.userId);
 
     const { data: order, error } = await context.supabase
       .from("orders")
@@ -408,13 +403,7 @@ const buildOrderPatch = (input: OrderPatch): Record<string, unknown> => {
   return patch;
 };
 
-export type OrderModification = {
-  field: string;
-  oldValue: string;
-  newValue: string;
-  updatedAt: string;
-  acknowledgedAt?: string | null;
-};
+export type { OrderModification };
 
 export function buildOriginalOrderBaseline(order: any, items: any[]): string {
   const itemsText =

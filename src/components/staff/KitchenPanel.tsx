@@ -50,7 +50,7 @@ import {
 import { OrdersCalendar } from "@/components/staff/OrdersCalendar";
 import type { SalesOrder, SalesStatus } from "@/lib/sales.functions";
 import { PRIORITY_META, type PriorityColor } from "@/lib/priority";
-import { esc, printDocument } from "@/lib/print";
+import { formatTimeSlotArabic, printKitchenTicket } from "@/lib/receipt-templates";
 import bellAsset from "@/assets/Bell.mp3.asset.json";
 import { orderLabel } from "@/lib/order-label";
 import { isoDay, matchesDateFilter, type CustomRange, type DateFilterKey } from "@/lib/date-filter";
@@ -92,22 +92,6 @@ function formatRelativeTime(dateString: string) {
   }
 }
 
-/** Formats HH:mm to 12-hour Arabic (e.g. 11:30 ص / 02:00 م) */
-function formatTimeSlotArabic(timeStr: string): string {
-  if (!timeStr) return "";
-  try {
-    const parts = timeStr.slice(0, 5).split(":");
-    let h = parseInt(parts[0] ?? "", 10);
-    const m = parts[1] || "00";
-    if (isNaN(h)) return timeStr.slice(0, 5);
-    const period = h >= 12 ? "م" : "ص";
-    h = h % 12;
-    if (h === 0) h = 12;
-    return `${h}:${m} ${period}`;
-  } catch {
-    return timeStr.slice(0, 5);
-  }
-}
 
 /** Audio synth chime fallback to guarantee alert sound */
 function playKitchenChimeSound() {
@@ -193,44 +177,6 @@ async function downloadDesignImage(url: string, orderNumber: string) {
   }
 }
 
-/** Kitchen thermal ticket generator without financial details */
-function printKitchenTicket(order: KdsOrder) {
-  const lines = order.items.length
-    ? order.items
-        .map(
-          (item) =>
-            `<div class="item" style="padding:4px 0;border-bottom:1px dashed #bbb;"><b style="font-size:18px;">${item.quantity} × ${esc(item.name_ar)}</b>` +
-            (item.options_ar.length
-              ? `<div class="opt" style="font-size:14px;color:#222;font-weight:bold;margin-top:2px;">${item.options_ar.map((o) => `• ${esc(o)}`).join("<br>")}</div>`
-              : "") +
-            (item.notes
-              ? `<div class="note" style="font-size:13px;color:#8b4513;font-weight:bold;margin-top:2px;">ملاحظة: ${esc(item.notes)}</div>`
-              : "") +
-            `</div>`,
-        )
-        .join("")
-    : `<div class="item">لا توجد أصناف مسجلة</div>`;
-
-  const body = `<h1 style="text-align:center;font-size:22px;margin-bottom:6px;font-weight:900;">Delish Bakery • تذكرة المطبخ</h1>
-<div style="font-size:18px;font-weight:bold;display:flex;justify-content:space-between;margin-bottom:6px;border-bottom:2px dashed #000;padding-bottom:4px;">
-  <span>${esc(orderLabel(order.order_number, order.staff_code))}</span>
-  <span>${order.method === "delivery" ? "توصيل 🛵" : "استلام 🏪"}</span>
-</div>
-<div style="font-size:16px;font-weight:bold;margin-bottom:6px;"><b>الموعد المطلوب:</b> ${esc(order.requested_date ?? "")} | ${esc(formatTimeSlotArabic(order.requested_time ?? ""))}</div>
-<div style="font-size:15px;margin-bottom:6px;"><b>العميل:</b> ${esc(order.customer_name)}</div>
-${order.schedule_updated_at ? `<div style="color:red;font-weight:bold;margin-bottom:4px;">⚠️ تنبيه: تم تعديل موعد الطلب مسبقاً</div>` : ""}
-<div style="border-top:2px dashed #000;margin:6px 0;"></div>
-${lines}
-<div style="border-top:2px dashed #000;margin:6px 0;"></div>
-${order.inscription ? `<div style="background:#FFF3CD;padding:8px;border:2px solid #000;border-radius:6px;margin:8px 0;font-size:18px;font-weight:bold;">✍️ الكتابة على الكيك:<br><span style="font-size:20px;">${esc(order.inscription)}</span></div>` : ""}
-${order.notes ? `<div style="margin-top:6px;font-size:13px;background:#f5f5f5;padding:6px;border-radius:4px;"><b>ملاحظات العميل:</b> ${esc(order.notes)}</div>` : ""}`;
-
-  printDocument(
-    `تذكرة مطبخ ${order.order_number}`,
-    body,
-    "body{font-family:sans-serif;font-size:14px;}",
-  );
-}
 
 const ORDERS_KEY = ["kds-orders"] as const;
 

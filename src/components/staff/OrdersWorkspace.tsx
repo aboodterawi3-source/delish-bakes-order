@@ -40,6 +40,7 @@ import { toast } from "sonner";
 
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { OrdersCalendar } from "@/components/staff/OrdersCalendar";
+import { OrderStatusBadge } from "@/components/staff/OrderStatusBadge";
 import { DateFilterBar } from "@/components/staff/DateFilterBar";
 import { isoDay, matchesDateFilter, type CustomRange, type DateFilterKey } from "@/lib/date-filter";
 import { reorderRanks, setQueueRanks } from "@/lib/queue.functions";
@@ -59,6 +60,7 @@ import {
 
 import { buildConfirmationMessage } from "@/lib/confirmation-message";
 import { esc, printDocument } from "@/lib/print";
+import { printCustomerReceipt } from "@/lib/receipt-templates";
 import { orderLabel } from "@/lib/order-label";
 import {
   applyOrderDiscount,
@@ -73,62 +75,14 @@ import {
   OTHER_GOVERNORATES_AREA,
   feeForArea,
 } from "@/lib/delivery-zones";
+import { jd } from "@/lib/currency";
+import { todayIso } from "@/lib/date-filter";
+import { ORDER_STATUS_META } from "@/lib/order-status";
+import { waNumber } from "@/lib/whatsapp";
 
 export const ORDERS_KEY = ["sales-orders"] as const;
 
-export const statusMeta: Record<
-  SalesStatus,
-  { ar: string; en: string; chip: string; dot: string }
-> = {
-  new: {
-    ar: "قيد الانتظار",
-    en: "Pending",
-    chip: "bg-amber-100 text-amber-900 border-amber-300",
-    dot: "bg-amber-500",
-  },
-  confirmed: {
-    ar: "مؤكد",
-    en: "Confirmed",
-    chip: "bg-blue-100 text-blue-900 border-blue-300",
-    dot: "bg-blue-500",
-  },
-  baking: {
-    ar: "قيد التنفيذ والكريمة",
-    en: "In production",
-    chip: "bg-purple-100 text-purple-900 border-purple-300",
-    dot: "bg-purple-500",
-  },
-  ready: {
-    ar: "جاهز بالمحل",
-    en: "Ready at store",
-    chip: "bg-emerald-100 text-emerald-900 border-emerald-300",
-    dot: "bg-emerald-500",
-  },
-  out_for_delivery: {
-    ar: "مع السائق للتوصيل",
-    en: "Out for delivery",
-    chip: "bg-orange-100 text-orange-900 border-orange-300",
-    dot: "bg-orange-500",
-  },
-  completed: {
-    ar: "مكتمل ومستلم",
-    en: "Completed",
-    chip: "bg-green-100 text-green-900 border-green-300",
-    dot: "bg-green-500",
-  },
-  delivered: {
-    ar: "تم التسليم",
-    en: "Delivered",
-    chip: "bg-green-100 text-green-900 border-green-300",
-    dot: "bg-green-500",
-  },
-  cancelled: {
-    ar: "ملغي",
-    en: "Canceled",
-    chip: "bg-rose-100 text-rose-900 border-rose-300",
-    dot: "bg-rose-500",
-  },
-};
+export const statusMeta = ORDER_STATUS_META;
 
 export const payMeta: Record<PaymentMethod, { ar: string; en: string }> = {
   cash: { ar: "نقدي", en: "Cash" },
@@ -136,60 +90,10 @@ export const payMeta: Record<PaymentMethod, { ar: string; en: string }> = {
   visa: { ar: "فيزا", en: "Visa" },
 };
 
-const jd = (value: number) => `${value.toFixed(2)} د.أ`;
-const todayIso = () => {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-};
+export { waNumber };
 
 export function printReceipt(order: SalesOrder) {
-  const remaining = Math.max(order.total - order.deposit_paid, 0);
-  const rows = order.items.length
-    ? order.items
-        .map(
-          (item) =>
-            `<tr><td><b>${item.quantity} × ${esc(item.name_ar)}</b>` +
-            (item.options_ar.length
-              ? `<br><small style="color:#555;">${esc(item.options_ar.join(" · "))}</small>`
-              : "") +
-            (item.notes
-              ? `<br><small style="color:#8b4513;">ملاحظة: ${esc(item.notes)}</small>`
-              : "") +
-            `<br><small>${item.unit_price.toFixed(2)} د.أ / حبة</small></td>` +
-            `<td style="text-align:left;font-weight:bold;">${(item.unit_price * item.quantity).toFixed(2)}</td></tr>`,
-        )
-        .join("")
-    : `<tr><td colspan="2">لا توجد أصناف مسجلة</td></tr>`;
-
-  const body = `<h1 style="text-align:center;font-size:20px;margin-bottom:4px;">Delish Cake &amp; Bake</h1>
-<div style="text-align:center;font-size:12px;color:#555;">عمان – الأردن · 0779179995</div>
-<div style="text-align:center;font-weight:bold;margin:8px 0;border-bottom:2px dashed #000;padding-bottom:4px;">إيصال العميل · CUSTOMER RECEIPT</div>
-<div style="display:flex;justify-content:space-between;font-size:14px;font-weight:bold;margin-bottom:4px;">
-  <span>${esc(orderLabel(order.order_number, order.staff_code))}</span>
-  <span>${esc(order.requested_date)} ${esc(order.requested_time.slice(0, 5))}</span>
-</div>
-${order.order_name ? `<div style="font-size:13px;margin-bottom:3px;"><b>الطلب:</b> ${esc(order.order_name)}</div>` : ""}
-<div style="font-size:13px;margin-bottom:3px;"><b>العميل:</b> ${esc(order.customer_name)} (${esc(order.customer_phone)})</div>
-${order.sender_phone ? `<div style="font-size:12px;"><b>المرسل:</b> ${esc(order.sender_phone)}</div>` : ""}
-${order.recipient_phone ? `<div style="font-size:12px;"><b>المستلم:</b> ${esc(order.recipient_phone)}</div>` : ""}
-<div style="font-size:13px;margin-bottom:6px;"><b>طريقة الاستلام:</b> ${order.method === "delivery" ? `توصيل منازل (${esc(order.area ?? "")} ${esc(order.address ?? "")})` : "استلام من المحل"}</div>
-${order.inscription ? `<div style="background:#fff9e6;padding:6px;border:1px solid #d4a373;border-radius:4px;margin:6px 0;font-size:14px;font-weight:bold;">الكتابة على الكيك: ${esc(order.inscription)}</div>` : ""}
-${order.card_note ? `<div style="font-size:12px;margin:4px 0;"><b>نص الكرت:</b> ${esc(order.card_note)}</div>` : ""}
-<div style="border-top:2px dashed #000;margin:6px 0;"></div>
-<table style="width:100%;font-size:13px;border-collapse:collapse;">${rows}</table>
-<div style="border-top:2px dashed #000;margin:6px 0;"></div>
-<div style="display:flex;justify-content:space-between;font-size:13px;"><span>المجموع الفرعي</span><span>${order.subtotal.toFixed(2)} د.أ</span></div>
-${order.discount_amount ? `<div style="display:flex;justify-content:space-between;font-size:13px;color:red;"><span>الخصم</span><span>-${order.discount_amount.toFixed(2)} د.أ</span></div>` : ""}
-<div style="display:flex;justify-content:space-between;font-size:13px;"><span>التوصيل</span><span>${order.delivery_fee.toFixed(2)} د.أ</span></div>
-<div style="display:flex;justify-content:space-between;font-size:16px;font-weight:bold;border-top:1px solid #000;padding-top:4px;margin-top:4px;"><b>الإجمالي</b><b>${order.total.toFixed(2)} د.أ</b></div>
-<div style="display:flex;justify-content:space-between;font-size:13px;margin-top:2px;"><span>المدفوع</span><span>${order.deposit_paid.toFixed(2)} د.أ</span></div>
-<div style="display:flex;justify-content:space-between;font-size:14px;font-weight:bold;color:${remaining > 0 ? "red" : "green"};"><span>المتبقي</span><span>${remaining.toFixed(2)} د.أ</span></div>
-<div style="font-size:12px;margin-top:4px;">طريقة الدفع: ${order.payment_method ? payMeta[order.payment_method].ar : "—"}</div>
-${order.notes ? `<div style="border-top:1px dashed #ccc;margin-top:6px;padding-top:4px;font-size:12px;">ملاحظات: ${esc(order.notes)}</div>` : ""}
-<div style="border-top:2px dashed #000;margin:8px 0;"></div>
-<div style="text-align:center;font-size:12px;font-weight:bold;">شكراً لاختياركم ديليش 🤍</div>`;
-
-  printDocument(`إيصال ${order.order_number}`, body, "b{font-size:13px}");
+  printCustomerReceipt(order);
 }
 
 function printShiftReport(report: ShiftReport, date: string) {
@@ -212,13 +116,6 @@ ${rows || "<div>لا توجد مدفوعات مسجلة</div>"}
 <div style="text-align:center;font-size:12px;color:#555;">توقيع واستلام الكاشير: __________________</div>`;
 
   printDocument(`تقرير ${date}`, body, "b{font-size:13px}");
-}
-
-export function waNumber(phone: string) {
-  const digits = phone.replace(/\D/g, "");
-  if (digits.startsWith("962")) return digits;
-  if (digits.startsWith("0")) return `962${digits.slice(1)}`;
-  return digits;
 }
 
 function sendScheduleConfirmation(order: SalesOrder) {
@@ -1035,12 +932,7 @@ const OrderRowCard = memo(function OrderRowCard({
       {/* Top Strip: Status, Order Number, Delivery Method, Date/Time */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-2.5">
         <div className="flex items-center gap-2 flex-wrap">
-          <span
-            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-black border ${statusInfo.chip}`}
-          >
-            <span className={`h-2 w-2 rounded-full ${statusInfo.dot}`} />
-            {statusInfo.ar}
-          </span>
+          <OrderStatusBadge status={order.status} showDot size="md" />
           <span className="font-black text-sm text-foreground">
             {orderLabel(order.order_number, order.staff_code)}
           </span>

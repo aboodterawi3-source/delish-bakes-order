@@ -49,9 +49,10 @@ import {
   ORDERS_KEY,
   statusMeta,
   payMeta,
-  waNumber,
   printReceipt,
 } from "@/components/staff/OrdersWorkspace";
+import { waNumber } from "@/lib/whatsapp";
+import { jd } from "@/lib/currency";
 import {
   getSalesOrders,
   updateSalesOrder,
@@ -66,6 +67,7 @@ import {
 } from "@/lib/sales.functions";
 import { applyOrderDiscount, getMyAuthorization } from "@/lib/authorization.functions";
 import { DELIVERY_ZONES, OTHER_GOVERNORATES_AREA, feeForArea } from "@/lib/delivery-zones";
+import { DeliveryZoneSelect } from "@/components/delish/DeliveryZoneSelect";
 import { useStorefrontContent } from "@/hooks/use-storefront-content";
 import type { StorefrontProduct } from "@/lib/storefront-content";
 import { WebsiteRebuildPanel } from "@/components/staff/WebsiteRebuildPanel";
@@ -79,8 +81,6 @@ import {
   TouchItemEditorSheet,
   TouchItemSummaryCard,
 } from "@/components/staff/TouchItemEditorSheet";
-
-const jd = (value: number) => `${value.toFixed(2)} د.أ`;
 
 /** Replaces (or removes) a labelled extra such as «الحشوة: نوتيلا» in the list. */
 const withLabel = (list: string[], label: string, value: string) => {
@@ -1081,28 +1081,15 @@ function MasterOrderEditor({
           <div className="grid gap-3 sm:grid-cols-2 rounded-2xl border border-orange-200 bg-orange-50/40 p-3.5 animate-fadeIn">
             <label className="block text-xs font-bold text-foreground">
               منطقة التوصيل وأجرتها · Delivery Zone
-              <select
+              <DeliveryZoneSelect
                 value={order.area ?? ""}
-                onChange={(e) => {
-                  const area = e.target.value;
+                onChange={(area) => {
                   onPatch(area ? { area } : { area: null, delivery_fee: 0 });
                 }}
                 className={inputClass}
-              >
-                <option value="">— اختر منطقة التوصيل —</option>
-                {DELIVERY_ZONES.map((zone) => (
-                  <optgroup key={zone.labelAr} label={zone.labelAr}>
-                    {zone.areas.map((area) => (
-                      <option key={area} value={area}>
-                        {area === OTHER_GOVERNORATES_AREA ? `${area} (٥–٨ د.أ)` : area}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
-              <span className="mt-1 block text-[11px] font-bold text-orange-900">
-                أجرة التوصيل المحسوبة: {jd(feeForArea(order.area ?? "") ?? order.delivery_fee)}
-              </span>
+                placeholder="— اختر منطقة التوصيل —"
+                noteClassName="mt-1 block text-[11px] font-bold text-orange-900"
+              />
             </label>
 
             <label className="block text-xs font-bold text-foreground">

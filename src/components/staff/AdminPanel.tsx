@@ -53,6 +53,9 @@ import {
   type OrderLog,
   type StaffRole,
 } from "@/lib/admin.functions";
+import { jod } from "@/lib/currency";
+import { OrderStatusBadge } from "@/components/staff/OrderStatusBadge";
+import { getStatusMeta } from "@/lib/order-status";
 import { useDeliveryZonesStore } from "@/hooks/use-delivery-zones";
 import type { DeliveryZone } from "@/lib/delivery-zones";
 import {
@@ -96,24 +99,11 @@ export function AdminErrorScreen({ error }: { error: unknown }) {
   );
 }
 
-const jod = (n: number) => `${n.toFixed(2)} د.أ`;
-
 const ROLE_LABEL: Record<StaffRole, string> = {
   admin: "مدير · Admin",
   sales: "مبيعات · Sales",
   kitchen: "مطبخ · Kitchen",
   social: "سوشال · Social",
-};
-
-const STATUS_LABEL: Record<string, string> = {
-  new: "جديد 🆕",
-  confirmed: "مؤكد ⚡",
-  baking: "قيد التجهيز 👩‍🍳",
-  ready: "جاهز ✨",
-  out_for_delivery: "بالطريق 🛵",
-  delivered: "تم التوصيل 🚚",
-  completed: "مكتمل ✅",
-  cancelled: "ملغي ❌",
 };
 
 const PAYMENT_LABEL: Record<string, string> = {
@@ -469,7 +459,7 @@ export function AdminPanel() {
                                 row.order_number,
                                 row.customer_name,
                                 row.customer_phone,
-                                STATUS_LABEL[row.status] ?? row.status,
+                                getStatusMeta(row.status).ar,
                                 row.method,
                                 row.requested_date,
                                 row.requested_time,
@@ -636,8 +626,8 @@ function OrderLogs({
                     {row.requested_date} {row.requested_time.slice(0, 5)}
                   </td>
                   <td className="p-3 font-black text-[#6E3917]">{jod(row.total)}</td>
-                  <td className="p-3 font-bold text-[#B8801C]">
-                    {STATUS_LABEL[row.status] ?? row.status}
+                  <td className="p-3">
+                    <OrderStatusBadge status={row.status} size="sm" />
                   </td>
                   {showReason && (
                     <td className="p-3 text-xs text-[#4A3B32]/70">{row.cancel_reason ?? "—"}</td>

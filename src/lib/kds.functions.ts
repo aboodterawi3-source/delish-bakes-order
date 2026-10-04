@@ -23,13 +23,7 @@ const PHONE_LIKE = /\+?\d[\d\s-]{6,}\d/g;
 const stripPhones = (text: string | null): string | null =>
   text ? text.replace(PHONE_LIKE, "—") : text;
 
-export type OrderModification = {
-  field: string;
-  oldValue: string;
-  newValue: string;
-  updatedAt: string;
-  acknowledgedAt?: string | null;
-};
+export type { OrderModification } from "@/lib/server-shared";
 
 export type KdsItem = {
   id: string;

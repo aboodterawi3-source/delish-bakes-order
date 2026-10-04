@@ -8,6 +8,7 @@ import {
 } from "@/lib/order-pricing";
 import { decodeValidatedImage } from "@/lib/image-validation";
 import { publicError } from "@/lib/public-error";
+import { extraList, STORAGE_URL } from "@/lib/server-shared";
 
 export type StorefrontOrderRequest = {
   customer_name: string;
@@ -31,25 +32,6 @@ export type StorefrontOrderRequest = {
   }[];
 };
 
-const MAX_EXTRAS = 14;
-const MAX_EXTRA_LENGTH = 160;
-
-/** Extras are free-text labels; keep them short, plain and bounded. */
-const extraList = (value: unknown): string[] => {
-  if (!Array.isArray(value)) return [];
-  return value
-    .map((entry) => (typeof entry === "string" ? entry.replace(/[\r\n]+/g, " ").trim() : ""))
-    .filter((entry) => entry.length > 0)
-    .slice(0, MAX_EXTRAS)
-    .map((entry) => entry.slice(0, MAX_EXTRA_LENGTH));
-};
-
-const MAX_LINES = 40;
-const MAX_QTY = 50;
-const MAX_IMAGE_BYTES = 1_500_000;
-/** Signed link returned by uploadDesignImage for photos kept in Cloud storage. */
-const STORAGE_URL =
-  /^https:\/\/zmeijwtivmniqpwyxezk\.supabase\.co\/storage\/v1\/object\/sign\/order-designs\/[\w./-]+\?[\w=%&.-]+$/i;
 
 const text = (value: unknown, max: number, label: string, required = false) => {
   const trimmed = typeof value === "string" ? value.trim() : "";

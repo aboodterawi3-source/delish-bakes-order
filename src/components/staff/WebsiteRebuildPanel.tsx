@@ -8,8 +8,7 @@ import {
 import { customizationSummary } from "@/components/delish/CakeCustomizationPanel";
 import type { StorefrontProduct } from "@/lib/storefront-content";
 import type { RebuildLine, SalesOrder } from "@/lib/sales.functions";
-
-const jd = (value: number) => `${value.toFixed(2)} د.أ`;
+import { jd } from "@/lib/currency";
 
 type Draft = RebuildLine & { key: string };
 

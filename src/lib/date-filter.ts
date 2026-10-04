@@ -22,6 +22,9 @@ export const isoDay = (offsetDays = 0): string => {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 };
 
+/** Today's date in local calendar YYYY-MM-DD. */
+export const todayIso = (): string => isoDay(0);
+
 /**
  * Jordan calendar date (YYYY-MM-DD) of an instant, in Jordan time — a fixed
  * UTC+3 offset with no DST. `created_at` is stored in UTC, so slicing the raw
