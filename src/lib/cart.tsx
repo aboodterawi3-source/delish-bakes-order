@@ -1,6 +1,61 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import type { LineSpec } from "@/lib/order-pricing";
+import { SERVING_SIZE_OFFSETS, type LineSpec } from "@/lib/order-pricing";
 import { roundJod } from "@/lib/currency";
+
+function canonicalSize(size?: string | null): string {
+  if (!size) return "default";
+  const trimmed = size.trim().toLowerCase();
+  for (const s of SERVING_SIZE_OFFSETS) {
+    if (
+      s.label.toLowerCase() === trimmed ||
+      s.ar.toLowerCase() === trimmed ||
+      trimmed.includes(s.label.toLowerCase()) ||
+      trimmed.includes(s.ar.toLowerCase())
+    ) {
+      return s.label;
+    }
+  }
+  return trimmed;
+}
+
+/**
+ * Generates an immutable, language-invariant cart line key based on permanent IDs
+ * and chosen specifications (product ID, size, filling, options, notes, unit price),
+ * preventing item duplication when the customer toggles between Arabic and English.
+ */
+export function generateCartLineKey(line: Omit<CartLine, "key"> & { key?: string }): string {
+  if (line.key && line.key.trim()) {
+    return line.key.trim();
+  }
+
+  const spec = line.spec;
+  if (spec) {
+    if (spec.kind === "cms") {
+      const normalizedSize = canonicalSize(spec.size);
+      const notes = (line.notes ?? "").trim().toLowerCase();
+      const design = (line.designImage ?? "").trim();
+      return `cms:${spec.productId}:${normalizedSize}:${notes}:${design}:${line.unit}`;
+    }
+
+    if (spec.kind === "catalog") {
+      const sizeId = spec.sizeId?.trim().toLowerCase() || "default";
+      const flavorId = spec.flavorId?.trim().toLowerCase() || "default";
+      const notes = (line.notes ?? "").trim().toLowerCase();
+      return `catalog:${spec.productId}:${sizeId}:${flavorId}:${notes}:${line.unit}`;
+    }
+
+    if (spec.kind === "builder") {
+      const msg = (spec.message ?? "").trim().toLowerCase();
+      const design = (line.designImage ?? "").trim();
+      return `builder:${spec.sizeId}:${spec.flavorId}:${spec.fillingId}:${spec.frostingId}:${msg}:${design}:${line.unit}`;
+    }
+  }
+
+  // Fallback if spec is missing: use stable normalized representation
+  const notes = (line.notes ?? "").trim().toLowerCase();
+  const design = (line.designImage ?? "").trim();
+  return `item:${line.unit}:${notes}:${design}`;
+}
 
 export type CartLine = {
   key: string;
@@ -131,11 +186,23 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const add: Ctx["add"] = (line) => {
-    const key =
-      line.key ?? `${line.en}|${line.detailsEn.join(",")}|${line.notes ?? ""}|${line.unit}`;
+    const key = generateCartLineKey(line);
     setLines((prev) => {
       const found = prev.find((l) => l.key === key);
-      if (found) return prev.map((l) => (l.key === key ? { ...l, qty: l.qty + line.qty } : l));
+      if (found) {
+        return prev.map((l) =>
+          l.key === key
+            ? {
+                ...l,
+                qty: l.qty + line.qty,
+                ar: line.ar || l.ar,
+                en: line.en || l.en,
+                detailsAr: line.detailsAr?.length ? line.detailsAr : l.detailsAr,
+                detailsEn: line.detailsEn?.length ? line.detailsEn : l.detailsEn,
+              }
+            : l,
+        );
+      }
       return [...prev, { ...line, key }];
     });
   };

@@ -25,6 +25,8 @@ const stripPhones = (text: string | null): string | null =>
   text ? text.replace(PHONE_LIKE, "—") : text;
 
 export type { OrderModification } from "@/lib/server-shared";
+import { isValidStorageUrl } from "@/lib/server-shared";
+
 
 export type KdsItem = {
   id: string;
@@ -289,7 +291,7 @@ export const getKitchenOrders = createServerFn({ method: "GET" })
         status: order.status,
         inscription: stripPhones(order.inscription),
         card_note: stripPhones(cardNoteMap.get(order.id) ?? order.card_note ?? null),
-        design_image_url: order.design_image_url,
+        design_image_url: isValidStorageUrl(order.design_image_url) ? order.design_image_url : null,
         notes: stripPhones(order.notes),
         schedule_updated_at: order.schedule_updated_at,
         last_edited_at: order.last_edited_at ?? null,
