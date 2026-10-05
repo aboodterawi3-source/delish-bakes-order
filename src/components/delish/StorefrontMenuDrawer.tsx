@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   X,
   Heart,
@@ -13,10 +13,9 @@ import {
 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { WHATSAPP } from "@/lib/menu";
+import { getWhatsAppChatUrl } from "@/lib/whatsapp";
 import { DelishLogo } from "./DelishLogo";
 import { submitCustomerMessage } from "@/lib/customer-messages.functions";
-import { supabase } from "@/integrations/supabase/client";
 
 interface StorefrontMenuDrawerProps {
   open: boolean;
@@ -33,11 +32,14 @@ export function StorefrontMenuDrawer({ open, onClose }: StorefrontMenuDrawerProp
   const [feedbackCategory, setFeedbackCategory] = useState("suggestion");
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
 
   if (!open) return null;
 
   const handleFeedbackSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting || submittingRef.current) return;
+
     const name = feedbackName.trim();
     const phone = feedbackPhone.trim();
     const rawMsg = feedbackMessage.trim();
@@ -56,9 +58,10 @@ export function StorefrontMenuDrawer({ open, onClose }: StorefrontMenuDrawerProp
 
     const fullMessage = `[${catLabel}] ${rawMsg}`;
 
+    submittingRef.current = true;
     setSubmitting(true);
     try {
-      // 1. Submit via server function
+      // SEC-07: Pass exclusively through dedicated verified server function
       await submitMessageFn({
         data: {
           name,
@@ -70,30 +73,22 @@ export function StorefrontMenuDrawer({ open, onClose }: StorefrontMenuDrawerProp
       setFeedbackName("");
       setFeedbackPhone("");
       setFeedbackMessage("");
-    } catch (err: any) {
-      // 2. Direct Supabase fallback
-      try {
-        const { error: supabaseErr } = await supabase
-          .from("customer_messages")
-          .insert([{ name, phone, message: fullMessage, status: "new" }]);
-        if (supabaseErr) throw supabaseErr;
-        toast.success("شكراً لاهتمامك! تم إرسال رسالتك بنجاح وسيتواصل معك فريقنا في أقرب وقت 🌸");
-        setFeedbackName("");
-        setFeedbackPhone("");
-        setFeedbackMessage("");
-      } catch (fallbackErr: any) {
-        toast.error(
-          err?.message || fallbackErr?.message || "تعذّر إرسال الرسالة، يرجى المحاولة لاحقاً",
-        );
-      }
+    } catch (err: unknown) {
+      const errorMsg =
+        err instanceof Error
+          ? err.message
+          : "تعذّر إرسال الرسالة، يرجى إعادة المحاولة أو التواصل معنا عبر واتساب.";
+      toast.error(errorMsg);
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   };
 
-  const whatsappSupportUrl = `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(
+  const whatsappSupportUrl = getWhatsAppChatUrl(
+    undefined,
     "مرحباً فريق ديليش! أرغب في الاستفسار عن الطلبات والخدمات.",
-  )}`;
+  );
 
   return (
     <div
@@ -335,7 +330,7 @@ export function StorefrontMenuDrawer({ open, onClose }: StorefrontMenuDrawerProp
 
                 <button
                   type="submit"
-                  disabled={submitting}
+                  disabled={submitting || submittingRef.current}
                   className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#B8801C] px-4 text-xs font-extrabold text-white shadow-xs hover:bg-[#9E6C14] active:scale-95 disabled:opacity-50 cursor-pointer"
                 >
                   <Send className="h-4 w-4" />

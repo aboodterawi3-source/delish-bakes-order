@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -101,6 +101,7 @@ export function PosOrderEntry() {
   const ordersFn = useServerFn(getSalesOrders);
   const createOrderFn = useServerFn(createSalesOrder);
   const storefront = useStorefrontContent();
+  const isSubmittingRef = useRef(false);
 
   const existingOrders = useQuery({
     queryKey: ORDERS_KEY,
@@ -311,6 +312,7 @@ export function PosOrderEntry() {
   const createOrder = useMutation({
     mutationFn: (input: CreateSalesOrderInput) => createOrderFn({ data: input }),
     onSuccess: (newOrder) => {
+      isSubmittingRef.current = false;
       queryClient.setQueryData<SalesOrder[]>(ORDERS_KEY, (curr) => [newOrder, ...(curr ?? [])]);
       toast.success(
         `تم إنشاء وتأكيد الطلب بنجاح ✅ (${orderLabel(newOrder.order_number, newOrder.staff_code)})`,
@@ -347,13 +349,19 @@ export function PosOrderEntry() {
       setShouldPrintAfterCreate(false);
     },
     onError: (err: Error) => {
+      isSubmittingRef.current = false;
       toast.error(err.message || "حدث خطأ أثناء حفظ الطلب");
       setShouldPrintAfterCreate(false);
     },
   });
 
   const handleSubmitOrder = (andPrint = false) => {
+    // SEC-02: Double guard pattern - immediate check & synchronous ref lock
+    if (isSubmittingRef.current || createOrder.isPending) return;
+    isSubmittingRef.current = true;
+
     if (cart.length === 0) {
+      isSubmittingRef.current = false;
       toast.error("السلة فارغة! اختر أي صنف من القائمة لإضافته.");
       return;
     }
@@ -366,14 +374,17 @@ export function PosOrderEntry() {
 
     if (stationMode !== "quick") {
       if (!finalCustomerName) {
+        isSubmittingRef.current = false;
         toast.error("يرجى إدخال اسم العميل للطلب المسبق أو التوصيل");
         return;
       }
       if (!finalCustomerPhone) {
+        isSubmittingRef.current = false;
         toast.error("يرجى إدخال رقم هاتف العميل");
         return;
       }
       if (effectiveMethod === "delivery" && !area) {
+        isSubmittingRef.current = false;
         toast.error("يرجى اختيار منطقة التوصيل");
         return;
       }
@@ -411,7 +422,11 @@ export function PosOrderEntry() {
       })),
     };
 
-    createOrder.mutate(payload);
+    createOrder.mutate(payload, {
+      onSettled: () => {
+        isSubmittingRef.current = false;
+      },
+    });
   };
 
   // Catalog products filtering

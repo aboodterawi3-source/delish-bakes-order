@@ -402,62 +402,126 @@ export const getAdminAnalytics = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<AdminAnalytics> => {
     await assertAdmin(context);
-    const { data, error } = await context.supabase
-      .from("orders")
-      .select(
-        "id, order_number, customer_name, customer_phone, status, method, requested_date, requested_time, total, deposit_paid, payment_method, cancel_reason, created_at, created_by",
-      )
-      .order("created_at", { ascending: false })
-      .limit(1000);
-    if (error) throw new Error(error.message);
 
-    const rows: OrderLog[] = (data ?? []).map((row) => ({
-      ...(row as unknown as OrderLog),
-      total: Number(row.total ?? 0),
-      deposit_paid: Number(row.deposit_paid ?? 0),
-    }));
-
+    // SEC-06: 1. Cumulative aggregates across all records without memory bloat or arbitrary 1000 limit truncation
     let gross = 0;
     let collected = 0;
     let outstanding = 0;
-    let orders = 0;
+    let totalNonCancelledOrders = 0;
+    let totalCancelledOrders = 0;
     const paymentMap = new Map<string, { orders: number; collected: number }>();
+
+    const CHUNK_SIZE = 1000;
+    let from = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data: chunk, error: chunkErr } = await context.supabase
+        .from("orders")
+        .select("total, deposit_paid, status, payment_method")
+        .range(from, from + CHUNK_SIZE - 1);
+
+      if (chunkErr) throw new Error(chunkErr.message);
+
+      for (const row of chunk ?? []) {
+        const rowTotal = Number(row.total ?? 0);
+        const rowDeposit = Number(row.deposit_paid ?? 0);
+
+        if (row.status === "cancelled") {
+          totalCancelledOrders += 1;
+        } else {
+          totalNonCancelledOrders += 1;
+          gross += rowTotal;
+          collected += rowDeposit;
+          outstanding += Math.max(rowTotal - rowDeposit, 0);
+
+          const key = row.payment_method ?? "unpaid";
+          const bucket = paymentMap.get(key) ?? { orders: 0, collected: 0 };
+          bucket.orders += 1;
+          bucket.collected += rowDeposit;
+          paymentMap.set(key, bucket);
+        }
+      }
+
+      if (!chunk || chunk.length < CHUNK_SIZE) {
+        hasMore = false;
+      } else {
+        from += CHUNK_SIZE;
+      }
+    }
+
+    // SEC-06: 2. Scoped detailed order logs for active orders and recent operational history
+    const [activeRes, completedRes, cancelledRes] = await Promise.all([
+      // All currently active orders in the bakery
+      context.supabase
+        .from("orders")
+        .select(
+          "id, order_number, customer_name, customer_phone, status, method, requested_date, requested_time, total, deposit_paid, payment_method, cancel_reason, created_at, created_by",
+        )
+        .in("status", ACTIVE)
+        .order("created_at", { ascending: false }),
+
+      // Recent completed orders (latest 250)
+      context.supabase
+        .from("orders")
+        .select(
+          "id, order_number, customer_name, customer_phone, status, method, requested_date, requested_time, total, deposit_paid, payment_method, cancel_reason, created_at, created_by",
+        )
+        .in("status", DONE)
+        .order("created_at", { ascending: false })
+        .limit(250),
+
+      // Recent cancelled orders (latest 150)
+      context.supabase
+        .from("orders")
+        .select(
+          "id, order_number, customer_name, customer_phone, status, method, requested_date, requested_time, total, deposit_paid, payment_method, cancel_reason, created_at, created_by",
+        )
+        .eq("status", "cancelled")
+        .order("created_at", { ascending: false })
+        .limit(150),
+    ]);
+
+    if (activeRes.error) throw new Error(activeRes.error.message);
+    if (completedRes.error) throw new Error(completedRes.error.message);
+    if (cancelledRes.error) throw new Error(cancelledRes.error.message);
+
+    const mapRows = (data: any[] | null): OrderLog[] =>
+      (data ?? []).map((row) => ({
+        ...(row as unknown as OrderLog),
+        total: Number(row.total ?? 0),
+        deposit_paid: Number(row.deposit_paid ?? 0),
+      }));
+
+    const activeRows = mapRows(activeRes.data);
+    const completedRows = mapRows(completedRes.data);
+    const cancelledRows = mapRows(cancelledRes.data);
+
+    // Build customer and agent statistics from operational orders
     const agentMap = new Map<string, { orders: number; volume: number }>();
     const customerMap = new Map<string, CustomerEntry>();
 
-    for (const row of rows) {
-      if (row.status !== "cancelled") {
-        orders += 1;
-        gross += row.total;
-        collected += row.deposit_paid;
-        outstanding += Math.max(row.total - row.deposit_paid, 0);
-        const key = row.payment_method ?? "unpaid";
-        const bucket = paymentMap.get(key) ?? { orders: 0, collected: 0 };
-        bucket.orders += 1;
-        bucket.collected += row.deposit_paid;
-        paymentMap.set(key, bucket);
+    for (const row of [...activeRows, ...completedRows]) {
+      const customer = customerMap.get(row.customer_phone) ?? {
+        phone: row.customer_phone,
+        name: row.customer_name,
+        orders: 0,
+        spend: 0,
+        last_order: row.created_at,
+      };
+      customer.orders += 1;
+      customer.spend += row.total;
+      if (row.created_at > customer.last_order) {
+        customer.last_order = row.created_at;
+        customer.name = row.customer_name;
+      }
+      customerMap.set(row.customer_phone, customer);
 
-        const customer = customerMap.get(row.customer_phone) ?? {
-          phone: row.customer_phone,
-          name: row.customer_name,
-          orders: 0,
-          spend: 0,
-          last_order: row.created_at,
-        };
-        customer.orders += 1;
-        customer.spend += row.total;
-        if (row.created_at > customer.last_order) {
-          customer.last_order = row.created_at;
-          customer.name = row.customer_name;
-        }
-        customerMap.set(row.customer_phone, customer);
-
-        if (row.created_by) {
-          const agent = agentMap.get(row.created_by) ?? { orders: 0, volume: 0 };
-          agent.orders += 1;
-          agent.volume += row.total;
-          agentMap.set(row.created_by, agent);
-        }
+      if (row.created_by) {
+        const agent = agentMap.get(row.created_by) ?? { orders: 0, volume: 0 };
+        agent.orders += 1;
+        agent.volume += row.total;
+        agentMap.set(row.created_by, agent);
       }
     }
 
@@ -475,18 +539,18 @@ export const getAdminAnalytics = createServerFn({ method: "GET" })
         gross,
         collected,
         outstanding,
-        orders,
-        cancelled: rows.filter((row) => row.status === "cancelled").length,
-        avgOrder: orders ? gross / orders : 0,
+        orders: totalNonCancelledOrders,
+        cancelled: totalCancelledOrders,
+        avgOrder: totalNonCancelledOrders ? gross / totalNonCancelledOrders : 0,
       },
       payments: ["cash", "cliq", "visa", "unpaid"].map((method) => ({
         method,
         orders: paymentMap.get(method)?.orders ?? 0,
         collected: paymentMap.get(method)?.collected ?? 0,
       })),
-      active: rows.filter((row) => ACTIVE.includes(row.status)),
-      completed: rows.filter((row) => DONE.includes(row.status)),
-      cancelled: rows.filter((row) => row.status === "cancelled"),
+      active: activeRows,
+      completed: completedRows,
+      cancelled: cancelledRows,
       agents: [...agentMap.entries()]
         .map(([id, value]) => ({ agent: agentNames.get(id) ?? id, ...value }))
         .sort((a, b) => b.orders - a.orders),

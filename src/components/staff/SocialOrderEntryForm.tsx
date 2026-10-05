@@ -23,6 +23,7 @@ import {
   Zap,
 } from "lucide-react";
 import { createSocialOrder, type SocialOrderInput } from "@/lib/social.functions";
+import { jd } from "@/lib/currency";
 import { DELIVERY_ZONES, OTHER_GOVERNORATES_AREA, feeForArea } from "@/lib/delivery-zones";
 import { DeliveryZoneSelect } from "@/components/delish/DeliveryZoneSelect";
 import {
@@ -143,6 +144,7 @@ export function SocialOrderEntryForm({
   const [uploadingReceipt, setUploadingReceipt] = useState(false);
   const [receiptError, setReceiptError] = useState<string | null>(null);
   const receiptFileRef = useRef<HTMLInputElement>(null);
+  const isSubmittingRef = useRef(false);
 
   const handleReceiptUpload = async (file: File | undefined) => {
     if (!file) return;
@@ -392,6 +394,7 @@ export function SocialOrderEntryForm({
   const submit = useMutation({
     mutationFn: (input: SocialOrderInput) => createFn({ data: input }),
     onSuccess: (order) => {
+      isSubmittingRef.current = false;
       setDone(order.order_number);
       setError(null);
       setSavedMessage(order.confirmation_message ?? null);
@@ -406,7 +409,10 @@ export function SocialOrderEntryForm({
       setReceiptUrl(null);
       setReceiptError(null);
     },
-    onError: (mutationError: Error) => setError(mutationError.message),
+    onError: (mutationError: Error) => {
+      isSubmittingRef.current = false;
+      setError(mutationError.message);
+    },
   });
 
   const copy = useCallback(
@@ -454,6 +460,9 @@ export function SocialOrderEntryForm({
 
   const onSubmit = (event: React.FormEvent) => {
     event.preventDefault();
+    // SEC-02: Double guard pattern - immediate check & synchronous ref lock
+    if (isSubmittingRef.current || submit.isPending) return;
+    isSubmittingRef.current = true;
 
     // Validation for Mandatory Customization Fields
     const newErrors: CakeCustomizationErrors = {};
@@ -480,6 +489,7 @@ export function SocialOrderEntryForm({
     }
 
     if (Object.keys(newErrors).length > 0) {
+      isSubmittingRef.current = false;
       setCustomErrors(newErrors);
       setError(
         "⚠️ يرجى إكمال خانات تخصيص الكيكة الإجبارية المحددة باللون الأحمر أدناه لتأكيد الطلب.",
@@ -495,6 +505,7 @@ export function SocialOrderEntryForm({
 
     // Validation for Mandatory CliQ Receipt Photo
     if (form.payment_option !== "cash" && !receiptUrl) {
+      isSubmittingRef.current = false;
       setError(
         "⚠️ يرجى تحميل صورة إشعار أو حوالة كليك لإتمام الطلب (خانة إجبارية عند اختيار كليك).",
       );
@@ -527,41 +538,48 @@ export function SocialOrderEntryForm({
       ? `[${CHANNEL_CONFIG[form.order_source].ar}] ${effectiveOrderName}`
       : `[${CHANNEL_CONFIG[form.order_source].ar}] طلب ${effectiveCustomerName}`;
 
-    submit.mutate({
-      order_name: orderNameWithChannel,
-      sender_phone: effectiveSenderPhone || null,
-      recipient_phone: effectiveRecipientPhone || null,
-      customer_name: effectiveCustomerName,
-      customer_phone: effectiveCustomerPhone,
-      order_details: form.order_details,
-      quantity: form.quantity,
-      unit_price: Number(form.unit_price) || 0,
-      card_note: form.card_note,
-      confirmation_message: confirmationTemplate,
-      method: form.method,
-      area: form.method === "delivery" ? form.area : null,
-      address: form.method === "delivery" ? form.address : null,
-      payment_option: form.payment_option,
-      deposit_paid: form.payment_option === "cash" ? 0 : Number(form.deposit_paid) || 0,
-      requested_date: form.requested_date,
-      requested_time: form.requested_time,
-      event_date: form.event_date || null,
-      is_urgent: form.is_urgent,
-      design_notes: [form.design_notes.trim(), customization.notes.trim()]
-        .filter(Boolean)
-        .join(" — "),
-      staff_notes: combinedStaffNotes,
-      extras_ar: [
-        `المصدر: ${CHANNEL_CONFIG[form.order_source].ar}`,
-        ...(form.payment_option !== "cash" ? [`كليك: ${cliqAccountText}`] : []),
-        ...(receiptUrl ? ["صورة حوالة كليك مرفقة 📄"] : []),
-        ...(form.is_gift ? ["طلب هدية 🎁"] : []),
-        ...extras.ar,
-      ],
-      extras_en: extras.en,
-      design_image_url: customization.designImageUrl || receiptUrl || null,
-      receipt_image_url: receiptUrl,
-    });
+    submit.mutate(
+      {
+        order_name: orderNameWithChannel,
+        sender_phone: effectiveSenderPhone || null,
+        recipient_phone: effectiveRecipientPhone || null,
+        customer_name: effectiveCustomerName,
+        customer_phone: effectiveCustomerPhone,
+        order_details: form.order_details,
+        quantity: form.quantity,
+        unit_price: Number(form.unit_price) || 0,
+        card_note: form.card_note,
+        confirmation_message: confirmationTemplate,
+        method: form.method,
+        area: form.method === "delivery" ? form.area : null,
+        address: form.method === "delivery" ? form.address : null,
+        payment_option: form.payment_option,
+        deposit_paid: form.payment_option === "cash" ? 0 : Number(form.deposit_paid) || 0,
+        requested_date: form.requested_date,
+        requested_time: form.requested_time,
+        event_date: form.event_date || null,
+        is_urgent: form.is_urgent,
+        design_notes: [form.design_notes.trim(), customization.notes.trim()]
+          .filter(Boolean)
+          .join(" — "),
+        staff_notes: combinedStaffNotes,
+        extras_ar: [
+          `المصدر: ${CHANNEL_CONFIG[form.order_source].ar}`,
+          ...(form.payment_option !== "cash" ? [`كليك: ${cliqAccountText}`] : []),
+          ...(receiptUrl ? ["صورة حوالة كليك مرفقة 📄"] : []),
+          ...(form.is_gift ? ["طلب هدية 🎁"] : []),
+          ...extras.ar,
+        ],
+        extras_en: extras.en,
+        design_image_url: customization.designImageUrl || receiptUrl || null,
+        receipt_image_url: receiptUrl,
+      },
+      {
+        onSettled: () => {
+          isSubmittingRef.current = false;
+        },
+      },
+    );
   };
 
   return (
@@ -1408,25 +1426,25 @@ export function SocialOrderEntryForm({
           <dl className="mt-2 space-y-1 text-sm text-[#3E2723]">
             <div className="flex justify-between gap-2">
               <dt>
-                المبلغ ({form.quantity} × {(Number(form.unit_price) || 0).toFixed(2)})
+                المبلغ ({form.quantity} × {jd(Number(form.unit_price) || 0)})
               </dt>
-              <dd className="font-bold">{originalPrice.toFixed(2)} د.أ</dd>
+              <dd className="font-bold">{jd(originalPrice)}</dd>
             </div>
             <div className="flex justify-between gap-2">
               <dt>التوصيل</dt>
-              <dd className="font-bold">{deliveryFee.toFixed(2)} د.أ</dd>
+              <dd className="font-bold">{jd(deliveryFee)}</dd>
             </div>
             <div className="flex justify-between gap-2">
               <dt>الحساب كامل</dt>
-              <dd className="font-bold">{grandTotal.toFixed(2)} د.أ</dd>
+              <dd className="font-bold">{jd(grandTotal)}</dd>
             </div>
             <div className="flex justify-between gap-2">
               <dt>المبلغ المدفوع</dt>
-              <dd className="font-bold">{paidAmount.toFixed(2)} د.أ</dd>
+              <dd className="font-bold">{jd(paidAmount)}</dd>
             </div>
             <div className="flex justify-between gap-2 border-t border-[#B8860B]/30 pt-1 text-[#8B4513]">
               <dt className="font-bold">المبلغ المتبقي</dt>
-              <dd className="font-bold">{remaining.toFixed(2)} د.أ</dd>
+              <dd className="font-bold">{jd(remaining)}</dd>
             </div>
           </dl>
         </div>
@@ -1447,10 +1465,10 @@ export function SocialOrderEntryForm({
         <div className="pt-2">
           <button
             type="submit"
-            disabled={submit.isPending}
-            className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[#8B4513] px-6 text-center text-sm font-bold text-white shadow-sm hover:bg-[#5D2E17] disabled:opacity-60 transition"
+            disabled={submit.isPending || isSubmittingRef.current}
+            className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[#8B4513] px-6 text-center text-sm font-bold text-white shadow-sm hover:bg-[#5D2E17] disabled:opacity-60 transition cursor-pointer"
           >
-            {submit.isPending ? (
+            {submit.isPending || isSubmittingRef.current ? (
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
             ) : (
               <Send className="h-4 w-4" aria-hidden="true" />

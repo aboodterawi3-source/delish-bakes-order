@@ -1,6 +1,7 @@
 import { useId, useRef, useState } from "react";
 import { CheckCircle2, Minus, Plus, Trash2, X } from "lucide-react";
-import { WHATSAPP } from "@/lib/menu";
+import { getWhatsAppChatUrl } from "@/lib/whatsapp";
+import { formatJod } from "@/lib/currency";
 import { DELIVERY_ZONES, OTHER_GOVERNORATES_AREA, feeForArea } from "@/lib/delivery-zones";
 import { DeliveryZoneSelect } from "@/components/delish/DeliveryZoneSelect";
 import { useCart } from "@/lib/cart";
@@ -9,6 +10,7 @@ import { useDismissable } from "@/lib/a11y";
 import { useServerFn } from "@tanstack/react-start";
 import { submitStorefrontOrder } from "@/lib/storefront-order.functions";
 import { useBrandPalette } from "@/lib/brand-palette";
+import { toast } from "sonner";
 
 type Form = {
   name: string;
@@ -45,7 +47,9 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   const [form, setForm] = useState<Form>(empty);
   const [errors, setErrors] = useState<Partial<Record<keyof Form, boolean>>>({});
   const [sending, setSending] = useState(false);
+  const sendingRef = useRef(false);
   const [saveError, setSaveError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const submitOrder = useServerFn(submitStorefrontOrder);
 
   const titleId = useId();
@@ -73,10 +77,13 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
     return Object.keys(e).length === 0;
   };
 
-  const buildMessage = () => {
+  const buildMessage = (savedOrderNumber?: string | number | null) => {
     const ar = lang === "ar";
     const L: string[] = [];
     L.push(ar ? "🧾 *طلب جديد – Delish Cake & Bake*" : "🧾 *New Order – Delish Cake & Bake*");
+    if (savedOrderNumber) {
+      L.push(ar ? `*رقم الطلب:* ${savedOrderNumber}` : `*Order #:* ${savedOrderNumber}`);
+    }
     L.push("");
     L.push(ar ? "*بيانات العميل*" : "*Customer details*");
     L.push(`${ar ? "الاسم" : "Name"}: ${form.name.trim()}`);
@@ -96,15 +103,15 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
     L.push(ar ? "*تفاصيل الطلب*" : "*Order items*");
     lines.forEach((l, i) => {
       L.push(
-        `${i + 1}. ${ar ? l.ar : l.en} × ${l.qty} — ${(l.unit * l.qty).toFixed(2)} ${ar ? "د.أ" : "JOD"}`,
+        `${i + 1}. ${ar ? l.ar : l.en} × ${l.qty} — ${formatJod(l.unit * l.qty, lang)}`,
       );
       (ar ? l.detailsAr : l.detailsEn).forEach((d) => L.push(`   • ${d}`));
       if (l.notes) L.push(`   • ${ar ? "ملاحظة" : "Note"}: ${l.notes}`);
     });
     L.push("");
-    L.push(`${ar ? "المجموع" : "Subtotal"}: ${subtotal.toFixed(2)} ${ar ? "د.أ" : "JOD"}`);
-    L.push(`${ar ? "التوصيل" : "Delivery"}: ${deliveryFee.toFixed(2)} ${ar ? "د.أ" : "JOD"}`);
-    L.push(`*${ar ? "الإجمالي" : "Total"}: ${total.toFixed(2)} ${ar ? "د.أ" : "JOD"}*`);
+    L.push(`${ar ? "المجموع" : "Subtotal"}: ${formatJod(subtotal, lang)}`);
+    L.push(`${ar ? "التوصيل" : "Delivery"}: ${formatJod(deliveryFee, lang)}`);
+    L.push(`*${ar ? "الإجمالي" : "Total"}: ${formatJod(total, lang)}*`);
     L.push(
       `${ar ? "طريقة الدفع" : "Payment"}: ${
         form.pay === "cash"
@@ -140,14 +147,23 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   };
 
   const send = async () => {
-    if (!validate()) return;
-    const url = `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(buildMessage())}`;
-    setWaUrl(url);
-
+    // SEC-02: Double guard pattern - immediate check & synchronous ref lock
+    if (sending || sendingRef.current) return;
+    sendingRef.current = true;
     setSending(true);
+
+    if (!validate()) {
+      sendingRef.current = false;
+      setSending(false);
+      return;
+    }
+
     setSaveError(false);
+    setErrorMessage(null);
+
+    let saved: { order_number?: string | number | null } | null = null;
     try {
-      const saved = await submitOrder({
+      saved = await submitOrder({
         data: {
           customer_name: form.name.trim(),
           customer_phone: form.phone.trim(),
@@ -175,13 +191,38 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
           ),
         },
       });
-      setOrderNumber(saved?.order_number ?? null);
-    } catch {
+    } catch (err) {
+      // SEC-01: Stop execution immediately, never clear cart, never transition to done
       setSaveError(true);
+      const msg =
+        err instanceof Error
+          ? err.message
+          : lang === "ar"
+            ? "تعذّر تسجيل الطلب في النظام بسبب انقطاع الاتصال. منتجاتك لا تزال محفوظة، يرجى إعادة المحاولة."
+            : "Could not submit your order due to a connection issue. Your cart items are preserved, please try again.";
+      setErrorMessage(msg);
+      toast.error(msg);
+      return; // Early return: Cart stays intact!
     } finally {
+      sendingRef.current = false;
       setSending(false);
     }
 
+    // SEC-01: Ensure orderNumber exists and was confirmed before opening WhatsApp or clearing cart
+    if (!saved?.order_number) {
+      setSaveError(true);
+      const msg =
+        lang === "ar"
+          ? "لم يتم تأكيد رقم الطلب من الخادم، يرجى المحاولة مرة أخرى."
+          : "Order number was not confirmed. Please try again.";
+      setErrorMessage(msg);
+      toast.error(msg);
+      return;
+    }
+
+    setOrderNumber(saved.order_number);
+    const url = getWhatsAppChatUrl(undefined, buildMessage(saved.order_number));
+    setWaUrl(url);
     setStage("done");
     clear();
     openWhatsApp(url);
@@ -511,12 +552,12 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
 
         {lines.length > 0 && (
           <div className="space-y-3 border-t border-border bg-card px-4 py-4 sm:px-5">
-            <Row label={t("subtotal")} value={`${subtotal.toFixed(2)} ${t("jod")}`} />
-            <Row label={t("delivery")} value={`${deliveryFee.toFixed(2)} ${t("jod")}`} />
+            <Row label={t("subtotal")} value={formatJod(subtotal, lang)} />
+            <Row label={t("delivery")} value={formatJod(deliveryFee, lang)} />
             <div className="flex items-center justify-between text-sm">
               <span className="font-display text-base font-semibold">{t("total")}</span>
               <span style={{ color: palette.main }} className="font-display text-base font-black">
-                {`${total.toFixed(2)} ${t("jod")}`}
+                {formatJod(total, lang)}
               </span>
             </div>
             {stage === "cart" ? (
@@ -539,7 +580,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
               <>
                 <button
                   onClick={() => void send()}
-                  disabled={sending}
+                  disabled={sending || sendingRef.current}
                   className="min-h-12 w-full rounded-full bg-whatsapp py-3.5 text-sm font-bold text-whatsapp-foreground transition-transform hover:scale-[1.01] disabled:opacity-70"
                 >
                   {sending
@@ -549,11 +590,12 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                     : t("sendWhats")}
                 </button>
                 {saveError && (
-                  <p className="text-center text-xs font-semibold text-destructive">
-                    {lang === "ar"
-                      ? "تعذّر تسجيل الطلب في النظام، لكن رسالة واتساب جاهزة للإرسال."
-                      : "Could not save the order to the system, but your WhatsApp message is ready."}
-                  </p>
+                  <div className="rounded-2xl border border-destructive/20 bg-destructive/10 p-3 text-center text-xs font-bold text-destructive">
+                    {errorMessage ||
+                      (lang === "ar"
+                        ? "تعذّر حفظ الطلب بسبب انقطاع الاتصال. منتجاتك لا تزال محفوظة في السلة، يرجى إعادة المحاولة."
+                        : "Could not save your order due to a connection issue. Your cart items are preserved, please try again.")}
+                  </div>
                 )}
 
                 <button

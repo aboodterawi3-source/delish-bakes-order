@@ -13,7 +13,6 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AdminSetupRouteImport } from './routes/admin-setup'
 import { Route as AuthRouteImport } from './routes/auth'
-import { Route as CleanOrdersRouteImport } from './routes/clean-orders'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as DiscoverRouteImport } from './routes/discover'
 import { Route as EditOrderRouteImport } from './routes/edit-order'
@@ -25,6 +24,7 @@ import { Route as SocialLoginRouteImport } from './routes/social-login'
 import { Route as SocialPortalRouteImport } from './routes/social-portal'
 import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as AuthenticatedCleanOrdersRouteImport } from './routes/_authenticated/clean-orders'
 import { Route as AuthenticatedKdsRouteImport } from './routes/_authenticated/kds'
 import { Route as AuthenticatedSalesRouteImport } from './routes/_authenticated/sales'
 import { Route as AuthenticatedStaffRouteImport } from './routes/_authenticated/staff'
@@ -46,11 +46,6 @@ const AdminSetupRoute = AdminSetupRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CleanOrdersRoute = CleanOrdersRouteImport.update({
-  id: '/clean-orders',
-  path: '/clean-orders',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -108,6 +103,12 @@ const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedCleanOrdersRoute =
+  AuthenticatedCleanOrdersRouteImport.update({
+    id: '/clean-orders',
+    path: '/clean-orders',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedKdsRoute = AuthenticatedKdsRouteImport.update({
   id: '/kds',
   path: '/kds',
@@ -128,7 +129,6 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin-setup': typeof AdminSetupRoute
   '/auth': typeof AuthRoute
-  '/clean-orders': typeof CleanOrdersRoute
   '/dashboard': typeof DashboardRoute
   '/discover': typeof DiscoverRoute
   '/edit-order': typeof EditOrderRoute
@@ -140,6 +140,7 @@ export interface FileRoutesByFullPath {
   '/social-portal': typeof SocialPortalRoute
   '/welcome': typeof WelcomeRoute
   '/admin': typeof AuthenticatedAdminRoute
+  '/clean-orders': typeof AuthenticatedCleanOrdersRoute
   '/kds': typeof AuthenticatedKdsRoute
   '/sales': typeof AuthenticatedSalesRoute
   '/staff': typeof AuthenticatedStaffRoute
@@ -148,7 +149,6 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin-setup': typeof AdminSetupRoute
   '/auth': typeof AuthRoute
-  '/clean-orders': typeof CleanOrdersRoute
   '/dashboard': typeof DashboardRoute
   '/discover': typeof DiscoverRoute
   '/edit-order': typeof EditOrderRoute
@@ -160,6 +160,7 @@ export interface FileRoutesByTo {
   '/social-portal': typeof SocialPortalRoute
   '/welcome': typeof WelcomeRoute
   '/admin': typeof AuthenticatedAdminRoute
+  '/clean-orders': typeof AuthenticatedCleanOrdersRoute
   '/kds': typeof AuthenticatedKdsRoute
   '/sales': typeof AuthenticatedSalesRoute
   '/staff': typeof AuthenticatedStaffRoute
@@ -170,7 +171,6 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/admin-setup': typeof AdminSetupRoute
   '/auth': typeof AuthRoute
-  '/clean-orders': typeof CleanOrdersRoute
   '/dashboard': typeof DashboardRoute
   '/discover': typeof DiscoverRoute
   '/edit-order': typeof EditOrderRoute
@@ -182,6 +182,7 @@ export interface FileRoutesById {
   '/social-portal': typeof SocialPortalRoute
   '/welcome': typeof WelcomeRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
+  '/_authenticated/clean-orders': typeof AuthenticatedCleanOrdersRoute
   '/_authenticated/kds': typeof AuthenticatedKdsRoute
   '/_authenticated/sales': typeof AuthenticatedSalesRoute
   '/_authenticated/staff': typeof AuthenticatedStaffRoute
@@ -192,7 +193,6 @@ export interface FileRouteTypes {
     | '/'
     | '/admin-setup'
     | '/auth'
-    | '/clean-orders'
     | '/dashboard'
     | '/discover'
     | '/edit-order'
@@ -204,6 +204,7 @@ export interface FileRouteTypes {
     | '/social-portal'
     | '/welcome'
     | '/admin'
+    | '/clean-orders'
     | '/kds'
     | '/sales'
     | '/staff'
@@ -212,7 +213,6 @@ export interface FileRouteTypes {
     | '/'
     | '/admin-setup'
     | '/auth'
-    | '/clean-orders'
     | '/dashboard'
     | '/discover'
     | '/edit-order'
@@ -224,6 +224,7 @@ export interface FileRouteTypes {
     | '/social-portal'
     | '/welcome'
     | '/admin'
+    | '/clean-orders'
     | '/kds'
     | '/sales'
     | '/staff'
@@ -233,7 +234,6 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/admin-setup'
     | '/auth'
-    | '/clean-orders'
     | '/dashboard'
     | '/discover'
     | '/edit-order'
@@ -245,6 +245,7 @@ export interface FileRouteTypes {
     | '/social-portal'
     | '/welcome'
     | '/_authenticated/admin'
+    | '/_authenticated/clean-orders'
     | '/_authenticated/kds'
     | '/_authenticated/sales'
     | '/_authenticated/staff'
@@ -255,7 +256,6 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AdminSetupRoute: typeof AdminSetupRoute
   AuthRoute: typeof AuthRoute
-  CleanOrdersRoute: typeof CleanOrdersRoute
   DashboardRoute: typeof DashboardRoute
   DiscoverRoute: typeof DiscoverRoute
   EditOrderRoute: typeof EditOrderRoute
@@ -296,13 +296,6 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/clean-orders': {
-      id: '/clean-orders'
-      path: '/clean-orders'
-      fullPath: '/clean-orders'
-      preLoaderRoute: typeof CleanOrdersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -382,6 +375,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/clean-orders': {
+      id: '/_authenticated/clean-orders'
+      path: '/clean-orders'
+      fullPath: '/clean-orders'
+      preLoaderRoute: typeof AuthenticatedCleanOrdersRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/kds': {
       id: '/_authenticated/kds'
       path: '/kds'
@@ -408,6 +408,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
+  AuthenticatedCleanOrdersRoute: typeof AuthenticatedCleanOrdersRoute
   AuthenticatedKdsRoute: typeof AuthenticatedKdsRoute
   AuthenticatedSalesRoute: typeof AuthenticatedSalesRoute
   AuthenticatedStaffRoute: typeof AuthenticatedStaffRoute
@@ -415,6 +416,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
+  AuthenticatedCleanOrdersRoute: AuthenticatedCleanOrdersRoute,
   AuthenticatedKdsRoute: AuthenticatedKdsRoute,
   AuthenticatedSalesRoute: AuthenticatedSalesRoute,
   AuthenticatedStaffRoute: AuthenticatedStaffRoute,
@@ -428,7 +430,6 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AdminSetupRoute: AdminSetupRoute,
   AuthRoute: AuthRoute,
-  CleanOrdersRoute: CleanOrdersRoute,
   DashboardRoute: DashboardRoute,
   DiscoverRoute: DiscoverRoute,
   EditOrderRoute: EditOrderRoute,

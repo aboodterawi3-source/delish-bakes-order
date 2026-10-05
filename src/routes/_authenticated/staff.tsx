@@ -16,6 +16,7 @@ import { SalesPanel } from "@/components/staff/SalesPanel";
 import { KitchenPanel } from "@/components/staff/KitchenPanel";
 import { SocialPanel } from "@/components/staff/SocialPanel";
 import { MessagesPanel } from "@/components/staff/MessagesPanel";
+import { TabErrorBoundary } from "@/components/staff/TabErrorBoundary";
 
 type StaffTab = "sales" | "kitchen" | "social" | "messages" | "admin";
 
@@ -282,11 +283,31 @@ function StaffPortalPage() {
         </div>
       </div>
 
-      {active === "sales" && <SalesPanel />}
-      {active === "kitchen" && <KitchenPanel />}
-      {active === "social" && <SocialPanel />}
-      {active === "messages" && <MessagesPanel />}
-      {active === "admin" && <AdminPanel />}
+      {active === "sales" && (
+        <TabErrorBoundary tabName="المبيعات (Sales)">
+          <SalesPanel />
+        </TabErrorBoundary>
+      )}
+      {active === "kitchen" && (
+        <TabErrorBoundary tabName="المطبخ (Kitchen)">
+          <KitchenPanel />
+        </TabErrorBoundary>
+      )}
+      {active === "social" && (
+        <TabErrorBoundary tabName="السوشال (Social)">
+          <SocialPanel />
+        </TabErrorBoundary>
+      )}
+      {active === "messages" && (
+        <TabErrorBoundary tabName="الرسائل (Messages)">
+          <MessagesPanel />
+        </TabErrorBoundary>
+      )}
+      {active === "admin" && (
+        <TabErrorBoundary tabName="الإدارة (Admin)">
+          <AdminPanel />
+        </TabErrorBoundary>
+      )}
     </div>
   );
 }

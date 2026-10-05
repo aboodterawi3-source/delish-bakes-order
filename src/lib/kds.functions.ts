@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertRole, type StaffRoleName } from "@/lib/role-guard";
 import { highestPriority, type PriorityColor } from "@/lib/priority";
+import { isoDay, todayIso } from "@/lib/date-filter";
 
 const KITCHEN_ROLES: StaffRoleName[] = ["kitchen", "admin"];
 
@@ -91,18 +92,33 @@ export const getKitchenOrders = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<KdsOrder[]> => {
     await assertRole(context, KITCHEN_ROLES);
-    // Reads go through role-checked, prep-safe database functions so kitchen
-    // accounts can never reach customer phones, payments or discounts.
+    // SEC-04: Smart date filter (yesterday's incomplete + today & onwards) and query limit (150)
+    const yesterday = isoDay(-1);
+    const today = todayIso();
+
     /* eslint-disable @typescript-eslint/no-explicit-any */
     const db = context.supabase as any;
     const { data, error } = await db
       .rpc("get_kitchen_orders")
       .in("status", ["new", "confirmed", "baking", "ready"])
+      .gte("requested_date", yesterday)
       .order("requested_date", { ascending: true })
-      .order("requested_time", { ascending: true });
+      .order("requested_time", { ascending: true })
+      .limit(150);
     if (error) throw new Error(error.message);
 
-    const orderIds = (data ?? []).map((order: { id: string }) => order.id);
+    // Keep all orders from today onwards, and only incomplete orders from yesterday
+    const activeOrders = (data ?? []).filter(
+      (order: { requested_date: string; status: string }) => {
+        if (order.requested_date >= today) return true;
+        if (order.requested_date === yesterday) {
+          return order.status !== "ready";
+        }
+        return false;
+      },
+    );
+
+    const orderIds = activeOrders.map((order: { id: string }) => order.id);
     const { data: itemsData, error: itemsError } = orderIds.length
       ? await db.rpc("get_kitchen_order_items", { _order_ids: orderIds })
       : { data: [] as any[], error: null };
@@ -223,7 +239,7 @@ export const getKitchenOrders = createServerFn({ method: "GET" })
       }
     }
 
-    return (data ?? []).map((order: any) => {
+    return activeOrders.map((order: any) => {
       let mods =
         modsMap.get(order.id) ?? (Array.isArray(order.modifications) ? order.modifications : []);
 

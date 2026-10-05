@@ -1076,8 +1076,8 @@ export function KitchenPanel() {
   const orders = useQuery({
     queryKey: ORDERS_KEY,
     queryFn: () => fetchOrders({}),
-    staleTime: 5000,
-    refetchInterval: 10000,
+    staleTime: 15_000,
+    refetchInterval: 60_000,
   });
 
   // Realtime subscription (refetches the kitchen queue on any order change)
