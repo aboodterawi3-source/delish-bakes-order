@@ -846,7 +846,8 @@ export function DesignPhotoSection({
 
   const removePhoto = () => {
     if (value.designImageUrl) {
-      void deleteImage({ data: { url: value.designImageUrl } }).catch(() => {});
+      const token = typeof window !== "undefined" ? sessionStorage.getItem(`delish_photo_token_${value.designImageUrl}`) : null;
+      void deleteImage({ data: { url: value.designImageUrl, deleteToken: token } }).catch(() => {});
     }
     onChange({ ...value, designImageUrl: null });
     setSavedSize(null);
@@ -863,12 +864,20 @@ export function DesignPhotoSection({
         maxDimension: 800,
         quality: 0.8,
       });
+      const previousToken = value.designImageUrl && typeof window !== "undefined"
+        ? sessionStorage.getItem(`delish_photo_token_${value.designImageUrl}`)
+        : undefined;
+
       const saved = await upload({
         data: {
           data_url: converted.dataUrl,
-          previous_url: value.designImageUrl || undefined,
+          previous_url: value.designImageUrl || null,
+          previous_deleteToken: previousToken || null,
         },
       });
+      if (typeof window !== "undefined" && saved.deleteToken) {
+        sessionStorage.setItem(`delish_photo_token_${saved.url}`, saved.deleteToken);
+      }
       onChange({ ...value, designImageUrl: saved.url });
       setSavedSize({ before: converted.originalBytes, after: converted.bytes });
       clear("photo");

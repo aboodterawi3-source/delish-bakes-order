@@ -104,8 +104,8 @@ CREATE INDEX IF NOT EXISTS idx_audit_logs_order_id_created
 -- ============================================================================
 
 -- 17. Customer Edit Link Token Lookup
-CREATE INDEX IF NOT EXISTS idx_order_edit_tokens_token
-  ON public.order_edit_tokens (token);
+CREATE INDEX IF NOT EXISTS idx_order_edit_tokens_token_hash
+  ON public.order_edit_tokens (token_hash);
 
 CREATE INDEX IF NOT EXISTS idx_order_edit_tokens_order_id
   ON public.order_edit_tokens (order_id);

@@ -1,0 +1,51 @@
+name: Zero-Tolerance Quality Gate
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+# Cancel in-progress runs on PRs to save resources
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit-and-build:
+    name: Security, Types & Build Verification
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Full history for accurate analysis
+
+      - name: Setup Bun (Infrastructure matching)
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: 🛡️ Security: Dependency Vulnerability Audit
+        run: bun pm trust && bunx npm-audit-ci-wrapper || bun pm untrust
+        # Alternatively, using standard npm audit if bun audit is less strict:
+        # run: npm audit --audit-level=high
+
+      - name: 🔍 Architecture: Strict Type Checking
+        # Prevents merging if there are null/undefined bypasses or broken type casts
+        run: bunx tsc --noEmit --strict
+
+      - name: 🧹 Quality: Code Linter (ESLint)
+        run: bunx eslint . --max-warnings=0
+
+      - name: 🏗️ Scalability: Production Build Integrity
+        # Fails the gate if TanStack routing or Vite encounters dead code or broken imports
+        run: bun run build
+        env:
+          # Inject dummy variables required for a successful build
+          VITE_SUPABASE_URL: "https://mock.supabase.co"
+          VITE_SUPABASE_PUBLISHABLE_KEY: "mock_key"

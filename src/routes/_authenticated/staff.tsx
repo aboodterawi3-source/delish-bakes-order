@@ -188,6 +188,13 @@ function StaffPortalPage() {
   }, [active, navigate, search.tab]);
 
   const signOut = async () => {
+    if (typeof window !== "undefined" && window.sessionStorage) {
+      Object.keys(sessionStorage).forEach((key) => {
+        if (key.startsWith("delish_pos_draft_")) {
+          sessionStorage.removeItem(key);
+        }
+      });
+    }
     await queryClient.cancelQueries();
     queryClient.clear();
     await supabase.auth.signOut();

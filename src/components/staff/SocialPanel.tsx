@@ -18,6 +18,13 @@ export function SocialPanel() {
   const access = useQuery({ queryKey: ["social-access"], queryFn: () => accessFn({}) });
 
   const signOut = useCallback(async () => {
+    if (typeof window !== "undefined" && window.sessionStorage) {
+      Object.keys(sessionStorage).forEach((key) => {
+        if (key.startsWith("delish_pos_draft_")) {
+          sessionStorage.removeItem(key);
+        }
+      });
+    }
     await supabase.auth.signOut();
     void navigate({ to: "/social-login", replace: true });
   }, [navigate]);

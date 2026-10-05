@@ -75,8 +75,8 @@ export type AdminAnalytics = {
   customers: CustomerEntry[];
 };
 
-const ACTIVE = ["new", "confirmed", "baking", "ready", "out_for_delivery"];
-const DONE = ["delivered", "completed"];
+const ACTIVE = ["new", "confirmed", "baking", "ready", "out_for_delivery"] as const;
+const DONE = ["delivered", "completed"] as const;
 
 /**
  * The one-time setup screen may only run before the first admin is created.

@@ -8,8 +8,13 @@ import {
   type PricedLine,
 } from "@/lib/order-pricing";
 import { publicError } from "@/lib/public-error";
-import { extraList, isValidStorageUrl, STORAGE_URL } from "@/lib/server-shared";
+import { extraList, isValidStorageUrl } from "@/lib/server-shared";
 import { roundJod } from "@/lib/currency";
+import { isReasonableOrderDate, isValidTime, UUID_PATTERN } from "@/lib/validators";
+import { logServerError } from "@/lib/server-log";
+
+const MAX_LINES = 100;
+const MAX_QTY = 500;
 
 export type StorefrontOrderRequest = {
   customer_name: string;
@@ -22,6 +27,8 @@ export type StorefrontOrderRequest = {
   notes?: string | null;
   /** How the customer wants to pay: cash on delivery or CliQ transfer. */
   payment_method?: "cash" | "cliq" | null;
+  /** Idempotency key generated once per checkout attempt in the browser. */
+  client_request_id?: string | null;
   design_image?: string | null;
   lines: {
     spec: LineSpec;
@@ -54,9 +61,17 @@ function validate(input: StorefrontOrderRequest) {
   const address = text(input?.address, 300, "العنوان", method === "delivery");
 
   const date = text(input?.requested_date, 10, "التاريخ", true)!;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("تاريخ غير صحيح · Invalid date");
+  // Real calendar date inside a sane window (was: regex only, accepted 2026-99-99 and past dates).
+  if (!isReasonableOrderDate(date)) throw new Error("تاريخ غير صحيح · Invalid date");
   const time = text(input?.requested_time, 8, "الوقت", true)!;
-  if (!/^\d{2}:\d{2}(:\d{2})?$/.test(time)) throw new Error("وقت غير صحيح · Invalid time");
+  if (!isValidTime(time)) throw new Error("وقت غير صحيح · Invalid time");
+
+  const rawRequestId =
+    typeof input?.client_request_id === "string" ? input.client_request_id.trim() : "";
+  if (rawRequestId && !UUID_PATTERN.test(rawRequestId)) {
+    throw new Error("طلب غير صالح · Invalid request");
+  }
+  const clientRequestId = rawRequestId || null;
 
   const notes = text(input?.notes, 1000, "الملاحظات");
 
@@ -72,11 +87,11 @@ function validate(input: StorefrontOrderRequest) {
     if (raw.length > 2500) {
       throw new Error("رابط صورة التصميم طويل جداً · Design image URL exceeds maximum length");
     }
-    if (isValidStorageUrl(raw) || STORAGE_URL.test(raw) || /^https?:\/\//i.test(raw)) {
-      designImage = raw;
-    } else {
+    // Only Storage objects of our own project are accepted; the old `https?://` fallback allowed any host.
+    if (!isValidStorageUrl(raw)) {
       throw new Error("رابط صورة التصميم غير صالح · Invalid design image URL");
     }
+    designImage = raw;
   }
 
   const rawLines = Array.isArray(input?.lines) ? input.lines : [];
@@ -136,6 +151,7 @@ function validate(input: StorefrontOrderRequest) {
     time,
     notes,
     payment,
+    clientRequestId,
     designImage,
     priced,
     cmsLines,
@@ -149,7 +165,29 @@ function validate(input: StorefrontOrderRequest) {
 export const submitStorefrontOrder = createServerFn({ method: "POST" })
   .inputValidator((input: StorefrontOrderRequest) => validate(input))
   .handler(async ({ data }) => {
+    // 10 orders / 10 min / client: blocks scripted floods of fake orders reaching the kitchen.
+    const { enforceRateLimit } = await import("@/lib/rate-limit");
+    enforceRateLimit("storefront-order", 10, 10 * 60_000);
+
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // Idempotency: a retried checkout (network drop, double tap) returns the original order.
+    if (data.clientRequestId) {
+      const { data: existing } = await supabaseAdmin
+        .from("orders")
+        .select("id, order_number, subtotal, delivery_fee, total")
+        .eq("client_request_id" as never, data.clientRequestId as never)
+        .maybeSingle();
+      if (existing) {
+        return {
+          id: existing.id,
+          order_number: existing.order_number,
+          subtotal: Number(existing.subtotal ?? 0),
+          delivery_fee: Number(existing.delivery_fee ?? 0),
+          total: Number(existing.total ?? 0),
+        };
+      }
+    }
 
     // CMS products live in the database, so their prices are read there — never
     // taken from the browser.
@@ -158,7 +196,7 @@ export const submitStorefrontOrder = createServerFn({ method: "POST" })
       const ids = [...new Set(data.cmsLines.map((line) => line.spec.productId))];
       const { data: rows, error: productError } = await supabaseAdmin
         .from("products")
-        .select("id, name_ar, name_en, price, sizes, is_available")
+        .select("id, name_ar, name_en, price, sizes, is_available, price_on_request")
         .in("id", ids);
       if (productError) {
         throw publicError(
@@ -174,6 +212,12 @@ export const submitStorefrontOrder = createServerFn({ method: "POST" })
             "أحد المنتجات في السلة غير متوفر، يرجى تحديث الصفحة · An item in your cart is no longer available, please refresh the page",
           );
         }
+        // "Price on request" items cannot be ordered through the self-service checkout.
+        if (product.price_on_request === true) {
+          throw new Error(
+            "أحد المنتجات يتطلب التواصل لمعرفة السعر · An item requires contacting us for its price",
+          );
+        }
         const sizes = Array.isArray(product.sizes)
           ? (product.sizes as { label?: string; price?: number }[])
           : [];
@@ -181,21 +225,34 @@ export const submitStorefrontOrder = createServerFn({ method: "POST" })
           ? sizes.find((entry) => entry?.label === line.spec.size)
           : undefined;
 
+        if (line.spec.size && sizes.length > 0 && !size) {
+          throw new Error("الحجم المختار غير صالح · Selected size is invalid");
+        }
+
         let unit: number;
         if (size && typeof size.price === "number") {
           unit = size.price;
         } else {
           // If no custom sizes configured on the product, apply standard SERVING_SIZE_OFFSETS
-          const basePrice = Number(product.price ?? 0);
+          const basePrice = Number(product.price);
           const sizeOffset = sizes.length > 0 ? 0 : getServingSizeOffset(line.spec.size);
           unit = basePrice + sizeOffset;
+        }
+
+        // A missing/invalid/non-positive price must stop the order, never silently sell it for 0 (was: `: 0`).
+        if (!Number.isFinite(unit) || unit <= 0) {
+          throw publicError(
+            "checkout.invalidPrice",
+            new Error(`product ${product.id} resolved to price ${String(unit)}`),
+            "تعذّر حفظ الطلب · Could not save the order",
+          );
         }
 
         const sizeLabel = size?.label ?? line.spec.size ?? "";
         lines.push({
           name_ar: product.name_ar,
           name_en: product.name_en,
-          unit_price: Number.isFinite(unit) ? unit : 0,
+          unit_price: unit,
           quantity: line.quantity,
           options_ar: [sizeLabel ? `الحجم: ${sizeLabel}` : "", ...line.extras.ar].filter(
             Boolean,
@@ -215,54 +272,66 @@ export const submitStorefrontOrder = createServerFn({ method: "POST" })
       .filter(Boolean)
       .join(" / ");
 
-    const { data: order, error } = await supabaseAdmin
-      .from("orders")
-      .insert({
-        customer_name: data.name,
-        customer_phone: data.phone,
-        method: data.method,
-        area: data.area,
-        address: data.address,
-        requested_date: data.date,
-        requested_time: data.time,
-        notes: data.notes,
-        inscription: inscription || null,
-        design_image_url: data.designImage,
-        payment_method: data.payment,
-        subtotal,
-        delivery_fee: deliveryFee,
-        total,
-        status: "new",
-      })
-      .select("id, order_number, subtotal, delivery_fee, total")
-      .single();
-    if (error || !order) {
+    const orderPayload = {
+      customer_name: data.name,
+      customer_phone: data.phone,
+      method: data.method,
+      area: data.area,
+      address: data.address,
+      requested_date: data.date,
+      requested_time: data.time,
+      notes: data.notes,
+      inscription: inscription || null,
+      design_image_url: data.designImage,
+      payment_method: data.payment,
+      subtotal,
+      delivery_fee: deliveryFee,
+      total,
+      status: "new",
+      client_request_id: data.clientRequestId || null,
+    };
+
+    const itemsPayload = lines.map((line) => ({
+      name_ar: line.name_ar,
+      name_en: line.name_en,
+      unit_price: line.unit_price,
+      quantity: line.quantity,
+      options_ar: line.options_ar,
+      options_en: line.options_en,
+      notes: line.notes,
+    }));
+
+    const { data: rawOrder, error } = await supabaseAdmin.rpc("create_storefront_order_atomic", {
+      order_payload: orderPayload,
+      items_payload: itemsPayload,
+    });
+
+    if (error || !rawOrder) {
+      // Unique-violation on the idempotency key = a concurrent twin request won the race: return its order.
+      if (data.clientRequestId && (error as { code?: string } | null)?.code === "23505") {
+        const { data: twin } = await supabaseAdmin
+          .from("orders")
+          .select("id, order_number, subtotal, delivery_fee, total")
+          .eq("client_request_id" as never, data.clientRequestId as never)
+          .maybeSingle();
+        if (twin) {
+          return {
+            id: twin.id,
+            order_number: twin.order_number,
+            subtotal: Number(twin.subtotal ?? 0),
+            delivery_fee: Number(twin.delivery_fee ?? 0),
+            total: Number(twin.total ?? 0),
+          };
+        }
+      }
       throw publicError(
         "checkout.insertOrder",
-        error,
+        error ?? new Error("No order returned"),
         "تعذّر حفظ الطلب · Could not save the order",
       );
     }
 
-    const { error: itemError } = await supabaseAdmin.from("order_items").insert(
-      lines.map((line) => ({
-        order_id: order.id,
-        name_ar: line.name_ar,
-        name_en: line.name_en,
-        unit_price: line.unit_price,
-        quantity: line.quantity,
-        options_ar: line.options_ar,
-        options_en: line.options_en,
-        notes: line.notes,
-      })),
-    );
-    if (itemError) {
-      throw publicError(
-        "checkout.insertItems",
-        itemError,
-        "تعذّر حفظ الطلب · Could not save the order",
-      );
-    }
+    const order = rawOrder as any;
 
     return {
       id: order.id,

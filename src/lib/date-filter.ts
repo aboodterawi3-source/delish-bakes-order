@@ -35,8 +35,11 @@ export function todayIso(): string {
 export function isoDay(offsetDays = 0): string {
   if (offsetDays === 0) return todayIso();
   const todayStr = todayIso();
-  const [y, m, d] = todayStr.split("-").map(Number);
-  const shiftedDate = new Date(Date.UTC(y, m - 1, d + offsetDays, 12, 0, 0));
+  const parts = todayStr.split("-").map(Number);
+  const y = parts[0] ?? 2026;
+  const m = parts[1] ?? 1;
+  const d = (parts[2] ?? 1) + offsetDays;
+  const shiftedDate = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Amman",
     year: "numeric",

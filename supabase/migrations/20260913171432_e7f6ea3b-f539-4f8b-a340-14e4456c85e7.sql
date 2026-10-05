@@ -59,19 +59,23 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  financial_changed := (NEW.subtotal IS DISTINCT FROM OLD.subtotal)
-    OR (NEW.delivery_fee IS DISTINCT FROM OLD.delivery_fee)
-    OR (NEW.deposit_paid IS DISTINCT FROM OLD.deposit_paid)
-    OR (NEW.payment_method IS DISTINCT FROM OLD.payment_method)
-    OR (NEW.discount_amount IS DISTINCT FROM OLD.discount_amount)
-    OR (NEW.discount_percent IS DISTINCT FROM OLD.discount_percent)
-    OR (NEW.total IS DISTINCT FROM OLD.total);
+  IF TG_OP = 'INSERT' THEN
+    financial_changed := true;
+  ELSE
+    financial_changed := (NEW.subtotal IS DISTINCT FROM OLD.subtotal)
+      OR (NEW.delivery_fee IS DISTINCT FROM OLD.delivery_fee)
+      OR (NEW.deposit_paid IS DISTINCT FROM OLD.deposit_paid)
+      OR (NEW.payment_method IS DISTINCT FROM OLD.payment_method)
+      OR (NEW.discount_amount IS DISTINCT FROM OLD.discount_amount)
+      OR (NEW.discount_percent IS DISTINCT FROM OLD.discount_percent)
+      OR (NEW.total IS DISTINCT FROM OLD.total);
+  END IF;
 
   IF financial_changed AND NOT is_sales THEN
     RAISE EXCEPTION 'Financial changes require sales authorization';
   END IF;
 
-  IF (NEW.subtotal IS DISTINCT FROM OLD.subtotal) THEN
+  IF TG_OP = 'UPDATE' AND (NEW.subtotal IS DISTINCT FROM OLD.subtotal) THEN
     IF NOT EXISTS (
       SELECT 1 FROM public.staff_permissions sp
       WHERE sp.user_id = auth.uid() AND sp.allow_price_override
@@ -80,8 +84,8 @@ BEGIN
     END IF;
   END IF;
 
-  IF (NEW.discount_amount IS DISTINCT FROM OLD.discount_amount)
-     OR (NEW.discount_percent IS DISTINCT FROM OLD.discount_percent) THEN
+  IF (TG_OP = 'UPDATE' AND ((NEW.discount_amount IS DISTINCT FROM OLD.discount_amount) OR (NEW.discount_percent IS DISTINCT FROM OLD.discount_percent)))
+     OR (TG_OP = 'INSERT' AND (COALESCE(NEW.discount_amount, 0) > 0 OR COALESCE(NEW.discount_percent, 0) > 0)) THEN
     SELECT allow_custom_discount, max_discount_percent INTO perm
     FROM public.staff_permissions WHERE user_id = auth.uid();
     IF perm IS NULL OR NOT perm.allow_custom_discount THEN
@@ -95,6 +99,10 @@ BEGIN
            > COALESCE(perm.max_discount_percent, 0) + 0.01 THEN
       RAISE EXCEPTION 'Discount exceeds the maximum allowed percentage';
     END IF;
+  END IF;
+
+  IF NEW.total <> GREATEST(COALESCE(NEW.subtotal, 0) + COALESCE(NEW.delivery_fee, 0) - COALESCE(NEW.discount_amount, 0), 0) THEN
+    RAISE EXCEPTION 'Total mathematically diverges from subtotal and discounts';
   END IF;
 
   RETURN NEW;

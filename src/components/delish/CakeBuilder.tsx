@@ -180,12 +180,19 @@ export function CakeBuilder({ onDone }: { onDone: () => void }) {
                         maxDimension: 800,
                         quality: 0.8,
                       });
+                      const previousToken = designImage && typeof window !== "undefined"
+                        ? sessionStorage.getItem(`delish_photo_token_${designImage}`)
+                        : undefined;
                       const saved = await upload({
                         data: {
                           data_url: converted.dataUrl,
-                          previous_url: designImage || undefined,
+                          previous_url: designImage || null,
+                          previous_deleteToken: previousToken || null,
                         },
                       });
+                      if (typeof window !== "undefined" && saved.deleteToken) {
+                        sessionStorage.setItem(`delish_photo_token_${saved.url}`, saved.deleteToken);
+                      }
                       setDesignImage(saved.url);
                     } catch (error) {
                       setDesignImage(undefined);
@@ -219,7 +226,10 @@ export function CakeBuilder({ onDone }: { onDone: () => void }) {
                     type="button"
                     onClick={() => {
                       if (designImage) {
-                        void deleteImage({ data: { url: designImage } }).catch(() => {});
+                        const token = typeof window !== "undefined"
+                          ? sessionStorage.getItem(`delish_photo_token_${designImage}`)
+                          : null;
+                        void deleteImage({ data: { url: designImage, deleteToken: token } }).catch(() => {});
                       }
                       setDesignImage(undefined);
                     }}

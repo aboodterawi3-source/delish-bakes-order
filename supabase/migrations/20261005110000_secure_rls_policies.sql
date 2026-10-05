@@ -13,7 +13,7 @@
 
 -- Ensure helper functions exist in private schema or public schema
 CREATE OR REPLACE FUNCTION public.is_staff_member(user_id uuid)
-RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER AS $$
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   SELECT EXISTS (
     SELECT 1 FROM public.user_roles
     WHERE user_id = $1 AND role IN ('admin', 'sales', 'kitchen', 'social')
@@ -26,8 +26,7 @@ $$;
 ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
 
 -- Revoke dangerous permissions from public/anon
-REVOKE SELECT, UPDATE, DELETE ON public.orders FROM anon;
-GRANT INSERT ON public.orders TO anon;
+REVOKE SELECT, INSERT, UPDATE, DELETE ON public.orders FROM anon;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.orders TO authenticated;
 GRANT ALL ON public.orders TO service_role;
 
@@ -45,10 +44,10 @@ DROP POLICY IF EXISTS "Allow authenticated staff to update orders" ON public.ord
 DROP POLICY IF EXISTS "Admins can delete orders" ON public.orders;
 DROP POLICY IF EXISTS "Allow admins to delete orders" ON public.orders;
 
--- Policy 1.1: Public & Authenticated INSERT (Placing storefront or staff orders)
-CREATE POLICY "Allow anon and authenticated to place orders"
+-- Policy 1.1: Authenticated INSERT (Placing staff orders)
+CREATE POLICY "Allow authenticated to place orders"
   ON public.orders FOR INSERT
-  TO anon, authenticated
+  TO authenticated
   WITH CHECK (true);
 
 -- Policy 1.2: Authenticated Staff SELECT (Viewing orders)
@@ -85,8 +84,7 @@ CREATE POLICY "Allow admins to delete orders"
 ALTER TABLE public.order_items ENABLE ROW LEVEL SECURITY;
 
 -- Revoke dangerous permissions from public/anon
-REVOKE SELECT, UPDATE, DELETE ON public.order_items FROM anon;
-GRANT INSERT ON public.order_items TO anon;
+REVOKE SELECT, INSERT, UPDATE, DELETE ON public.order_items FROM anon;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.order_items TO authenticated;
 GRANT ALL ON public.order_items TO service_role;
 
@@ -103,10 +101,10 @@ DROP POLICY IF EXISTS "Admins can delete order items" ON public.order_items;
 DROP POLICY IF EXISTS "Order desk can delete order items" ON public.order_items;
 DROP POLICY IF EXISTS "Allow authenticated staff to delete order items" ON public.order_items;
 
--- Policy 2.1: Public & Authenticated INSERT (Cart items during order placement)
-CREATE POLICY "Allow anon and authenticated to insert order items"
+-- Policy 2.1: Authenticated INSERT (Cart items during staff order placement)
+CREATE POLICY "Allow authenticated to insert order items"
   ON public.order_items FOR INSERT
-  TO anon, authenticated
+  TO authenticated
   WITH CHECK (true);
 
 -- Policy 2.2: Authenticated Staff SELECT
@@ -145,7 +143,7 @@ CREATE POLICY "Allow authenticated staff to delete order items"
 ALTER TABLE public.customer_messages ENABLE ROW LEVEL SECURITY;
 
 -- Grant INSERT to public/anon for feedback/contact form
-GRANT INSERT ON public.customer_messages TO anon;
+GRANT INSERT ON public.customer_messages TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.customer_messages TO authenticated;
 GRANT ALL ON public.customer_messages TO service_role;
 REVOKE SELECT, UPDATE, DELETE ON public.customer_messages FROM anon;
@@ -163,7 +161,7 @@ DROP POLICY IF EXISTS "Allow admins to delete customer messages" ON public.custo
 -- Policy 3.1: Public INSERT (Storefront contact/feedback drawer)
 CREATE POLICY "Allow anyone to submit customer messages"
   ON public.customer_messages FOR INSERT
-  TO anon, authenticated
+  TO authenticated
   WITH CHECK (true);
 
 -- Policy 3.2: Authenticated Staff SELECT

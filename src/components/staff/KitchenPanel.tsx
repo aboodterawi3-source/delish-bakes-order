@@ -94,13 +94,37 @@ function formatRelativeTime(dateString: string) {
 }
 
 
+let sharedAudioCtx: AudioContext | null = null;
+function getSharedAudioCtx() {
+  if (typeof window === "undefined") return null;
+  if (!sharedAudioCtx) {
+    try {
+      sharedAudioCtx = new (
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+      )();
+      
+      // KDS-01: Auto-resume audio context on user interaction to bypass autoplay policy
+      const unlockAudio = () => {
+        if (sharedAudioCtx?.state === "suspended") {
+          void sharedAudioCtx.resume();
+        }
+      };
+      window.addEventListener('click', unlockAudio, { once: true, capture: true });
+      window.addEventListener('touchstart', unlockAudio, { once: true, capture: true });
+      
+    } catch {
+      return null;
+    }
+  }
+  return sharedAudioCtx;
+}
+
 /** Audio synth chime fallback to guarantee alert sound */
 function playKitchenChimeSound() {
   try {
-    const ctx = new (
-      window.AudioContext ||
-      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
-    )();
+    const ctx = getSharedAudioCtx();
+    if (!ctx) return;
     if (ctx.state === "suspended") {
       void ctx.resume();
     }
@@ -123,10 +147,8 @@ function playKitchenChimeSound() {
 /** Distinctive double-tone chime for kitchen order modifications */
 function playKitchenModificationChimeSound() {
   try {
-    const ctx = new (
-      window.AudioContext ||
-      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
-    )();
+    const ctx = getSharedAudioCtx();
+    if (!ctx) return;
     if (ctx.state === "suspended") {
       void ctx.resume();
     }

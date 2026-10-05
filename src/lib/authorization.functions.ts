@@ -526,6 +526,19 @@ export const submitOrderEdit = createServerFn({ method: "POST" })
       -30,
     );
 
+    // Single use: lock the token atomically BEFORE modifying the order to prevent Replay Attack
+    const { data: lockResult, error: lockError } = await supabaseAdmin
+      .from("order_edit_tokens")
+      .update({ used_at: new Date().toISOString() } as never)
+      .eq("id", row.id)
+      .is("used_at", null)
+      .select("id");
+      
+    if (lockError) throw publicError("order-edit.lockToken", lockError);
+    if (!lockResult || lockResult.length === 0) {
+      throw new Error("تم استخدام هذا الرابط من قبل · This link was already used");
+    }
+
     const { error } = await supabaseAdmin
       .from("orders")
       .update({
@@ -540,13 +553,6 @@ export const submitOrderEdit = createServerFn({ method: "POST" })
       } as never)
       .eq("id", row.order_id);
     if (error) throw publicError("order-edit.update", error);
-
-    // Single use: the link is locked the instant it is submitted.
-    const { error: lockError } = await supabaseAdmin
-      .from("order_edit_tokens")
-      .update({ used_at: new Date().toISOString() } as never)
-      .eq("id", row.id);
-    if (lockError) throw publicError("order-edit.lockToken", lockError);
 
     return { ok: true };
   });

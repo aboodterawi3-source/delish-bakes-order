@@ -279,13 +279,13 @@ export function OrdersWorkspace({
 
   const authorization = useQuery({
     queryKey: ["my-authorization"],
-    queryFn: () => authorizationFn({}),
+    queryFn: () => authorizationFn({ data: undefined }),
     staleTime: 30_000,
   });
 
   const orders = useQuery({
     queryKey: ORDERS_KEY,
-    queryFn: () => ordersFn({}),
+    queryFn: () => ordersFn({ data: {} }),
     refetchInterval: 30_000,
     staleTime: 10_000,
   });
@@ -301,8 +301,11 @@ export function OrdersWorkspace({
       );
       return { previous };
     },
-    onError: (err: Error) => {
+    onError: (err: Error, _variables, context) => {
       setMoneyError(err.message);
+      if (context?.previous) {
+        queryClient.setQueryData(ORDERS_KEY, context.previous);
+      }
       void queryClient.invalidateQueries({ queryKey: ORDERS_KEY });
     },
     onSuccess: (updated) => {

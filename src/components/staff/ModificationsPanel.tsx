@@ -255,10 +255,10 @@ export function ModificationsPanel({
     }
   }, [initialSelectedId]);
 
-  const orders = useQuery({ queryKey: ORDERS_KEY, queryFn: () => ordersFn({}) });
+  const orders = useQuery({ queryKey: ORDERS_KEY, queryFn: () => ordersFn({ data: {} }) });
   const authorization = useQuery({
     queryKey: ["staff-authorization"],
-    queryFn: () => authorizationFn({}),
+    queryFn: () => authorizationFn({ data: undefined }),
   });
   useOrdersRealtime(ORDERS_KEY, true, "modifications-orders");
   const storefront = useStorefrontContent();

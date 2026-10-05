@@ -100,7 +100,7 @@ interface StoredCartEnvelope {
 /** Strictly validates stored object structure to protect against undefined errors from older or modified schemas */
 function isValidCartLine(line: unknown): line is CartLine {
   if (!line || typeof line !== "object") return false;
-  const l = line as Record<string, unknown>;
+  const l = line as any;
 
   return (
     typeof l.key === "string" &&

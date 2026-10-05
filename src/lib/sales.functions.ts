@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { assertRole, type StaffRoleName } from "@/lib/role-guard";
+import { assertRole, getRoles, type StaffRoleName } from "@/lib/role-guard";
 import { feeForArea } from "@/lib/delivery-zones";
 import { getStaffCodeForUser, type OrderModification } from "@/lib/server-shared";
 import { roundJod } from "@/lib/currency";
@@ -121,19 +121,26 @@ export const getSalesAccess = createServerFn({ method: "GET" })
 
 export const getSalesOrders = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<SalesOrder[]> => {
+  .inputValidator((input: { page?: number }) => ({
+    page: Math.max(Number(input?.page) || 1, 1),
+  }))
+  .handler(async ({ data, context }): Promise<SalesOrder[]> => {
     await assertRole(context, SALES_ROLES);
-    const { data, error } = await context.supabase
+    const limit = 300;
+    const offset = (data.page - 1) * limit;
+    
+    const { data: rows, error } = await context.supabase
       .from("orders")
       .select(SELECT)
       .order("requested_date", { ascending: false })
       .order("requested_time", { ascending: false })
-      .limit(300);
+      .range(offset, offset + limit - 1);
     if (error) throw new Error(error.message);
-    return (data ?? []).map((row) => toOrder(row as Row));
+    return (rows ?? []).map((row) => toOrder(row as Row));
   });
 
 export type CreateSalesOrderInput = {
+  client_request_id?: string | null;
   customer_name: string;
   customer_phone: string;
   order_name?: string | null | undefined;
@@ -179,11 +186,31 @@ export const createSalesOrder = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }): Promise<SalesOrder> => {
     await assertRole(context, SALES_ROLES);
+    
+    // Check idempotency (IDEM-01)
+    if (data.client_request_id) {
+      const { data: existing } = await context.supabase
+        .from("orders")
+        .select(SELECT)
+        .eq("client_request_id" as any, data.client_request_id)
+        .maybeSingle();
+      if (existing) return toOrder(existing as Row);
+    }
 
     const subtotal = roundJod(data.items.reduce((sum, item) => sum + item.unit_price * item.quantity, 0));
     const deliveryFee = data.method === "delivery" && data.area ? roundJod(feeForArea(data.area) ?? 0) : 0;
     const discountAmount = roundJod(data.discount_amount ?? 0);
     const discountPercent = data.discount_percent ?? 0;
+    
+    // FIN-01 Strict Discount Cap Verification
+    const roles = await getRoles(context as never);
+    if (!roles.includes("admin")) {
+      const computedPercent = subtotal > 0 ? (discountAmount / subtotal) * 100 : 0;
+      if (discountPercent > 15 || computedPercent > 15) {
+        throw new Error("تجاوزت الحد الأقصى للخصم (15%). يتطلب موافقة المدير · Discount limit (15%) exceeded. Admin approval required.");
+      }
+    }
+
     const total = roundJod(Math.max(subtotal + deliveryFee - discountAmount, 0));
 
     // Clamp deposit_paid: cliq/visa pay in full, and deposit can never exceed total
@@ -225,6 +252,7 @@ export const createSalesOrder = createServerFn({ method: "POST" })
         status: "new",
         created_by: context.userId,
         staff_code: staffCode,
+        client_request_id: data.client_request_id || null,
       } as never)
       .select(SELECT)
       .single();
@@ -463,9 +491,9 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
       .eq("id", data.orderId)
       .single();
 
+    const newDiffs: OrderModification[] = [];
     if (existing) {
       const currentMods = (existing.modifications as OrderModification[] | null) ?? [];
-      const newDiffs: OrderModification[] = [];
       const nowIso = new Date().toISOString();
 
       // If this is the FIRST modification on this order, preserve the original order baseline!
@@ -742,20 +770,26 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
 
       // Saves that changed no tracked field record nothing: no extra query, and
       // no empty diff pushed to the kitchen.
-      clean["modifications"] = [...currentMods, ...newDiffs].slice(-30);
+      // modifications logic is now handled strictly in the DB to avoid RACE-01
     }
 
-    // Every desk edit is stamped so the list and printouts show the edit badge.
-    clean["last_edited_at"] = new Date().toISOString();
-    clean["last_edited_by"] = context.userId;
-    const { data: row, error } = await context.supabase
-      .from("orders")
-      .update(clean as never)
-      .eq("id", data.orderId)
-      .select(SELECT)
-      .single();
+    const { data: row, error } = await context.supabase.rpc("patch_sales_order_atomic", {
+      p_order_id: data.orderId,
+      p_patch: clean as any,
+      p_new_mods: newDiffs,
+      p_user_id: context.userId,
+    });
     if (error) throw new Error(error.message);
-    return toOrder(row as Row);
+
+    // After RPC update, fetch the fully mapped record
+    const { data: fullOrder, error: fetchError } = await context.supabase
+      .from("orders")
+      .select(SELECT)
+      .eq("id", data.orderId)
+      .single();
+    if (fetchError || !fullOrder) throw new Error(fetchError?.message || "Failed to load updated order");
+
+    return toOrder(fullOrder as Row);
   });
 
 export type OrderItemPatch = {
@@ -1166,15 +1200,15 @@ export const replaceSalesOrderItems = createServerFn({ method: "POST" })
       }
     }
 
-    const { error: deleteError } = await context.supabase
-      .from("order_items")
-      .delete()
-      .eq("order_id", data.orderId);
-    if (deleteError) throw new Error(deleteError.message);
+    const subtotal = roundJod(data.lines.reduce((acc, line) => acc + line.unitPrice * line.quantity, 0));
+    const deliveryFee = existing.method === "delivery" ? roundJod(Number(existing.delivery_fee ?? 0)) : 0;
+    const discountAmount = roundJod(Number(existing.discount_amount ?? 0));
+    const total = roundJod(Math.max(subtotal + deliveryFee - discountAmount, 0));
 
-    const { error: insertError } = await context.supabase.from("order_items").insert(
-      data.lines.map((line) => ({
-        order_id: data.orderId,
+    // DB-03: Atomic Rebuild
+    const { error: rpcError } = await context.supabase.rpc("rebuild_sales_order_atomic", {
+      p_order_id: data.orderId,
+      p_lines: data.lines.map((line) => ({
         product_id: line.productId,
         name_ar: line.name,
         name_en: line.name,
@@ -1183,26 +1217,20 @@ export const replaceSalesOrderItems = createServerFn({ method: "POST" })
         options_ar: line.options ?? [],
         options_en: line.options ?? [],
         notes: line.notes,
-      })) as never,
-    );
-    if (insertError) throw new Error(insertError.message);
-
-    const subtotal = roundJod(data.lines.reduce((acc, line) => acc + line.unitPrice * line.quantity, 0));
-    const deliveryFee = existing.method === "delivery" ? roundJod(Number(existing.delivery_fee ?? 0)) : 0;
-    const discountAmount = roundJod(Number(existing.discount_amount ?? 0));
-    const total = roundJod(Math.max(subtotal + deliveryFee - discountAmount, 0));
+      })),
+      p_subtotal: subtotal,
+      p_delivery_fee: deliveryFee,
+      p_discount_amount: discountAmount,
+      p_total: total,
+      p_user_id: context.userId,
+      p_new_mods: updatedMods,
+    });
+    if (rpcError) throw new Error(rpcError.message);
 
     const { data: row, error: orderError } = await context.supabase
       .from("orders")
-      .update({
-        subtotal,
-        total,
-        last_edited_at: new Date().toISOString(),
-        last_edited_by: context.userId,
-        modifications: updatedMods as any,
-      } as never)
-      .eq("id", data.orderId)
       .select(SELECT)
+      .eq("id", data.orderId)
       .single();
     if (orderError) throw new Error(orderError.message);
 
@@ -1295,25 +1323,10 @@ export const deleteSalesOrder = createServerFn({ method: "POST" })
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    // 1. Delete order tokens
-    await (supabaseAdmin as any).from("order_edit_tokens").delete().eq("order_id", data.orderId);
-
-    // 2. Delete audit logs associated with this order
-    await (supabaseAdmin as any).from("audit_logs").delete().eq("order_id", data.orderId);
-
-    // 3. Delete order items
-    const { error: itemsError } = await (supabaseAdmin as any)
-      .from("order_items")
-      .delete()
-      .eq("order_id", data.orderId);
-    if (itemsError) throw new Error(itemsError.message);
-
-    // 4. Delete the order row
-    const { error: orderError } = await (supabaseAdmin as any)
-      .from("orders")
-      .delete()
-      .eq("id", data.orderId);
-    if (orderError) throw new Error(orderError.message);
+    const { error: rpcError } = await supabaseAdmin.rpc("delete_sales_order_atomic", {
+      target_order_id: data.orderId,
+    });
+    if (rpcError) throw new Error(rpcError.message);
 
     return { ok: true, orderId: data.orderId };
   });
@@ -1329,44 +1342,10 @@ export const clearAllSalesOrders = createServerFn({ method: "POST" })
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    // 1. Delete all order edit tokens
-    try {
-      await (supabaseAdmin as any)
-        .from("order_edit_tokens")
-        .delete()
-        .neq("id", "00000000-0000-0000-0000-000000000000");
-    } catch (e) {
-      console.warn("Tokens cleanup warning:", e);
-    }
-
-    // 2. Delete all audit logs
-    try {
-      await (supabaseAdmin as any)
-        .from("audit_logs")
-        .delete()
-        .neq("id", "00000000-0000-0000-0000-000000000000");
-    } catch (e) {
-      console.warn("Audit logs cleanup warning:", e);
-    }
-
-    // 3. Delete all order items
-    const { error: itemsError } = await (supabaseAdmin as any)
-      .from("order_items")
-      .delete()
-      .neq("id", "00000000-0000-0000-0000-000000000000");
-    if (itemsError) {
-      console.error("Failed to delete order items:", itemsError);
-      throw new Error(itemsError.message);
-    }
-
-    // 4. Delete all orders
-    const { error: ordersError } = await (supabaseAdmin as any)
-      .from("orders")
-      .delete()
-      .neq("id", "00000000-0000-0000-0000-000000000000");
-    if (ordersError) {
-      console.error("Failed to delete orders:", ordersError);
-      throw new Error(ordersError.message);
+    const { error: rpcError } = await supabaseAdmin.rpc("clear_all_sales_orders_atomic");
+    if (rpcError) {
+      console.error("Failed to clear all orders:", rpcError);
+      throw new Error(rpcError.message);
     }
 
     return { ok: true, count: 0, message: "تم مسح وتنظيف كافة الطلبات بنجاح ✅" };

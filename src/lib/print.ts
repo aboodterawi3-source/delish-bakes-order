@@ -13,7 +13,9 @@ export const esc = (value: unknown): string =>
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+    .replace(/`/g, "&#96;");
 
 /**
  * Thermal layout: the page box follows the printer's paper, and the receipt

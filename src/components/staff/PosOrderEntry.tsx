@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -97,8 +97,6 @@ const STANDARD_CATEGORIES = [
   },
 ];
 
-const POS_DRAFT_KEY = "delish_pos_draft";
-
 export function PosOrderEntry() {
   // Keep cashier POS screen active during shift hours
   useScreenWakeLock(true);
@@ -112,8 +110,19 @@ export function PosOrderEntry() {
 
   const existingOrders = useQuery({
     queryKey: ORDERS_KEY,
-    queryFn: () => ordersFn({}),
+    queryFn: () => ordersFn({ data: {} }),
   });
+
+  const user = useQuery({
+    queryKey: ["auth", "user"],
+    queryFn: async () => {
+      const { supabase } = await import("@/integrations/supabase/client");
+      const { data } = await supabase.auth.getUser();
+      return data.user?.id ?? "guest";
+    },
+    staleTime: Infinity,
+  });
+  const draftKey = `delish_pos_draft_${user.data ?? "loading"}`;
 
   // Top Level Operational Workstation Mode:
   // "quick" = Fast In-Store Cashier
@@ -166,9 +175,11 @@ export function PosOrderEntry() {
 
   // Restore cashier draft from sessionStorage on initial load
   useEffect(() => {
+    if (!user.isSuccess) return;
+    if (hasHydratedDraftRef.current) return;
     try {
       if (typeof window !== "undefined" && window.sessionStorage) {
-        const saved = sessionStorage.getItem(POS_DRAFT_KEY);
+        const saved = sessionStorage.getItem(draftKey);
         if (saved) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed.cart) && parsed.cart.length > 0) {
@@ -206,11 +217,11 @@ export function PosOrderEntry() {
     } finally {
       hasHydratedDraftRef.current = true;
     }
-  }, []);
+  }, [user.isSuccess, draftKey]);
 
   // Autosave cashier draft to sessionStorage to protect from internet drops and accidental refreshes
   useEffect(() => {
-    if (!hasHydratedDraftRef.current) return;
+    if (!hasHydratedDraftRef.current || !user.isSuccess) return;
     try {
       if (typeof window === "undefined" || !window.sessionStorage) return;
       const hasContent =
@@ -248,9 +259,9 @@ export function PosOrderEntry() {
           discountPercent,
           paymentMethod,
         };
-        sessionStorage.setItem(POS_DRAFT_KEY, JSON.stringify(draft));
+        sessionStorage.setItem(draftKey, JSON.stringify(draft));
       } else {
-        sessionStorage.removeItem(POS_DRAFT_KEY);
+        sessionStorage.removeItem(draftKey);
       }
     } catch {
       // Ignore quota errors
@@ -446,7 +457,7 @@ export function PosOrderEntry() {
     setCart([]);
     try {
       if (typeof window !== "undefined" && window.sessionStorage) {
-        sessionStorage.removeItem(POS_DRAFT_KEY);
+        sessionStorage.removeItem(draftKey);
       }
     } catch {
       /* ignore */
@@ -461,7 +472,7 @@ export function PosOrderEntry() {
       // Clear draft only upon confirmed successful order creation
       try {
         if (typeof window !== "undefined" && window.sessionStorage) {
-          sessionStorage.removeItem(POS_DRAFT_KEY);
+          sessionStorage.removeItem(draftKey);
         }
       } catch {
         /* ignore */
@@ -652,7 +663,7 @@ export function PosOrderEntry() {
       inscription,
       notes,
       staff_notes: staffNotes,
-      items: cart,
+      items: cart.map((it) => ({ name_ar: it.name, name: it.name, quantity: it.quantity, options_ar: it.options, options: it.options, notes: it.notes ?? null })),
     });
   };
 

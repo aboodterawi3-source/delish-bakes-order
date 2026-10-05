@@ -22,6 +22,7 @@ import {
   Utensils,
   Zap,
 } from "lucide-react";
+import { getWhatsAppChatUrl } from "@/lib/whatsapp";
 import { createSocialOrder, type SocialOrderInput } from "@/lib/social.functions";
 import { jd } from "@/lib/currency";
 import { DELIVERY_ZONES, OTHER_GOVERNORATES_AREA, feeForArea } from "@/lib/delivery-zones";
@@ -128,6 +129,7 @@ export function SocialOrderEntryForm({
 }: SocialOrderEntryFormProps) {
   const createFn = useServerFn(createSocialOrder);
   const storefront = useStorefrontContent();
+  const whatsappUrl = (text: string) => getWhatsAppChatUrl(undefined, text);
 
   const [form, setForm] = useState(emptyForm);
   const [customization, setCustomization] = useState<Customization>(emptyCustomization);

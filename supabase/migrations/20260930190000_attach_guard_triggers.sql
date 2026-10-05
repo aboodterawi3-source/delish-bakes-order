@@ -52,7 +52,7 @@ BEGIN
       AND p.proname = 'orders_guard_discount'
   ) THEN
     CREATE TRIGGER orders_guard_discount
-      BEFORE UPDATE ON public.orders
+      BEFORE INSERT OR UPDATE ON public.orders
       FOR EACH ROW EXECUTE FUNCTION public.orders_guard_discount();
   END IF;
 END

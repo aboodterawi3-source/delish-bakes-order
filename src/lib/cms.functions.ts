@@ -157,6 +157,13 @@ export const deleteCategory = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     await assertRole(context, CMS_ROLES);
+    const { count, error: countError } = await context.supabase
+      .from("products")
+      .select("*", { count: "exact", head: true })
+      .eq("category_id", data.id);
+    if (countError) throw new Error(countError.message);
+    if (count && count > 0) throw new Error("لا يمكن حذف القسم لوجود منتجات تابعة له · Cannot delete category because it contains products");
+
     const { error } = await context.supabase
       .from("storefront_categories")
       .delete()
@@ -288,8 +295,34 @@ export const deleteStorefrontProduct = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     await assertRole(context, CMS_ROLES);
+    
+    // Fetch product to clean up its orphaned image if one exists
+    const { data: product } = await context.supabase
+      .from("products")
+      .select("image_url")
+      .eq("id", data.id)
+      .single();
+
     const { error } = await context.supabase.from("products").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
+
+    // Clean up orphaned image
+    if (product?.image_url) {
+      try {
+        const url = product.image_url;
+        const bucketPathIndex = url.indexOf(`/${SITE_BUCKET}/`);
+        if (bucketPathIndex !== -1) {
+          const path = url.slice(bucketPathIndex + SITE_BUCKET.length + 2).split("?")[0];
+          if (path) {
+            const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+            await supabaseAdmin.storage.from(SITE_BUCKET).remove([path]);
+          }
+        }
+      } catch (e) {
+        console.error("Failed to delete orphaned product image:", e);
+      }
+    }
+
     return { ok: true };
   });
 

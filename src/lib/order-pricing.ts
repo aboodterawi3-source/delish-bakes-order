@@ -25,16 +25,13 @@ export const SERVING_SIZE_OFFSETS: readonly ServingSizeOffset[] = [
   { label: "16 people", ar: "16 شخص", offset: 15 },
 ] as const;
 
-/** Resolves the price offset for a given serving size label (English or Arabic). */
+/** Resolves the price offset for a given serving size label (English or Arabic). Exact match only. */
 export function getServingSizeOffset(sizeLabel?: string | null): number {
   if (!sizeLabel) return 0;
   const trimmed = sizeLabel.trim().toLowerCase();
+  // Exact match: the old `includes()` let "28 people" resolve to the "8 people" tier.
   const match = SERVING_SIZE_OFFSETS.find(
-    (s) =>
-      s.label.toLowerCase() === trimmed ||
-      s.ar.toLowerCase() === trimmed ||
-      trimmed.includes(s.label.toLowerCase()) ||
-      trimmed.includes(s.ar.toLowerCase()),
+    (s) => s.label.toLowerCase() === trimmed || s.ar.toLowerCase() === trimmed,
   );
   return match ? match.offset : 0;
 }

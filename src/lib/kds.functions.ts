@@ -20,11 +20,12 @@ const prepOptions = (options: string[]): string[] =>
  * typed inside a free-text field (name, notes, inscription). Any phone-shaped
  * digit run is masked before the data leaves the server.
  */
-const PHONE_LIKE = /\+?\d[\d\s-]{6,}\d/g;
+const PHONE_LIKE = /\+?[\d٠-٩][\d٠-٩\s-]{6,}[\d٠-٩]/g;
 const stripPhones = (text: string | null): string | null =>
   text ? text.replace(PHONE_LIKE, "—") : text;
 
-export type { OrderModification } from "@/lib/server-shared";
+import type { OrderModification } from "@/lib/server-shared";
+export type { OrderModification };
 import { isValidStorageUrl } from "@/lib/server-shared";
 
 
@@ -387,10 +388,13 @@ export const acknowledgeOrderModification = createServerFn({ method: "POST" })
 
     if (error && process.env["SUPABASE_SERVICE_ROLE_KEY"]) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      await supabaseAdmin
+      const { error: adminError } = await supabaseAdmin
         .from("orders")
         .update({ modifications: updatedMods as any })
         .eq("id", data.orderId);
+      if (adminError) throw new Error(adminError.message);
+    } else if (error) {
+      throw new Error(error.message);
     }
     return { ok: true };
   });

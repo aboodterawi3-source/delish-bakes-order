@@ -57,28 +57,43 @@ export function getSupabaseStorageBaseUrl(): string {
 /**
  * Dynamic pattern matching any Supabase Storage URL (signed or public) across all environments/projects.
  * Accepts signed (/sign/) or public (/public/) objects with optional query parameters.
+ * Host-agnostic on its own: use isValidStorageUrl to also pin the origin to this project.
  */
 export const STORAGE_URL =
   /^https?:\/\/[a-z0-9.-]+\/storage\/v1\/object\/(?:sign|public|authenticated)\/[\w./-]+(?:\?[\w=%&.-]*)?$/i;
 
+/** Path-only pattern for Storage objects; the origin is verified separately. */
+const STORAGE_PATH = /^\/storage\/v1\/object\/(?:sign|public|authenticated)\/[\w./%-]+$/;
+
 /**
- * Validates that an image URL points to a legitimate Supabase Storage object (signed or public)
- * dynamically adapting to the environment's configured Supabase project or any standard storage path,
- * while strictly blocking Base64/data URLs and oversized strings.
+ * Validates that an image URL points to a Storage object of THIS project (origin taken
+ * from SUPABASE_URL), blocking foreign hosts, credentials in the URL, path traversal,
+ * Base64/data URLs and oversized strings. Fails closed when the project URL is unknown.
  */
 export function isValidStorageUrl(url: unknown): boolean {
   if (typeof url !== "string") return false;
   const trimmed = url.trim();
   if (!trimmed || trimmed.length > 2500) return false;
-  if (trimmed.startsWith("data:") || trimmed.includes(";base64,")) return false;
-  if (!/^https?:\/\//i.test(trimmed)) return false;
 
-  const dynamicBase = getSupabaseStorageBaseUrl();
-  if (dynamicBase && trimmed.startsWith(dynamicBase)) {
-    return /\/storage\/v1\/object\/(?:sign|public|authenticated)\/[\w./-]/i.test(trimmed);
+  // Fail closed: without a configured project origin we cannot trust any URL.
+  const base = getSupabaseStorageBaseUrl();
+  if (!base) return false;
+
+  let parsed: URL;
+  let baseUrl: URL;
+  try {
+    parsed = new URL(trimmed);
+    baseUrl = new URL(base);
+  } catch {
+    return false;
   }
 
-  return /\/storage\/v1\/object\/(?:sign|public|authenticated)\/[\w./-]/i.test(trimmed);
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return false;
+  // Same origin as our own Supabase project — a foreign host is never accepted.
+  if (parsed.origin !== baseUrl.origin) return false;
+  if (parsed.username || parsed.password) return false;
+  if (parsed.pathname.includes("..")) return false;
+  return STORAGE_PATH.test(parsed.pathname);
 }
 
 /** Extras are plain labels; keep them short, single-line and bounded. */
