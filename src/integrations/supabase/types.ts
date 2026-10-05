@@ -217,6 +217,7 @@ export type Database = {
           cancel_reason: string | null
           card_note: string | null
           chosen_filling: string | null
+          client_request_id: string | null
           confirmation_message: string | null
           created_at: string
           created_by: string | null
@@ -267,6 +268,7 @@ export type Database = {
           cancel_reason?: string | null
           card_note?: string | null
           chosen_filling?: string | null
+          client_request_id?: string | null
           confirmation_message?: string | null
           created_at?: string
           created_by?: string | null
@@ -317,6 +319,7 @@ export type Database = {
           cancel_reason?: string | null
           card_note?: string | null
           chosen_filling?: string | null
+          client_request_id?: string | null
           confirmation_message?: string | null
           created_at?: string
           created_by?: string | null
@@ -681,6 +684,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      clear_all_sales_orders_atomic: { Args: never; Returns: undefined }
+      create_storefront_order_atomic: {
+        Args: { items_payload: Json; order_payload: Json }
+        Returns: Json
+      }
+      delete_sales_order_atomic: {
+        Args: { target_order_id: string }
+        Returns: undefined
+      }
       get_kitchen_order_items: {
         Args: { _order_ids: string[] }
         Returns: {
@@ -715,6 +727,28 @@ export type Database = {
           staff_code: number
           status: Database["public"]["Enums"]["order_status"]
         }[]
+      }
+      patch_sales_order_atomic: {
+        Args: {
+          p_new_mods?: Json
+          p_order_id: string
+          p_patch: Json
+          p_user_id?: string
+        }
+        Returns: Json
+      }
+      rebuild_sales_order_atomic: {
+        Args: {
+          p_delivery_fee: number
+          p_discount_amount: number
+          p_lines: Json
+          p_new_mods?: Json
+          p_order_id: string
+          p_subtotal: number
+          p_total: number
+          p_user_id: string
+        }
+        Returns: undefined
       }
       record_staff_audit: {
         Args: {
