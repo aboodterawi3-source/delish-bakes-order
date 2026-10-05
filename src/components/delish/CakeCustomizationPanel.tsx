@@ -858,7 +858,11 @@ export function DesignPhotoSection({
     setUploadError(null);
     setUploading(true);
     try {
-      const converted = await convertToWebp(file);
+      const converted = await convertToWebp(file, {
+        kind: "cake",
+        maxDimension: 800,
+        quality: 0.8,
+      });
       const saved = await upload({
         data: {
           data_url: converted.dataUrl,

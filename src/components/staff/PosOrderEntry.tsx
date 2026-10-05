@@ -97,6 +97,8 @@ const STANDARD_CATEGORIES = [
   },
 ];
 
+const POS_DRAFT_KEY = "delish_pos_draft";
+
 export function PosOrderEntry() {
   // Keep cashier POS screen active during shift hours
   useScreenWakeLock(true);
@@ -106,6 +108,7 @@ export function PosOrderEntry() {
   const createOrderFn = useServerFn(createSalesOrder);
   const storefront = useStorefrontContent();
   const isSubmittingRef = useRef(false);
+  const hasHydratedDraftRef = useRef(false);
 
   const existingOrders = useQuery({
     queryKey: ORDERS_KEY,
@@ -160,6 +163,122 @@ export function PosOrderEntry() {
 
   // Mobile Bottom Sheet
   const [showMobileCheckout, setShowMobileCheckout] = useState(false);
+
+  // Restore cashier draft from sessionStorage on initial load
+  useEffect(() => {
+    try {
+      if (typeof window !== "undefined" && window.sessionStorage) {
+        const saved = sessionStorage.getItem(POS_DRAFT_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed.cart) && parsed.cart.length > 0) {
+            setCart(parsed.cart);
+          }
+          if (parsed.stationMode) setStationMode(parsed.stationMode);
+          if (parsed.customerPhone) setCustomerPhone(parsed.customerPhone);
+          if (parsed.customerName) setCustomerName(parsed.customerName);
+          if (parsed.orderName) setOrderName(parsed.orderName);
+          if (typeof parsed.isGift === "boolean") setIsGift(parsed.isGift);
+          if (parsed.senderPhone) setSenderPhone(parsed.senderPhone);
+          if (parsed.recipientName) setRecipientName(parsed.recipientName);
+          if (parsed.recipientPhone) setRecipientPhone(parsed.recipientPhone);
+          if (parsed.method) setMethod(parsed.method);
+          if (parsed.area) setArea(parsed.area);
+          if (parsed.address) setAddress(parsed.address);
+          if (parsed.requestedDate) setRequestedDate(parsed.requestedDate);
+          if (parsed.requestedTime) setRequestedTime(parsed.requestedTime);
+          if (parsed.inscription) setInscription(parsed.inscription);
+          if (parsed.cardNote) setCardNote(parsed.cardNote);
+          if (parsed.designImageUrl) setDesignImageUrl(parsed.designImageUrl);
+          if (parsed.notes) setNotes(parsed.notes);
+          if (parsed.staffNotes) setStaffNotes(parsed.staffNotes);
+          if (parsed.depositPaid !== undefined && parsed.depositPaid !== null) {
+            setDepositPaid(String(parsed.depositPaid));
+          }
+          if (parsed.discountPercent !== undefined && parsed.discountPercent !== null) {
+            setDiscountPercent(String(parsed.discountPercent));
+          }
+          if (parsed.paymentMethod) setPaymentMethod(parsed.paymentMethod);
+        }
+      }
+    } catch (e) {
+      console.warn("Could not restore pos draft:", e);
+    } finally {
+      hasHydratedDraftRef.current = true;
+    }
+  }, []);
+
+  // Autosave cashier draft to sessionStorage to protect from internet drops and accidental refreshes
+  useEffect(() => {
+    if (!hasHydratedDraftRef.current) return;
+    try {
+      if (typeof window === "undefined" || !window.sessionStorage) return;
+      const hasContent =
+        cart.length > 0 ||
+        customerPhone.trim() !== "" ||
+        customerName.trim() !== "" ||
+        notes.trim() !== "" ||
+        staffNotes.trim() !== "" ||
+        address.trim() !== "" ||
+        cardNote.trim() !== "" ||
+        inscription.trim() !== "";
+
+      if (hasContent) {
+        const draft = {
+          cart,
+          stationMode,
+          customerPhone,
+          customerName,
+          orderName,
+          isGift,
+          senderPhone,
+          recipientName,
+          recipientPhone,
+          method,
+          area,
+          address,
+          requestedDate,
+          requestedTime,
+          inscription,
+          cardNote,
+          designImageUrl,
+          notes,
+          staffNotes,
+          depositPaid,
+          discountPercent,
+          paymentMethod,
+        };
+        sessionStorage.setItem(POS_DRAFT_KEY, JSON.stringify(draft));
+      } else {
+        sessionStorage.removeItem(POS_DRAFT_KEY);
+      }
+    } catch {
+      // Ignore quota errors
+    }
+  }, [
+    cart,
+    stationMode,
+    customerPhone,
+    customerName,
+    orderName,
+    isGift,
+    senderPhone,
+    recipientName,
+    recipientPhone,
+    method,
+    area,
+    address,
+    requestedDate,
+    requestedTime,
+    inscription,
+    cardNote,
+    designImageUrl,
+    notes,
+    staffNotes,
+    depositPaid,
+    discountPercent,
+    paymentMethod,
+  ]);
 
   // Customer Auto-complete lookup
   const phoneSearch = useDebouncedValue(customerPhone, 200);
@@ -325,6 +444,13 @@ export function PosOrderEntry() {
 
   const clearCart = () => {
     setCart([]);
+    try {
+      if (typeof window !== "undefined" && window.sessionStorage) {
+        sessionStorage.removeItem(POS_DRAFT_KEY);
+      }
+    } catch {
+      /* ignore */
+    }
   };
 
   // Create Order Mutation
@@ -332,6 +458,15 @@ export function PosOrderEntry() {
     mutationFn: (input: CreateSalesOrderInput) => createOrderFn({ data: input }),
     onSuccess: (newOrder) => {
       isSubmittingRef.current = false;
+      // Clear draft only upon confirmed successful order creation
+      try {
+        if (typeof window !== "undefined" && window.sessionStorage) {
+          sessionStorage.removeItem(POS_DRAFT_KEY);
+        }
+      } catch {
+        /* ignore */
+      }
+
       queryClient.setQueryData<SalesOrder[]>(ORDERS_KEY, (curr) => [newOrder, ...(curr ?? [])]);
       toast.success(
         `تم إنشاء وتأكيد الطلب بنجاح ✅ (${orderLabel(newOrder.order_number, newOrder.staff_code)})`,
@@ -369,17 +504,28 @@ export function PosOrderEntry() {
     },
     onError: (err: Error) => {
       isSubmittingRef.current = false;
-      toast.error(err.message || "حدث خطأ أثناء حفظ الطلب");
+      // On network error or failure, preserve all customer data and cart items intact for one-click retry
+      toast.error(
+        err.message ||
+          "حدث خطأ أثناء حفظ الطلب (انقطاع الاتصال أو خطأ شبكة). بيانات الطلب والأصناف محفوظة لتمكين إعادة المحاولة بنقرة واحدة.",
+      );
       setShouldPrintAfterCreate(false);
     },
   });
 
   const handleSubmitOrder = (andPrint = false) => {
-    // SEC-02: Double guard pattern - immediate check & synchronous ref lock
+    // SEC-02: Double-Click / Rapid-Tap Guard:
+    // synchronous immediate check & ref lock on line 1
     if (isSubmittingRef.current || createOrder.isPending) return;
     isSubmittingRef.current = true;
 
+    // Safety timeout to release lock in case of network freeze or stalled mutation
+    const safetyTimer = setTimeout(() => {
+      isSubmittingRef.current = false;
+    }, 1500);
+
     if (cart.length === 0) {
+      clearTimeout(safetyTimer);
       isSubmittingRef.current = false;
       toast.error("السلة فارغة! اختر أي صنف من القائمة لإضافته.");
       return;
@@ -393,16 +539,19 @@ export function PosOrderEntry() {
 
     if (stationMode !== "quick") {
       if (!finalCustomerName) {
+        clearTimeout(safetyTimer);
         isSubmittingRef.current = false;
         toast.error("يرجى إدخال اسم العميل للطلب المسبق أو التوصيل");
         return;
       }
       if (!finalCustomerPhone) {
+        clearTimeout(safetyTimer);
         isSubmittingRef.current = false;
         toast.error("يرجى إدخال رقم هاتف العميل");
         return;
       }
       if (effectiveMethod === "delivery" && !area) {
+        clearTimeout(safetyTimer);
         isSubmittingRef.current = false;
         toast.error("يرجى اختيار منطقة التوصيل");
         return;
@@ -446,6 +595,7 @@ export function PosOrderEntry() {
 
     createOrder.mutate(payload, {
       onSettled: () => {
+        clearTimeout(safetyTimer);
         isSubmittingRef.current = false;
       },
     });

@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { Minus, Plus, ShoppingBag, X } from "lucide-react";
 import { CakeBuilder } from "./CakeBuilder";
 import { Pic } from "./Pic";
@@ -21,8 +21,19 @@ export function OrderingDialogs({
 }) {
   const { lang } = useLang();
   const titleId = useId();
+  const isSubmittingRef = useRef(false);
   useDismissable(Boolean(kind), onClose);
   if (!kind) return null;
+
+  const handleDone = () => {
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
+    setTimeout(() => {
+      isSubmittingRef.current = false;
+    }, 1500);
+    onClose();
+    onCart();
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex max-w-full items-end justify-center overflow-x-hidden bg-foreground/45 sm:items-center sm:p-5">
@@ -60,12 +71,7 @@ export function OrderingDialogs({
         </header>
         <div className="p-4 sm:p-7">
           {kind === "cake" ? (
-            <CakeBuilder
-              onDone={() => {
-                onClose();
-                onCart();
-              }}
-            />
+            <CakeBuilder onDone={handleDone} />
           ) : (
             <QuickShop onCart={onCart} />
           )}
@@ -79,8 +85,16 @@ function QuickShop({ onCart }: { onCart: () => void }) {
   const { lang, t } = useLang();
   const { add } = useCart();
   const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const isSubmittingRef = useRef(false);
 
   const addProduct = (product: Product) => {
+    // SEC-02: Double-Click / Rapid-Tap Guard:
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
+    setTimeout(() => {
+      isSubmittingRef.current = false;
+    }, 1500);
+
     const qty = quantities[product.id] ?? 1;
     add({
       ar: product.ar,

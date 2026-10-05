@@ -142,8 +142,13 @@ function ImageField({
       setError(null);
       setNote(null);
       try {
-        // Convert on the device first: WebP at 90% quality, ~500KB target.
-        const converted = await convertToWebp(file);
+        // Convert on the device first: WebP at 80% quality (1200px max for banner, 800px for shop items, ~100-150KB budget).
+        const isBanner = folder === "banner";
+        const converted = await convertToWebp(file, {
+          kind: isBanner ? "banner" : "product",
+          maxDimension: isBanner ? 1200 : 800,
+          quality: 0.8,
+        });
         const uploaded = await uploadFn({ data: { data_url: converted.dataUrl, folder } });
         onChange(uploaded.url);
         setNote(`${formatBytes(converted.originalBytes)} → ${formatBytes(converted.bytes)} WebP`);

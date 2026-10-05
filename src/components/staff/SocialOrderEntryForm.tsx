@@ -151,7 +151,11 @@ export function SocialOrderEntryForm({
     setReceiptError(null);
     setUploadingReceipt(true);
     try {
-      const converted = await convertToWebp(file);
+      const converted = await convertToWebp(file, {
+        kind: "cake",
+        maxDimension: 800,
+        quality: 0.8,
+      });
       const saved = await uploadImageFn({ data: { data_url: converted.dataUrl } });
       setReceiptUrl(saved.url);
       setError(null);

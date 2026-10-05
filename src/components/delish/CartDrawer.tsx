@@ -47,6 +47,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   const [form, setForm] = useState<Form>(empty);
   const [errors, setErrors] = useState<Partial<Record<keyof Form, boolean>>>({});
   const [sending, setSending] = useState(false);
+  const isSubmittingRef = useRef(false);
   const sendingRef = useRef(false);
   const [saveError, setSaveError] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -147,12 +148,20 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   };
 
   const send = async () => {
-    // SEC-02: Double guard pattern - immediate check & synchronous ref lock
-    if (sending || sendingRef.current) return;
+    // SEC-02: Double-Click / Rapid-Tap Guard:
+    if (isSubmittingRef.current || sendingRef.current || sending) return;
+    isSubmittingRef.current = true;
     sendingRef.current = true;
     setSending(true);
 
+    const safetyTimer = setTimeout(() => {
+      isSubmittingRef.current = false;
+      sendingRef.current = false;
+    }, 1500);
+
     if (!validate()) {
+      clearTimeout(safetyTimer);
+      isSubmittingRef.current = false;
       sendingRef.current = false;
       setSending(false);
       return;
@@ -204,6 +213,8 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
       toast.error(msg);
       return; // Early return: Cart stays intact!
     } finally {
+      clearTimeout(safetyTimer);
+      isSubmittingRef.current = false;
       sendingRef.current = false;
       setSending(false);
     }

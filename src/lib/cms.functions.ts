@@ -22,7 +22,11 @@ import {
  */
 const CMS_ROLES: StaffRoleName[] = ["sales", "admin"];
 
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+/**
+ * WebP photos are compressed in browser (max 1200px banner / 800px shop cakes at 80% quality, ~100-150KB budget).
+ * 1MB server cap gives ample headroom while strictly blocking oversized payloads.
+ */
+const MAX_IMAGE_BYTES = 1024 * 1024;
 const SITE_BUCKET = "site-media";
 /** Five years: banner and product photos must keep working on the storefront. */
 const SIGNED_URL_TTL = 60 * 60 * 24 * 365 * 5;
@@ -292,8 +296,8 @@ export const deleteStorefrontProduct = createServerFn({ method: "POST" })
 /* ------------------------------ image uploads ------------------------------ */
 
 /**
- * Stores a banner / product photo (already converted to WebP at 90% quality in
- * the browser) and returns a long-lived signed URL the storefront can render.
+ * Stores a banner / product photo (already converted to WebP at 80% quality in
+ * the browser, max 1200px banner / 800px shop cakes) and returns a long-lived signed URL the storefront can render.
  */
 export const uploadSiteImage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

@@ -9,9 +9,21 @@
 
 import { assertSafeImageFile } from "@/lib/image-validation";
 
-const TARGET_BYTES = 300_000; // Under 300KB budget
-const MAX_EDGE = 1200; // Max 1200px width/height
-const QUALITY = 0.8; // ~80% WebP quality
+export type ImageKind = "banner" | "cake" | "product" | "general";
+
+export type ConvertToWebpOptions = {
+  kind?: ImageKind;
+  maxDimension?: number;
+  maxWidth?: number;
+  maxHeight?: number;
+  quality?: number;
+  targetBytes?: number;
+};
+
+const DEFAULT_TARGET_BYTES = 150_000; // ~150KB budget to keep uploads at 100-150 KB
+const DEFAULT_CAKE_MAX_EDGE = 800; // 800px max edge for store cakes / products
+const BANNER_MAX_EDGE = 1200; // 1200px max edge for banners
+const DEFAULT_QUALITY = 0.8; // 80% WebP quality
 
 export type ConvertedImage = {
   dataUrl: string;
@@ -46,14 +58,27 @@ async function loadBitmap(
   }
 }
 
-export async function convertToWebp(file: File): Promise<ConvertedImage> {
+export async function convertToWebp(
+  file: File,
+  options?: ConvertToWebpOptions,
+): Promise<ConvertedImage> {
   // Strict gate: genuine JPG/PNG only, 5MB max.
   await assertSafeImageFile(file);
 
   const { width, height, draw } = await loadBitmap(file);
   if (!width || !height) throw new Error("تعذّر قراءة الصورة · Could not read the image");
 
-  let scale = Math.min(1, MAX_EDGE / Math.max(width, height));
+  const kind = options?.kind ?? "general";
+  const defaultMaxEdge = kind === "banner" ? BANNER_MAX_EDGE : DEFAULT_CAKE_MAX_EDGE;
+  const maxEdge =
+    options?.maxDimension ??
+    (options?.maxWidth || options?.maxHeight
+      ? Math.max(options?.maxWidth ?? 0, options?.maxHeight ?? 0)
+      : defaultMaxEdge);
+  const quality = options?.quality ?? DEFAULT_QUALITY;
+  const targetBytes = options?.targetBytes ?? DEFAULT_TARGET_BYTES;
+
+  let scale = Math.min(1, maxEdge / Math.max(width, height));
   let best: ConvertedImage | null = null;
 
   for (let attempt = 0; attempt < 5; attempt += 1) {
@@ -68,10 +93,10 @@ export async function convertToWebp(file: File): Promise<ConvertedImage> {
     ctx.imageSmoothingQuality = "high";
     ctx.drawImage(draw, 0, 0, w, h);
 
-    const dataUrl = canvas.toDataURL("image/webp", QUALITY);
+    const dataUrl = canvas.toDataURL("image/webp", quality);
     if (!dataUrl.startsWith("data:image/webp")) {
       // Very old browsers without WebP encoding: fall back to JPEG at the same quality.
-      const jpeg = canvas.toDataURL("image/jpeg", QUALITY);
+      const jpeg = canvas.toDataURL("image/jpeg", quality);
       best = {
         dataUrl: jpeg,
         bytes: approxBytes(jpeg),
@@ -79,7 +104,7 @@ export async function convertToWebp(file: File): Promise<ConvertedImage> {
         width: w,
         height: h,
       };
-      if (best.bytes <= TARGET_BYTES) break;
+      if (best.bytes <= targetBytes) break;
     } else {
       best = {
         dataUrl,
@@ -88,7 +113,7 @@ export async function convertToWebp(file: File): Promise<ConvertedImage> {
         width: w,
         height: h,
       };
-      if (best.bytes <= TARGET_BYTES) break;
+      if (best.bytes <= targetBytes) break;
     }
     scale *= 0.8;
   }

@@ -23,6 +23,7 @@ export function CakeBuilder({ onDone }: { onDone: () => void }) {
   const upload = useServerFn(uploadDesignImage);
   const deleteImage = useServerFn(deleteDesignImage);
   const [step, setStep] = useState(0);
+  const isSubmittingRef = useRef(false);
   const [size, setSize] = useState<Option>(builderSizes[0]!);
   const [flavor, setFlavor] = useState<Option>(builderFlavors[0]!);
   const [filling, setFilling] = useState<Option>(builderFillings[0]!);
@@ -53,6 +54,13 @@ export function CakeBuilder({ onDone }: { onDone: () => void }) {
   const Next = dir === "rtl" ? ChevronLeft : ChevronRight;
 
   const submit = () => {
+    // SEC-02: Double-Click / Rapid-Tap Guard:
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
+    setTimeout(() => {
+      isSubmittingRef.current = false;
+    }, 1500);
+
     add({
       ar: "كيكة مصمّمة خاصة",
       en: "Custom designed cake",
@@ -167,7 +175,11 @@ export function CakeBuilder({ onDone }: { onDone: () => void }) {
                   void (async () => {
                     try {
                       // Genuine JPG/PNG only, compressed to WebP and uploaded to Supabase Storage
-                      const converted = await convertToWebp(file);
+                      const converted = await convertToWebp(file, {
+                        kind: "cake",
+                        maxDimension: 800,
+                        quality: 0.8,
+                      });
                       const saved = await upload({
                         data: {
                           data_url: converted.dataUrl,
