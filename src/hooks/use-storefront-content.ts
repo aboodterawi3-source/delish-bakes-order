@@ -1,5 +1,4 @@
-import { useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
   BANNER_SELECT,
@@ -43,42 +42,14 @@ async function fetchStorefrontContent(): Promise<StorefrontContent> {
 }
 
 /**
- * Streams the sales-managed content into the customer app: any banner, category
- * or product change published from /sales lands here without a refresh.
+ * Streams the sales-managed content into the customer app using React Query caching.
+ * Protects Supabase Realtime channel limits by avoiding random visitor subscriptions.
  */
 export function useStorefrontContent() {
-  const queryClient = useQueryClient();
-  const query = useQuery({
+  return useQuery({
     queryKey: STOREFRONT_CONTENT_KEY,
     queryFn: fetchStorefrontContent,
-    staleTime: 30_000,
-    // Realtime drives updates; the interval is only a safety net.
-    refetchInterval: 60_000,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
-
-  useEffect(() => {
-    const invalidate = () =>
-      void queryClient.invalidateQueries({ queryKey: STOREFRONT_CONTENT_KEY });
-    // Unique channel name per hook instance: several components can listen at
-    // once without Supabase rejecting the extra subscription.
-    const channel = supabase
-      .channel(`storefront-content-live-${Math.random().toString(36).slice(2)}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "products" }, invalidate)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "storefront_categories" },
-        invalidate,
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "storefront_banner" },
-        invalidate,
-      )
-      .subscribe();
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [queryClient]);
-
-  return query;
 }

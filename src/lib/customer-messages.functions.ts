@@ -29,8 +29,36 @@ const clean = (value: unknown, max: number, label: string) => {
   return trimmed;
 };
 
+// In-memory rate limiting: prevent spam submissions (max 1 message per 60s per phone number)
+const messageRateLimitMap = new Map<string, number>();
+const RATE_LIMIT_WINDOW_MS = 60_000;
+
+function checkRateLimit(phone: string): boolean {
+  const normalized = phone.replace(/[^0-9]/g, "");
+  const now = Date.now();
+  const lastSubmitted = messageRateLimitMap.get(normalized);
+
+  if (lastSubmitted && now - lastSubmitted < RATE_LIMIT_WINDOW_MS) {
+    return false;
+  }
+
+  messageRateLimitMap.set(normalized, now);
+
+  // Periodic cleanup if map grows
+  if (messageRateLimitMap.size > 2000) {
+    for (const [key, timestamp] of messageRateLimitMap.entries()) {
+      if (now - timestamp > RATE_LIMIT_WINDOW_MS) {
+        messageRateLimitMap.delete(key);
+      }
+    }
+  }
+
+  return true;
+}
+
 export const submitCustomerMessage = createServerFn({ method: "POST" })
-  .inputValidator((input: { name: string; phone: string; message: string }) => {
+  .inputValidator((input: { name: string; phone: string; message: string; honeypot?: string }) => {
+    const isBot = Boolean(input?.honeypot && input.honeypot.trim().length > 0);
     const phone = clean(input?.phone, 25, "رقم الهاتف");
     if (!/^[0-9+\s-]{7,25}$/.test(phone))
       throw new Error("رقم هاتف غير صحيح · Invalid phone number");
@@ -38,11 +66,28 @@ export const submitCustomerMessage = createServerFn({ method: "POST" })
       name: clean(input?.name, 80, "الاسم"),
       phone,
       message: clean(input?.message, 1500, "الرسالة"),
+      isBot,
     };
   })
   .handler(async ({ data }) => {
+    // Silent rejection for bots trap: return success so bots don't retry, but discard payload
+    if (data.isBot) {
+      return { ok: true };
+    }
+
+    // Rate limit: 1 message per 60 seconds per phone number
+    if (!checkRateLimit(data.phone)) {
+      throw new Error(
+        "يرجى الانتظار 60 ثانية قبل إرسال رسالة أخرى · Please wait 60 seconds before sending another message",
+      );
+    }
+
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin.from("customer_messages").insert(data);
+    const { error } = await supabaseAdmin.from("customer_messages").insert({
+      name: data.name,
+      phone: data.phone,
+      message: data.message,
+    });
     if (error) {
       throw publicError(
         "messages.insert",

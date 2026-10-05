@@ -31,19 +31,67 @@ type Ctx = {
 
 const CartContext = createContext<Ctx | null>(null);
 
+export const CART_SCHEMA_VERSION = 1;
+
 /** The cart survives page navigation and reloads via localStorage. */
 const STORAGE_KEY = "delish-cart";
+
+interface StoredCartEnvelope {
+  version: number;
+  lines: CartLine[];
+}
+
+/** Strictly validates stored object structure to protect against undefined errors from older or modified schemas */
+function isValidCartLine(line: unknown): line is CartLine {
+  if (!line || typeof line !== "object") return false;
+  const l = line as Record<string, unknown>;
+
+  return (
+    typeof l.key === "string" &&
+    l.key.length > 0 &&
+    typeof l.unit === "number" &&
+    !isNaN(l.unit) &&
+    l.unit >= 0 &&
+    typeof l.qty === "number" &&
+    !isNaN(l.qty) &&
+    l.qty > 0 &&
+    typeof l.ar === "string" &&
+    typeof l.en === "string" &&
+    Array.isArray(l.detailsAr) &&
+    Array.isArray(l.detailsEn)
+  );
+}
 
 function readStored(): CartLine[] {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(
-      (line): line is CartLine =>
-        !!line && typeof line === "object" && typeof (line as CartLine).key === "string",
-    );
+
+    // Schema envelope format
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      const envelope = parsed as Partial<StoredCartEnvelope>;
+      // If version is outdated or corrupted, safely reset
+      if (envelope.version !== CART_SCHEMA_VERSION || !Array.isArray(envelope.lines)) {
+        window.localStorage.removeItem(STORAGE_KEY);
+        return [];
+      }
+      return envelope.lines.filter(isValidCartLine);
+    }
+
+    // Legacy unversioned array format: migrate if valid, or clear
+    if (Array.isArray(parsed)) {
+      const validLines = parsed.filter(isValidCartLine);
+      try {
+        const envelope: StoredCartEnvelope = { version: CART_SCHEMA_VERSION, lines: validLines };
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(envelope));
+      } catch {
+        /* storage blocked */
+      }
+      return validLines;
+    }
+
+    return [];
   } catch {
     return [];
   }
@@ -62,7 +110,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!hydrated) return;
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(lines));
+      const envelope: StoredCartEnvelope = {
+        version: CART_SCHEMA_VERSION,
+        lines,
+      };
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(envelope));
     } catch {
       /* storage full or blocked — the cart still works for this session */
     }

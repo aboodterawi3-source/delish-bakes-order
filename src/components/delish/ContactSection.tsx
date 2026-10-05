@@ -19,14 +19,23 @@ export function ContactSection() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [message, setMessage] = useState("");
+  const [honeypot, setHoneypot] = useState("");
 
   const mutation = useMutation({
     mutationFn: () =>
-      send({ data: { name: name.trim(), phone: phone.trim(), message: message.trim() } }),
+      send({
+        data: {
+          name: name.trim(),
+          phone: phone.trim(),
+          message: message.trim(),
+          honeypot: honeypot.trim(),
+        },
+      }),
     onSuccess: () => {
       setName("");
       setPhone("");
       setMessage("");
+      setHoneypot("");
     },
   });
 
@@ -63,6 +72,19 @@ export function ContactSection() {
             mutation.mutate();
           }}
         >
+          {/* Honeypot field for anti-bot protection */}
+          <div className="absolute -left-[9999px] h-0 w-0 overflow-hidden" aria-hidden="true" tabIndex={-1}>
+            <label htmlFor="contact_website_hp">Website</label>
+            <input
+              id="contact_website_hp"
+              type="text"
+              name="website_url"
+              value={honeypot}
+              onChange={(e) => setHoneypot(e.target.value)}
+              tabIndex={-1}
+              autoComplete="off"
+            />
+          </div>
           <div className="grid gap-3 min-[360px]:grid-cols-2">
             <div>
               <label htmlFor={nameId} className={label}>

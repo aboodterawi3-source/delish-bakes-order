@@ -118,10 +118,10 @@ function applyThemeCssVariables(palette: BrandPalette) {
 
 export function useBrandPalette() {
   const queryClient = useQueryClient();
-  const [localPaletteId, setLocalPaletteId] = useState<string>(getStoredPaletteId);
+  const [cachedPaletteId, setCachedPaletteId] = useState<string>(getStoredPaletteId);
 
-  // Query card_color_palette from store_settings table in Supabase
-  const { data: storeSettings } = useQuery({
+  // Single source of truth: store_settings table in Supabase
+  const { data: storeSettings, isSuccess } = useQuery({
     queryKey: STORE_SETTINGS_KEY,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -136,66 +136,55 @@ export function useBrandPalette() {
       }
       return data;
     },
-    staleTime: 30_000,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
 
-  // Subscribe to Supabase Realtime changes on store_settings table
+  // When database setting arrives, sync localStorage fallback so next visit is instantly aligned
   useEffect(() => {
-    const invalidate = () => {
-      void queryClient.invalidateQueries({ queryKey: STORE_SETTINGS_KEY });
-    };
+    if (isSuccess && storeSettings?.card_color_palette && BRAND_PALETTES[storeSettings.card_color_palette]) {
+      const dbPaletteId = storeSettings.card_color_palette;
+      setStoredPaletteId(dbPaletteId);
+      setCachedPaletteId(dbPaletteId);
+    }
+  }, [isSuccess, storeSettings?.card_color_palette]);
 
-    const channel = supabase
-      .channel(`store-settings-palette-${Math.random().toString(36).slice(2)}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "store_settings" }, invalidate)
-      .subscribe();
-
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [queryClient]);
-
-  // Keep local storage & event state in sync with custom events
+  // Keep tabs in sync via storage event
   useEffect(() => {
-    const handlePaletteChange = (event: Event) => {
-      const customEvent = event as CustomEvent<string>;
-      if (customEvent.detail) {
-        setLocalPaletteId(customEvent.detail);
-      } else {
-        setLocalPaletteId(getStoredPaletteId());
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === PALETTE_STORAGE_KEY && event.newValue && BRAND_PALETTES[event.newValue]) {
+        setCachedPaletteId(event.newValue);
       }
     };
-
-    window.addEventListener(PALETTE_EVENT_NAME, handlePaletteChange);
-    window.addEventListener("storage", handlePaletteChange);
-    return () => {
-      window.removeEventListener(PALETTE_EVENT_NAME, handlePaletteChange);
-      window.removeEventListener("storage", handlePaletteChange);
-    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
   }, []);
 
-  // Determine active palette ID: database value takes precedence if available
+  // Database is the single source of truth; cachedPaletteId is solely a transient fallback before DB resolves
+  const dbPaletteId = storeSettings?.card_color_palette;
   const activePaletteId =
-    storeSettings?.card_color_palette && BRAND_PALETTES[storeSettings.card_color_palette]
-      ? storeSettings.card_color_palette
-      : localPaletteId;
+    dbPaletteId && BRAND_PALETTES[dbPaletteId]
+      ? dbPaletteId
+      : cachedPaletteId && BRAND_PALETTES[cachedPaletteId]
+        ? cachedPaletteId
+        : "gold";
 
-  const fallbackPalette = BRAND_PALETTES["gold"]!;
-  const activePalette: BrandPalette = BRAND_PALETTES[activePaletteId] ?? fallbackPalette;
+  const activePalette: BrandPalette = BRAND_PALETTES[activePaletteId] ?? BRAND_PALETTES["gold"]!;
 
   // Apply CSS custom variables to document root whenever active palette changes
   useEffect(() => {
     applyThemeCssVariables(activePalette);
   }, [activePalette]);
 
-  // Persist chosen palette to database and invalidate query cache
+  // Persist chosen palette to database (source of truth) and update query cache
   const changePalette = async (newId: string) => {
     if (!BRAND_PALETTES[newId]) return;
 
-    // Optimistically update local state & local storage
+    // Optimistically update query cache and local cache
     setStoredPaletteId(newId);
-    setLocalPaletteId(newId);
+    setCachedPaletteId(newId);
     applyThemeCssVariables(BRAND_PALETTES[newId]!);
+    queryClient.setQueryData(STORE_SETTINGS_KEY, { card_color_palette: newId });
 
     // Save to Supabase store_settings table
     const { error } = await supabase
@@ -205,10 +194,11 @@ export function useBrandPalette() {
 
     if (error) {
       console.error("[store_settings] failed to save card_color_palette:", error);
+      // Invalidate to rollback on error
+      await queryClient.invalidateQueries({ queryKey: STORE_SETTINGS_KEY });
       throw error;
     }
 
-    // Invalidate query cache so all components refresh
     await queryClient.invalidateQueries({ queryKey: STORE_SETTINGS_KEY });
   };
 

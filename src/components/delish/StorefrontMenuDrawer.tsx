@@ -31,6 +31,7 @@ export function StorefrontMenuDrawer({ open, onClose }: StorefrontMenuDrawerProp
   const [feedbackPhone, setFeedbackPhone] = useState("");
   const [feedbackCategory, setFeedbackCategory] = useState("suggestion");
   const [feedbackMessage, setFeedbackMessage] = useState("");
+  const [feedbackHoneypot, setFeedbackHoneypot] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const submittingRef = useRef(false);
 
@@ -61,18 +62,20 @@ export function StorefrontMenuDrawer({ open, onClose }: StorefrontMenuDrawerProp
     submittingRef.current = true;
     setSubmitting(true);
     try {
-      // SEC-07: Pass exclusively through dedicated verified server function
+      // SEC-07: Pass exclusively through dedicated verified server function with honeypot protection
       await submitMessageFn({
         data: {
           name,
           phone,
           message: fullMessage,
+          honeypot: feedbackHoneypot.trim(),
         },
       });
       toast.success("شكراً لاهتمامك! تم إرسال رسالتك بنجاح وسيتواصل معك فريقنا في أقرب وقت 🌸");
       setFeedbackName("");
       setFeedbackPhone("");
       setFeedbackMessage("");
+      setFeedbackHoneypot("");
     } catch (err: unknown) {
       const errorMsg =
         err instanceof Error
@@ -270,6 +273,19 @@ export function StorefrontMenuDrawer({ open, onClose }: StorefrontMenuDrawerProp
               onSubmit={handleFeedbackSubmit}
               className="space-y-3 animate-in fade-in duration-200"
             >
+              {/* Honeypot field for anti-bot protection */}
+              <div className="absolute -left-[9999px] h-0 w-0 overflow-hidden" aria-hidden="true" tabIndex={-1}>
+                <label htmlFor="drawer_website_hp">Website</label>
+                <input
+                  id="drawer_website_hp"
+                  type="text"
+                  name="website_url"
+                  value={feedbackHoneypot}
+                  onChange={(e) => setFeedbackHoneypot(e.target.value)}
+                  tabIndex={-1}
+                  autoComplete="off"
+                />
+              </div>
               <div className="rounded-2xl border border-[#EFE8DC] bg-white p-4 space-y-3 shadow-xs">
                 <h4 className="font-bold text-[#26160F] text-sm flex items-center gap-1.5">
                   <MessageSquare className="h-4 w-4 text-[#B8801C]" /> خدمة العملاء والآراء
