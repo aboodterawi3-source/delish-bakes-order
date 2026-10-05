@@ -13,7 +13,7 @@ import { useLang } from "@/lib/i18n";
 import { useCart } from "@/lib/cart";
 import { Chip } from "@/components/ui/Chip";
 import { useServerFn } from "@tanstack/react-start";
-import { uploadDesignImage } from "@/lib/design-upload.functions";
+import { deleteDesignImage, uploadDesignImage } from "@/lib/design-upload.functions";
 import { IMAGE_ACCEPT } from "@/lib/image-validation";
 import { convertToWebp } from "@/lib/image-webp";
 
@@ -21,6 +21,7 @@ export function CakeBuilder({ onDone }: { onDone: () => void }) {
   const { t, lang, dir } = useLang();
   const { add } = useCart();
   const upload = useServerFn(uploadDesignImage);
+  const deleteImage = useServerFn(deleteDesignImage);
   const [step, setStep] = useState(0);
   const [size, setSize] = useState<Option>(builderSizes[0]!);
   const [flavor, setFlavor] = useState<Option>(builderFlavors[0]!);
@@ -167,7 +168,12 @@ export function CakeBuilder({ onDone }: { onDone: () => void }) {
                     try {
                       // Genuine JPG/PNG only, compressed to WebP and uploaded to Supabase Storage
                       const converted = await convertToWebp(file);
-                      const saved = await upload({ data: { data_url: converted.dataUrl } });
+                      const saved = await upload({
+                        data: {
+                          data_url: converted.dataUrl,
+                          previous_url: designImage || undefined,
+                        },
+                      });
                       setDesignImage(saved.url);
                     } catch (error) {
                       setDesignImage(undefined);
@@ -199,7 +205,12 @@ export function CakeBuilder({ onDone }: { onDone: () => void }) {
                   />
                   <button
                     type="button"
-                    onClick={() => setDesignImage(undefined)}
+                    onClick={() => {
+                      if (designImage) {
+                        void deleteImage({ data: { url: designImage } }).catch(() => {});
+                      }
+                      setDesignImage(undefined);
+                    }}
                     aria-label={lang === "ar" ? "إزالة الصورة" : "Remove image"}
                     className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-border"
                   >

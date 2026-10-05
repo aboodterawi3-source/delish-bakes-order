@@ -186,6 +186,14 @@ export const createSalesOrder = createServerFn({ method: "POST" })
     const discountPercent = data.discount_percent ?? 0;
     const total = roundJod(Math.max(subtotal + deliveryFee - discountAmount, 0));
 
+    // Clamp deposit_paid: cliq/visa pay in full, and deposit can never exceed total
+    let finalDeposit = roundJod(data.deposit_paid ?? 0);
+    if (data.payment_method === "cliq" || data.payment_method === "visa") {
+      finalDeposit = total;
+    } else {
+      finalDeposit = roundJod(Math.min(Math.max(finalDeposit, 0), total));
+    }
+
     const staffCode = await getStaffCodeForUser(context.supabase, context.userId);
 
     const { data: order, error } = await context.supabase
@@ -208,7 +216,7 @@ export const createSalesOrder = createServerFn({ method: "POST" })
         card_note: data.card_note?.trim() || null,
         design_image_url: data.design_image_url || null,
         payment_method: data.payment_method || null,
-        deposit_paid: roundJod(data.deposit_paid ?? 0),
+        deposit_paid: finalDeposit,
         subtotal,
         delivery_fee: deliveryFee,
         discount_amount: discountAmount,
@@ -660,7 +668,15 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
         }
       }
 
+      if (clean["payment_method"] === "cliq" || clean["payment_method"] === "visa") {
+        if (clean["deposit_paid"] === undefined) {
+          clean["deposit_paid"] = Number(existing.total ?? 0);
+        }
+      }
+
       if (clean["deposit_paid"] !== undefined) {
+        const orderTotal = Number(existing.total ?? 0);
+        clean["deposit_paid"] = roundJod(Math.min(Math.max(Number(clean["deposit_paid"]), 0), orderTotal));
         const oldVal = Number(existing.deposit_paid ?? 0);
         const newVal = Number(clean["deposit_paid"] ?? 0);
         if (oldVal !== newVal) {

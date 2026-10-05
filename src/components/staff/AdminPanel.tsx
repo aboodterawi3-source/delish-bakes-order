@@ -1250,7 +1250,7 @@ function AuthorizationPanel() {
               📜 سجل التدقيق الأمني والعمليات (Audit Log)
             </h3>
             <p className="mt-0.5 text-xs text-[#4A3B32]/70">
-              سجل توثيقي غير قابل للتعديل لجميع تعديلات الأسعار والخصومات.
+              سجل توثيقي غير قابل للتعديل لجميع تعديلات الأسعار والخصومات (عرض تلقائي لآخر 30 يوماً).
             </p>
           </div>
           <div className="relative max-w-xs w-full sm:w-auto">

@@ -15,33 +15,53 @@ export const DATE_FILTERS: { key: DateFilterKey; ar: string; en: string }[] = [
   { key: "custom", ar: "تاريخ محدد", en: "Custom" },
 ];
 
-/** Local calendar date (never UTC) shifted by a number of days. */
-export const isoDay = (offsetDays = 0): string => {
-  const date = new Date();
-  date.setDate(date.getDate() + offsetDays);
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-};
-
-/** Today's date in local calendar YYYY-MM-DD. */
-export const todayIso = (): string => isoDay(0);
+/**
+ * Today's calendar date in Jordan (Asia/Amman) YYYY-MM-DD.
+ * Fixed explicitly to Asia/Amman so Serverless runtimes in UTC
+ * never shift orders between 00:00 and 03:00 local time.
+ */
+export function todayIso(): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Amman",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
 
 /**
- * Jordan calendar date (YYYY-MM-DD) of an instant, in Jordan time — a fixed
- * UTC+3 offset with no DST. `created_at` is stored in UTC, so slicing the raw
- * ISO string would file orders made after 21:00 local under the next day.
+ * Calendar date (YYYY-MM-DD) shifted by a number of days in Jordan timezone (Asia/Amman).
+ */
+export function isoDay(offsetDays = 0): string {
+  if (offsetDays === 0) return todayIso();
+  const todayStr = todayIso();
+  const [y, m, d] = todayStr.split("-").map(Number);
+  const shiftedDate = new Date(Date.UTC(y, m - 1, d + offsetDays, 12, 0, 0));
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Amman",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(shiftedDate);
+}
+
+/**
+ * Jordan calendar date (YYYY-MM-DD) of an instant, in Jordan time (Asia/Amman).
  */
 export const jordanDay = (value: string | Date | null | undefined): string => {
   if (!value) return "";
   const date = typeof value === "string" ? new Date(value) : value;
   if (Number.isNaN(date.getTime())) return "";
-  const shifted = new Date(date.getTime() + 3 * 60 * 60 * 1000);
-  return `${shifted.getUTCFullYear()}-${String(shifted.getUTCMonth() + 1).padStart(2, "0")}-${String(
-    shifted.getUTCDate(),
-  ).padStart(2, "0")}`;
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Amman",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
 };
 
 /** Today's calendar date in Jordan (YYYY-MM-DD). */
-export const jordanToday = (): string => jordanDay(new Date());
+export const jordanToday = (): string => todayIso();
 
 export type CustomRange = { from: string; to: string };
 

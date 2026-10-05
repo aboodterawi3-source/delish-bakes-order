@@ -228,14 +228,29 @@ export function PosOrderEntry() {
     [subtotal, deliveryFee, discountAmount],
   );
 
-  const depositVal = roundJod(Number(depositPaid) || 0);
+  // Automatically synchronize deposit_paid with grandTotal when full prepayment (cliq/visa) is selected
+  useEffect(() => {
+    if (paymentMethod === "cliq" || paymentMethod === "visa") {
+      setDepositPaid(String(grandTotal));
+    }
+  }, [paymentMethod, grandTotal]);
+
+  // Strict mathematical clamp: deposit can never exceed grandTotal
+  const depositVal = useMemo(() => {
+    const raw = roundJod(Number(depositPaid) || 0);
+    if (paymentMethod === "cliq" || paymentMethod === "visa") {
+      return grandTotal;
+    }
+    return roundJod(Math.min(Math.max(raw, 0), grandTotal));
+  }, [depositPaid, grandTotal, paymentMethod]);
+
   const totalCartCount = useMemo(() => cart.reduce((sum, it) => sum + it.quantity, 0), [cart]);
   const remainingBalance = roundJod(Math.max(grandTotal - depositVal, 0));
 
   // Quick cash bill shortcuts
   const handleQuickCash = (amount: number) => {
     setPaymentMethod("cash");
-    setDepositPaid(String(amount));
+    setDepositPaid(String(Math.min(amount, grandTotal)));
   };
 
   // Instant Add to Cart
@@ -413,7 +428,10 @@ export function PosOrderEntry() {
       card_note: cardNote.trim() || undefined,
       design_image_url: designImageUrl,
       payment_method: paymentMethod,
-      deposit_paid: depositVal > 0 ? depositVal : grandTotal,
+      deposit_paid:
+        paymentMethod === "cliq" || paymentMethod === "visa"
+          ? grandTotal
+          : roundJod(Math.min(depositVal > 0 ? depositVal : grandTotal, grandTotal)),
       discount_percent: Number(discountPercent) || 0,
       discount_amount: discountAmount,
       items: cart.map((item) => ({
@@ -1297,7 +1315,10 @@ export function PosOrderEntry() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setPaymentMethod("cliq")}
+                  onClick={() => {
+                    setPaymentMethod("cliq");
+                    setDepositPaid(String(grandTotal));
+                  }}
                   className={`min-h-[46px] rounded-xl font-black text-xs transition-all flex items-center justify-center gap-2 cursor-pointer border ${
                     paymentMethod === "cliq" || paymentMethod === "visa"
                       ? "bg-blue-600 text-white border-blue-700 shadow-sm"

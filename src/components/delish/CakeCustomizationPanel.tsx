@@ -13,7 +13,7 @@ import {
 import { useServerFn } from "@tanstack/react-start";
 import { convertToWebp, formatBytes } from "@/lib/image-webp";
 import { IMAGE_ACCEPT } from "@/lib/image-validation";
-import { uploadDesignImage } from "@/lib/design-upload.functions";
+import { deleteDesignImage, uploadDesignImage } from "@/lib/design-upload.functions";
 
 /** One balloon colour with its own count; several may be combined. */
 export type BalloonPick = { id: string; label: string; qty: number };
@@ -836,6 +836,7 @@ export function DesignPhotoSection({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [savedSize, setSavedSize] = useState<{ before: number; after: number } | null>(null);
   const upload = useServerFn(uploadDesignImage);
+  const deleteImage = useServerFn(deleteDesignImage);
 
   const [photoMode, setPhotoMode] = useState<"none" | "yes">(value.designImageUrl ? "yes" : "none");
 
@@ -843,13 +844,27 @@ export function DesignPhotoSection({
     setPhotoMode(value.designImageUrl ? "yes" : "none");
   }, [value.designImageUrl]);
 
+  const removePhoto = () => {
+    if (value.designImageUrl) {
+      void deleteImage({ data: { url: value.designImageUrl } }).catch(() => {});
+    }
+    onChange({ ...value, designImageUrl: null });
+    setSavedSize(null);
+    clear("photo");
+  };
+
   const handleFile = async (file: File | undefined) => {
     if (!file) return;
     setUploadError(null);
     setUploading(true);
     try {
       const converted = await convertToWebp(file);
-      const saved = await upload({ data: { data_url: converted.dataUrl } });
+      const saved = await upload({
+        data: {
+          data_url: converted.dataUrl,
+          previous_url: value.designImageUrl || undefined,
+        },
+      });
       onChange({ ...value, designImageUrl: saved.url });
       setSavedSize({ before: converted.originalBytes, after: converted.bytes });
       clear("photo");
@@ -882,9 +897,7 @@ export function DesignPhotoSection({
           type="button"
           onClick={() => {
             setPhotoMode("none");
-            onChange({ ...value, designImageUrl: null });
-            setSavedSize(null);
-            clear("photo");
+            removePhoto();
           }}
           className={`min-h-11 rounded-xl px-3 py-2 text-xs font-bold transition-all ${
             photoMode === "none"
@@ -941,10 +954,7 @@ export function DesignPhotoSection({
               )}
               <button
                 type="button"
-                onClick={() => {
-                  onChange({ ...value, designImageUrl: null });
-                  setSavedSize(null);
-                }}
+                onClick={removePhoto}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-50"
               >
                 <Trash2 className="h-3.5 w-3.5" /> إزالة الصورة

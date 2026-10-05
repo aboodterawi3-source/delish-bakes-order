@@ -7,7 +7,25 @@ import { supabase } from "./client";
 export const attachSupabaseAuth = createMiddleware({ type: "function" }).client(
   async ({ next }) => {
     const { data } = await supabase.auth.getSession();
-    const token = data.session?.access_token;
+    let session = data.session;
+
+    // Proactive refresh: if token expires within 2 minutes (< 120s), refresh before sending request
+    if (session?.expires_at) {
+      const nowInSeconds = Math.floor(Date.now() / 1000);
+      const secondsUntilExpiry = session.expires_at - nowInSeconds;
+      if (secondsUntilExpiry < 120) {
+        try {
+          const { data: refreshed } = await supabase.auth.refreshSession();
+          if (refreshed?.session) {
+            session = refreshed.session;
+          }
+        } catch (err) {
+          console.warn("[Auth] Proactive session refresh failed:", err);
+        }
+      }
+    }
+
+    const token = session?.access_token;
     return next({
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });

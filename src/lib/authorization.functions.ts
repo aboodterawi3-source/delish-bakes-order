@@ -189,16 +189,24 @@ export const listAuditLogs = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<AuditEntry[]> => {
     await assertRole(context as unknown as Ctx, ["admin"]);
+
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const thirtyDaysAgoIso = thirtyDaysAgo.toISOString();
+
     const { data, error } = await context.supabase
       .from("audit_logs")
       .select(
         "id, order_id, order_number, staff_name, action, original_amount, modified_amount, discount_percent, reason, created_at",
       )
+      .gte("created_at", thirtyDaysAgoIso)
       .order("created_at", { ascending: false })
-      .limit(400);
+      .limit(300);
     if (error) throw new Error(error.message);
     return (data ?? []) as unknown as AuditEntry[];
   });
+
+export const getAuditLogs = listAuditLogs;
 
 /* ------------------------------- discounting ------------------------------ */
 
