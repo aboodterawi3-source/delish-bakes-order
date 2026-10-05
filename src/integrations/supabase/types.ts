@@ -550,23 +550,32 @@ export type Database = {
       store_settings: {
         Row: {
           card_color_palette: string
+          cliq_alias: string
+          contact_phone: string
           created_at: string
           id: string
           singleton: boolean
+          store_name: string
           updated_at: string
         }
         Insert: {
           card_color_palette?: string
+          cliq_alias?: string
+          contact_phone?: string
           created_at?: string
           id?: string
           singleton?: boolean
+          store_name?: string
           updated_at?: string
         }
         Update: {
           card_color_palette?: string
+          cliq_alias?: string
+          contact_phone?: string
           created_at?: string
           id?: string
           singleton?: boolean
+          store_name?: string
           updated_at?: string
         }
         Relationships: []
@@ -672,45 +681,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      clear_all_sales_orders_atomic: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      create_storefront_order_atomic: {
-        Args: {
-          order_payload: Json
-          items_payload: Json
-        }
-        Returns: Json
-      }
-      delete_sales_order_atomic: {
-        Args: {
-          target_order_id: string
-        }
-        Returns: undefined
-      }
-      patch_sales_order_atomic: {
-        Args: {
-          p_order_id: string
-          p_patch: Json
-          p_new_mods: Json
-          p_user_id: string
-        }
-        Returns: Json
-      }
-      rebuild_sales_order_atomic: {
-        Args: {
-          p_order_id: string
-          p_lines: Json
-          p_subtotal: number
-          p_delivery_fee: number
-          p_discount_amount: number
-          p_total: number
-          p_user_id: string
-          p_new_mods: Json
-        }
-        Returns: undefined
-      }
       get_kitchen_order_items: {
         Args: { _order_ids: string[] }
         Returns: {
@@ -759,6 +729,8 @@ export type Database = {
         }
         Returns: undefined
       }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
     }
     Enums: {
       app_role: "admin" | "sales" | "kitchen" | "social"
