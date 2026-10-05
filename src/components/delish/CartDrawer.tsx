@@ -1,7 +1,7 @@
 import { useId, useRef, useState } from "react";
 import { CheckCircle2, Minus, Plus, Trash2, X } from "lucide-react";
 import { getWhatsAppChatUrl } from "@/lib/whatsapp";
-import { formatJod } from "@/lib/currency";
+import { formatJod, roundJod } from "@/lib/currency";
 import { DELIVERY_ZONES, OTHER_GOVERNORATES_AREA, feeForArea } from "@/lib/delivery-zones";
 import { DeliveryZoneSelect } from "@/components/delish/DeliveryZoneSelect";
 import { useCart } from "@/lib/cart";
@@ -58,8 +58,8 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   useDismissable(open, onClose);
 
   const areaFee = feeForArea(form.area);
-  const deliveryFee = form.method === "delivery" && count > 0 ? (areaFee ?? 0) : 0;
-  const total = subtotal + deliveryFee;
+  const deliveryFee = form.method === "delivery" && count > 0 ? roundJod(areaFee ?? 0) : 0;
+  const total = roundJod(subtotal + deliveryFee);
 
   const set = (k: keyof Form, v: string) => setForm((f) => ({ ...f, [k]: v }));
 

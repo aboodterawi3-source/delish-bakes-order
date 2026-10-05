@@ -37,9 +37,25 @@ export async function getStaffCodeForUser(
 export const MAX_EXTRAS = 20;
 export const MAX_EXTRA_LENGTH = 160;
 
-/** Signed link returned by uploadDesignImage for photos kept in Cloud storage. */
+/**
+ * Dynamic pattern matching any Supabase Storage URL (signed or public) across all environments/projects.
+ * Accepts signed (/sign/) or public (/public/) objects with optional query parameters.
+ */
 export const STORAGE_URL =
-  /^https:\/\/zmeijwtivmniqpwyxezk\.supabase\.co\/storage\/v1\/object\/sign\/order-designs\/[\w./-]+\?[\w=%&.-]+$/i;
+  /^https?:\/\/[a-z0-9.-]+\/storage\/v1\/object\/(?:sign|public|authenticated)\/[\w./-]+(?:\?[\w=%&.-]*)?$/i;
+
+/**
+ * Validates that an image URL points to a legitimate Supabase Storage object (signed or public)
+ * across any Supabase environment/project, while strictly blocking Base64/data URLs and oversized strings.
+ */
+export function isValidStorageUrl(url: unknown): boolean {
+  if (typeof url !== "string") return false;
+  const trimmed = url.trim();
+  if (!trimmed || trimmed.length > 2500) return false;
+  if (trimmed.startsWith("data:") || trimmed.includes(";base64,")) return false;
+  if (!/^https?:\/\//i.test(trimmed)) return false;
+  return /\/storage\/v1\/object\/(?:sign|public|authenticated)\/[\w./-]/i.test(trimmed);
+}
 
 /** Extras are plain labels; keep them short, single-line and bounded. */
 export const sanitizeExtraList = (value: unknown): string[] => {

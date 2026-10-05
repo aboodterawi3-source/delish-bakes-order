@@ -1050,10 +1050,68 @@ export function KitchenPanel() {
   const [pending, setPending] = useState<string | null>(null);
   const [alerts, setAlerts] = useState<string[]>([]);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [audioUnlocked, setAudioUnlocked] = useState(false);
   const [zoom, setZoom] = useState<string | null>(null);
   const [selectedKitchenOrder, setSelectedKitchenOrder] = useState<KdsOrder | null>(null);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const enableAudio = useCallback(() => {
+    try {
+      const ctx = new (
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+      )();
+      if (ctx.state === "suspended") {
+        void ctx.resume();
+      }
+      if (audioRef.current) {
+        audioRef.current
+          .play()
+          .then(() => {
+            audioRef.current?.pause();
+            if (audioRef.current) audioRef.current.currentTime = 0;
+          })
+          .catch(() => {
+            /* ignore autoplay catch */
+          });
+      }
+      playKitchenChimeSound();
+    } catch {
+      /* ignore */
+    }
+    setAudioUnlocked(true);
+    setSoundEnabled(true);
+  }, []);
+
+  // Unlock browser audio context automatically on user's first click anywhere on the page
+  useEffect(() => {
+    const handleFirstInteraction = () => {
+      setAudioUnlocked(true);
+      try {
+        const ctx = new (
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+        )();
+        if (ctx.state === "suspended") void ctx.resume();
+      } catch {
+        /* ignore */
+      }
+      window.removeEventListener("click", handleFirstInteraction);
+      window.removeEventListener("touchstart", handleFirstInteraction);
+      window.removeEventListener("keydown", handleFirstInteraction);
+    };
+
+    window.addEventListener("click", handleFirstInteraction, { once: true });
+    window.addEventListener("touchstart", handleFirstInteraction, { once: true });
+    window.addEventListener("keydown", handleFirstInteraction, { once: true });
+
+    return () => {
+      window.removeEventListener("click", handleFirstInteraction);
+      window.removeEventListener("touchstart", handleFirstInteraction);
+      window.removeEventListener("keydown", handleFirstInteraction);
+    };
+  }, []);
 
   useEffect(() => {
     try {
@@ -1132,10 +1190,23 @@ export function KitchenPanel() {
 
     if (soundEnabled) {
       if (newlyModified.length > 0) {
-        playKitchenModificationChimeSound();
+        try {
+          playKitchenModificationChimeSound();
+        } catch {
+          /* ignore */
+        }
       } else {
-        if (audioRef.current) audioRef.current.play().catch(() => playKitchenChimeSound());
-        else playKitchenChimeSound();
+        try {
+          if (audioRef.current) {
+            audioRef.current.play().catch(() => {
+              playKitchenChimeSound();
+            });
+          } else {
+            playKitchenChimeSound();
+          }
+        } catch {
+          playKitchenChimeSound();
+        }
       }
     }
     setAlerts((curr) => [...curr, ...toAlert.filter((id) => !curr.includes(id))]);
@@ -1399,23 +1470,35 @@ export function KitchenPanel() {
               </div>
             )}
 
-            {/* Sound Toggle Button */}
-            <button
-              type="button"
-              onClick={() => setSoundEnabled((v) => !v)}
-              className={`min-h-[44px] px-3.5 rounded-xl border text-xs font-black flex items-center gap-1.5 transition cursor-pointer ${
-                soundEnabled
-                  ? "bg-amber-500/10 text-amber-800 dark:text-amber-300 border-amber-500/30"
-                  : "bg-secondary text-muted-foreground border-border"
-              }`}
-            >
-              {soundEnabled ? (
-                <BellRing className="h-4 w-4 text-amber-500" />
-              ) : (
-                <Bell className="h-4 w-4" />
-              )}
-              <span>{soundEnabled ? "رنين التنبيهات شغال" : "صامت"}</span>
-            </button>
+            {/* Sound Toggle Button / Audio Unlock */}
+            {!audioUnlocked ? (
+              <button
+                type="button"
+                onClick={enableAudio}
+                className="min-h-[44px] px-3.5 rounded-xl border border-amber-500 bg-amber-500 text-white text-xs font-black flex items-center gap-1.5 transition-all shadow-md animate-pulse hover:bg-amber-600 active:scale-95 cursor-pointer"
+                title="اضغط هنا لتفعيل صوت جرس التنبيهات في المتصفح"
+              >
+                <BellRing className="h-4 w-4 animate-bounce" />
+                <span>تفعيل جرس التنبيهات 🔔</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setSoundEnabled((v) => !v)}
+                className={`min-h-[44px] px-3.5 rounded-xl border text-xs font-black flex items-center gap-1.5 transition cursor-pointer ${
+                  soundEnabled
+                    ? "bg-amber-500/10 text-amber-800 dark:text-amber-300 border-amber-500/30"
+                    : "bg-secondary text-muted-foreground border-border"
+                }`}
+              >
+                {soundEnabled ? (
+                  <BellRing className="h-4 w-4 text-amber-500" />
+                ) : (
+                  <Bell className="h-4 w-4" />
+                )}
+                <span>{soundEnabled ? "رنين التنبيهات شغال" : "صامت"}</span>
+              </button>
+            )}
 
             {/* Refresh Button */}
             <button

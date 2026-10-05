@@ -50,4 +50,6 @@ build
 *.ZIP
 desktop.ini
 SQLEXPRADV_x64_ENU/
+repomix-output.*
+
 

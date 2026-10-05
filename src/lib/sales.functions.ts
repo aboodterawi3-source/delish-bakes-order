@@ -3,6 +3,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertRole, type StaffRoleName } from "@/lib/role-guard";
 import { feeForArea } from "@/lib/delivery-zones";
 import { getStaffCodeForUser, type OrderModification } from "@/lib/server-shared";
+import { roundJod } from "@/lib/currency";
 
 /** The order desk: sales, social media and admins all manage the same orders. */
 const SALES_ROLES: StaffRoleName[] = ["sales", "admin", "social"];
@@ -179,11 +180,11 @@ export const createSalesOrder = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<SalesOrder> => {
     await assertRole(context, SALES_ROLES);
 
-    const subtotal = data.items.reduce((sum, item) => sum + item.unit_price * item.quantity, 0);
-    const deliveryFee = data.method === "delivery" && data.area ? (feeForArea(data.area) ?? 0) : 0;
-    const discountAmount = data.discount_amount ?? 0;
+    const subtotal = roundJod(data.items.reduce((sum, item) => sum + item.unit_price * item.quantity, 0));
+    const deliveryFee = data.method === "delivery" && data.area ? roundJod(feeForArea(data.area) ?? 0) : 0;
+    const discountAmount = roundJod(data.discount_amount ?? 0);
     const discountPercent = data.discount_percent ?? 0;
-    const total = Math.max(subtotal + deliveryFee - discountAmount, 0);
+    const total = roundJod(Math.max(subtotal + deliveryFee - discountAmount, 0));
 
     const staffCode = await getStaffCodeForUser(context.supabase, context.userId);
 
@@ -207,7 +208,7 @@ export const createSalesOrder = createServerFn({ method: "POST" })
         card_note: data.card_note?.trim() || null,
         design_image_url: data.design_image_url || null,
         payment_method: data.payment_method || null,
-        deposit_paid: data.deposit_paid ?? 0,
+        deposit_paid: roundJod(data.deposit_paid ?? 0),
         subtotal,
         delivery_fee: deliveryFee,
         discount_amount: discountAmount,
@@ -950,20 +951,23 @@ export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
       .eq("order_id", data.orderId);
     if (fetchError) throw new Error(fetchError.message);
 
-    const subtotal = (items ?? []).reduce(
-      (acc, it) => acc + Number(it.unit_price) * Number(it.quantity),
-      0,
+    const subtotal = roundJod(
+      (items ?? []).reduce(
+        (acc, it) => acc + Number(it.unit_price) * Number(it.quantity),
+        0,
+      ),
     );
 
     const { data: currentOrder } = await context.supabase
       .from("orders")
-      .select("delivery_fee, method")
+      .select("delivery_fee, method, discount_amount")
       .eq("id", data.orderId)
       .single();
 
     const deliveryFee =
-      currentOrder?.method === "delivery" ? Number(currentOrder?.delivery_fee ?? 0) : 0;
-    const total = subtotal + deliveryFee;
+      currentOrder?.method === "delivery" ? roundJod(Number(currentOrder?.delivery_fee ?? 0)) : 0;
+    const discountAmount = roundJod(Number(currentOrder?.discount_amount ?? 0));
+    const total = roundJod(Math.max(subtotal + deliveryFee - discountAmount, 0));
 
     const { data: updatedOrder, error: orderError } = await context.supabase
       .from("orders")
@@ -1167,9 +1171,10 @@ export const replaceSalesOrderItems = createServerFn({ method: "POST" })
     );
     if (insertError) throw new Error(insertError.message);
 
-    const subtotal = data.lines.reduce((acc, line) => acc + line.unitPrice * line.quantity, 0);
-    const deliveryFee = existing.method === "delivery" ? Number(existing.delivery_fee ?? 0) : 0;
-    const total = Math.max(subtotal + deliveryFee - Number(existing.discount_amount ?? 0), 0);
+    const subtotal = roundJod(data.lines.reduce((acc, line) => acc + line.unitPrice * line.quantity, 0));
+    const deliveryFee = existing.method === "delivery" ? roundJod(Number(existing.delivery_fee ?? 0)) : 0;
+    const discountAmount = roundJod(Number(existing.discount_amount ?? 0));
+    const total = roundJod(Math.max(subtotal + deliveryFee - discountAmount, 0));
 
     const { data: row, error: orderError } = await context.supabase
       .from("orders")

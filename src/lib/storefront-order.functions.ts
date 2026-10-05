@@ -8,7 +8,8 @@ import {
   type PricedLine,
 } from "@/lib/order-pricing";
 import { publicError } from "@/lib/public-error";
-import { extraList, STORAGE_URL } from "@/lib/server-shared";
+import { extraList, isValidStorageUrl, STORAGE_URL } from "@/lib/server-shared";
+import { roundJod } from "@/lib/currency";
 
 export type StorefrontOrderRequest = {
   customer_name: string;
@@ -71,7 +72,7 @@ function validate(input: StorefrontOrderRequest) {
     if (raw.length > 2500) {
       throw new Error("رابط صورة التصميم طويل جداً · Design image URL exceeds maximum length");
     }
-    if (STORAGE_URL.test(raw) || /^https?:\/\//i.test(raw)) {
+    if (isValidStorageUrl(raw) || STORAGE_URL.test(raw) || /^https?:\/\//i.test(raw)) {
       designImage = raw;
     } else {
       throw new Error("رابط صورة التصميم غير صالح · Invalid design image URL");
@@ -206,8 +207,9 @@ export const submitStorefrontOrder = createServerFn({ method: "POST" })
       }
     }
 
-    const subtotal = lines.reduce((sum, line) => sum + line.unit_price * line.quantity, 0);
-    const deliveryFee = deliveryFeeFor(data.method, lines.length, data.area);
+    const subtotal = roundJod(lines.reduce((sum, line) => sum + line.unit_price * line.quantity, 0));
+    const deliveryFee = roundJod(deliveryFeeFor(data.method, lines.length, data.area));
+    const total = roundJod(subtotal + deliveryFee);
     const inscription = lines
       .map((line) => line.message)
       .filter(Boolean)
@@ -229,7 +231,7 @@ export const submitStorefrontOrder = createServerFn({ method: "POST" })
         payment_method: data.payment,
         subtotal,
         delivery_fee: deliveryFee,
-        total: subtotal + deliveryFee,
+        total,
         status: "new",
       })
       .select("id, order_number, subtotal, delivery_fee, total")

@@ -3,7 +3,8 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertRole, type StaffRoleName } from "@/lib/role-guard";
 import { feeForArea } from "@/lib/delivery-zones";
 import { jordanDay } from "@/lib/date-filter";
-import { getStaffCodeForUser, STORAGE_URL, extraList } from "@/lib/server-shared";
+import { getStaffCodeForUser, isValidStorageUrl, STORAGE_URL, extraList } from "@/lib/server-shared";
+import { roundJod } from "@/lib/currency";
 
 const SOCIAL_ROLES: StaffRoleName[] = ["social", "sales", "admin"];
 
@@ -96,23 +97,25 @@ export const createSocialOrder = createServerFn({ method: "POST" })
     await assertRole(context, SOCIAL_ROLES);
     const orderDetails = data.order_details.trim();
     // Original price agreed with the customer; the row total is recomputed in the DB.
-    const unitPrice = Math.min(Math.max(Number(data.unit_price) || 0, 0), 100000);
-    const subtotal = unitPrice * data.quantity;
+    const unitPrice = roundJod(Math.min(Math.max(Number(data.unit_price) || 0, 0), 100000));
+    const subtotal = roundJod(unitPrice * data.quantity);
     const area = data.method === "delivery" ? data.area?.trim() || null : null;
     // The browser never sets the fee: it is resolved from the trusted zone table.
-    const deliveryFee = area ? (feeForArea(area) ?? 0) : 0;
+    const deliveryFee = area ? roundJod(feeForArea(area) ?? 0) : 0;
     // A paid amount is stored for deposits and for CliQ payments alike.
     const deposit =
-      data.payment_option === "cash" ? 0 : Math.max(0, Number(data.deposit_paid) || 0);
+      data.payment_option === "cash" ? 0 : roundJod(Math.max(0, Number(data.deposit_paid) || 0));
     const paymentMethod = data.payment_option === "cash" ? "cash" : "cliq";
     const extrasAr = extraList(data.extras_ar);
     const extrasEn = extraList(data.extras_en);
     const designImage =
-      typeof data.design_image_url === "string" && STORAGE_URL.test(data.design_image_url.trim())
+      typeof data.design_image_url === "string" &&
+      (isValidStorageUrl(data.design_image_url) || STORAGE_URL.test(data.design_image_url.trim()))
         ? data.design_image_url.trim()
         : null;
     const receiptImage =
-      typeof data.receipt_image_url === "string" && STORAGE_URL.test(data.receipt_image_url.trim())
+      typeof data.receipt_image_url === "string" &&
+      (isValidStorageUrl(data.receipt_image_url) || STORAGE_URL.test(data.receipt_image_url.trim()))
         ? data.receipt_image_url.trim()
         : null;
 

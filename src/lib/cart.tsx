@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { LineSpec } from "@/lib/order-pricing";
+import { roundJod } from "@/lib/currency";
 
 export type CartLine = {
   key: string;
@@ -154,7 +155,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setQty,
       clear,
       count: lines.reduce((s, l) => s + l.qty, 0),
-      subtotal: lines.reduce((s, l) => s + l.qty * l.unit, 0),
+      subtotal: roundJod(lines.reduce((s, l) => s + l.qty * l.unit, 0)),
     }),
     [lines],
   );

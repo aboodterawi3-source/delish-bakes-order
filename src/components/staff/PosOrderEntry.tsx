@@ -53,7 +53,7 @@ import {
 import { printReceipt, ORDERS_KEY } from "@/components/staff/OrdersWorkspace";
 import { printKitchenTicket } from "@/lib/receipt-templates";
 import { orderLabel } from "@/lib/order-label";
-import { jd } from "@/lib/currency";
+import { jd, roundJod } from "@/lib/currency";
 import { todayIso } from "@/lib/date-filter";
 import { useScreenWakeLock } from "@/hooks/use-screen-wake-lock";
 
@@ -204,7 +204,7 @@ export function PosOrderEntry() {
 
   // Calculations
   const subtotal = useMemo(
-    () => cart.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0),
+    () => roundJod(cart.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0)),
     [cart],
   );
 
@@ -213,24 +213,24 @@ export function PosOrderEntry() {
 
   const deliveryFee = useMemo(() => {
     if (effectiveMethod === "delivery" && area) {
-      return feeForArea(area) ?? 0;
+      return roundJod(feeForArea(area) ?? 0);
     }
     return 0;
   }, [effectiveMethod, area]);
 
   const discountAmount = useMemo(() => {
     const p = Math.min(Math.max(Number(discountPercent) || 0, 0), 100);
-    return (subtotal * p) / 100;
+    return roundJod((subtotal * p) / 100);
   }, [subtotal, discountPercent]);
 
   const grandTotal = useMemo(
-    () => Math.max(subtotal + deliveryFee - discountAmount, 0),
+    () => roundJod(Math.max(subtotal + deliveryFee - discountAmount, 0)),
     [subtotal, deliveryFee, discountAmount],
   );
 
-  const depositVal = Number(depositPaid) || 0;
+  const depositVal = roundJod(Number(depositPaid) || 0);
   const totalCartCount = useMemo(() => cart.reduce((sum, it) => sum + it.quantity, 0), [cart]);
-  const remainingBalance = Math.max(grandTotal - depositVal, 0);
+  const remainingBalance = roundJod(Math.max(grandTotal - depositVal, 0));
 
   // Quick cash bill shortcuts
   const handleQuickCash = (amount: number) => {
