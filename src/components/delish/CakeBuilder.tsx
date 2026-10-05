@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { Check, ChevronLeft, ChevronRight, ImagePlus, X } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, ImagePlus, Loader2, X } from "lucide-react";
 import {
   builderFillings,
   builderFlavors,
@@ -12,12 +12,15 @@ import { Pic } from "@/components/delish/Pic";
 import { useLang } from "@/lib/i18n";
 import { useCart } from "@/lib/cart";
 import { Chip } from "@/components/ui/Chip";
+import { useServerFn } from "@tanstack/react-start";
+import { uploadDesignImage } from "@/lib/design-upload.functions";
 import { IMAGE_ACCEPT } from "@/lib/image-validation";
 import { convertToWebp } from "@/lib/image-webp";
 
 export function CakeBuilder({ onDone }: { onDone: () => void }) {
   const { t, lang, dir } = useLang();
   const { add } = useCart();
+  const upload = useServerFn(uploadDesignImage);
   const [step, setStep] = useState(0);
   const [size, setSize] = useState<Option>(builderSizes[0]!);
   const [flavor, setFlavor] = useState<Option>(builderFlavors[0]!);
@@ -26,6 +29,7 @@ export function CakeBuilder({ onDone }: { onDone: () => void }) {
   const [message, setMessage] = useState("");
   const [added, setAdded] = useState(false);
   const [designImage, setDesignImage] = useState<string | undefined>();
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -158,18 +162,22 @@ export function CakeBuilder({ onDone }: { onDone: () => void }) {
                   event.target.value = "";
                   if (!file) return;
                   setImageError(null);
+                  setUploadingImage(true);
                   void (async () => {
                     try {
-                      // Genuine JPG/PNG only, 5MB max — re-encoded to a light WebP.
+                      // Genuine JPG/PNG only, compressed to WebP and uploaded to Supabase Storage
                       const converted = await convertToWebp(file);
-                      setDesignImage(converted.dataUrl);
+                      const saved = await upload({ data: { data_url: converted.dataUrl } });
+                      setDesignImage(saved.url);
                     } catch (error) {
                       setDesignImage(undefined);
                       setImageError(
                         error instanceof Error
                           ? error.message
-                          : "يُسمح بصور JPG أو PNG فقط · Only JPG or PNG images are allowed",
+                          : "تعذّر رفع الصورة · Could not upload image",
                       );
+                    } finally {
+                      setUploadingImage(false);
                     }
                   })();
                 }}
@@ -177,7 +185,12 @@ export function CakeBuilder({ onDone }: { onDone: () => void }) {
               {imageError && (
                 <p className="mt-2 text-xs font-semibold text-destructive">{imageError}</p>
               )}
-              {designImage ? (
+              {uploadingImage ? (
+                <div className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-input bg-background/50 px-4 text-sm font-semibold text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin text-gold" aria-hidden="true" />
+                  {lang === "ar" ? "جارٍ رفع الصورة وتحسينها…" : "Uploading & optimizing photo…"}
+                </div>
+              ) : designImage ? (
                 <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-border bg-background p-2">
                   <img
                     src={designImage}

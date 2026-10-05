@@ -132,3 +132,20 @@ export const setCustomerMessageStatus = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return saved as unknown as CustomerMessage;
   });
+
+export const deleteCustomerMessage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { id: string }) => {
+    if (!input?.id) throw new Error("id is required");
+    return { id: input.id };
+  })
+  .handler(async ({ data, context }): Promise<{ ok: true }> => {
+    await assertRole(context, DESK_ROLES);
+    const { error } = await context.supabase
+      .from("customer_messages")
+      .delete()
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+

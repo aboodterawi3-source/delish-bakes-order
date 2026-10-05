@@ -1,8 +1,9 @@
 import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { CheckCircle2, Loader2, Phone, RotateCcw, MessageSquare, ExternalLink } from "lucide-react";
+import { CheckCircle2, Loader2, Phone, RotateCcw, MessageSquare, ExternalLink, Trash2 } from "lucide-react";
 import {
+  deleteCustomerMessage,
   listCustomerMessages,
   setCustomerMessageStatus,
   type CustomerMessage,
@@ -17,6 +18,7 @@ export function MessagesPanel() {
   const queryClient = useQueryClient();
   const load = useServerFn(listCustomerMessages);
   const setStatus = useServerFn(setCustomerMessageStatus);
+  const removeMsg = useServerFn(deleteCustomerMessage);
 
   const messages = useQuery({
     queryKey: MESSAGES_KEY,
@@ -45,6 +47,14 @@ export function MessagesPanel() {
 
   const update = useMutation({
     mutationFn: (input: { id: string; status: "new" | "handled" }) => setStatus({ data: input }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: MESSAGES_KEY });
+      void queryClient.invalidateQueries({ queryKey: ["staff", "unread-messages-count"] });
+    },
+  });
+
+  const remove = useMutation({
+    mutationFn: (id: string) => removeMsg({ data: { id } }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: MESSAGES_KEY });
       void queryClient.invalidateQueries({ queryKey: ["staff", "unread-messages-count"] });
@@ -174,6 +184,24 @@ export function MessagesPanel() {
                       </>
                     )}
                   </button>
+
+                  {/* Action 3: Delete Handled Message */}
+                  {handled && (
+                    <button
+                      type="button"
+                      disabled={remove.isPending}
+                      onClick={() => {
+                        if (window.confirm("هل أنت متأكد من حذف هذه الرسالة نهائياً؟")) {
+                          remove.mutate(row.id);
+                        }
+                      }}
+                      className="inline-flex min-h-10 items-center gap-1.5 rounded-full px-3.5 text-xs font-bold text-destructive hover:bg-destructive/10 border border-destructive/20 transition-all cursor-pointer disabled:opacity-60"
+                      title="حذف الرسالة نهائياً"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      <span>حذف</span>
+                    </button>
+                  )}
                 </div>
               </li>
             );

@@ -9,6 +9,36 @@ import {
 } from "@/lib/menu";
 import { feeForArea } from "@/lib/delivery-zones";
 
+export type ServingSizeOffset = {
+  label: string;
+  ar: string;
+  offset: number;
+};
+
+/**
+ * Standard serving size price offsets applied to storefront cakes
+ * when custom sizes are not explicitly configured in the database products table.
+ */
+export const SERVING_SIZE_OFFSETS: readonly ServingSizeOffset[] = [
+  { label: "8 people", ar: "8 أشخاص", offset: 0 },
+  { label: "12 people", ar: "12 شخص", offset: 7 },
+  { label: "16 people", ar: "16 شخص", offset: 15 },
+] as const;
+
+/** Resolves the price offset for a given serving size label (English or Arabic). */
+export function getServingSizeOffset(sizeLabel?: string | null): number {
+  if (!sizeLabel) return 0;
+  const trimmed = sizeLabel.trim().toLowerCase();
+  const match = SERVING_SIZE_OFFSETS.find(
+    (s) =>
+      s.label.toLowerCase() === trimmed ||
+      s.ar.toLowerCase() === trimmed ||
+      trimmed.includes(s.label.toLowerCase()) ||
+      trimmed.includes(s.ar.toLowerCase()),
+  );
+  return match ? match.offset : 0;
+}
+
 /**
  * A cart line is described by a *spec* (which catalogue item / builder choices were
  * picked), never by a price. Prices are always resolved from the trusted catalogue

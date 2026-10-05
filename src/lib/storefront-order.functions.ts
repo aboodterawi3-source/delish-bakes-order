@@ -1,12 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import {
   deliveryFeeFor,
+  getServingSizeOffset,
   priceLine,
   type CmsSpec,
   type LineSpec,
   type PricedLine,
 } from "@/lib/order-pricing";
-import { decodeValidatedImage } from "@/lib/image-validation";
 import { publicError } from "@/lib/public-error";
 import { extraList, STORAGE_URL } from "@/lib/server-shared";
 
@@ -62,12 +62,19 @@ function validate(input: StorefrontOrderRequest) {
   let designImage: string | null = null;
   if (typeof input?.design_image === "string" && input.design_image.trim()) {
     const raw = input.design_image.trim();
-    if (STORAGE_URL.test(raw)) {
+    // Strictly reject long Base64 strings or Data URLs in design_image_url
+    if (raw.startsWith("data:") || raw.includes(";base64,")) {
+      throw new Error(
+        "يُحظر إرسال صور Base64 مباشرة، يجب رفع الصورة إلى مساحة التخزين أولاً · Base64 image payloads are not allowed; upload to storage first",
+      );
+    }
+    if (raw.length > 2500) {
+      throw new Error("رابط صورة التصميم طويل جداً · Design image URL exceeds maximum length");
+    }
+    if (STORAGE_URL.test(raw) || /^https?:\/\//i.test(raw)) {
       designImage = raw;
     } else {
-      // Inline photo: verify the real file header and size, never just the prefix.
-      decodeValidatedImage(raw, MAX_IMAGE_BYTES);
-      designImage = raw;
+      throw new Error("رابط صورة التصميم غير صالح · Invalid design image URL");
     }
   }
 
@@ -172,16 +179,27 @@ export const submitStorefrontOrder = createServerFn({ method: "POST" })
         const size = line.spec.size
           ? sizes.find((entry) => entry?.label === line.spec.size)
           : undefined;
-        const unit = Number(size?.price ?? product.price ?? 0);
+
+        let unit: number;
+        if (size && typeof size.price === "number") {
+          unit = size.price;
+        } else {
+          // If no custom sizes configured on the product, apply standard SERVING_SIZE_OFFSETS
+          const basePrice = Number(product.price ?? 0);
+          const sizeOffset = sizes.length > 0 ? 0 : getServingSizeOffset(line.spec.size);
+          unit = basePrice + sizeOffset;
+        }
+
+        const sizeLabel = size?.label ?? line.spec.size ?? "";
         lines.push({
           name_ar: product.name_ar,
           name_en: product.name_en,
           unit_price: Number.isFinite(unit) ? unit : 0,
           quantity: line.quantity,
-          options_ar: [size?.label ? `الحجم: ${size.label}` : "", ...line.extras.ar].filter(
+          options_ar: [sizeLabel ? `الحجم: ${sizeLabel}` : "", ...line.extras.ar].filter(
             Boolean,
           ),
-          options_en: [size?.label ? `Size: ${size.label}` : "", ...line.extras.en].filter(Boolean),
+          options_en: [sizeLabel ? `Size: ${sizeLabel}` : "", ...line.extras.en].filter(Boolean),
           notes: line.notes,
           message: null,
         });

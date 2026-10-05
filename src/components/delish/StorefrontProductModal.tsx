@@ -6,6 +6,7 @@ import { formatJod } from "@/lib/currency";
 import { WHATSAPP } from "@/lib/menu";
 import { priceForSize, type StorefrontProduct } from "@/lib/storefront-content";
 import { useBrandPalette } from "@/lib/brand-palette";
+import { SERVING_SIZE_OFFSETS, getServingSizeOffset } from "@/lib/order-pricing";
 import {
   CakeCustomizationPanel,
   emptyCustomization,
@@ -39,12 +40,6 @@ const FILLING_OPTIONS = [
   { value: "lotus_cream", ar: "كريمة اللوتس · Lotus Cream", en: "Lotus Cream" },
   { value: "pistachio_cream", ar: "فستق حلبي غني · Pistachio Cream", en: "Pistachio Cream" },
   { value: "fresh_strawberry", ar: "توت وفراولة طازجة · Fresh Berries", en: "Fresh Berries" },
-];
-
-const SERVING_SIZE_OFFSETS = [
-  { label: "8 people", ar: "8 أشخاص", offset: 0 },
-  { label: "12 people", ar: "12 شخص", offset: 7 },
-  { label: "16 people", ar: "16 شخص", offset: 15 },
 ];
 
 /**
@@ -92,10 +87,7 @@ export function StorefrontProductModal({
   const baseUnitPrice = useMemo(() => (product ? priceForSize(product, size) : 0), [product, size]);
 
   // Calculate price including size offsets if present
-  const activeOffset = useMemo(() => {
-    const match = SERVING_SIZE_OFFSETS.find((s) => s.label === size);
-    return match ? match.offset : 0;
-  }, [size]);
+  const activeOffset = useMemo(() => getServingSizeOffset(size), [size]);
 
   const unitPrice = baseUnitPrice + (product?.sizes.length ? 0 : activeOffset);
 
