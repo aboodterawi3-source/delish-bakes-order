@@ -13,7 +13,7 @@ export type DesignUploadRequest = { data_url: string };
  * in private Cloud storage and returns a long-lived signed URL for staff views.
  */
 export const uploadDesignImage = createServerFn({ method: "POST" })
-  .inputValidator((input: DesignUploadRequest) => decodeValidatedImage(input?.data_url))
+  .inputValidator((input: DesignUploadRequest) => decodeValidatedImage(input?.data_url, 400 * 1024))
   .handler(async ({ data }) => {
     const path = `${new Date().toISOString().slice(0, 10)}/${crypto.randomUUID()}.${data.ext}`;
 

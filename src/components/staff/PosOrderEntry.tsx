@@ -55,6 +55,7 @@ import { printKitchenTicket } from "@/lib/receipt-templates";
 import { orderLabel } from "@/lib/order-label";
 import { jd } from "@/lib/currency";
 import { todayIso } from "@/lib/date-filter";
+import { useScreenWakeLock } from "@/hooks/use-screen-wake-lock";
 
 const defaultTimeSlot = () => {
   const now = new Date();
@@ -97,6 +98,9 @@ const STANDARD_CATEGORIES = [
 ];
 
 export function PosOrderEntry() {
+  // Keep cashier POS screen active during shift hours
+  useScreenWakeLock(true);
+
   const queryClient = useQueryClient();
   const ordersFn = useServerFn(getSalesOrders);
   const createOrderFn = useServerFn(createSalesOrder);

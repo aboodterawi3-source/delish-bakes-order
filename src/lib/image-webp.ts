@@ -9,9 +9,9 @@
 
 import { assertSafeImageFile } from "@/lib/image-validation";
 
-const TARGET_BYTES = 520_000;
-const MAX_EDGE = 2000;
-const QUALITY = 0.9;
+const TARGET_BYTES = 300_000; // Under 300KB budget
+const MAX_EDGE = 1200; // Max 1200px width/height
+const QUALITY = 0.8; // ~80% WebP quality
 
 export type ConvertedImage = {
   dataUrl: string;

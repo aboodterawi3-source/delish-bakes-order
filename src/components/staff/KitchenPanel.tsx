@@ -38,6 +38,7 @@ import {
 
 import { supabase } from "@/integrations/supabase/client";
 import { useOrdersRealtime } from "@/hooks/use-orders-realtime";
+import { useScreenWakeLock } from "@/hooks/use-screen-wake-lock";
 import {
   acknowledgeOrderModification,
   getKitchenAccess,
@@ -1079,6 +1080,9 @@ export function KitchenPanel() {
     staleTime: 15_000,
     refetchInterval: 60_000,
   });
+
+  // Keep kitchen screen active during operational hours
+  useScreenWakeLock(true);
 
   // Realtime subscription (refetches the kitchen queue on any order change)
   useOrdersRealtime(ORDERS_KEY, true, "kitchen-live");
