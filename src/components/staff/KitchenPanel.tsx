@@ -186,7 +186,8 @@ async function downloadDesignImage(url: string, orderNumber: string) {
     const response = await fetch(url);
     if (!response.ok) throw new Error("download failed");
     const blob = await response.blob();
-    const extension = (blob.type.split("/")[1] ?? "jpg").replace("jpeg", "jpg");
+    const rawExtension = blob.type.split("/")[1] ?? "jpg";
+    const extension = rawExtension.replace(/[^a-zA-Z0-9]/g, "").replace("jpeg", "jpg") || "jpg";
     const objectUrl = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = objectUrl;
