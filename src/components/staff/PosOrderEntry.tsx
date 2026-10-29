@@ -106,6 +106,7 @@ export function PosOrderEntry() {
   const createOrderFn = useServerFn(createSalesOrder);
   const storefront = useStorefrontContent();
   const isSubmittingRef = useRef(false);
+  const draftRequestIdRef = useRef<string>(crypto.randomUUID());
   const hasHydratedDraftRef = useRef(false);
 
   const existingOrders = useQuery({
@@ -359,11 +360,7 @@ export function PosOrderEntry() {
   );
 
   // Automatically synchronize deposit_paid with grandTotal when full prepayment (cliq/visa) is selected
-  useEffect(() => {
-    if (paymentMethod === "cliq" || paymentMethod === "visa") {
-      setDepositPaid(String(grandTotal));
-    }
-  }, [paymentMethod, grandTotal]);
+  // Respect cashier deposit input; only set to grandTotal if explicitly desired via quick buttons
 
   // Strict mathematical clamp: deposit can never exceed grandTotal
   const depositVal = useMemo(() => {
@@ -512,6 +509,7 @@ export function PosOrderEntry() {
       setMethod("pickup");
       setShowMobileCheckout(false);
       setShouldPrintAfterCreate(false);
+      draftRequestIdRef.current = crypto.randomUUID();
     },
     onError: (err: Error) => {
       isSubmittingRef.current = false;
@@ -572,10 +570,11 @@ export function PosOrderEntry() {
     setShouldPrintAfterCreate(andPrint);
 
     const payload: CreateSalesOrderInput = {
-      client_request_id: crypto.randomUUID(),
+      client_request_id: draftRequestIdRef.current,
       customer_name: finalCustomerName,
       customer_phone: finalCustomerPhone,
       order_name: orderName.trim() || (stationMode === "quick" ? "كاشير محلي فوري" : undefined),
+      recipient_name: isGift ? recipientName.trim() || undefined : undefined,
       sender_phone: isGift ? senderPhone.trim() || finalCustomerPhone : undefined,
       recipient_phone: isGift ? recipientPhone.trim() || undefined : undefined,
       method: effectiveMethod,
@@ -589,10 +588,7 @@ export function PosOrderEntry() {
       card_note: cardNote.trim() || undefined,
       design_image_url: designImageUrl,
       payment_method: paymentMethod,
-      deposit_paid:
-        paymentMethod === "cliq" || paymentMethod === "visa"
-          ? grandTotal
-          : roundJod(Math.min(depositVal > 0 ? depositVal : grandTotal, grandTotal)),
+      deposit_paid: roundJod(Math.min(Math.max(Number(depositPaid) || 0, 0), grandTotal)),
       discount_percent: Number(discountPercent) || 0,
       discount_amount: discountAmount,
       items: cart.map((item) => ({

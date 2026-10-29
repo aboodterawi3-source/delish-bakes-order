@@ -147,6 +147,7 @@ export function SocialOrderEntryForm({
   const [receiptError, setReceiptError] = useState<string | null>(null);
   const receiptFileRef = useRef<HTMLInputElement>(null);
   const isSubmittingRef = useRef(false);
+  const draftRequestIdRef = useRef<string>(crypto.randomUUID());
 
   const handleReceiptUpload = async (file: File | undefined) => {
     if (!file) return;
@@ -546,7 +547,8 @@ export function SocialOrderEntryForm({
 
     submit.mutate(
       {
-        client_request_id: crypto.randomUUID(),
+        client_request_id: draftRequestIdRef.current,
+        recipient_name: form.is_gift ? (form.recipient_name?.trim() || form.customer_name) : null,
         order_name: orderNameWithChannel,
         sender_phone: effectiveSenderPhone || null,
         recipient_phone: effectiveRecipientPhone || null,
@@ -578,7 +580,7 @@ export function SocialOrderEntryForm({
           ...extras.ar,
         ],
         extras_en: extras.en,
-        design_image_url: customization.designImageUrl || receiptUrl || null,
+        design_image_url: customization.designImageUrl || null,
         receipt_image_url: receiptUrl,
       },
       {

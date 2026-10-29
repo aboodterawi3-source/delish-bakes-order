@@ -129,7 +129,7 @@ ON CONFLICT (slug) DO NOTHING;
 -- ==============================================================================
 -- To bootstrap your first administrator safely on your new Supabase project:
 -- 1. Go to Supabase Dashboard -> Authentication -> Users.
--- 2. Click "Add User" -> "Create user", enter your email (e.g. admin@delishbakery.com)
+-- 2. Click "Add User" -> "Create user", enter email as admin@delish.local (must end with @delish.local so username "admin" logs in directly)
 --    and choose a strong private password.
 -- 3. Copy the created user's "User UID" (UUID).
 -- 4. Run the SQL snippet below in the SQL Editor, replacing 'PASTE_USER_UUID_HERE'

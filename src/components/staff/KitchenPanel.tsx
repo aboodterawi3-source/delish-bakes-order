@@ -388,9 +388,14 @@ const KdsCleanCard = memo(function KdsCleanCard({
   const priorityMeta =
     PRIORITY_META[order.priority_color ?? "soft_green"] || PRIORITY_META["soft_green"];
   const orderPrio = getPriorityStyles(order.priority_color ?? "soft_green");
+  const [countdownTick, setCountdownTick] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setCountdownTick((t) => t + 1), 30000);
+    return () => clearInterval(timer);
+  }, []);
   const countdown = useMemo(
     () => getCountdownText(order.requested_date, order.requested_time),
-    [order.requested_date, order.requested_time],
+    [order.requested_date, order.requested_time, countdownTick],
   );
 
   // Filter modifications to only include kitchen preparation relevant changes
@@ -1201,10 +1206,11 @@ export function KitchenPanel() {
         .filter(isKitchenRelevantModification)
         .filter((m) => !m.acknowledgedAt);
       if (unack.length > 0) {
-        const timeKey = unack[0]?.updatedAt || r.last_edited_at || r.schedule_updated_at || "mod";
-        if (knownModTimestamps.current.get(r.id) !== timeKey) {
+        const latestUnackTime = unack.reduce((latest, m) => (m.updatedAt > latest ? m.updatedAt : latest), "");
+        const unackKey = `${(r as any).version || 1}_${unack.map((m) => (m as any).id || m.updatedAt).join(",")}_${latestUnackTime}`;
+        if (knownModTimestamps.current.get(r.id) !== unackKey) {
           newlyModified.push(r.id);
-          knownModTimestamps.current.set(r.id, timeKey);
+          knownModTimestamps.current.set(r.id, unackKey);
         }
       }
     });

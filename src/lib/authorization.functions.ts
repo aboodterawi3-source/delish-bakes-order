@@ -525,9 +525,7 @@ export const submitOrderEdit = createServerFn({ method: "POST" })
       }
     }
 
-    const updatedMods = (newDiffs.length > 0 ? [...currentMods, ...newDiffs] : currentMods).slice(
-      -30,
-    );
+    const updatedMods = (newDiffs.length > 0 ? [...currentMods, ...newDiffs] : currentMods);
 
     // Single use: lock the token atomically BEFORE modifying the order to prevent Replay Attack
     const { data: lockResult, error: lockError } = await supabaseAdmin

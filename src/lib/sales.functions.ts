@@ -148,6 +148,7 @@ export type CreateSalesOrderInput = {
   customer_name: string;
   customer_phone: string;
   order_name?: string | null | undefined;
+  recipient_name?: string | null | undefined;
   sender_phone?: string | null | undefined;
   recipient_phone?: string | null | undefined;
   method: "delivery" | "pickup";
@@ -1087,7 +1088,8 @@ export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
         total,
         last_edited_at: new Date().toISOString(),
         last_edited_by: context.userId,
-        ...(newDiffs.length > 0 ? { modifications: [...currentMods, ...newDiffs].slice(-30) } : {}),
+        version: ((currentOrder as any)?.version || 1) + 1,
+        ...(newDiffs.length > 0 ? { modifications: [...currentMods, ...newDiffs] } : {}),
       } as never)
       .eq("id", data.orderId)
       .select(SELECT)
@@ -1327,33 +1329,50 @@ export const getShiftReport = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }): Promise<ShiftReport> => {
     await assertRole(context, SALES_ROLES);
-    const { data: rows, error } = await context.supabase
-      .from("orders")
-      .select("status, total, deposit_paid, payment_method")
-      .eq("requested_date", data.date);
-    if (error) throw new Error(error.message);
+    // 1. Shift payments collected on this date regardless of delivery date
+    const startIso = `${data.date}T00:00:00.000Z`;
+    const endIso = `${data.date}T23:59:59.999Z`;
+
+    const { data: paymentRows } = await context.supabase
+      .from("order_payments")
+      .select("amount, payment_method, payment_type, status")
+      .gte("created_at", startIso)
+      .lte("created_at", endIso)
+      .eq("status", "confirmed");
 
     const buckets = new Map<PaymentMethod | "unpaid", { orders: number; collected: number }>();
     let collected = 0;
+
+    for (const p of paymentRows ?? []) {
+      const amt = Number(p.amount ?? 0);
+      const net = p.payment_type === "refund" ? -amt : amt;
+      collected += net;
+      const m = (p.payment_method as PaymentMethod) || "cash";
+      const b = buckets.get(m) ?? { orders: 0, collected: 0 };
+      b.collected += net;
+      b.orders += 1;
+      buckets.set(m, b);
+    }
+
+    // 2. Orders scheduled for delivery on this date
+    const { data: orderRows } = await context.supabase
+      .from("orders")
+      .select("status, total, deposit_paid")
+      .eq("requested_date", data.date);
+
     let outstanding = 0;
     let cancelled = 0;
     let orders = 0;
 
-    for (const row of rows ?? []) {
+    for (const row of orderRows ?? []) {
       if (row.status === "cancelled") {
         cancelled += 1;
-        continue;
+      } else {
+        orders += 1;
+        const paid = Number(row.deposit_paid ?? 0);
+        const tot = Number(row.total ?? 0);
+        outstanding += Math.max(tot - paid, 0);
       }
-      orders += 1;
-      const paid = Number(row.deposit_paid ?? 0);
-      const total = Number(row.total ?? 0);
-      collected += paid;
-      outstanding += Math.max(total - paid, 0);
-      const key = (row.payment_method as PaymentMethod | null) ?? "unpaid";
-      const bucket = buckets.get(key) ?? { orders: 0, collected: 0 };
-      bucket.orders += 1;
-      bucket.collected += paid;
-      buckets.set(key, bucket);
     }
 
     return {
@@ -1361,11 +1380,11 @@ export const getShiftReport = createServerFn({ method: "POST" })
       byMethod: (["cash", "cliq", "visa", "unpaid"] as const).map((method) => ({
         method,
         orders: buckets.get(method)?.orders ?? 0,
-        collected: buckets.get(method)?.collected ?? 0,
+        collected: Math.round((buckets.get(method)?.collected ?? 0) * 100) / 100,
       })),
       orders,
-      collected,
-      outstanding,
+      collected: Math.round(collected * 100) / 100,
+      outstanding: Math.round(outstanding * 100) / 100,
       cancelled,
     };
   });

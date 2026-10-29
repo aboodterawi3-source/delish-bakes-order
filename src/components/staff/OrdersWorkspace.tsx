@@ -51,6 +51,7 @@ import {
   getSalesOrders,
   getShiftReport,
   updateSalesOrder,
+  recordOrderPayment,
   type OrderPatch,
   type PaymentMethod,
   type SalesOrder,
@@ -290,6 +291,23 @@ export function OrdersWorkspace({
     staleTime: 10_000,
   });
 
+  const recordPaymentServer = useServerFn(recordOrderPayment);
+  const recordPaymentMutation = useMutation({
+    mutationFn: (variables: {
+      orderId: string;
+      amount: number;
+      paymentMethod?: PaymentMethod | null;
+      paymentType?: "deposit" | "remainder" | "full" | "refund";
+      referenceNumber?: string | null;
+      notes?: string | null;
+    }) => recordPaymentServer({ data: variables }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["sales-orders"] });
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || "تعذّر تسجيل الحركة المالية");
+    },
+  });
   const patch = useMutation({
     mutationFn: (input: OrderPatch) => updateFn({ data: input }),
     onMutate: (input) => {
@@ -667,12 +685,22 @@ export function OrdersWorkspace({
               onMove={onMove}
               onEditOrder={onEditOrder}
               onQuickPaid={() => {
-                patch.mutate({
-                  orderId: order.id,
-                  deposit_paid: order.total,
-                  payment_method: "cash",
-                });
-                toast.success(`تم تسجيل دفع كامل المبلغ نقداً للطلب ${order.order_number} ✅`);
+                const remaining = Math.max(order.total - order.deposit_paid, 0);
+                if (remaining <= 0) return;
+                recordPaymentMutation.mutate(
+                  {
+                    orderId: order.id,
+                    amount: remaining,
+                    paymentMethod: "cash",
+                    paymentType: "full",
+                    notes: "تحصيل سريع للمتبقي نقداً من شريط الأوامر",
+                  },
+                  {
+                    onSuccess: () => {
+                      toast.success(`تم تسجيل تحصيل كامل المبلغ (${jd(remaining)}) نقداً في سجل الدفعات للطلب ${order.order_number} ✅`);
+                    },
+                  }
+                );
               }}
             />
           ))}
@@ -1242,13 +1270,26 @@ ${collectionText}
     { key: "completed", label: "تم التسليم", icon: "✅" },
   ];
 
+  const recordPaymentServer = useServerFn(recordOrderPayment);
   const handleMarkPaidInFull = (method: "cash" | "cliq" = "cash") => {
-    setDeposit(liveTotal.toFixed(2));
-    onPatch({
-      deposit_paid: liveTotal,
-      payment_method: method,
-    });
-    toast.success(`تم استلام كامل المبلغ ${jd(liveTotal)} (${method === "cash" ? "كاش" : "كليك"})`);
+    if (remaining <= 0) return;
+    recordPaymentServer({
+      data: {
+        orderId: order.id,
+        amount: remaining,
+        paymentMethod: method,
+        paymentType: "full",
+        notes: `تسجيل استلام المتبقي كاملاً (${method === "cash" ? "كاش" : "كليك"})`,
+      },
+    })
+      .then(() => {
+        setDeposit(liveTotal.toFixed(2));
+        toast.success(`تم استلام وتسجيل كامل المبلغ ${jd(remaining)} (${method === "cash" ? "كاش" : "كليك"}) في سجل الدفعات ✅`);
+        onPatch({});
+      })
+      .catch((err) => {
+        toast.error(err?.message || "تعذّر تسجيل الدفعة");
+      });
   };
 
   return (
@@ -1343,9 +1384,24 @@ ${collectionText}
                 <button
                   type="button"
                   onClick={() => {
-                    setDeposit(liveTotal.toFixed(2));
-                    onPatch({ deposit_paid: liveTotal });
-                    toast.success(`تم تسجيل تسوية الاسترجاع للعميل بقيمة ${jd(drawerRefundDue)}`);
+                    if (drawerRefundDue <= 0) return;
+                    recordPaymentServer({
+                      data: {
+                        orderId: order.id,
+                        amount: drawerRefundDue,
+                        paymentMethod: order.payment_method || "cash",
+                        paymentType: "refund",
+                        notes: `تسوية إرجاع الفائض المالي للزبون`,
+                      },
+                    })
+                      .then(() => {
+                        setDeposit(liveTotal.toFixed(2));
+                        toast.success(`تم تسجيل تسوية الاسترجاع للعميل بقيمة ${jd(drawerRefundDue)} في سجل الحركات المالية 🔄`);
+                        onPatch({});
+                      })
+                      .catch((err) => {
+                        toast.error(err?.message || "تعذّر تسجيل الاسترجاع");
+                      });
                   }}
                   className="mt-1 px-3 py-1 rounded-lg bg-purple-600 text-white text-[11px] font-bold hover:bg-purple-700 cursor-pointer"
                 >
@@ -1503,16 +1559,30 @@ ${collectionText}
             </div>
           )}
 
-          {/* WhatsApp Customer Button */}
+          {/* WhatsApp Confirmation to Payer / Purchaser */}
           <a
-            href={`https://wa.me/${waNumber(order.recipient_phone || order.customer_phone)}?text=${encodeURIComponent(confirmationMessage)}`}
+            href={`https://wa.me/${waNumber(order.sender_phone || order.customer_phone)}?text=${encodeURIComponent(confirmationMessage)}`}
             target="_blank"
             rel="noopener noreferrer"
             className="w-full min-h-[46px] rounded-2xl bg-[#25D366] text-white font-black text-xs shadow-md hover:brightness-95 flex items-center justify-center gap-2 cursor-pointer"
           >
             <MessageCircle className="h-4 w-4" />
-            <span>إرسال رسالة التأكيد الكاملة للعميل عبر WhatsApp</span>
+            <span>إرسال الفاتورة والتأكيد المالي للمشتري عبر WhatsApp</span>
           </a>
+
+          {/* If Gift Order, Greeting Link for Recipient (WITHOUT prices/billing) */}
+          {Boolean(order.recipient_phone && order.recipient_phone !== (order.sender_phone || order.customer_phone)) && (
+            <a
+              href={`https://wa.me/${waNumber(order.recipient_phone!)}?text=${encodeURIComponent(
+                `🎂 مرحباً ${order.recipient_name || order.order_name || 'عزيزنا'}، لديك إهداء لطيف من Delish Cake & Bake! طلبك جاهز وسيتم توصيله لعنوانكم بكل حب 🎁✨`
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full min-h-[42px] rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 text-white font-black text-xs shadow-sm hover:brightness-95 flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <span>🎁 إرسال بطاقة الإهداء للمستلم عبر WhatsApp (بدون أسعار)</span>
+            </a>
+          )}
 
           {/* Thermal Print Slip */}
           <button

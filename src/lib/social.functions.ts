@@ -12,6 +12,7 @@ export type SocialOrderInput = {
   client_request_id?: string | null;
   /** Short label shown in the orders list instead of the phone number. */
   order_name?: string | null;
+  recipient_name?: string | null | undefined;
   /** Delivery order: who sends and who receives. */
   sender_phone?: string | null;
   recipient_phone?: string | null;
@@ -151,7 +152,7 @@ export const createSocialOrder = createServerFn({ method: "POST" })
           customer_name: data.customer_name.trim(),
           customer_phone: data.customer_phone.trim(),
           order_name: data.order_name?.trim().slice(0, 160) || null,
-          recipient_name: data.order_name?.trim().slice(0, 160) || null,
+          recipient_name: data.recipient_name?.trim() || null,
           sender_phone: data.sender_phone?.trim().slice(0, 40) || null,
           recipient_phone: data.recipient_phone?.trim().slice(0, 40) || null,
           method: data.method,
@@ -166,7 +167,8 @@ export const createSocialOrder = createServerFn({ method: "POST" })
           inscription: data.design_notes?.trim() || null,
           staff_notes: data.staff_notes?.trim() || null,
           card_note: data.card_note?.trim() || null,
-          design_image_url: designImage || receiptImage,
+          design_image_url: designImage || null,
+          receipt_image_url: receiptImage || null,
           modifications: initialMods,
           subtotal,
           delivery_fee: deliveryFee,
@@ -191,65 +193,12 @@ export const createSocialOrder = createServerFn({ method: "POST" })
       } as any,
     );
 
-    if (!atomicErr && atomicResult && (atomicResult as any).id) {
-      orderId = (atomicResult as any).id;
-      orderNumber = (atomicResult as any).order_number;
-      orderTotal = Number((atomicResult as any).total ?? subtotal + deliveryFee);
-    } else {
-      const { data: order, error: orderError } = await context.supabase
-        .from("orders")
-        .insert({
-          customer_name: data.customer_name.trim(),
-          customer_phone: data.customer_phone.trim(),
-          order_name: data.order_name?.trim().slice(0, 160) || null,
-          sender_phone: data.sender_phone?.trim().slice(0, 40) || null,
-          recipient_phone: data.recipient_phone?.trim().slice(0, 40) || null,
-          method: data.method,
-          area,
-          address: data.method === "delivery" ? data.address?.trim() || null : null,
-          payment_method: paymentMethod,
-          deposit_paid: deposit,
-          requested_date: data.requested_date,
-          requested_time: data.requested_time,
-          event_date: data.event_date?.trim() ? data.event_date : null,
-          is_urgent: data.is_urgent,
-          inscription: data.design_notes?.trim() || null,
-          staff_notes: data.staff_notes?.trim() || null,
-          card_note: data.card_note?.trim() || null,
-          final_photo_requested: Boolean(data.final_photo_requested),
-          design_image_url: designImage || receiptImage,
-          modifications: initialMods,
-          subtotal,
-          delivery_fee: deliveryFee,
-          total: subtotal + deliveryFee,
-          status: "new",
-          created_by: context.userId,
-          staff_code: staffCode,
-          client_request_id: data.client_request_id || null,
-        } as any)
-        .select("id, order_number, total, staff_code")
-        .single();
-      if (orderError) throw new Error(orderError.message);
-
-      orderId = order.id;
-      orderNumber = order.order_number;
-      orderTotal = Number(order.total ?? 0);
-      orderStaffCode = (order.staff_code as number | null) ?? null;
-
-      const { error: itemError } = await context.supabase.from("order_items").insert({
-        order_id: order.id,
-        product_id: null,
-        name_ar: orderDetails,
-        name_en: orderDetails,
-        unit_price: unitPrice,
-        quantity: data.quantity,
-        options_ar: [...(data.is_urgent ? ["مستعجل"] : []), ...extrasAr],
-        options_en: [...(data.is_urgent ? ["Urgent"] : []), ...extrasEn],
-        notes: data.design_notes?.trim() || null,
-      });
-
-      if (itemError) throw new Error(itemError.message);
+    if (atomicErr || !atomicResult || !(atomicResult as any).id) {
+      throw new Error(atomicErr?.message || "تعذّر حفظ طلب السوشيال عبر المعاملة الذرية");
     }
+    orderId = (atomicResult as any).id;
+    orderNumber = (atomicResult as any).order_number;
+    orderTotal = Number((atomicResult as any).total ?? subtotal + deliveryFee);
 
     // Now the sequence number exists, store the message that quotes it.
     const message = template

@@ -45,6 +45,7 @@ export type KdsItem = {
 export type KdsOrder = {
   id: string;
   order_number: string;
+  version?: number;
   /** Numeric ID of the employee who created the order, when assigned. */
   staff_code: number | null;
   customer_name: string;

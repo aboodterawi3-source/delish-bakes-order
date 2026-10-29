@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -685,6 +685,7 @@ function MasterOrderEditor({
   >(undefined);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isFinishing, setIsFinishing] = useState(false);
+  const initialVersionRef = useRef<number>(order.version || 1);
 
   // Form State
   const [orderName, setOrderName] = useState(order.order_name ?? "");
@@ -717,6 +718,7 @@ function MasterOrderEditor({
         customer_phone: customerPhone.trim() || order.customer_phone,
         sender_phone: senderPhone.trim() || null,
         recipient_phone: recipientPhone.trim() || null,
+        expected_version: initialVersionRef.current,
         requested_date: date,
         requested_time: time,
         address: address.trim() || null,
