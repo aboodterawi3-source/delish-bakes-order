@@ -790,6 +790,9 @@ export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
     if (!input?.itemId) throw new Error("itemId is required");
     if (!input?.orderId) throw new Error("orderId is required");
     const out: OrderItemPatch = { itemId: String(input.itemId), orderId: String(input.orderId) };
+    if (input.expectedVersion !== undefined) {
+      out.expectedVersion = input.expectedVersion !== null ? Number(input.expectedVersion) : null;
+    }
     if (input.newUnitPrice !== undefined) {
       const price = Number(input.newUnitPrice);
       if (!Number.isFinite(price) || price < 0 || price > 100000) {
@@ -810,7 +813,7 @@ export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
       out.name = name;
     }
     if (input.notes !== undefined) {
-      out.notes = input.notes ? String(input.notes).trim().slice(0, 2000) || null : null;
+      out.notes = input.notes !== null ? String(input.notes).trim().slice(0, 2000) : "";
     }
     // Customer extras (candles, balloons, acrylic, filling…) — cleaned and capped.
     if (input.options !== undefined) {
@@ -1001,42 +1004,53 @@ export type RebuildLine = {
  */
 export const replaceSalesOrderItems = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { orderId: string; lines: RebuildLine[] }) => {
-    if (!input?.orderId) throw new Error("orderId is required");
-    if (!Array.isArray(input.lines) || input.lines.length === 0) {
-      throw new Error("أضف صنفاً واحداً على الأقل · Add at least one item");
-    }
-    if (input.lines.length > 40) throw new Error("عدد الأصناف كبير · Too many items");
-    const lines: RebuildLine[] = input.lines.map((line) => {
-      const name = String(line?.name ?? "")
-        .trim()
-        .slice(0, 2000);
-      if (!name) throw new Error("وصف الصنف مطلوب · Item description is required");
-      const quantity = Math.trunc(Number(line?.quantity ?? 1));
-      if (!Number.isFinite(quantity) || quantity < 1 || quantity > 1000) {
-        throw new Error("كمية غير صالحة · Invalid quantity");
+  .inputValidator(
+    (input: { orderId: string; lines: RebuildLine[]; expectedVersion?: number | null }) => {
+      if (!input?.orderId) throw new Error("orderId is required");
+      if (!Array.isArray(input.lines) || input.lines.length === 0) {
+        throw new Error("أضف صنفاً واحداً على الأقل · Add at least one item");
       }
-      const unitPrice = Number(line?.unitPrice ?? 0);
-      if (!Number.isFinite(unitPrice) || unitPrice < 0 || unitPrice > 100000) {
-        throw new Error("سعر غير صالح · Invalid price");
-      }
-      const options = Array.isArray(line?.options)
-        ? line.options
-            .map((option) =>
-              String(option ?? "")
-                .replace(/[\r\n]+/g, " ")
-                .trim()
-                .slice(0, 200),
-            )
-            .filter(Boolean)
-            .slice(0, 30)
-        : [];
-      const productId = line?.productId ? String(line.productId) : null;
-      const notes = line?.notes ? String(line.notes).trim().slice(0, 2000) || null : null;
-      return { productId, name, quantity, unitPrice, options, notes };
-    });
-    return { orderId: String(input.orderId), lines };
-  })
+      if (input.lines.length > 40) throw new Error("عدد الأصناف كبير · Too many items");
+      const lines: RebuildLine[] = input.lines.map((line) => {
+        const name = String(line?.name ?? "")
+          .trim()
+          .slice(0, 2000);
+        if (!name) throw new Error("وصف الصنف مطلوب · Item description is required");
+        const quantity = Math.trunc(Number(line?.quantity ?? 1));
+        if (!Number.isFinite(quantity) || quantity < 1 || quantity > 1000) {
+          throw new Error("كمية غير صالحة · Invalid quantity");
+        }
+        const unitPrice = Number(line?.unitPrice ?? 0);
+        if (!Number.isFinite(unitPrice) || unitPrice < 0 || unitPrice > 100000) {
+          throw new Error("سعر غير صالح · Invalid price");
+        }
+        const options = Array.isArray(line?.options)
+          ? line.options
+              .map((option) =>
+                String(option ?? "")
+                  .replace(/[\r\n]+/g, " ")
+                  .trim()
+                  .slice(0, 200),
+              )
+              .filter(Boolean)
+              .slice(0, 30)
+          : [];
+        const productId = line?.productId ? String(line.productId) : null;
+        const notes = line?.notes ? String(line.notes).trim().slice(0, 2000) || null : null;
+        return { productId, name, quantity, unitPrice, options, notes };
+      });
+      return {
+        orderId: String(input.orderId),
+        lines,
+        expectedVersion:
+          input.expectedVersion !== undefined
+            ? input.expectedVersion !== null
+              ? Number(input.expectedVersion)
+              : null
+            : null,
+      };
+    },
+  )
   .handler(async ({ data, context }): Promise<SalesOrder> => {
     await assertRole(context, SALES_ROLES);
     const { writeAudit, staffName } = await import("@/lib/authorization.functions");
@@ -1158,6 +1172,7 @@ export const replaceSalesOrderItems = createServerFn({ method: "POST" })
       p_total: total,
       p_user_id: context.userId,
       p_new_mods: newDiffs,
+      p_expected_version: data.expectedVersion,
     });
     if (rpcError) throw new Error(rpcError.message);
 

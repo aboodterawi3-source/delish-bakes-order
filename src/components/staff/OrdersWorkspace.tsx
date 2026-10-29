@@ -344,8 +344,12 @@ export function OrdersWorkspace({
   });
 
   const discount = useMutation({
-    mutationFn: (input: { orderId: string; percent: number; reason: string }) =>
-      discountFn({ data: input }),
+    mutationFn: (input: {
+      orderId: string;
+      percent: number;
+      reason: string;
+      expectedVersion?: number | null;
+    }) => discountFn({ data: input }),
     onError: (err: Error) => setMoneyError(err.message),
     onSuccess: (updated, variables) => {
       setMoneyError(null);
@@ -740,7 +744,12 @@ export function OrdersWorkspace({
           editLink={editLink}
           onEditOrder={onEditOrder}
           onApplyDiscount={(percent, reason) =>
-            discount.mutate({ orderId: selected.id, percent, reason })
+            discount.mutate({
+              orderId: selected.id,
+              percent,
+              reason,
+              expectedVersion: selected.version ?? 1,
+            })
           }
           onIssueEditLink={() => issueEditLink.mutate(selected.id)}
           onZoom={setZoomImage}

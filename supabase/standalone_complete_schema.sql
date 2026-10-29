@@ -475,8 +475,11 @@ BEGIN
        OR NEW.original_items IS DISTINCT FROM OLD.original_items
        OR NEW.modifications IS DISTINCT FROM OLD.modifications
        OR NEW.subtotal IS DISTINCT FROM OLD.subtotal
-       OR NEW.total IS DISTINCT FROM OLD.total THEN
-      RAISE EXCEPTION 'Direct UPDATE of sensitive order columns (deposit_paid, original_items, modifications, subtotal, total) is prohibited. Use authorized atomic RPCs.';
+       OR NEW.total IS DISTINCT FROM OLD.total
+       OR NEW.discount_amount IS DISTINCT FROM OLD.discount_amount
+       OR NEW.discount_percent IS DISTINCT FROM OLD.discount_percent
+       OR NEW.delivery_fee IS DISTINCT FROM OLD.delivery_fee THEN
+      RAISE EXCEPTION 'Direct UPDATE of sensitive order columns (deposit_paid, original_items, modifications, subtotal, total, discount_amount, discount_percent, delivery_fee) is prohibited. Use authorized atomic RPCs.';
     END IF;
     RETURN NEW;
   END IF;
@@ -490,6 +493,25 @@ CREATE TRIGGER trg_guard_orders_sensitive_columns
   BEFORE INSERT OR UPDATE ON public.orders
   FOR EACH ROW
   EXECUTE FUNCTION public.guard_orders_sensitive_columns();
+
+-- Security Guard Trigger: Prohibit direct INSERT, UPDATE, DELETE on order_items unless performed by authorized atomic RPCs.
+CREATE OR REPLACE FUNCTION public.guard_order_items_mutation()
+RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF current_setting('delish.internal_mutation', true) = 'true' THEN
+    RETURN COALESCE(NEW, OLD);
+  END IF;
+
+  RAISE EXCEPTION 'Direct mutation of order_items is prohibited. Use authorized atomic functions (e.g. update_order_item_atomic, rebuild_sales_order_atomic).'
+    USING ERRCODE = '42501';
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_guard_order_items_mutation ON public.order_items;
+CREATE TRIGGER trg_guard_order_items_mutation
+  BEFORE INSERT OR UPDATE OR DELETE ON public.order_items
+  FOR EACH ROW
+  EXECUTE FUNCTION public.guard_order_items_mutation();
 
 -- Order Items Policies: Direct SELECT restricted to Sales, Social, Admin.
 -- Kitchen reads sanitized preparation items without unit_price via get_kitchen_order_items()
@@ -958,6 +980,33 @@ BEGIN
   v_new_subtotal := CASE WHEN p_patch ? 'subtotal' THEN (p_patch->>'subtotal')::numeric ELSE v_current_subtotal END;
   v_new_delivery := CASE WHEN p_patch ? 'delivery_fee' THEN (p_patch->>'delivery_fee')::numeric ELSE v_current_delivery END;
   v_new_discount := CASE WHEN p_patch ? 'discount_amount' THEN (p_patch->>'discount_amount')::numeric ELSE v_current_discount END;
+
+  IF p_patch ? 'discount_amount' OR p_patch ? 'discount_percent' THEN
+    IF NOT private.has_role(v_caller_id, 'admin') THEN
+      DECLARE
+        v_allow_discount boolean;
+        v_max_discount numeric;
+      BEGIN
+        SELECT allow_custom_discount, COALESCE(max_discount_percent, 0)
+        INTO v_allow_discount, v_max_discount
+        FROM public.staff_permissions
+        WHERE user_id = v_caller_id;
+
+        IF v_allow_discount IS NOT TRUE THEN
+          RAISE EXCEPTION 'غير مصرّح: لا تملك صلاحية تعديل الخصم';
+        END IF;
+
+        IF v_new_discount > ROUND((v_new_subtotal * v_max_discount / 100.0), 2) + 0.05 THEN
+          RAISE EXCEPTION 'الخصم المطلوب يتجاوز الحد الأقصى المسموح لك (% بالمئة)', v_max_discount;
+        END IF;
+
+        IF p_patch ? 'discount_percent' AND (p_patch->>'discount_percent')::numeric > v_max_discount THEN
+          RAISE EXCEPTION 'نسبة الخصم المطلوبة تتجاوز الحد الأقصى المسموح لك (% بالمئة)', v_max_discount;
+        END IF;
+      END;
+    END IF;
+  END IF;
+
   v_new_total := GREATEST(v_new_subtotal + v_new_delivery - v_new_discount, 0);
 
   -- Append modifications without truncating history
@@ -1278,7 +1327,7 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   SELECT o.id, o.order_number, o.staff_code, o.customer_name, o.method,
          o.requested_date, o.requested_time, o.status, o.inscription,
          o.design_image_url,
-         regexp_replace(o.notes, '(\+?962|0)?7[789]\d{7}', '***', 'g') AS notes,
+         regexp_replace(o.notes, '(\+?962[\s-]*|0)?7[789]([\s-]*\d){7}', '***', 'g') AS notes,
          o.schedule_updated_at, o.last_edited_at,
          o.created_at,
          COALESCE(
@@ -1286,7 +1335,7 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
              SELECT jsonb_agg(
                jsonb_build_object(
                  'id', m->>'id',
-                 'field', regexp_replace(regexp_replace(m->>'field', '(\+?962|0)?7[789]\d{7}', '***', 'g'), '\d+(\.\d+)?\s*(د\.أ|JD|jd)', '***', 'gi'),
+                 'field', regexp_replace(regexp_replace(m->>'field', '(\+?962[\s-]*|0)?7[789]([\s-]*\d){7}', '***', 'g'), '\d+(\.\d+)?\s*(د\.أ|JD|jd)', '***', 'gi'),
                  'timestamp', COALESCE(m->>'timestamp', m->>'updatedAt'),
                  'updatedAt', COALESCE(m->>'updatedAt', m->>'timestamp'),
                  'staff_name', m->>'staff_name',
@@ -1297,14 +1346,14 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
                  'oldValue', CASE 
                    WHEN m->>'field' ~* '(phone|هاتف|جوال|total|إجمالي|subtotal|مجموع|deposit|عربون|مدفوع|discount|خصم|سعر|price|النسخة الأصلية|الطلب الأساسي)' THEN '***'
                    ELSE regexp_replace(
-                     regexp_replace(COALESCE(m->>'oldValue', m->>'old_value', ''), '(\+?962|0)?7[789]\d{7}', '***', 'g'),
+                     regexp_replace(COALESCE(m->>'oldValue', m->>'old_value', ''), '(\+?962[\s-]*|0)?7[789]([\s-]*\d){7}', '***', 'g'),
                      '\d+(\.\d+)?\s*(د\.أ|JD|jd)', '***', 'gi'
                    )
                  END,
                  'newValue', CASE 
                    WHEN m->>'field' ~* '(phone|هاتف|جوال|total|إجمالي|subtotal|مجموع|deposit|عربون|مدفوع|discount|خصم|سعر|price|النسخة الأصلية|الطلب الأساسي)' THEN '***'
                    ELSE regexp_replace(
-                     regexp_replace(COALESCE(m->>'newValue', m->>'new_value', ''), '(\+?962|0)?7[789]\d{7}', '***', 'g'),
+                     regexp_replace(COALESCE(m->>'newValue', m->>'new_value', ''), '(\+?962[\s-]*|0)?7[789]([\s-]*\d){7}', '***', 'g'),
                      '\d+(\.\d+)?\s*(د\.أ|JD|jd)', '***', 'gi'
                    )
                  END
@@ -1409,13 +1458,24 @@ CREATE OR REPLACE FUNCTION public.rebuild_sales_order_atomic(
   p_discount_amount numeric,
   p_total numeric,
   p_user_id uuid,
-  p_new_mods jsonb
+  p_new_mods jsonb,
+  p_expected_version integer DEFAULT NULL
 ) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
   v_caller_id uuid := auth.uid();
   v_current_mods jsonb;
   v_updated_mods jsonb;
   v_version integer;
+  v_line jsonb;
+  v_line_pid uuid;
+  v_line_price numeric;
+  v_line_qty integer;
+  v_base_price numeric;
+  v_can_edit_price boolean;
+  v_calc_subtotal numeric := 0;
+  v_calc_total numeric := 0;
+  v_max_discount numeric;
+  v_allow_discount boolean;
 BEGIN
   PERFORM set_config('delish.internal_mutation', 'true', true);
 
@@ -1432,6 +1492,74 @@ BEGIN
 
   IF NOT FOUND THEN
     RAISE EXCEPTION 'الطلب غير موجود';
+  END IF;
+
+  -- Optimistic Concurrency Control
+  IF p_expected_version IS NOT NULL AND v_version != p_expected_version THEN
+    RAISE EXCEPTION 'تعارض في التعديل: تم تعديل هذا الطلب مسبقاً (النسخة الحالية: %, نسختك: %)', v_version, p_expected_version
+      USING ERRCODE = 'P0001';
+  END IF;
+
+  -- Validate each line and check product price permissions
+  FOR v_line IN SELECT * FROM jsonb_array_elements(p_lines) LOOP
+    v_line_pid := CASE WHEN (v_line->>'product_id') IS NOT NULL AND (v_line->>'product_id') != '' THEN (v_line->>'product_id')::uuid ELSE NULL END;
+    v_line_price := (v_line->>'unit_price')::numeric;
+    v_line_qty := COALESCE((v_line->>'quantity')::integer, 1);
+
+    IF v_line_price < 0 THEN
+      RAISE EXCEPTION 'سعر الصنف لا يمكن أن يكون سالباً';
+    END IF;
+
+    IF v_line_qty <= 0 THEN
+      RAISE EXCEPTION 'الكمية يجب أن تكون أكبر من صفر';
+    END IF;
+
+    IF v_line_pid IS NOT NULL THEN
+      SELECT price INTO v_base_price FROM public.products WHERE id = v_line_pid;
+      IF FOUND AND abs(v_line_price - v_base_price) > 0.01 THEN
+        IF NOT private.has_role(v_caller_id, 'admin') THEN
+          SELECT can_edit_price INTO v_can_edit_price
+          FROM public.sales_product_permissions
+          WHERE user_id = v_caller_id AND product_id = v_line_pid;
+          IF v_can_edit_price IS NOT TRUE THEN
+            RAISE EXCEPTION 'غير مصرّح: لا تملك صلاحية تعديل سعر هذا المنتج';
+          END IF;
+        END IF;
+      END IF;
+    END IF;
+
+    v_calc_subtotal := v_calc_subtotal + (v_line_price * v_line_qty);
+  END LOOP;
+
+  v_calc_subtotal := ROUND(v_calc_subtotal, 2);
+
+  -- Enforce discount cap on rebuild if discount is specified
+  IF COALESCE(p_discount_amount, 0) > 0 THEN
+    IF NOT private.has_role(v_caller_id, 'admin') THEN
+      SELECT allow_custom_discount, COALESCE(max_discount_percent, 0)
+      INTO v_allow_discount, v_max_discount
+      FROM public.staff_permissions
+      WHERE user_id = v_caller_id;
+
+      IF v_allow_discount IS NOT TRUE THEN
+        RAISE EXCEPTION 'غير مصرّح: لا تملك صلاحية تطبيق الخصم';
+      END IF;
+
+      IF p_discount_amount > ROUND((v_calc_subtotal * v_max_discount / 100.0), 2) + 0.05 THEN
+        RAISE EXCEPTION 'الخصم المطلوب يتجاوز الحد الأقصى المسموح لك (% بالمئة)', v_max_discount;
+      END IF;
+    END IF;
+  END IF;
+
+  v_calc_total := GREATEST(ROUND(v_calc_subtotal + COALESCE(p_delivery_fee, 0) - COALESCE(p_discount_amount, 0), 2), 0);
+
+  -- Reject inconsistent subtotal or total
+  IF p_subtotal IS NOT NULL AND abs(p_subtotal - v_calc_subtotal) > 0.05 THEN
+    RAISE EXCEPTION 'المجموع الفرعي (%) لا يطابق مجموع بنود الطلب (%)', p_subtotal, v_calc_subtotal;
+  END IF;
+
+  IF p_total IS NOT NULL AND abs(p_total - v_calc_total) > 0.05 THEN
+    RAISE EXCEPTION 'إجمالي الطلب (%) لا يطابق الحساب الفعلي للأصناف والرسوم والخصم (%)', p_total, v_calc_total;
   END IF;
 
   v_updated_mods := COALESCE(v_current_mods, '[]'::jsonb) || COALESCE(p_new_mods, '[]'::jsonb);
@@ -1455,10 +1583,10 @@ BEGIN
 
   UPDATE public.orders
   SET
-    subtotal = p_subtotal,
-    delivery_fee = p_delivery_fee,
-    discount_amount = p_discount_amount,
-    total = p_total,
+    subtotal = v_calc_subtotal,
+    delivery_fee = COALESCE(p_delivery_fee, 0),
+    discount_amount = COALESCE(p_discount_amount, 0),
+    total = v_calc_total,
     modifications = v_updated_mods,
     version = v_version + 1,
     last_edited_at = now(),
@@ -1522,6 +1650,8 @@ RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
   v_caller_id uuid := auth.uid();
 BEGIN
+  PERFORM set_config('delish.internal_mutation', 'true', true);
+
   IF NOT (private.has_role(v_caller_id, 'admin')) THEN
     RAISE EXCEPTION 'غير مصرّح: صلاحية مسح الطلبات متاحة للمدير فقط';
   END IF;
@@ -1543,6 +1673,8 @@ RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
   v_caller_id uuid := auth.uid();
 BEGIN
+  PERFORM set_config('delish.internal_mutation', 'true', true);
+
   IF NOT (private.has_role(v_caller_id, 'admin')) THEN
     RAISE EXCEPTION 'غير مصرّح: صلاحية الحذف متاحة للمدير فقط · Unauthorized: Admin only';
   END IF;
@@ -1663,7 +1795,11 @@ BEGIN
       name_en = COALESCE(p_name_en, name_en),
       options_ar = COALESCE(p_options_ar, options_ar),
       options_en = COALESCE(p_options_en, options_en),
-      notes = COALESCE(p_notes, notes)
+      notes = CASE
+        WHEN p_notes = '' THEN NULL
+        WHEN p_notes IS NOT NULL THEN p_notes
+        ELSE notes
+      END
   WHERE id = p_item_id;
 
   -- Recalculate subtotal
@@ -1754,27 +1890,6 @@ BEGIN
     RAISE EXCEPTION 'غير مصرّح: لا تملك صلاحية منح الخصومات';
   END IF;
 
-  -- Staff permissions enforcement for non-admin
-  IF NOT private.has_role(v_caller_id, 'admin') THEN
-    DECLARE
-      v_allow_custom_discount boolean := false;
-      v_max_discount numeric := 0;
-    BEGIN
-      SELECT allow_custom_discount, max_discount_percent
-      INTO v_allow_custom_discount, v_max_discount
-      FROM public.staff_permissions
-      WHERE user_id = v_caller_id;
-
-      IF NOT FOUND OR NOT COALESCE(v_allow_custom_discount, false) THEN
-        RAISE EXCEPTION 'غير مصرّح: لا تملك صلاحية تطبيق الخصم';
-      END IF;
-
-      IF p_discount_percent > COALESCE(v_max_discount, 0) THEN
-        RAISE EXCEPTION 'نسبة الخصم المطلوبة (%) تتجاوز الحد المسموح لك (%)', p_discount_percent, v_max_discount;
-      END IF;
-    END;
-  END IF;
-
   IF p_discount_amount < 0 OR p_discount_percent < 0 THEN
     RAISE EXCEPTION 'قيمة الخصم لا يمكن أن تكون سالبة';
   END IF;
@@ -1793,7 +1908,39 @@ BEGIN
     RAISE EXCEPTION 'OCC_VERSION_MISMATCH: Order version changed (expected %, current %)', p_expected_version, v_current_version;
   END IF;
 
+  -- Verify consistency between submitted amount and percentage
+  DECLARE
+    v_expected_amount numeric := ROUND((v_subtotal * p_discount_percent / 100.0), 2);
+  BEGIN
+    IF abs(p_discount_amount - v_expected_amount) > 0.05 THEN
+      RAISE EXCEPTION 'مبلغ الخصم (%) لا يتطابق مع النسبة المحددة (%)', p_discount_amount, p_discount_percent;
+    END IF;
+  END;
+
+  -- Staff permissions enforcement for non-admin
+  IF NOT private.has_role(v_caller_id, 'admin') THEN
+    DECLARE
+      v_allow_custom_discount boolean := false;
+      v_max_discount numeric := 0;
+    BEGIN
+      SELECT allow_custom_discount, max_discount_percent
+      INTO v_allow_custom_discount, v_max_discount
+      FROM public.staff_permissions
+      WHERE user_id = v_caller_id;
+
+      IF NOT FOUND OR NOT COALESCE(v_allow_custom_discount, false) THEN
+        RAISE EXCEPTION 'غير مصرّح: لا تملك صلاحية تطبيق الخصم';
+      END IF;
+
+      IF p_discount_percent > COALESCE(v_max_discount, 0) OR p_discount_amount > ROUND((v_subtotal * v_max_discount / 100.0), 2) + 0.05 THEN
+        RAISE EXCEPTION 'الخصم المطلوب يتجاوز الحد الأقصى المسموح لك (% بالمئة)', v_max_discount;
+      END IF;
+    END;
+  END IF;
+
   v_new_total := GREATEST(v_subtotal + COALESCE(v_delivery_fee, 0) - p_discount_amount, 0);
+
+  PERFORM set_config('delish.internal_mutation', 'true', true);
 
   v_mod_entry := jsonb_build_object(
     'id', gen_random_uuid()::text,
@@ -1845,7 +1992,7 @@ CREATE OR REPLACE FUNCTION public.submit_customer_order_edit_atomic(
   p_requested_date date DEFAULT NULL,
   p_requested_time time without time zone DEFAULT NULL
 )
-RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, extensions AS $$
 DECLARE
   v_token_hash text;
   v_token_row record;
@@ -2011,7 +2158,17 @@ BEGIN
     modifications = v_updated_mods,
     version = COALESCE(version, 1) + 1
   WHERE id = v_order.id
-  RETURNING row_to_json(orders.*) INTO v_result;
+  RETURNING jsonb_build_object(
+    'id', orders.id,
+    'order_number', orders.order_number,
+    'customer_name', orders.customer_name,
+    'requested_date', orders.requested_date,
+    'requested_time', orders.requested_time,
+    'notes', orders.notes,
+    'inscription', orders.inscription,
+    'customer_phone', orders.customer_phone,
+    'version', orders.version
+  ) INTO v_result;
 
   INSERT INTO public.audit_logs (
     order_id, order_number, staff_user_id, staff_name,
@@ -2025,8 +2182,8 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.submit_customer_order_edit_atomic FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.submit_customer_order_edit_atomic TO service_role;
+REVOKE ALL ON FUNCTION public.submit_customer_order_edit_atomic(text, text, text, text, date, time) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.submit_customer_order_edit_atomic(text, text, text, text, date, time) TO service_role;
 
 
 -- ==============================================================================

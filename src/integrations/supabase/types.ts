@@ -825,6 +825,7 @@ export type Database = {
         Args: {
           p_delivery_fee: number
           p_discount_amount: number
+          p_expected_version?: number | null
           p_lines: Json
           p_new_mods?: Json
           p_order_id: string
