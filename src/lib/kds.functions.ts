@@ -11,7 +11,7 @@ const KITCHEN_ROLES: StaffRoleName[] = ["kitchen", "admin"];
  * preparation details, so they are stripped before options reach the kitchen.
  */
 const PREP_ONLY =
-  /هدية|هاتف|رقم|موبايل|واتساب|واتس|انستغرام|فيسبوك|تيك توك|موقع|المصدر|مصدر|كليك|حوالة|gift|phone|whatsapp|instagram|facebook|tiktok|source|cliq|\+?\d[\d\s-]{5,}/i;
+  /هدية|هاتف|رقم|موبايل|واتساب|واتس|انستغرام|فيسبوك|تيك توك|موقع|المصدر|مصدر|كليك|حوالة|قيمة|مبلغ|سعر|د\.أ|دينار|JD|jd|price|cost|amount|total|gift|phone|whatsapp|instagram|facebook|tiktok|source|cliq|\+?\d[\d\s-]{5,}|\d+(\.\d+)?\s*(د\.أ|JD|jd|دينار)/i;
 const prepOptions = (options: string[]): string[] =>
   options.filter((option) => !PREP_ONLY.test(option));
 

@@ -325,7 +325,8 @@ export function ModificationsPanel({
   });
 
   const rebuild = useMutation({
-    mutationFn: (input: { orderId: string; lines: RebuildLine[] }) => rebuildFn({ data: input }),
+    mutationFn: (input: { orderId: string; lines: RebuildLine[]; expectedVersion?: number | null }) =>
+      rebuildFn({ data: input }),
     onSuccess: (order) => {
       queryClient.setQueryData<SalesOrder[]>(ORDERS_KEY, (current) =>
         (current ?? []).map((row) => (row.id === order.id ? order : row)),
@@ -625,7 +626,13 @@ export function ModificationsPanel({
               onBackToList={() => setSelectedId(null)}
               onPatch={(patch) => save.mutate({ orderId: selected.id, ...patch })}
               onItemPatch={(patch) => saveItem.mutate({ orderId: selected.id, ...patch })}
-              onReplaceItems={(lines) => rebuild.mutate({ orderId: selected.id, lines })}
+              onReplaceItems={(lines, expectedVersion) =>
+                rebuild.mutate({
+                  orderId: selected.id,
+                  lines,
+                  expectedVersion: expectedVersion !== undefined ? expectedVersion : selected.version ?? 1,
+                })
+              }
               onDiscount={(percent, reason, expectedVersion) =>
                 discount.mutate({
                   orderId: selected.id,
@@ -681,7 +688,7 @@ function MasterOrderEditor({
   onBackToList: () => void;
   onPatch: (patch: Omit<OrderPatch, "orderId">) => void;
   onItemPatch: (patch: Omit<OrderItemPatch, "orderId">) => void;
-  onReplaceItems: (lines: RebuildLine[]) => void;
+  onReplaceItems: (lines: RebuildLine[], expectedVersion?: number | null) => void;
   onDiscount: (percent: number, reason: string, expectedVersion?: number | null) => void;
   onFinishEdit: (patch: Omit<OrderPatch, "orderId">) => Promise<void> | void;
 }) {
@@ -751,7 +758,7 @@ function MasterOrderEditor({
 
   const handleReplaceItems = (lines: RebuildLine[]) => {
     pendingSelfMutationRef.current = true;
-    onReplaceItems(lines);
+    onReplaceItems(lines, initialVersionRef.current);
   };
 
   // Form State
@@ -1894,10 +1901,11 @@ function InteractiveItemEditorCard({
                     setSizeLabel("");
                     const picked = products.find((row) => row.id === event.target.value);
                     if (picked) {
-                      onItemPatch({ itemId: item.id, name: picked.name_ar });
+                      const patch: Parameters<typeof onItemPatch>[0] = { itemId: item.id, name: picked.name_ar };
                       if (!picked.price_on_request && picked.price > 0) {
-                        onItemPatch({ itemId: item.id, newUnitPrice: picked.price });
+                        patch.newUnitPrice = picked.price;
                       }
+                      onItemPatch(patch);
                       if (picked.filling_ar?.trim()) setFilling(picked.filling_ar.trim());
                     }
                   }}
@@ -1922,8 +1930,9 @@ function InteractiveItemEditorCard({
                     setSizeLabel(label);
                     const size = product?.sizes.find((entry) => entry.label === label);
                     if (!size) return;
-                    onItemPatch({ itemId: item.id, newUnitPrice: size.price });
-                    commitOptions(withLabel(options, "الحجم", size.label));
+                    const nextOptions = withLabel(options, "الحجم", size.label);
+                    setOptions(nextOptions);
+                    onItemPatch({ itemId: item.id, newUnitPrice: size.price, options: nextOptions });
                   }}
                   disabled={!product || product.sizes.length === 0}
                   className={inputClass}

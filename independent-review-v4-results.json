@@ -25,7 +25,7 @@
       "name": "New keyed storefront order succeeds as service_role",
       "verified": true,
       "evidence": {
-        "id": "234e0e93-dfdd-497c-ab5a-4ae9189f245d",
+        "id": "314f5088-6b58-40bb-871e-475b99bdbce2",
         "total": 23,
         "subtotal": 20,
         "delivery_fee": 3,
@@ -50,7 +50,7 @@
       "evidence": {
         "total": 20,
         "version": 1,
-        "order_id": "08e8b507-f196-4545-b49d-c1a45408d125",
+        "order_id": "ef409e4f-7516-46c7-a33f-26fb9cb7bea2",
         "remaining": 20,
         "refund_due": 0,
         "deposit_paid": 0,
@@ -180,12 +180,12 @@
       "name": "Kitchen RPC sanitizes item modifications without leaking prices",
       "verified": true,
       "evidence": {
-        "id": "2ae1c72c-f696-4da6-9622-392e9ffc7040",
+        "id": "e23a5982-856b-4c64-9028-96e5621be00b",
         "field": "تعديل صنف: Synthetic cake",
         "newValue": "*** (كمية: 1)",
         "oldValue": "*** (كمية: 1)",
-        "timestamp": "2026-10-29T17:20:54Z",
-        "updatedAt": "2026-10-29T17:20:54Z",
+        "timestamp": "2026-10-29T18:01:58Z",
+        "updatedAt": "2026-10-29T18:01:58Z",
         "staff_name": "موظف مبيعات",
         "acknowledged": false,
         "acknowledgedAt": null,
@@ -241,7 +241,7 @@
       "name": "Social-only caller is authorized by item RPC",
       "verified": true,
       "evidence": {
-        "id": "db606ed9-d15d-4ecc-b269-55ba7da66019",
+        "id": "542ef775-a1af-47e5-ac4b-600f349aa1ae",
         "area": null,
         "notes": null,
         "total": 20,
@@ -252,13 +252,13 @@
         "subtotal": 20,
         "card_note": null,
         "is_urgent": false,
-        "created_at": "2026-10-29T17:20:54.17+00:00",
+        "created_at": "2026-10-29T18:01:58.068+00:00",
         "created_by": "00000000-0000-4000-8000-000000000002",
         "event_date": null,
         "order_name": null,
         "queue_rank": null,
         "staff_code": null,
-        "updated_at": "2026-10-29T17:20:54.17+00:00",
+        "updated_at": "2026-10-29T18:01:58.068+00:00",
         "driver_name": null,
         "inscription": null,
         "staff_notes": null,
@@ -271,19 +271,19 @@
         "customer_name": "Synthetic customer",
         "modifications": [
           {
-            "id": "76ed83b6-d6b7-44ac-94bf-470545af8d11",
+            "id": "3a77749a-205f-4e1a-beb0-6f8f8c093e44",
             "field": "تعديل صنف: Synthetic cake",
             "newValue": "20 د.أ (كمية: 1)",
             "oldValue": "20.00 د.أ (كمية: 1)",
-            "timestamp": "2026-10-29T17:20:54Z",
-            "updatedAt": "2026-10-29T17:20:54Z",
+            "timestamp": "2026-10-29T18:01:58Z",
+            "updatedAt": "2026-10-29T18:01:58Z",
             "staff_name": "موظف مبيعات",
             "acknowledged": false,
             "acknowledgedAt": null
           }
         ],
         "customer_phone": "0790000000",
-        "last_edited_at": "2026-10-29T17:20:54.183+00:00",
+        "last_edited_at": "2026-10-29T18:01:58.073+00:00",
         "last_edited_by": "00000000-0000-4000-8000-000000000004",
         "original_items": [
           {

@@ -208,12 +208,37 @@ export const createSalesOrder = createServerFn({ method: "POST" })
     const discountAmount = roundJod(data.discount_amount ?? 0);
     const discountPercent = data.discount_percent ?? 0;
     
-    // FIN-01 Strict Discount Cap Verification
-    const roles = await getRoles(context as never);
-    if (!roles.includes("admin")) {
-      const computedPercent = subtotal > 0 ? (discountAmount / subtotal) * 100 : 0;
-      if (discountPercent > 15 || computedPercent > 15) {
-        throw new Error("تجاوزت الحد الأقصى للخصم (15%). يتطلب موافقة المدير · Discount limit (15%) exceeded. Admin approval required.");
+    // Per-product price edit check
+    const { canEditProductPrice } = await import("@/lib/permissions.functions");
+    for (const item of data.items) {
+      const pid = (item as any).productId || (item as any).product_id;
+      if (pid) {
+        const canEdit = await canEditProductPrice(context as never, pid);
+        if (!canEdit) {
+          const { data: catProd } = await context.supabase
+            .from("products")
+            .select("price")
+            .eq("id", pid)
+            .maybeSingle();
+          if (catProd && Math.abs(Number(item.unit_price) - Number(catProd.price)) > 0.01) {
+            throw new Error("غير مصرّح: لا تملك صلاحية تعديل سعر هذا المنتج · You are not allowed to edit the price for this product");
+          }
+        }
+      }
+    }
+
+    // Strict staff discount authorization
+    const { resolveAuthorization } = await import("@/lib/authorization.functions");
+    const authz = await resolveAuthorization(context as never);
+    if (!authz.isAdmin) {
+      if (discountAmount > 0 || discountPercent > 0) {
+        if (!authz.allow_custom_discount) {
+          throw new Error("غير مصرّح: لا تملك صلاحية تطبيق الخصم · You are not allowed to apply discounts");
+        }
+        const computedPercent = subtotal > 0 ? (discountAmount / subtotal) * 100 : discountPercent;
+        if (discountPercent > authz.max_discount_percent || computedPercent > authz.max_discount_percent + 0.01) {
+          throw new Error(`الخصم المطلوب يتجاوز الحد الأقصى المسموح لك (${authz.max_discount_percent}%) · Discount exceeds your limit (${authz.max_discount_percent}%)`);
+        }
       }
     }
 
@@ -955,6 +980,16 @@ export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
       }
     }
 
+    if (data.notes !== undefined && (data.notes || null) !== (before.notes || null)) {
+      newDiffs.push({
+        field: "ملاحظة الصنف",
+        oldValue: before.notes || "—",
+        newValue: data.notes || "— (تم مسح الملاحظة)",
+        updatedAt: nowIso,
+        acknowledgedAt: null,
+      });
+    }
+
     const newPrice = data.newUnitPrice !== undefined ? data.newUnitPrice : Number(before.unit_price ?? 0);
     const newQty = data.quantity !== undefined ? data.quantity : Number(before.quantity ?? 1);
 
@@ -971,6 +1006,7 @@ export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
       p_options_ar: data.options ? (data.options as never) : null,
       p_options_en: data.options ? (data.options as never) : null,
       p_notes: data.notes ?? null,
+      p_new_mods: newDiffs.length > 0 ? (newDiffs as never) : null,
     });
 
     if (rpcError) {
@@ -1058,7 +1094,7 @@ export const replaceSalesOrderItems = createServerFn({ method: "POST" })
     const { data: existing, error: readError } = await context.supabase
       .from("orders")
       .select(
-        "id, order_number, customer_name, customer_phone, requested_date, requested_time, method, area, address, order_name, sender_phone, recipient_phone, deposit_paid, notes, inscription, staff_notes, card_note, total, delivery_fee, discount_amount, subtotal, modifications",
+        "id, order_number, customer_name, customer_phone, requested_date, requested_time, method, area, address, order_name, sender_phone, recipient_phone, deposit_paid, notes, inscription, staff_notes, card_note, total, delivery_fee, discount_amount, discount_percent, subtotal, modifications",
       )
       .eq("id", data.orderId)
       .single();
@@ -1150,7 +1186,11 @@ export const replaceSalesOrderItems = createServerFn({ method: "POST" })
 
     const subtotal = roundJod(data.lines.reduce((acc, line) => acc + line.unitPrice * line.quantity, 0));
     const deliveryFee = existing.method === "delivery" ? roundJod(Number(existing.delivery_fee ?? 0)) : 0;
-    const discountAmount = roundJod(Number(existing.discount_amount ?? 0));
+    const discountPercent = Number(existing.discount_percent ?? 0);
+    const discountAmount =
+      discountPercent > 0
+        ? roundJod((subtotal * discountPercent) / 100)
+        : roundJod(Math.min(Number(existing.discount_amount ?? 0), subtotal));
     const total = roundJod(Math.max(subtotal + deliveryFee - discountAmount, 0));
 
     // DB-03: Atomic Rebuild
