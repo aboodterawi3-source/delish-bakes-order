@@ -190,71 +190,28 @@ export const getKitchenOrders = createServerFn({ method: "GET" })
       itemsByOrder.set(item.order_id, list);
     }
 
-    // Explicitly load modifications from orders table because get_kitchen_orders RPC on remote DB
-    // may not declare the modifications jsonb column in its return table.
-    const modsMap = new Map<string, OrderModification[]>();
-    const cardNoteMap = new Map<string, string | null>();
-    if (orderIds.length > 0) {
-      try {
-        const { data: directMods } = await context.supabase
-          .from("orders")
-          .select("id, modifications, card_note")
-          .in("id", orderIds);
-        if (directMods && Array.isArray(directMods)) {
-          for (const row of directMods) {
-            if (
-              row.modifications &&
-              Array.isArray(row.modifications) &&
-              row.modifications.length > 0
-            ) {
-              modsMap.set(row.id, row.modifications as OrderModification[]);
-            }
-            if (row.card_note) {
-              cardNoteMap.set(row.id, row.card_note);
-            }
-          }
-        }
-      } catch (err) {
-        console.warn("[KDS] direct orders.modifications select skipped:", err);
-      }
-
-      // If direct read yielded no modifications and service key is present, fallback to admin client
-      if (modsMap.size === 0 && process.env["SUPABASE_SERVICE_ROLE_KEY"]) {
-        try {
-          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-          const { data: adminMods } = await supabaseAdmin
-            .from("orders")
-            .select("id, modifications")
-            .in("id", orderIds);
-          if (adminMods && Array.isArray(adminMods)) {
-            for (const row of adminMods) {
-              if (
-                row.modifications &&
-                Array.isArray(row.modifications) &&
-                row.modifications.length > 0
-              ) {
-                modsMap.set(row.id, row.modifications as OrderModification[]);
-              }
-            }
-          }
-        } catch {
-          /* ignore admin client fallback error */
-        }
-      }
-    }
+    const FINANCIAL_OR_BASELINE =
+      /total|إجمالي|subtotal|مجموع|deposit|عربون|مدفوع|discount|خصم|سعر|price|النسخة الأصلية|الطلب الأساسي/i;
+    const PRICE_REGEX = /\d+(\.\d+)?\s*(د\.أ|JD|jd)/gi;
 
     return activeOrders.map((order: any) => {
-      let mods =
-        modsMap.get(order.id) ?? (Array.isArray(order.modifications) ? order.modifications : []);
+      let mods: OrderModification[] = Array.isArray(order.modifications) ? order.modifications : [];
 
-      // The modification history embeds raw phone numbers (customer, sender,
-      // recipient), so it gets the same masking as every other kitchen text.
-      mods = mods.map((mod: OrderModification) => ({
-        ...mod,
-        field: stripPhones(mod.field) ?? mod.field,
-        oldValue: stripPhones(mod.oldValue) ?? mod.oldValue,
-        newValue: stripPhones(mod.newValue) ?? mod.newValue,
-      }));
+      // The modification history embeds raw phone numbers and financial amounts,
+      // so it is strictly masked before reaching the kitchen screen.
+      mods = mods.map((mod: OrderModification) => {
+        const isFinancial = FINANCIAL_OR_BASELINE.test(mod.field);
+        return {
+          ...mod,
+          field: stripPhones(mod.field) ?? mod.field,
+          oldValue: isFinancial
+            ? "***"
+            : (stripPhones(mod.oldValue)?.replace(PRICE_REGEX, "***") ?? mod.oldValue),
+          newValue: isFinancial
+            ? "***"
+            : (stripPhones(mod.newValue)?.replace(PRICE_REGEX, "***") ?? mod.newValue),
+        };
+      });
 
       // If modifications array is still empty but order has edit timestamps, synthesize explicit diff entries
       if (mods.length === 0) {
@@ -292,7 +249,7 @@ export const getKitchenOrders = createServerFn({ method: "GET" })
         requested_time: order.requested_time ?? "",
         status: order.status,
         inscription: stripPhones(order.inscription),
-        card_note: stripPhones(cardNoteMap.get(order.id) ?? order.card_note ?? null),
+        card_note: stripPhones(order.card_note ?? null),
         design_image_url: isValidStorageUrl(order.design_image_url) ? order.design_image_url : null,
         notes: stripPhones(order.notes),
         schedule_updated_at: order.schedule_updated_at,

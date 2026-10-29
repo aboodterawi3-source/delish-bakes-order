@@ -212,7 +212,7 @@ export const getAuditLogs = listAuditLogs;
 
 export const applyOrderDiscount = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { orderId: string; percent: number; reason: string }) => {
+  .inputValidator((input: { orderId: string; percent: number; reason: string; expectedVersion?: number | null }) => {
     if (!input?.orderId) throw new Error("orderId is required");
     const percent = Number(input.percent);
     if (!Number.isFinite(percent) || percent < 0 || percent > 100) {
@@ -221,7 +221,12 @@ export const applyOrderDiscount = createServerFn({ method: "POST" })
     if (percent > 0 && !input.reason?.trim()) {
       throw new Error("سبب الخصم مطلوب · A reason is required");
     }
-    return { orderId: input.orderId, percent, reason: (input.reason ?? "").trim() };
+    return {
+      orderId: input.orderId,
+      percent,
+      reason: (input.reason ?? "").trim(),
+      expectedVersion: input.expectedVersion !== undefined ? input.expectedVersion : null,
+    };
   })
   .handler(async ({ data, context }) => {
     const ctx = context as unknown as Ctx;
@@ -250,7 +255,7 @@ export const applyOrderDiscount = createServerFn({ method: "POST" })
       p_order_id: data.orderId,
       p_discount_amount: discountAmount,
       p_discount_percent: data.percent,
-      p_expected_version: null,
+      p_expected_version: data.expectedVersion,
       p_staff_name: staffName(ctx),
       p_reason: data.reason || null,
     });
@@ -412,149 +417,23 @@ export const submitOrderEdit = createServerFn({ method: "POST" })
     },
   )
   .handler(async ({ data }) => {
-    const row = await loadToken(data.token);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { buildOriginalOrderBaseline } = await import("@/lib/sales.functions");
-    type OrderModification = import("@/lib/sales.functions").OrderModification;
 
-    const { data: before } = await supabaseAdmin
-      .from("orders")
-      .select(
-        "id, order_number, customer_name, customer_phone, requested_date, requested_time, method, area, address, order_name, sender_phone, recipient_phone, deposit_paid, notes, inscription, staff_notes, card_note, total, modifications",
-      )
-      .eq("id", row.order_id)
-      .single();
-
-    const scheduleChanged =
-      (data.requested_date && data.requested_date !== before?.requested_date) ||
-      (data.requested_time &&
-        data.requested_time.slice(0, 5) !== String(before?.requested_time ?? "").slice(0, 5));
-
-    const nowIso = new Date().toISOString();
-    const currentMods = (before?.modifications as OrderModification[] | null) ?? [];
-    const newDiffs: OrderModification[] = [];
-
-    // Preserve baseline if this is the first modification on this order
-    const hasBaseline = currentMods.some(
-      (m) => m.field.includes("الطلب الأساسي") || m.field.includes("النسخة الأصلية"),
+    const { data: updatedOrder, error: rpcError } = await (supabaseAdmin as any).rpc(
+      "submit_customer_order_edit_atomic",
+      {
+        p_token: data.token,
+        p_notes: data.notes ?? null,
+        p_inscription: data.inscription ?? null,
+        p_customer_phone: data.customer_phone ?? null,
+        p_requested_date: data.requested_date || null,
+        p_requested_time: data.requested_time || null,
+      },
     );
-    if (!hasBaseline && before) {
-      const { data: existingItems } = await supabaseAdmin
-        .from("order_items")
-        .select("name_ar, name_en, quantity, unit_price, options_ar, notes")
-        .eq("order_id", row.order_id);
-      const baselineSummary = buildOriginalOrderBaseline(before, existingItems ?? []);
-      newDiffs.push({
-        field: "الطلب الأساسي (النسخة الأصلية عند الإنشاء)",
-        oldValue: baselineSummary,
-        newValue: "تم إجراء أول تعديل على هذا الطلب عبر رابط العميل",
-        updatedAt: nowIso,
-        acknowledgedAt: null,
-      });
+
+    if (rpcError) {
+      throw publicError("order-edit.update", rpcError);
     }
 
-    if (data.requested_date && data.requested_date !== before?.requested_date) {
-      newDiffs.push({
-        field: "تاريخ الاستلام/التوصيل (رابط الزبون)",
-        oldValue: before?.requested_date || "غير محدد",
-        newValue: data.requested_date,
-        updatedAt: nowIso,
-        acknowledgedAt: null,
-      });
-    }
-
-    if (
-      data.requested_time &&
-      data.requested_time.slice(0, 5) !== String(before?.requested_time ?? "").slice(0, 5)
-    ) {
-      newDiffs.push({
-        field: "وقت الاستلام/التوصيل (رابط الزبون)",
-        oldValue: before?.requested_time ? String(before.requested_time).slice(0, 5) : "غير محدد",
-        newValue: data.requested_time.slice(0, 5),
-        updatedAt: nowIso,
-        acknowledgedAt: null,
-      });
-    }
-
-    if (data.inscription !== undefined) {
-      const oldVal = (before?.inscription ?? "").trim();
-      const newVal = data.inscription.trim();
-      if (oldVal !== newVal) {
-        newDiffs.push({
-          field: "الكتابة على الكيك (رابط الزبون)",
-          oldValue: oldVal || "بدون كتابة",
-          newValue: newVal || "بدون كتابة",
-          updatedAt: nowIso,
-          acknowledgedAt: null,
-        });
-      }
-    }
-
-    if (data.notes !== undefined) {
-      const oldVal = (before?.notes ?? "").trim();
-      const newVal = data.notes.trim();
-      if (oldVal !== newVal) {
-        newDiffs.push({
-          field: "ملاحظات الطلب (رابط الزبون)",
-          oldValue: oldVal || "بدون ملاحظات",
-          newValue: newVal || "بدون ملاحظات",
-          updatedAt: nowIso,
-          acknowledgedAt: null,
-        });
-      }
-    }
-
-    if (data.customer_phone?.trim()) {
-      const oldVal = (before?.customer_phone ?? "").trim();
-      const newVal = data.customer_phone.trim();
-      if (oldVal && newVal && oldVal !== newVal) {
-        newDiffs.push({
-          field: "رقم هاتف العميل (رابط الزبون)",
-          oldValue: oldVal,
-          newValue: newVal,
-          updatedAt: nowIso,
-          acknowledgedAt: null,
-        });
-      }
-    }
-
-    const updatedMods = (newDiffs.length > 0 ? [...currentMods, ...newDiffs] : currentMods);
-
-    // Single use: lock the token atomically BEFORE modifying the order to prevent Replay Attack
-    const { data: lockResult, error: lockError } = await supabaseAdmin
-      .from("order_edit_tokens")
-      .update({ used_at: new Date().toISOString() } as never)
-      .eq("id", row.id)
-      .is("used_at", null)
-      .select("id");
-      
-    if (lockError) throw publicError("order-edit.lockToken", lockError);
-    if (!lockResult || lockResult.length === 0) {
-      throw new Error("تم استخدام هذا الرابط من قبل · This link was already used");
-    }
-
-    const { error } = await supabaseAdmin
-      .from("orders")
-      .update({
-        ...(data.notes === undefined ? {} : { notes: data.notes.trim() || null }),
-        ...(data.inscription === undefined ? {} : { inscription: data.inscription.trim() || null }),
-        ...(data.customer_phone?.trim() ? { customer_phone: data.customer_phone.trim() } : {}),
-        ...(data.requested_date ? { requested_date: data.requested_date } : {}),
-        ...(data.requested_time ? { requested_time: data.requested_time } : {}),
-        schedule_updated_at: new Date().toISOString(),
-        last_edited_at: new Date().toISOString(),
-        ...(newDiffs.length > 0 ? { modifications: updatedMods as any } : {}),
-      } as never)
-      .eq("id", row.order_id);
-
-    if (error) {
-      // Revert token lock so user can retry on failure
-      await supabaseAdmin
-        .from("order_edit_tokens")
-        .update({ used_at: null } as never)
-        .eq("id", row.id);
-      throw publicError("order-edit.update", error);
-    }
-
-    return { ok: true };
+    return { ok: true, order: updatedOrder };
   });

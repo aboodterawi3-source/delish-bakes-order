@@ -52,7 +52,7 @@ async function run() {
   const settingsRes = await pg.query("SELECT * FROM public.store_settings WHERE singleton = true;");
   assert.equal(settingsRes.rows.length, 1, "store_settings row must exist");
   assert.equal(settingsRes.rows[0].store_name, "Delish Cake & Bake");
-  assert.equal(settingsRes.rows[0].card_color_palette, "soft_green");
+  assert.equal(settingsRes.rows[0].card_color_palette, "gold");
 
   const bannerRes = await pg.query("SELECT * FROM public.storefront_banner WHERE id = '00000000-0000-0000-0000-000000000001';");
   assert.equal(bannerRes.rows.length, 1, "storefront_banner row must exist");

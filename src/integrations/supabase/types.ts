@@ -867,6 +867,22 @@ export type Database = {
           p_reason?: string | null
           p_staff_name?: string | null
           p_unit_price: number
+          p_name_ar?: string | null
+          p_name_en?: string | null
+          p_options_ar?: string[] | null
+          p_options_en?: string[] | null
+          p_notes?: string | null
+        }
+        Returns: Json
+      }
+      submit_customer_order_edit_atomic: {
+        Args: {
+          p_token: string
+          p_notes?: string | null
+          p_inscription?: string | null
+          p_customer_phone?: string | null
+          p_requested_date?: string | null
+          p_requested_time?: string | null
         }
         Returns: Json
       }

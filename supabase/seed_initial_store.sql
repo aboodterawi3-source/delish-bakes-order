@@ -7,9 +7,11 @@
 
 -- 1. INITIAL STOREFRONT BANNER
 INSERT INTO public.storefront_banner (
+  id,
   title_ar, title_en, subtitle_ar, subtitle_en,
   badge_ar, badge_en, action_label_ar, action_label_en, action_url, is_active
 ) VALUES (
+  '00000000-0000-0000-0000-000000000001'::uuid,
   'مخبز وحلويات ديليش كيك · عمّان',
   'Delish Cake & Bake · Amman',
   'أشهى كيكات المناسبات الخاصة، مصممة يدوياً بأجود المكونات الطبيعية والتوصيل لكافة مناطق عمّان',
@@ -20,7 +22,17 @@ INSERT INTO public.storefront_banner (
   'Explore Menu & Order',
   '/discover',
   true
-) ON CONFLICT DO NOTHING;
+) ON CONFLICT (id) DO UPDATE SET
+  title_ar = EXCLUDED.title_ar,
+  title_en = EXCLUDED.title_en,
+  subtitle_ar = EXCLUDED.subtitle_ar,
+  subtitle_en = EXCLUDED.subtitle_en,
+  badge_ar = EXCLUDED.badge_ar,
+  badge_en = EXCLUDED.badge_en,
+  action_label_ar = EXCLUDED.action_label_ar,
+  action_label_en = EXCLUDED.action_label_en,
+  action_url = EXCLUDED.action_url,
+  is_active = EXCLUDED.is_active;
 
 -- 2. STOREFRONT CATEGORIES
 INSERT INTO public.storefront_categories (

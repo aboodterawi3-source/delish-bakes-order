@@ -453,6 +453,44 @@ DROP POLICY IF EXISTS "Admins delete orders" ON public.orders;
 CREATE POLICY "Admins delete orders" ON public.orders FOR DELETE TO authenticated
   USING (private.has_role(auth.uid(), 'admin'));
 
+-- Security Guard Trigger: Prohibit direct INSERT with deposit_paid > 0 and direct UPDATE of sensitive columns
+-- (deposit_paid, original_items, modifications, subtotal, total) unless performed by authorized atomic RPCs.
+CREATE OR REPLACE FUNCTION public.guard_orders_sensitive_columns()
+RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  -- Internal mutation flag allows authorized atomic RPCs to modify these columns
+  IF current_setting('delish.internal_mutation', true) = 'true' THEN
+    RETURN NEW;
+  END IF;
+
+  IF TG_OP = 'INSERT' THEN
+    IF COALESCE(NEW.deposit_paid, 0) > 0 THEN
+      RAISE EXCEPTION 'Direct INSERT of orders with deposit_paid > 0 is prohibited. Use create_staff_order_atomic or record_order_payment_atomic.';
+    END IF;
+    RETURN NEW;
+  END IF;
+
+  IF TG_OP = 'UPDATE' THEN
+    IF NEW.deposit_paid IS DISTINCT FROM OLD.deposit_paid
+       OR NEW.original_items IS DISTINCT FROM OLD.original_items
+       OR NEW.modifications IS DISTINCT FROM OLD.modifications
+       OR NEW.subtotal IS DISTINCT FROM OLD.subtotal
+       OR NEW.total IS DISTINCT FROM OLD.total THEN
+      RAISE EXCEPTION 'Direct UPDATE of sensitive order columns (deposit_paid, original_items, modifications, subtotal, total) is prohibited. Use authorized atomic RPCs.';
+    END IF;
+    RETURN NEW;
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_guard_orders_sensitive_columns ON public.orders;
+CREATE TRIGGER trg_guard_orders_sensitive_columns
+  BEFORE INSERT OR UPDATE ON public.orders
+  FOR EACH ROW
+  EXECUTE FUNCTION public.guard_orders_sensitive_columns();
+
 -- Order Items Policies: Direct SELECT restricted to Sales, Social, Admin.
 -- Kitchen reads sanitized preparation items without unit_price via get_kitchen_order_items()
 DROP POLICY IF EXISTS "Staff view order items" ON public.order_items;
@@ -597,6 +635,8 @@ DECLARE
   v_dup_version integer;
   v_item jsonb;
 BEGIN
+  PERFORM set_config('delish.internal_mutation', 'true', true);
+
   IF v_caller_id IS NULL THEN
     RAISE EXCEPTION 'غير مصرّح: يجب تسجيل الدخول للقيام بهذه العملية · Unauthorized: Sign in required';
   END IF;
@@ -776,6 +816,8 @@ DECLARE
   v_dup_total numeric;
   v_item_elem jsonb;
 BEGIN
+  PERFORM set_config('delish.internal_mutation', 'true', true);
+
   req_client_id := NULLIF(TRIM(order_payload->>'client_request_id'), '');
 
   IF req_client_id IS NOT NULL THEN
@@ -887,6 +929,8 @@ DECLARE
   v_new_total numeric;
   v_result jsonb;
 BEGIN
+  PERFORM set_config('delish.internal_mutation', 'true', true);
+
   IF v_caller_id IS NULL THEN
     RAISE EXCEPTION 'غير مصرّح: يجب تسجيل الدخول';
   END IF;
@@ -988,6 +1032,8 @@ DECLARE
   v_existing_rec record;
   v_result jsonb;
 BEGIN
+  PERFORM set_config('delish.internal_mutation', 'true', true);
+
   IF v_caller_id IS NULL THEN
     RAISE EXCEPTION 'غير مصرّح: يجب تسجيل الدخول';
   END IF;
@@ -1013,13 +1059,17 @@ BEGIN
 
   -- Idempotency check with payload verification
   IF p_idempotency_key IS NOT NULL AND TRIM(p_idempotency_key) != '' THEN
-    SELECT id, order_id, amount, payment_type, status
+    SELECT id, order_id, amount, payment_type, status, payment_method
     INTO v_existing_rec
     FROM public.order_payments
     WHERE idempotency_key = p_idempotency_key;
 
     IF FOUND THEN
-      IF v_existing_rec.order_id <> p_order_id OR v_existing_rec.amount <> p_amount OR v_existing_rec.payment_type <> p_payment_type THEN
+      IF v_existing_rec.order_id <> p_order_id
+         OR v_existing_rec.amount <> p_amount
+         OR v_existing_rec.payment_type <> p_payment_type
+         OR v_existing_rec.payment_method <> p_payment_method
+         OR v_existing_rec.status <> p_status THEN
         RAISE EXCEPTION 'مفتاح عدم التكرار مستخدم مسبقاً لحركة مختلفة · Idempotency key conflict';
       END IF;
 
@@ -1033,6 +1083,11 @@ BEGIN
         'is_duplicate', true
       );
     END IF;
+  END IF;
+
+  -- Guard against paying remainder or full on already fully paid orders
+  IF p_payment_type IN ('full', 'remainder') AND p_status = 'confirmed' AND v_current_deposit >= v_current_total THEN
+    RAISE EXCEPTION 'الطلب مدفوع بالكامل مسبقاً · Order is already paid in full';
   END IF;
 
   -- Calculate current net confirmed payments from the ledger
@@ -1132,6 +1187,8 @@ DECLARE
   v_now_iso text := to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"');
   v_acknowledged_count integer := 0;
 BEGIN
+  PERFORM set_config('delish.internal_mutation', 'true', true);
+
   IF v_caller_id IS NULL THEN
     RAISE EXCEPTION 'غير مصرّح: يجب تسجيل الدخول';
   END IF;
@@ -1220,14 +1277,16 @@ RETURNS TABLE(
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   SELECT o.id, o.order_number, o.staff_code, o.customer_name, o.method,
          o.requested_date, o.requested_time, o.status, o.inscription,
-         o.design_image_url, o.notes, o.schedule_updated_at, o.last_edited_at,
+         o.design_image_url,
+         regexp_replace(o.notes, '(\+?962|0)?7[789]\d{7}', '***', 'g') AS notes,
+         o.schedule_updated_at, o.last_edited_at,
          o.created_at,
          COALESCE(
            (
              SELECT jsonb_agg(
                jsonb_build_object(
                  'id', m->>'id',
-                 'field', m->>'field',
+                 'field', regexp_replace(regexp_replace(m->>'field', '(\+?962|0)?7[789]\d{7}', '***', 'g'), '\d+(\.\d+)?\s*(د\.أ|JD|jd)', '***', 'gi'),
                  'timestamp', COALESCE(m->>'timestamp', m->>'updatedAt'),
                  'updatedAt', COALESCE(m->>'updatedAt', m->>'timestamp'),
                  'staff_name', m->>'staff_name',
@@ -1236,12 +1295,18 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
                  'acknowledgedBy', m->>'acknowledgedBy',
                  'acknowledgedByName', m->>'acknowledgedByName',
                  'oldValue', CASE 
-                   WHEN m->>'field' ~* '(phone|هاتف|جوال|total|إجمالي|subtotal|مجموع|deposit|عربون|مدفوع|discount|خصم)' THEN '***'
-                   ELSE COALESCE(m->>'oldValue', m->>'old_value')
+                   WHEN m->>'field' ~* '(phone|هاتف|جوال|total|إجمالي|subtotal|مجموع|deposit|عربون|مدفوع|discount|خصم|سعر|price|النسخة الأصلية|الطلب الأساسي)' THEN '***'
+                   ELSE regexp_replace(
+                     regexp_replace(COALESCE(m->>'oldValue', m->>'old_value', ''), '(\+?962|0)?7[789]\d{7}', '***', 'g'),
+                     '\d+(\.\d+)?\s*(د\.أ|JD|jd)', '***', 'gi'
+                   )
                  END,
                  'newValue', CASE 
-                   WHEN m->>'field' ~* '(phone|هاتف|جوال|total|إجمالي|subtotal|مجموع|deposit|عربون|مدفوع|discount|خصم)' THEN '***'
-                   ELSE COALESCE(m->>'newValue', m->>'new_value')
+                   WHEN m->>'field' ~* '(phone|هاتف|جوال|total|إجمالي|subtotal|مجموع|deposit|عربون|مدفوع|discount|خصم|سعر|price|النسخة الأصلية|الطلب الأساسي)' THEN '***'
+                   ELSE regexp_replace(
+                     regexp_replace(COALESCE(m->>'newValue', m->>'new_value', ''), '(\+?962|0)?7[789]\d{7}', '***', 'g'),
+                     '\d+(\.\d+)?\s*(د\.أ|JD|jd)', '***', 'gi'
+                   )
                  END
                )
              )
@@ -1295,6 +1360,8 @@ DECLARE
   v_caller_id uuid := auth.uid();
   v_current_status text;
 BEGIN
+  PERFORM set_config('delish.internal_mutation', 'true', true);
+
   IF v_caller_id IS NULL THEN
     RAISE EXCEPTION 'غير مصرّح: يجب تسجيل الدخول';
   END IF;
@@ -1350,6 +1417,8 @@ DECLARE
   v_updated_mods jsonb;
   v_version integer;
 BEGIN
+  PERFORM set_config('delish.internal_mutation', 'true', true);
+
   IF v_caller_id IS NULL THEN
     RAISE EXCEPTION 'غير مصرّح: يجب تسجيل الدخول';
   END IF;
@@ -1416,12 +1485,28 @@ CREATE OR REPLACE FUNCTION public.record_staff_audit(
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
   v_caller_id uuid := auth.uid();
+  v_verified_name text;
 BEGIN
+  IF v_caller_id IS NULL THEN
+    RAISE EXCEPTION 'غير مصرّح: يجب تسجيل الدخول';
+  END IF;
+
+  IF NOT (
+    private.has_role(v_caller_id, 'admin') OR
+    private.has_role(v_caller_id, 'sales') OR
+    private.has_role(v_caller_id, 'social') OR
+    private.has_role(v_caller_id, 'kitchen')
+  ) THEN
+    RAISE EXCEPTION 'غير مصرّح: لا تملك صلاحية تسجيل سجلات التدقيق';
+  END IF;
+
+  SELECT email INTO v_verified_name FROM auth.users WHERE id = v_caller_id;
+
   INSERT INTO public.audit_logs (
     order_id, order_number, staff_user_id, staff_name,
     action, original_amount, modified_amount, discount_percent, reason
   ) VALUES (
-    _order_id, _order_number, v_caller_id, _staff_name,
+    _order_id, _order_number, v_caller_id, COALESCE(NULLIF(trim(_staff_name), ''), v_verified_name, 'موظف'),
     _action, _original_amount, _modified_amount, _discount_percent, _reason
   );
 END;
@@ -1481,7 +1566,12 @@ CREATE OR REPLACE FUNCTION public.update_order_item_atomic(
   p_quantity integer DEFAULT NULL,
   p_expected_version integer DEFAULT NULL,
   p_staff_name text DEFAULT NULL,
-  p_reason text DEFAULT NULL
+  p_reason text DEFAULT NULL,
+  p_name_ar text DEFAULT NULL,
+  p_name_en text DEFAULT NULL,
+  p_options_ar text[] DEFAULT NULL,
+  p_options_en text[] DEFAULT NULL,
+  p_notes text DEFAULT NULL
 )
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
@@ -1490,6 +1580,7 @@ DECLARE
   v_old_unit_price numeric;
   v_old_quantity integer;
   v_item_name text;
+  v_product_id uuid;
   v_new_subtotal numeric;
   v_delivery_fee numeric;
   v_discount_amount numeric;
@@ -1501,11 +1592,13 @@ DECLARE
   v_order_num text;
   v_result jsonb;
 BEGIN
+  PERFORM set_config('delish.internal_mutation', 'true', true);
+
   IF v_caller_id IS NULL THEN
     RAISE EXCEPTION 'غير مصرّح: يجب تسجيل الدخول';
   END IF;
 
-  IF NOT (private.has_role(v_caller_id, 'admin') OR private.has_role(v_caller_id, 'sales')) THEN
+  IF NOT (private.has_role(v_caller_id, 'admin') OR private.has_role(v_caller_id, 'sales') OR private.has_role(v_caller_id, 'social')) THEN
     RAISE EXCEPTION 'غير مصرّح: لا تملك صلاحية تعديل بنود الطلبات';
   END IF;
 
@@ -1530,14 +1623,31 @@ BEGIN
   END IF;
 
   -- Fetch & lock item
-  SELECT unit_price, quantity, name_ar
-  INTO v_old_unit_price, v_old_quantity, v_item_name
+  SELECT unit_price, quantity, name_ar, product_id
+  INTO v_old_unit_price, v_old_quantity, v_item_name, v_product_id
   FROM public.order_items
   WHERE id = p_item_id AND order_id = p_order_id
   FOR UPDATE;
 
   IF NOT FOUND THEN
     RAISE EXCEPTION 'البند غير موجود في الطلب';
+  END IF;
+
+  -- Check per-product price edit permission if caller is not admin
+  IF NOT private.has_role(v_caller_id, 'admin') AND p_unit_price IS DISTINCT FROM v_old_unit_price THEN
+    IF v_product_id IS NOT NULL THEN
+      DECLARE
+        v_can_edit boolean := true;
+      BEGIN
+        SELECT can_edit_price INTO v_can_edit
+        FROM public.sales_product_permissions
+        WHERE user_id = v_caller_id AND product_id = v_product_id;
+
+        IF FOUND AND NOT v_can_edit THEN
+          RAISE EXCEPTION 'غير مصرّح: لا تملك صلاحية تعديل سعر هذا المنتج';
+        END IF;
+      END;
+    END IF;
   END IF;
 
   v_new_quantity := COALESCE(p_quantity, v_old_quantity);
@@ -1548,7 +1658,12 @@ BEGIN
   -- Update item
   UPDATE public.order_items
   SET unit_price = p_unit_price,
-      quantity = v_new_quantity
+      quantity = v_new_quantity,
+      name_ar = COALESCE(p_name_ar, name_ar),
+      name_en = COALESCE(p_name_en, name_en),
+      options_ar = COALESCE(p_options_ar, options_ar),
+      options_en = COALESCE(p_options_en, options_en),
+      notes = COALESCE(p_notes, notes)
   WHERE id = p_item_id;
 
   -- Recalculate subtotal
@@ -1566,7 +1681,7 @@ BEGIN
   -- Build modification entry
   v_mod_entry := jsonb_build_object(
     'id', gen_random_uuid()::text,
-    'field', 'تعديل صنف: ' || v_item_name,
+    'field', 'تعديل صنف: ' || COALESCE(p_name_ar, v_item_name),
     'oldValue', v_old_unit_price::text || ' د.أ (كمية: ' || v_old_quantity::text || ')',
     'newValue', p_unit_price::text || ' د.أ (كمية: ' || v_new_quantity::text || ')',
     'staff_name', COALESCE(p_staff_name, 'موظف مبيعات'),
@@ -1596,7 +1711,7 @@ BEGIN
   ) VALUES (
     p_order_id, v_order_num, v_caller_id, COALESCE(p_staff_name, 'موظف مبيعات'),
     'item_price_update', v_old_unit_price, p_unit_price,
-    COALESCE(p_reason, 'تعديل سعر/كمية الصنف: ' || v_item_name)
+    COALESCE(p_reason, 'تعديل سعر/كمية الصنف: ' || COALESCE(p_name_ar, v_item_name))
   );
 
   RETURN v_result;
@@ -1629,12 +1744,35 @@ DECLARE
   v_now_iso text := to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"');
   v_result jsonb;
 BEGIN
+  PERFORM set_config('delish.internal_mutation', 'true', true);
+
   IF v_caller_id IS NULL THEN
     RAISE EXCEPTION 'غير مصرّح: يجب تسجيل الدخول';
   END IF;
 
   IF NOT (private.has_role(v_caller_id, 'admin') OR private.has_role(v_caller_id, 'sales')) THEN
     RAISE EXCEPTION 'غير مصرّح: لا تملك صلاحية منح الخصومات';
+  END IF;
+
+  -- Staff permissions enforcement for non-admin
+  IF NOT private.has_role(v_caller_id, 'admin') THEN
+    DECLARE
+      v_allow_custom_discount boolean := false;
+      v_max_discount numeric := 0;
+    BEGIN
+      SELECT allow_custom_discount, max_discount_percent
+      INTO v_allow_custom_discount, v_max_discount
+      FROM public.staff_permissions
+      WHERE user_id = v_caller_id;
+
+      IF NOT FOUND OR NOT COALESCE(v_allow_custom_discount, false) THEN
+        RAISE EXCEPTION 'غير مصرّح: لا تملك صلاحية تطبيق الخصم';
+      END IF;
+
+      IF p_discount_percent > COALESCE(v_max_discount, 0) THEN
+        RAISE EXCEPTION 'نسبة الخصم المطلوبة (%) تتجاوز الحد المسموح لك (%)', p_discount_percent, v_max_discount;
+      END IF;
+    END;
   END IF;
 
   IF p_discount_amount < 0 OR p_discount_percent < 0 THEN
@@ -1698,13 +1836,206 @@ REVOKE ALL ON FUNCTION public.apply_order_discount_atomic FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.apply_order_discount_atomic TO authenticated;
 
 
+-- O. Submit Customer Order Edit Atomic
+CREATE OR REPLACE FUNCTION public.submit_customer_order_edit_atomic(
+  p_token text,
+  p_notes text DEFAULT NULL,
+  p_inscription text DEFAULT NULL,
+  p_customer_phone text DEFAULT NULL,
+  p_requested_date date DEFAULT NULL,
+  p_requested_time time without time zone DEFAULT NULL
+)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v_token_hash text;
+  v_token_row record;
+  v_order record;
+  v_now timestamptz := now();
+  v_now_iso text := to_char(v_now AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"');
+  v_schedule_changed boolean := false;
+  v_diffs jsonb := '[]'::jsonb;
+  v_has_baseline boolean := false;
+  v_mod jsonb;
+  v_updated_mods jsonb;
+  v_result jsonb;
+BEGIN
+  IF p_token IS NULL OR length(trim(p_token)) < 32 THEN
+    RAISE EXCEPTION 'رابط غير صالح · Invalid link';
+  END IF;
+
+  v_token_hash := encode(digest(p_token, 'sha256'), 'hex');
+
+  -- Lock token
+  SELECT id, order_id, expires_at, used_at
+  INTO v_token_row
+  FROM public.order_edit_tokens
+  WHERE token_hash = v_token_hash
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'رابط غير صالح · Invalid link';
+  END IF;
+
+  IF v_token_row.used_at IS NOT NULL THEN
+    RAISE EXCEPTION 'تم استخدام هذا الرابط · This link has already been used';
+  END IF;
+
+  IF v_token_row.expires_at < v_now THEN
+    RAISE EXCEPTION 'انتهت صلاحية الرابط · This link has expired';
+  END IF;
+
+  -- Lock order
+  SELECT *
+  INTO v_order
+  FROM public.orders
+  WHERE id = v_token_row.order_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'الطلب غير موجود · Order not found';
+  END IF;
+
+  -- Mark token as used
+  UPDATE public.order_edit_tokens
+  SET used_at = v_now
+  WHERE id = v_token_row.id;
+
+  -- Check if baseline is needed
+  FOR v_mod IN SELECT * FROM jsonb_array_elements(COALESCE(v_order.modifications, '[]'::jsonb)) LOOP
+    IF (v_mod->>'field') ~* '(الطلب الأساسي|النسخة الأصلية)' THEN
+      v_has_baseline := true;
+      EXIT;
+    END IF;
+  END LOOP;
+
+  IF NOT v_has_baseline THEN
+    v_diffs := v_diffs || jsonb_build_array(jsonb_build_object(
+      'id', gen_random_uuid()::text,
+      'field', 'الطلب الأساسي (النسخة الأصلية عند الإنشاء)',
+      'oldValue', 'الطلب الأصلي تم إنشاؤه عبر النظام',
+      'newValue', 'تم إجراء أول تعديل على هذا الطلب عبر رابط العميل',
+      'staff_name', 'العميل (عبر الرابط)',
+      'timestamp', v_now_iso,
+      'updatedAt', v_now_iso,
+      'acknowledged', false,
+      'acknowledgedAt', null
+    ));
+  END IF;
+
+  -- Schedule diffs
+  IF p_requested_date IS NOT NULL AND p_requested_date <> v_order.requested_date THEN
+    v_schedule_changed := true;
+    v_diffs := v_diffs || jsonb_build_array(jsonb_build_object(
+      'id', gen_random_uuid()::text,
+      'field', 'تاريخ الاستلام/التوصيل (رابط الزبون)',
+      'oldValue', COALESCE(v_order.requested_date::text, 'غير محدد'),
+      'newValue', p_requested_date::text,
+      'staff_name', 'العميل (عبر الرابط)',
+      'timestamp', v_now_iso,
+      'updatedAt', v_now_iso,
+      'acknowledged', false,
+      'acknowledgedAt', null
+    ));
+  END IF;
+
+  IF p_requested_time IS NOT NULL AND p_requested_time <> v_order.requested_time THEN
+    v_schedule_changed := true;
+    v_diffs := v_diffs || jsonb_build_array(jsonb_build_object(
+      'id', gen_random_uuid()::text,
+      'field', 'وقت الاستلام/التوصيل (رابط الزبون)',
+      'oldValue', COALESCE(to_char(v_order.requested_time, 'HH24:MI'), 'غير محدد'),
+      'newValue', to_char(p_requested_time, 'HH24:MI'),
+      'staff_name', 'العميل (عبر الرابط)',
+      'timestamp', v_now_iso,
+      'updatedAt', v_now_iso,
+      'acknowledged', false,
+      'acknowledgedAt', null
+    ));
+  END IF;
+
+  IF p_inscription IS NOT NULL AND trim(p_inscription) <> COALESCE(trim(v_order.inscription), '') THEN
+    v_diffs := v_diffs || jsonb_build_array(jsonb_build_object(
+      'id', gen_random_uuid()::text,
+      'field', 'الكتابة على الكيك (رابط الزبون)',
+      'oldValue', COALESCE(NULLIF(trim(v_order.inscription), ''), 'بدون كتابة'),
+      'newValue', COALESCE(NULLIF(trim(p_inscription), ''), 'بدون كتابة'),
+      'staff_name', 'العميل (عبر الرابط)',
+      'timestamp', v_now_iso,
+      'updatedAt', v_now_iso,
+      'acknowledged', false,
+      'acknowledgedAt', null
+    ));
+  END IF;
+
+  IF p_notes IS NOT NULL AND trim(p_notes) <> COALESCE(trim(v_order.notes), '') THEN
+    v_diffs := v_diffs || jsonb_build_array(jsonb_build_object(
+      'id', gen_random_uuid()::text,
+      'field', 'ملاحظات الطلب (رابط الزبون)',
+      'oldValue', COALESCE(NULLIF(trim(v_order.notes), ''), 'بدون ملاحظات'),
+      'newValue', COALESCE(NULLIF(trim(p_notes), ''), 'بدون ملاحظات'),
+      'staff_name', 'العميل (عبر الرابط)',
+      'timestamp', v_now_iso,
+      'updatedAt', v_now_iso,
+      'acknowledged', false,
+      'acknowledgedAt', null
+    ));
+  END IF;
+
+  IF p_customer_phone IS NOT NULL AND trim(p_customer_phone) <> '' AND trim(p_customer_phone) <> COALESCE(trim(v_order.customer_phone), '') THEN
+    v_diffs := v_diffs || jsonb_build_array(jsonb_build_object(
+      'id', gen_random_uuid()::text,
+      'field', 'رقم هاتف العميل (رابط الزبون)',
+      'oldValue', COALESCE(trim(v_order.customer_phone), 'غير محدد'),
+      'newValue', trim(p_customer_phone),
+      'staff_name', 'العميل (عبر الرابط)',
+      'timestamp', v_now_iso,
+      'updatedAt', v_now_iso,
+      'acknowledged', false,
+      'acknowledgedAt', null
+    ));
+  END IF;
+
+  v_updated_mods := COALESCE(v_order.modifications, '[]'::jsonb) || v_diffs;
+
+  PERFORM set_config('delish.internal_mutation', 'true', true);
+
+  UPDATE public.orders
+  SET
+    notes = COALESCE(p_notes, notes),
+    inscription = COALESCE(p_inscription, inscription),
+    customer_phone = COALESCE(NULLIF(trim(p_customer_phone), ''), customer_phone),
+    requested_date = COALESCE(p_requested_date, requested_date),
+    requested_time = COALESCE(p_requested_time, requested_time),
+    schedule_updated_at = CASE WHEN v_schedule_changed THEN v_now ELSE schedule_updated_at END,
+    last_edited_at = v_now,
+    modifications = v_updated_mods,
+    version = COALESCE(version, 1) + 1
+  WHERE id = v_order.id
+  RETURNING row_to_json(orders.*) INTO v_result;
+
+  INSERT INTO public.audit_logs (
+    order_id, order_number, staff_user_id, staff_name,
+    action, reason
+  ) VALUES (
+    v_order.id, v_order.order_number, NULL, 'العميل (عبر رابط التعديل)',
+    'customer_order_edit', 'تعديل بيانات الطلب عبر رابط العميل الموحّد'
+  );
+
+  RETURN v_result;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.submit_customer_order_edit_atomic FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.submit_customer_order_edit_atomic TO service_role;
+
+
 -- ==============================================================================
 -- 14. INITIAL BOOTSTRAP SEEDS (STORE SETTINGS & BANNER)
 -- ==============================================================================
 
 -- Seed default store settings (singleton)
 INSERT INTO public.store_settings (singleton, store_name, cliq_alias, contact_phone, card_color_palette)
-VALUES (true, 'Delish Cake & Bake', 'DELISHBAKES', '+962790000000', 'soft_green')
+VALUES (true, 'Delish Cake & Bake', 'DELISHBAKES', '+962790000000', 'gold')
 ON CONFLICT (singleton) DO NOTHING;
 
 -- Seed default storefront banner

@@ -338,7 +338,7 @@ export function ModificationsPanel({
   });
 
   const discount = useMutation({
-    mutationFn: (input: { orderId: string; percent: number; reason: string }) =>
+    mutationFn: (input: { orderId: string; percent: number; reason: string; expectedVersion?: number | null }) =>
       discountFn({ data: input }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ORDERS_KEY });
@@ -626,8 +626,13 @@ export function ModificationsPanel({
               onPatch={(patch) => save.mutate({ orderId: selected.id, ...patch })}
               onItemPatch={(patch) => saveItem.mutate({ orderId: selected.id, ...patch })}
               onReplaceItems={(lines) => rebuild.mutate({ orderId: selected.id, lines })}
-              onDiscount={(percent, reason) =>
-                discount.mutate({ orderId: selected.id, percent, reason })
+              onDiscount={(percent, reason, expectedVersion) =>
+                discount.mutate({
+                  orderId: selected.id,
+                  percent,
+                  reason,
+                  ...(expectedVersion !== undefined ? { expectedVersion } : {}),
+                })
               }
               onFinishEdit={handleFinishEdit}
             />
@@ -677,7 +682,7 @@ function MasterOrderEditor({
   onPatch: (patch: Omit<OrderPatch, "orderId">) => void;
   onItemPatch: (patch: Omit<OrderItemPatch, "orderId">) => void;
   onReplaceItems: (lines: RebuildLine[]) => void;
-  onDiscount: (percent: number, reason: string) => void;
+  onDiscount: (percent: number, reason: string, expectedVersion?: number | null) => void;
   onFinishEdit: (patch: Omit<OrderPatch, "orderId">) => Promise<void> | void;
 }) {
   const [itemsMode, setItemsMode] = useState<"cards" | "builder">("cards");
@@ -687,7 +692,23 @@ function MasterOrderEditor({
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isFinishing, setIsFinishing] = useState(false);
   const initialVersionRef = useRef<number>(order.version || 1);
-  const hasConcurrentConflict = (order.version || 1) > initialVersionRef.current;
+  const pendingSelfMutationRef = useRef(false);
+  const currentOrderIdRef = useRef(order.id);
+
+  if (currentOrderIdRef.current !== order.id) {
+    currentOrderIdRef.current = order.id;
+    initialVersionRef.current = order.version || 1;
+    pendingSelfMutationRef.current = false;
+  }
+
+  useEffect(() => {
+    if (pendingSelfMutationRef.current) {
+      initialVersionRef.current = order.version || 1;
+      pendingSelfMutationRef.current = false;
+    }
+  }, [order.version]);
+
+  const hasConcurrentConflict = !pendingSelfMutationRef.current && (order.version || 1) > initialVersionRef.current;
 
   const [isProcessingQuickPayment, setIsProcessingQuickPayment] = useState(false);
   const quickPaymentIdempotencyKeyRef = useRef<string>(crypto.randomUUID());
@@ -696,6 +717,7 @@ function MasterOrderEditor({
   const handleQuickAddPayment = async (amount: number, type: "deposit" | "remainder" | "full" = "remainder") => {
     if (amount <= 0 || isProcessingQuickPayment) return;
     setIsProcessingQuickPayment(true);
+    pendingSelfMutationRef.current = true;
     try {
       await recordPaymentServer({
         data: {
@@ -710,10 +732,26 @@ function MasterOrderEditor({
       quickPaymentIdempotencyKeyRef.current = crypto.randomUUID();
       toast.success(`تم تسجيل دفعة بقيمة ${jd(amount)} في سجل الحركات المالية بنجاح ✅`);
     } catch (err: any) {
+      pendingSelfMutationRef.current = false;
       toast.error(err?.message || "تعذّر تسجيل الدفعة");
     } finally {
       setIsProcessingQuickPayment(false);
     }
+  };
+
+  const handleItemPatch = (patch: Omit<OrderItemPatch, "orderId">) => {
+    pendingSelfMutationRef.current = true;
+    onItemPatch({ ...patch, expectedVersion: initialVersionRef.current });
+  };
+
+  const handleDiscount = (percent: number, reason: string) => {
+    pendingSelfMutationRef.current = true;
+    onDiscount(percent, reason, initialVersionRef.current);
+  };
+
+  const handleReplaceItems = (lines: RebuildLine[]) => {
+    pendingSelfMutationRef.current = true;
+    onReplaceItems(lines);
   };
 
   // Form State
@@ -843,27 +881,39 @@ function MasterOrderEditor({
               تم تحديث هذا الطلب في الخلفية بواسطة موظف آخر (إصدار الخادم: {order.version}، إصدارك الحالي: {initialVersionRef.current}).
             </span>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              initialVersionRef.current = order.version ?? 1;
-              setOrderName(order.order_name ?? "");
-              setCustomerName(order.customer_name);
-              setCustomerPhone(order.customer_phone);
-              setDate(order.requested_date);
-              setTime(order.requested_time.slice(0, 5));
-              setAddress(order.address ?? "");
-              setInscription(order.inscription ?? "");
-              setCardNote(order.card_note ?? "");
-              setNotes(order.notes ?? "");
-              setStaffNotes(order.staff_notes ?? "");
-              setDeposit(String(order.deposit_paid));
-              toast.info("تمت مزامنة حقول التعديل مع أحدث نسخة بنجاح ✅");
-            }}
-            className="rounded-xl bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 font-black text-xs cursor-pointer shadow-xs"
-          >
-            تحديث ومزامنة البيانات الآن
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                initialVersionRef.current = order.version ?? 1;
+                toast.success("تم تحديث مرجع النسخة مع الحفاظ على مدخلاتك الحالية، يمكنك المتابعة والحفظ الآن ✅");
+              }}
+              className="rounded-xl bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 font-black text-xs cursor-pointer shadow-xs"
+            >
+              مزامنة النسخة ومتابعة الحفظ
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                initialVersionRef.current = order.version ?? 1;
+                setOrderName(order.order_name ?? "");
+                setCustomerName(order.customer_name);
+                setCustomerPhone(order.customer_phone);
+                setDate(order.requested_date);
+                setTime(order.requested_time.slice(0, 5));
+                setAddress(order.address ?? "");
+                setInscription(order.inscription ?? "");
+                setCardNote(order.card_note ?? "");
+                setNotes(order.notes ?? "");
+                setStaffNotes(order.staff_notes ?? "");
+                setDeposit(String(order.deposit_paid));
+                toast.info("تمت إعادة تحميل بيانات الخادم ومسح المدخلات المحلية");
+              }}
+              className="rounded-xl bg-background/80 hover:bg-background text-foreground border border-input px-3 py-1.5 font-bold text-xs cursor-pointer"
+            >
+              استرجاع بيانات الخادم
+            </button>
+          </div>
         </div>
       )}
 
@@ -1323,7 +1373,7 @@ function MasterOrderEditor({
                   key={item.id}
                   item={item}
                   products={products}
-                  onItemPatch={onItemPatch}
+                  onItemPatch={handleItemPatch}
                   onOpenSheet={() => {
                     setActiveSheetItem(item);
                     setIsSheetOpen(true);
@@ -1343,7 +1393,7 @@ function MasterOrderEditor({
                         options: it.options_ar,
                         notes: it.notes ?? null,
                       }));
-                    onReplaceItems(remainingLines);
+                    handleReplaceItems(remainingLines);
                   }}
                 />
               ))}
@@ -1372,7 +1422,7 @@ function MasterOrderEditor({
           products={products}
           onSave={(payload) => {
             if (activeSheetItem) {
-              onItemPatch({
+              handleItemPatch({
                 itemId: activeSheetItem.id,
                 name: payload.name,
                 quantity: payload.quantity,
@@ -1540,7 +1590,7 @@ function MasterOrderEditor({
                   />
                   <button
                     type="button"
-                    onClick={() => onDiscount(Number(discountPercent) || 0, discountReason)}
+                    onClick={() => handleDiscount(Number(discountPercent) || 0, discountReason)}
                     className="sm:col-span-3 min-h-10 rounded-xl bg-primary px-3 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition cursor-pointer"
                   >
                     تطبيق الخصم على الطلب · Apply Discount

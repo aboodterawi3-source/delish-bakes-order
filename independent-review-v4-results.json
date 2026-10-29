@@ -1,0 +1,354 @@
+{
+  "environment": "PostgreSQL/PGlite with represented Auth, Storage and legacy default grants. No live Supabase or real parallel-connection test.",
+  "result": [
+    {
+      "kind": "fixed",
+      "name": "Complete delivered schema executes verbatim twice with one settings row and one baseline banner",
+      "verified": true,
+      "evidence": {
+        "settings": 1,
+        "banners": 1
+      }
+    },
+    {
+      "kind": "fixed",
+      "name": "New keyed staff order and idempotent retry succeed",
+      "verified": true,
+      "evidence": {
+        "total": 20,
+        "same_id": true,
+        "duplicate": true
+      }
+    },
+    {
+      "kind": "fixed",
+      "name": "New keyed storefront order succeeds as service_role",
+      "verified": true,
+      "evidence": {
+        "id": "e9c8f11a-2cc5-47be-8257-a4072196db18",
+        "total": 23,
+        "subtotal": 20,
+        "delivery_fee": 3,
+        "is_duplicate": false,
+        "order_number": "DL-1002"
+      }
+    },
+    {
+      "kind": "fixed",
+      "name": "Storefront RPC execution is removed from anon and authenticated even with legacy default grants",
+      "verified": true,
+      "evidence": {
+        "anon": false,
+        "authenticated": false,
+        "service_role": true
+      }
+    },
+    {
+      "kind": "fixed",
+      "name": "Pending payment leaves paid balance and order version unchanged",
+      "verified": true,
+      "evidence": {
+        "total": 20,
+        "version": 1,
+        "order_id": "b3d085af-33cd-4135-8ac0-84d7f07f599c",
+        "remaining": 20,
+        "refund_due": 0,
+        "deposit_paid": 0,
+        "is_duplicate": false
+      }
+    },
+    {
+      "kind": "fixed",
+      "name": "25 payment then 5 refund settles 20 total and extra refund is refused",
+      "verified": true,
+      "evidence": {
+        "total": "20.00",
+        "deposit_paid": "20.00",
+        "rejection": {
+          "code": "P0001",
+          "message": "مبلغ الاسترجاع (5 د.أ) يتجاوز المبلغ المسموح باسترجاعه (0.00 د.أ) · Refund amount exceeds allowable refund"
+        }
+      }
+    },
+    {
+      "kind": "fixed",
+      "name": "Payment reuse on same order deduplicates; changed amount and other order are refused",
+      "verified": true,
+      "evidence": {
+        "duplicate": true,
+        "amount": {
+          "code": "P0001",
+          "message": "مفتاح عدم التكرار مستخدم مسبقاً لحركة مختلفة · Idempotency key conflict"
+        },
+        "order": {
+          "code": "P0001",
+          "message": "مفتاح عدم التكرار مستخدم مسبقاً لحركة مختلفة · Idempotency key conflict"
+        }
+      }
+    },
+    {
+      "kind": "fixed",
+      "name": "Kitchen cannot read raw orders or raw order_items",
+      "verified": true,
+      "evidence": {
+        "orders": 0,
+        "items": 0
+      }
+    },
+    {
+      "kind": "fixed",
+      "name": "Kitchen cannot reactivate cancelled completed delivered or dispatched order",
+      "verified": true,
+      "evidence": [
+        {
+          "code": "P0001",
+          "message": "لا يمكن تعديل حالة طلب مكتمل أو ملغى أو مسلم من قبل المطبخ (cancelleds) · Kitchen cannot modify finalized order"
+        },
+        {
+          "code": "P0001",
+          "message": "لا يمكن تعديل حالة طلب مكتمل أو ملغى أو مسلم من قبل المطبخ (completeds) · Kitchen cannot modify finalized order"
+        },
+        {
+          "code": "P0001",
+          "message": "لا يمكن تعديل حالة طلب مكتمل أو ملغى أو مسلم من قبل المطبخ (delivereds) · Kitchen cannot modify finalized order"
+        },
+        {
+          "code": "P0001",
+          "message": "لا يمكن تعديل حالة طلب مكتمل أو ملغى أو مسلم من قبل المطبخ (out_for_deliverys) · Kitchen cannot modify finalized order"
+        }
+      ]
+    },
+    {
+      "kind": "fixed",
+      "name": "Price and discount RPCs recalculate totals and reject explicit stale version",
+      "verified": true,
+      "evidence": {
+        "price_total": 30,
+        "discount_total": 25,
+        "version": 3,
+        "stale": {
+          "code": "P0001",
+          "message": "OCC_VERSION_MISMATCH: Order version changed (expected 1, current 2)"
+        }
+      }
+    },
+    {
+      "kind": "fixed",
+      "name": "Direct ledger insertion by sales is rejected by RLS",
+      "verified": true,
+      "evidence": {
+        "code": "42501",
+        "message": "new row violates row-level security policy for table \"order_payments\""
+      }
+    },
+    {
+      "kind": "verified_fixed",
+      "name": "Direct UPDATE of sensitive order columns is strictly rejected by security trigger",
+      "verified": true,
+      "evidence": {
+        "rejection": {
+          "code": "P0001",
+          "message": "Direct UPDATE of sensitive order columns (deposit_paid, original_items, modifications, subtotal, total) is prohibited. Use authorized atomic RPCs."
+        },
+        "ledger_rows": 0
+      }
+    },
+    {
+      "kind": "verified_fixed",
+      "name": "Sales without discount permission is rejected by discount RPC",
+      "verified": true,
+      "evidence": {
+        "rejection": {
+          "code": "P0001",
+          "message": "غير مصرّح: لا تملك صلاحية تطبيق الخصم"
+        }
+      }
+    },
+    {
+      "kind": "verified_fixed",
+      "name": "Item RPC enforces per-product price-edit denial",
+      "verified": true,
+      "evidence": {
+        "rejection": {
+          "code": "P0001",
+          "message": "غير مصرّح: لا تملك صلاحية تعديل سعر هذا المنتج"
+        }
+      }
+    },
+    {
+      "kind": "verified_fixed",
+      "name": "Kitchen RPC sanitizes item modifications without leaking prices",
+      "verified": true,
+      "evidence": {
+        "id": "16c57100-185b-4b08-8dee-936d8fb016bd",
+        "field": "تعديل صنف: Synthetic cake",
+        "newValue": "*** (كمية: 1)",
+        "oldValue": "*** (كمية: 1)",
+        "timestamp": "2026-10-29T16:37:47Z",
+        "updatedAt": "2026-10-29T16:37:47Z",
+        "staff_name": "موظف مبيعات",
+        "acknowledged": false,
+        "acknowledgedAt": null,
+        "acknowledgedBy": null,
+        "acknowledgedByName": null
+      }
+    },
+    {
+      "kind": "verified_fixed",
+      "name": "Free-text phone numbers and baseline amounts are strictly masked in kitchen RPC",
+      "verified": true,
+      "evidence": {
+        "notes": "Contact ***",
+        "modifications": [
+          {
+            "id": null,
+            "field": "النسخة الأصلية للطلب",
+            "newValue": "***",
+            "oldValue": "***",
+            "timestamp": "2026-10-29T13:00:00Z",
+            "updatedAt": "2026-10-29T13:00:00Z",
+            "staff_name": null,
+            "acknowledged": false,
+            "acknowledgedAt": null,
+            "acknowledgedBy": null,
+            "acknowledgedByName": null
+          }
+        ]
+      }
+    },
+    {
+      "kind": "verified_fixed",
+      "name": "Stale expected version is rejected by OCC check in item RPC",
+      "verified": true,
+      "evidence": {
+        "rejection": {
+          "code": "P0001",
+          "message": "OCC_VERSION_MISMATCH: Order version changed (expected 1, current 2)"
+        }
+      }
+    },
+    {
+      "kind": "verified_fixed",
+      "name": "Stale version in order finish is rejected by OCC conflict check",
+      "verified": true,
+      "evidence": {
+        "code": "P0001",
+        "message": "تعارض في التعديل: تم تعديل هذا الطلب مسبقاً (النسخة الحالية: 2, نسختك: 1). يرجى إعادة تحميل الطلب · Optimistic locking conflict (current: 2, expected: 1)"
+      }
+    },
+    {
+      "kind": "verified_fixed",
+      "name": "Social-only caller is authorized by item RPC",
+      "verified": true,
+      "evidence": {
+        "id": "2fae3180-d2aa-4a63-8bdf-cee934e1410a",
+        "area": null,
+        "notes": null,
+        "total": 20,
+        "method": "pickup",
+        "status": "new",
+        "address": null,
+        "version": 2,
+        "subtotal": 20,
+        "card_note": null,
+        "is_urgent": false,
+        "created_at": "2026-10-29T16:37:47.3+00:00",
+        "created_by": "00000000-0000-4000-8000-000000000002",
+        "event_date": null,
+        "order_name": null,
+        "queue_rank": null,
+        "staff_code": null,
+        "updated_at": "2026-10-29T16:37:47.3+00:00",
+        "driver_name": null,
+        "inscription": null,
+        "staff_notes": null,
+        "delivery_fee": 0,
+        "deposit_paid": 0,
+        "driver_phone": null,
+        "order_number": "DL-1017",
+        "sender_phone": null,
+        "cancel_reason": null,
+        "customer_name": "Synthetic customer",
+        "modifications": [
+          {
+            "id": "507f8e98-f550-4c92-a278-96f7c37a20a3",
+            "field": "تعديل صنف: Synthetic cake",
+            "newValue": "20 د.أ (كمية: 1)",
+            "oldValue": "20.00 د.أ (كمية: 1)",
+            "timestamp": "2026-10-29T16:37:47Z",
+            "updatedAt": "2026-10-29T16:37:47Z",
+            "staff_name": "موظف مبيعات",
+            "acknowledged": false,
+            "acknowledgedAt": null
+          }
+        ],
+        "customer_phone": "0790000000",
+        "last_edited_at": "2026-10-29T16:37:47.306+00:00",
+        "last_edited_by": "00000000-0000-4000-8000-000000000004",
+        "original_items": [
+          {
+            "name_ar": "Synthetic cake",
+            "name_en": "Synthetic cake",
+            "quantity": 1,
+            "unit_price": 20
+          }
+        ],
+        "payment_method": null,
+        "recipient_name": null,
+        "requested_date": "2026-11-01",
+        "requested_time": "14:00:00",
+        "discount_amount": 0,
+        "recipient_phone": null,
+        "design_image_url": null,
+        "discount_percent": 0,
+        "client_request_id": "social-regression",
+        "receipt_image_url": null,
+        "payment_receipt_url": null,
+        "schedule_updated_at": null,
+        "confirmation_message": null,
+        "final_photo_requested": false
+      }
+    },
+    {
+      "kind": "verified_fixed",
+      "name": "Second full payment on already settled order is rejected",
+      "verified": true,
+      "evidence": {
+        "total": "20.00",
+        "deposit_paid": "20.00",
+        "rejection": {
+          "code": "P0001",
+          "message": "الطلب مدفوع بالكامل مسبقاً · Order is already paid in full"
+        }
+      }
+    },
+    {
+      "kind": "verified_fixed",
+      "name": "Payment idempotency key conflict rejects changed status or payment method",
+      "verified": true,
+      "evidence": {
+        "rejection": {
+          "code": "P0001",
+          "message": "مفتاح عدم التكرار مستخدم مسبقاً لحركة مختلفة · Idempotency key conflict"
+        }
+      }
+    },
+    {
+      "kind": "verified_fixed",
+      "name": "Authenticated nonstaff user is rejected by staff audit RPC",
+      "verified": true,
+      "evidence": {
+        "code": "P0001",
+        "message": "غير مصرّح: لا تملك صلاحية تسجيل سجلات التدقيق"
+      }
+    },
+    {
+      "kind": "verified_fixed",
+      "name": "Storefront banner remains stable without duplicates on repeated seed execution",
+      "verified": true,
+      "evidence": {
+        "banners": 1
+      }
+    }
+  ]
+}

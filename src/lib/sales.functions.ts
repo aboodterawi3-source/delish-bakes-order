@@ -774,6 +774,7 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
 export type OrderItemPatch = {
   itemId: string;
   orderId: string;
+  expectedVersion?: number | null;
   newUnitPrice?: number;
   quantity?: number;
   name?: string;
@@ -959,29 +960,19 @@ export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
       p_item_id: data.itemId,
       p_unit_price: newPrice,
       p_quantity: newQty,
-      p_expected_version: null,
+      p_expected_version: data.expectedVersion !== undefined ? data.expectedVersion : null,
       p_staff_name: staffName(context as never),
       p_reason: `تعديل صنف: ${data.name || before.name_ar}`,
+      p_name_ar: data.name ?? null,
+      p_name_en: data.name ?? null,
+      p_options_ar: data.options ? (data.options as never) : null,
+      p_options_en: data.options ? (data.options as never) : null,
+      p_notes: data.notes ?? null,
     });
 
     if (rpcError) {
       logServerError("sales.updateSalesOrderItemPrice.rpc", rpcError);
       throw new Error(rpcError.message);
-    }
-
-    // If options or name were also edited, patch them on order_items
-    const textPatch: Record<string, unknown> = {};
-    if (data.name !== undefined) {
-      textPatch["name_ar"] = data.name;
-      textPatch["name_en"] = data.name;
-    }
-    if (data.notes !== undefined) textPatch["notes"] = data.notes;
-    if (data.options !== undefined) {
-      textPatch["options_ar"] = data.options;
-      textPatch["options_en"] = data.options;
-    }
-    if (Object.keys(textPatch).length > 0) {
-      await context.supabase.from("order_items").update(textPatch as never).eq("id", data.itemId);
     }
 
     const { data: updatedOrder, error: orderError } = await context.supabase

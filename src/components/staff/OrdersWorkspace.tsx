@@ -291,6 +291,9 @@ export function OrdersWorkspace({
   });
 
   const recordPaymentServer = useServerFn(recordOrderPayment);
+  const quickCollectKeyMap = useRef<Map<string, string>>(new Map());
+  const [collectingOrderId, setCollectingOrderId] = useState<string | null>(null);
+
   const recordPaymentMutation = useMutation({
     mutationFn: (variables: {
       orderId: string;
@@ -690,9 +693,18 @@ export function OrdersWorkspace({
               onZoom={setZoomImage}
               onMove={onMove}
               onEditOrder={onEditOrder}
+              isCollecting={collectingOrderId === order.id}
               onQuickPaid={() => {
                 const remaining = Math.max(order.total - order.deposit_paid, 0);
-                if (remaining <= 0) return;
+                if (remaining <= 0 || collectingOrderId === order.id) return;
+
+                let stableKey = quickCollectKeyMap.current.get(order.id);
+                if (!stableKey) {
+                  stableKey = crypto.randomUUID();
+                  quickCollectKeyMap.current.set(order.id, stableKey);
+                }
+
+                setCollectingOrderId(order.id);
                 recordPaymentMutation.mutate(
                   {
                     orderId: order.id,
@@ -700,10 +712,16 @@ export function OrdersWorkspace({
                     paymentMethod: "cash",
                     paymentType: "full",
                     notes: "تحصيل سريع للمتبقي نقداً من شريط الأوامر",
+                    idempotencyKey: stableKey,
                   },
                   {
                     onSuccess: () => {
+                      quickCollectKeyMap.current.delete(order.id);
+                      setCollectingOrderId(null);
                       toast.success(`تم تسجيل تحصيل كامل المبلغ (${jd(remaining)}) نقداً في سجل الدفعات للطلب ${order.order_number} ✅`);
+                    },
+                    onError: () => {
+                      setCollectingOrderId(null);
                     },
                   }
                 );
@@ -953,6 +971,7 @@ const OrderRowCard = memo(function OrderRowCard({
   onMove,
   onEditOrder,
   onQuickPaid,
+  isCollecting,
 }: {
   order: SalesOrder;
   onOpen: (id: string) => void;
@@ -960,6 +979,7 @@ const OrderRowCard = memo(function OrderRowCard({
   onMove: (id: string, direction: -1 | 1) => void;
   onEditOrder?: ((id: string) => void) | undefined;
   onQuickPaid: () => void;
+  isCollecting?: boolean;
 }) {
   const remaining = Math.max(order.total - order.deposit_paid, 0);
   const refundDue = Math.max(order.deposit_paid - order.total, 0);
@@ -1096,11 +1116,12 @@ const OrderRowCard = memo(function OrderRowCard({
             <button
               type="button"
               onClick={onQuickPaid}
+              disabled={isCollecting}
               title="تسجيل دفع المتبقي كاملاً كاش بنقرة واحدة"
-              className="min-h-[40px] px-3.5 rounded-xl bg-emerald-600 text-white text-xs font-black shadow-2xs hover:bg-emerald-700 active:scale-95 transition flex items-center gap-1 cursor-pointer"
+              className="min-h-[40px] px-3.5 rounded-xl bg-emerald-600 text-white text-xs font-black shadow-2xs hover:bg-emerald-700 active:scale-95 transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
             >
               <CheckCircle2 className="h-3.5 w-3.5" />
-              <span>استلام {jd(remaining)} كاش</span>
+              <span>{isCollecting ? "جاري التحصيل..." : `استلام ${jd(remaining)} كاش`}</span>
             </button>
           )}
 
