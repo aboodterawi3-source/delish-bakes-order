@@ -300,7 +300,14 @@ export function OrdersWorkspace({
       paymentType?: "deposit" | "remainder" | "full" | "refund";
       referenceNumber?: string | null;
       notes?: string | null;
-    }) => recordPaymentServer({ data: variables }),
+      idempotencyKey?: string | null;
+    }) =>
+      recordPaymentServer({
+        data: {
+          ...variables,
+          idempotencyKey: variables.idempotencyKey || crypto.randomUUID(),
+        },
+      }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["sales-orders"] });
     },
@@ -1270,9 +1277,11 @@ ${collectionText}
     { key: "completed", label: "تم التسليم", icon: "✅" },
   ];
 
+  const queryClient = useQueryClient();
   const recordPaymentServer = useServerFn(recordOrderPayment);
   const handleMarkPaidInFull = (method: "cash" | "cliq" = "cash") => {
     if (remaining <= 0) return;
+    const idKey = crypto.randomUUID();
     recordPaymentServer({
       data: {
         orderId: order.id,
@@ -1280,12 +1289,13 @@ ${collectionText}
         paymentMethod: method,
         paymentType: "full",
         notes: `تسجيل استلام المتبقي كاملاً (${method === "cash" ? "كاش" : "كليك"})`,
+        idempotencyKey: idKey,
       },
     })
-      .then(() => {
-        setDeposit(liveTotal.toFixed(2));
+      .then((updatedOrder) => {
+        setDeposit(String(updatedOrder.deposit_paid));
         toast.success(`تم استلام وتسجيل كامل المبلغ ${jd(remaining)} (${method === "cash" ? "كاش" : "كليك"}) في سجل الدفعات ✅`);
-        onPatch({});
+        void queryClient.invalidateQueries({ queryKey: ORDERS_KEY });
       })
       .catch((err) => {
         toast.error(err?.message || "تعذّر تسجيل الدفعة");
@@ -1385,6 +1395,7 @@ ${collectionText}
                   type="button"
                   onClick={() => {
                     if (drawerRefundDue <= 0) return;
+                    const idKey = crypto.randomUUID();
                     recordPaymentServer({
                       data: {
                         orderId: order.id,
@@ -1392,12 +1403,13 @@ ${collectionText}
                         paymentMethod: order.payment_method || "cash",
                         paymentType: "refund",
                         notes: `تسوية إرجاع الفائض المالي للزبون`,
+                        idempotencyKey: idKey,
                       },
                     })
-                      .then(() => {
-                        setDeposit(liveTotal.toFixed(2));
+                      .then((updatedOrder) => {
+                        setDeposit(String(updatedOrder.deposit_paid));
                         toast.success(`تم تسجيل تسوية الاسترجاع للعميل بقيمة ${jd(drawerRefundDue)} في سجل الحركات المالية 🔄`);
-                        onPatch({});
+                        void queryClient.invalidateQueries({ queryKey: ORDERS_KEY });
                       })
                       .catch((err) => {
                         toast.error(err?.message || "تعذّر تسجيل الاسترجاع");

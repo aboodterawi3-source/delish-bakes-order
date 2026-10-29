@@ -317,10 +317,10 @@ export const markOrderReady = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     await assertRole(context, KITCHEN_ROLES);
-    const { error } = await context.supabase
-      .from("orders")
-      .update({ status: "ready" })
-      .eq("id", data.orderId);
+    const { error } = await context.supabase.rpc("update_kitchen_order_status" as any, {
+      p_order_id: data.orderId,
+      p_status: "ready",
+    });
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -445,10 +445,10 @@ export const setKitchenStage = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     await assertRole(context, KITCHEN_ROLES);
-    const { error } = await context.supabase
-      .from("orders")
-      .update({ status: data.stage })
-      .eq("id", data.orderId);
+    const { error } = await context.supabase.rpc("update_kitchen_order_status" as any, {
+      p_order_id: data.orderId,
+      p_status: data.stage,
+    });
     if (error) throw new Error(error.message);
     return { ok: true };
   });

@@ -47,7 +47,7 @@ import {
 import { useCliqAccounts } from "@/lib/cliq-config";
 import { convertToWebp } from "@/lib/image-webp";
 import { IMAGE_ACCEPT } from "@/lib/image-validation";
-import { uploadDesignImage } from "@/lib/design-upload.functions";
+import { uploadPaymentReceipt } from "@/lib/receipt-upload.functions";
 
 export type OrderSource = "instagram" | "whatsapp" | "messenger" | "store";
 export type CliqAccount = "mahmoud" | "shop" | "staff";
@@ -141,7 +141,7 @@ export function SocialOrderEntryForm({
   const [customErrors, setCustomErrors] = useState<CakeCustomizationErrors>({});
 
   // CliQ Receipt Upload state
-  const uploadImageFn = useServerFn(uploadDesignImage);
+  const uploadReceiptFn = useServerFn(uploadPaymentReceipt);
   const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
   const [uploadingReceipt, setUploadingReceipt] = useState(false);
   const [receiptError, setReceiptError] = useState<string | null>(null);
@@ -159,7 +159,7 @@ export function SocialOrderEntryForm({
         maxDimension: 800,
         quality: 0.8,
       });
-      const saved = await uploadImageFn({ data: { data_url: converted.dataUrl } });
+      const saved = await uploadReceiptFn({ data: { data_url: converted.dataUrl } });
       setReceiptUrl(saved.url);
       setError(null);
     } catch (err) {
@@ -402,6 +402,7 @@ export function SocialOrderEntryForm({
     mutationFn: (input: SocialOrderInput) => createFn({ data: input }),
     onSuccess: (order) => {
       isSubmittingRef.current = false;
+      draftRequestIdRef.current = crypto.randomUUID();
       setDone(order.order_number);
       setError(null);
       setSavedMessage(order.confirmation_message ?? null);

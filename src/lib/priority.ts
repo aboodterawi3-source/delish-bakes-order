@@ -93,12 +93,17 @@ export const PRIORITY_OPTIONS = PRIORITY_COLORS.map((value) => PRIORITY_META[val
 export const isPriorityColor = (value: unknown): value is PriorityColor =>
   typeof value === "string" && (PRIORITY_COLORS as readonly string[]).includes(value);
 
-/** The most urgent priority among an order's lines; base tier when empty. */
-export const highestPriority = (values: (PriorityColor | null | undefined)[]): PriorityColor => {
+/** The most urgent priority among an order's lines; base tier when empty or invalid. */
+export const highestPriority = (values: (PriorityColor | string | null | undefined)[]): PriorityColor => {
   let best: PriorityColor = BASE_PRIORITY;
+  const bestMeta = PRIORITY_META[best];
   for (const value of values) {
     if (!value) continue;
-    if (PRIORITY_META[value].rank < PRIORITY_META[best].rank) best = value;
+    const meta = isPriorityColor(value) ? PRIORITY_META[value] : undefined;
+    if (!meta) continue;
+    if (meta.rank < bestMeta.rank) {
+      best = meta.value;
+    }
   }
   return best;
 };

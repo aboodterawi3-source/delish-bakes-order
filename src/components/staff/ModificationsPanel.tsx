@@ -56,6 +56,7 @@ import { jd } from "@/lib/currency";
 import {
   getSalesOrders,
   updateSalesOrder,
+  recordOrderPayment,
   updateSalesOrderItemPrice,
   replaceSalesOrderItems,
   type RebuildLine,
@@ -687,6 +688,32 @@ function MasterOrderEditor({
   const [isFinishing, setIsFinishing] = useState(false);
   const initialVersionRef = useRef<number>(order.version || 1);
 
+  useEffect(() => {
+    if (order.version) {
+      initialVersionRef.current = order.version;
+    }
+  }, [order.version]);
+
+  const recordPaymentServer = useServerFn(recordOrderPayment);
+  const handleQuickAddPayment = async (amount: number, type: "deposit" | "remainder" | "full" = "remainder") => {
+    if (amount <= 0) return;
+    try {
+      await recordPaymentServer({
+        data: {
+          orderId: order.id,
+          amount,
+          paymentMethod: order.payment_method || "cash",
+          paymentType: type,
+          notes: `دفعة عبر استوديو التعديل (${amount} د.أ)`,
+          idempotencyKey: crypto.randomUUID(),
+        },
+      });
+      toast.success(`تم تسجيل دفعة بقيمة ${jd(amount)} في سجل الحركات المالية بنجاح ✅`);
+    } catch (err: any) {
+      toast.error(err?.message || "تعذّر تسجيل الدفعة");
+    }
+  };
+
   // Form State
   const [orderName, setOrderName] = useState(order.order_name ?? "");
   const [customerName, setCustomerName] = useState(order.customer_name);
@@ -726,7 +753,6 @@ function MasterOrderEditor({
         card_note: cardNote.trim() || null,
         notes: notes.trim() || null,
         staff_notes: staffNotes.trim() || null,
-        deposit_paid: Number(deposit) || 0,
       });
     } finally {
       setIsFinishing(false);
@@ -920,7 +946,6 @@ function MasterOrderEditor({
             <input
               value={orderName}
               onChange={(e) => setOrderName(e.target.value)}
-              onBlur={() => onPatch({ order_name: orderName.trim() || null })}
               placeholder="مثال: كيكة عيد ميلاد سارة"
               className={inputClass}
             />
@@ -931,7 +956,6 @@ function MasterOrderEditor({
             <input
               value={customerName}
               onChange={(e) => setCustomerName(e.target.value)}
-              onBlur={() => customerName.trim() && onPatch({ customer_name: customerName.trim() })}
               placeholder="الاسم الكامل"
               className={inputClass}
             />
@@ -944,9 +968,6 @@ function MasterOrderEditor({
               inputMode="tel"
               value={customerPhone}
               onChange={(e) => setCustomerPhone(e.target.value)}
-              onBlur={() =>
-                customerPhone.trim() && onPatch({ customer_phone: customerPhone.trim() })
-              }
               placeholder="07XXXXXXXX"
               className={inputClass}
             />
@@ -963,7 +984,6 @@ function MasterOrderEditor({
                 inputMode="tel"
                 value={senderPhone}
                 onChange={(e) => setSenderPhone(e.target.value)}
-                onBlur={() => onPatch({ sender_phone: senderPhone.trim() || null })}
                 placeholder="07XXXXXXXX"
                 className={inputClass}
               />
@@ -976,7 +996,6 @@ function MasterOrderEditor({
                 inputMode="tel"
                 value={recipientPhone}
                 onChange={(e) => setRecipientPhone(e.target.value)}
-                onBlur={() => onPatch({ recipient_phone: recipientPhone.trim() || null })}
                 placeholder="07XXXXXXXX"
                 className={inputClass}
               />
@@ -1060,7 +1079,6 @@ function MasterOrderEditor({
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              onBlur={() => date && onPatch({ requested_date: date })}
               className={inputClass}
             />
           </div>
@@ -1075,7 +1093,6 @@ function MasterOrderEditor({
                     type="button"
                     onClick={() => {
                       setTime(t);
-                      onPatch({ requested_time: t });
                     }}
                     className="rounded-lg bg-secondary px-2 py-0.5 hover:bg-secondary/80 font-bold"
                   >
@@ -1088,7 +1105,6 @@ function MasterOrderEditor({
               type="time"
               value={time}
               onChange={(e) => setTime(e.target.value)}
-              onBlur={() => time && onPatch({ requested_time: time })}
               className={inputClass}
             />
           </div>
@@ -1115,7 +1131,6 @@ function MasterOrderEditor({
               <input
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                onBlur={() => onPatch({ address: address.trim() || null })}
                 placeholder="الشارع، البناية، رقم الطابق، معالم قريبة"
                 className={inputClass}
               />
@@ -1142,7 +1157,6 @@ function MasterOrderEditor({
             <input
               value={inscription}
               onChange={(e) => setInscription(e.target.value)}
-              onBlur={() => onPatch({ inscription: inscription.trim() || null })}
               placeholder="مثال: Happy Birthday Sarah 🎂"
               className={inputClass}
             />
@@ -1156,7 +1170,6 @@ function MasterOrderEditor({
                 type="button"
                 onClick={() => {
                   setInscription(phrase);
-                  onPatch({ inscription: phrase });
                 }}
                 className="rounded-full border border-amber-300 bg-amber-50/80 px-2.5 py-1 text-[11px] font-bold text-amber-900 hover:bg-amber-100 transition cursor-pointer"
               >
@@ -1186,7 +1199,6 @@ function MasterOrderEditor({
               rows={3}
               value={cardNote}
               onChange={(e) => setCardNote(e.target.value)}
-              onBlur={() => onPatch({ card_note: cardNote.trim() || null })}
               placeholder="نص بطاقة المعايدة المرفقة بالهدية..."
               className={boxedTextarea}
             />
@@ -1198,7 +1210,6 @@ function MasterOrderEditor({
               rows={3}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              onBlur={() => onPatch({ notes: notes.trim() || null })}
               placeholder="حساسية طعام، تقليل سكر، تفاصيل تسليم..."
               className={boxedTextarea}
             />
@@ -1210,7 +1221,6 @@ function MasterOrderEditor({
               rows={3}
               value={staffNotes}
               onChange={(e) => setStaffNotes(e.target.value)}
-              onBlur={() => onPatch({ staff_notes: staffNotes.trim() || null })}
               placeholder="ملاحظات الموظفين (لا تطبع للعميل)..."
               className={`${boxedTextarea} bg-amber-50/50 border-amber-300`}
             />
@@ -1425,9 +1435,9 @@ function MasterOrderEditor({
                 min="0"
                 step="0.25"
                 value={deposit}
-                onChange={(e) => setDeposit(e.target.value)}
-                onBlur={() => onPatch({ deposit_paid: Number(deposit) || 0 })}
-                className={inputClass}
+                readOnly
+                disabled
+                className={`${inputClass} bg-muted cursor-not-allowed`}
               />
             </label>
 
@@ -1435,36 +1445,27 @@ function MasterOrderEditor({
             <div className="flex flex-wrap gap-1.5">
               <button
                 type="button"
-                onClick={() => {
-                  const val = (Number(deposit) || 0) + 5;
-                  setDeposit(String(val));
-                  onPatch({ deposit_paid: val });
-                }}
-                className="rounded-lg bg-secondary px-2.5 py-1 text-xs font-bold hover:bg-secondary/80"
+                onClick={() => void handleQuickAddPayment(5, "remainder")}
+                className="rounded-lg bg-secondary px-2.5 py-1 text-xs font-bold hover:bg-secondary/80 cursor-pointer"
               >
-                + 5 د.أ
+                + تسجيل 5 د.أ
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  const val = (Number(deposit) || 0) + 10;
-                  setDeposit(String(val));
-                  onPatch({ deposit_paid: val });
-                }}
-                className="rounded-lg bg-secondary px-2.5 py-1 text-xs font-bold hover:bg-secondary/80"
+                onClick={() => void handleQuickAddPayment(10, "remainder")}
+                className="rounded-lg bg-secondary px-2.5 py-1 text-xs font-bold hover:bg-secondary/80 cursor-pointer"
               >
-                + 10 د.أ
+                + تسجيل 10 د.أ
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setDeposit(String(order.total));
-                  onPatch({ deposit_paid: order.total });
-                }}
-                className="rounded-lg bg-emerald-100 text-emerald-900 border border-emerald-300 px-2.5 py-1 text-xs font-bold hover:bg-emerald-200"
-              >
-                دفع كامل المبلغ ({jd(order.total)})
-              </button>
+              {remaining > 0 && (
+                <button
+                  type="button"
+                  onClick={() => void handleQuickAddPayment(remaining, "full")}
+                  className="rounded-lg bg-emerald-100 text-emerald-900 border border-emerald-300 px-2.5 py-1 text-xs font-bold hover:bg-emerald-200 cursor-pointer"
+                >
+                  تسجيل دفع المتبقي كاملاً ({jd(remaining)})
+                </button>
+              )}
             </div>
 
             {/* Managerial Discount Box */}

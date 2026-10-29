@@ -218,13 +218,9 @@ export const createSalesOrder = createServerFn({ method: "POST" })
 
     const total = roundJod(Math.max(subtotal + deliveryFee - discountAmount, 0));
 
-    // Clamp deposit_paid: cliq/visa pay in full, and deposit can never exceed total
-    let finalDeposit = roundJod(data.deposit_paid ?? 0);
-    if (data.payment_method === "cliq" || data.payment_method === "visa") {
-      finalDeposit = total;
-    } else {
-      finalDeposit = roundJod(Math.min(Math.max(finalDeposit, 0), total));
-    }
+    // Respect cashier / customer deposit input; clamp safely between 0 and total
+    const rawDeposit = roundJod(Number(data.deposit_paid) || 0);
+    const finalDeposit = roundJod(Math.min(Math.max(rawDeposit, 0), total));
 
     const staffCode = await getStaffCodeForUser(context.supabase, context.userId);
     const requestedTime =
@@ -238,7 +234,7 @@ export const createSalesOrder = createServerFn({ method: "POST" })
           customer_name: data.customer_name.trim(),
           customer_phone: data.customer_phone.trim(),
           order_name: data.order_name?.trim() || null,
-          recipient_name: data.order_name?.trim() || null,
+          recipient_name: data.recipient_name?.trim() || data.order_name?.trim() || null,
           sender_phone: data.sender_phone?.trim() || null,
           recipient_phone: data.recipient_phone?.trim() || null,
           method: data.method,
@@ -279,59 +275,9 @@ export const createSalesOrder = createServerFn({ method: "POST" })
     if (!atomicErr && atomicResult && (atomicResult as any).id) {
       createdId = (atomicResult as any).id;
     } else {
-      const { data: order, error } = await context.supabase
-        .from("orders")
-        .insert({
-          customer_name: data.customer_name.trim(),
-          customer_phone: data.customer_phone.trim(),
-          order_name: data.order_name?.trim() || null,
-          sender_phone: data.sender_phone?.trim() || null,
-          recipient_phone: data.recipient_phone?.trim() || null,
-          method: data.method,
-          area: data.method === "delivery" ? data.area || null : null,
-          address: data.method === "delivery" ? data.address?.trim() || null : null,
-          requested_date: data.requested_date,
-          requested_time: requestedTime,
-          notes: data.notes?.trim() || null,
-          staff_notes: data.staff_notes?.trim() || null,
-          inscription: data.inscription?.trim() || null,
-          card_note: data.card_note?.trim() || null,
-          design_image_url: data.design_image_url || null,
-          payment_method: data.payment_method || null,
-          deposit_paid: finalDeposit,
-          subtotal,
-          delivery_fee: deliveryFee,
-          discount_amount: discountAmount,
-          discount_percent: discountPercent,
-          total,
-          status: "new",
-          created_by: context.userId,
-          staff_code: staffCode,
-          client_request_id: data.client_request_id || null,
-        } as never)
-        .select(SELECT)
-        .single();
-
-      if (error || !order)
-        throw new Error(error?.message || "تعذّر حفظ الطلب · Could not save order");
-
-      createdId = (order as { id: string }).id;
-
-      const { error: itemError } = await context.supabase.from("order_items").insert(
-        data.items.map((item) => ({
-          order_id: createdId,
-          product_id: item.productId || null,
-          name_ar: item.name_ar,
-          name_en: item.name_ar,
-          unit_price: item.unit_price,
-          quantity: item.quantity,
-          options_ar: item.options_ar || [],
-          options_en: item.options_ar || [],
-          notes: item.notes || null,
-        })) as never,
+      throw new Error(
+        atomicErr?.message || "تعذّر حفظ الطلب عبر الإجراء الذري · Could not save order atomically"
       );
-
-      if (itemError) throw new Error(itemError.message);
     }
 
     const { data: fullOrder, error: fetchError } = await context.supabase
@@ -1072,9 +1018,11 @@ export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
 
     const { data: currentOrder } = await context.supabase
       .from("orders")
-      .select("delivery_fee, method, discount_amount")
+      .select("version, delivery_fee, method, discount_amount")
       .eq("id", data.orderId)
       .single();
+
+    const currentVersion = Number((currentOrder as any)?.version) || 1;
 
     const deliveryFee =
       currentOrder?.method === "delivery" ? roundJod(Number(currentOrder?.delivery_fee ?? 0)) : 0;
@@ -1088,7 +1036,7 @@ export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
         total,
         last_edited_at: new Date().toISOString(),
         last_edited_by: context.userId,
-        version: ((currentOrder as any)?.version || 1) + 1,
+        version: currentVersion + 1,
         ...(newDiffs.length > 0 ? { modifications: [...currentMods, ...newDiffs] } : {}),
       } as never)
       .eq("id", data.orderId)
@@ -1216,8 +1164,7 @@ export const replaceSalesOrderItems = createServerFn({ method: "POST" })
       });
     }
 
-    const updatedMods = [
-      ...currentMods,
+    const newDiffs = [
       ...baselineDiffs,
       ...(oldSummary !== newSummary
         ? [
@@ -1230,7 +1177,7 @@ export const replaceSalesOrderItems = createServerFn({ method: "POST" })
             },
           ]
         : []),
-    ].slice(-30);
+    ];
 
     // Per-product price lock: staff denied repricing must keep the catalog price.
     const { canEditProductPrice } = await import("@/lib/permissions.functions");
@@ -1286,7 +1233,7 @@ export const replaceSalesOrderItems = createServerFn({ method: "POST" })
       p_discount_amount: discountAmount,
       p_total: total,
       p_user_id: context.userId,
-      p_new_mods: updatedMods,
+      p_new_mods: newDiffs,
     });
     if (rpcError) throw new Error(rpcError.message);
 
@@ -1329,16 +1276,18 @@ export const getShiftReport = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }): Promise<ShiftReport> => {
     await assertRole(context, SALES_ROLES);
-    // 1. Shift payments collected on this date regardless of delivery date
-    const startIso = `${data.date}T00:00:00.000Z`;
-    const endIso = `${data.date}T23:59:59.999Z`;
+    // 1. Shift payments collected on this date regardless of delivery date (Amman Asia/Amman UTC+03:00)
+    const startIso = `${data.date}T00:00:00.000+03:00`;
+    const endIso = `${data.date}T23:59:59.999+03:00`;
 
-    const { data: paymentRows } = await context.supabase
+    const { data: paymentRows, error: paymentErr } = await context.supabase
       .from("order_payments")
       .select("amount, payment_method, payment_type, status")
       .gte("created_at", startIso)
       .lte("created_at", endIso)
       .eq("status", "confirmed");
+
+    if (paymentErr) throw new Error(paymentErr.message);
 
     const buckets = new Map<PaymentMethod | "unpaid", { orders: number; collected: number }>();
     let collected = 0;
@@ -1355,10 +1304,12 @@ export const getShiftReport = createServerFn({ method: "POST" })
     }
 
     // 2. Orders scheduled for delivery on this date
-    const { data: orderRows } = await context.supabase
+    const { data: orderRows, error: orderErr } = await context.supabase
       .from("orders")
       .select("status, total, deposit_paid")
       .eq("requested_date", data.date);
+
+    if (orderErr) throw new Error(orderErr.message);
 
     let outstanding = 0;
     let cancelled = 0;
@@ -1434,10 +1385,11 @@ export const clearAllSalesOrders = createServerFn({ method: "POST" })
 export type RecordPaymentInput = {
   orderId: string;
   amount: number;
-  paymentMethod?: PaymentMethod | null;
-  paymentType?: "deposit" | "remainder" | "full" | "refund";
-  referenceNumber?: string | null;
-  notes?: string | null;
+  paymentMethod?: PaymentMethod | null | undefined;
+  paymentType?: "deposit" | "remainder" | "full" | "refund" | undefined;
+  referenceNumber?: string | null | undefined;
+  notes?: string | null | undefined;
+  idempotencyKey?: string | null | undefined;
 };
 
 /**
@@ -1459,6 +1411,7 @@ export const recordOrderPayment = createServerFn({ method: "POST" })
       paymentType: input.paymentType || "remainder",
       referenceNumber: input.referenceNumber?.trim() || null,
       notes: input.notes?.trim() || null,
+      idempotencyKey: input.idempotencyKey?.trim() || null,
     };
   })
   .handler(async ({ data, context }) => {
@@ -1475,37 +1428,11 @@ export const recordOrderPayment = createServerFn({ method: "POST" })
       p_notes: data.notes,
       p_staff_user_id: context.userId,
       p_staff_name: staffCode ? `موظف #${staffCode}` : "موظف مبيعات",
+      p_idempotency_key: data.idempotencyKey || null,
     } as any);
 
     if (error) {
-      // Direct database fallback if migration RPC is not yet created
-      const { data: existing } = await context.supabase
-        .from("orders")
-        .select("total, deposit_paid, version")
-        .eq("id", data.orderId)
-        .single();
-      if (!existing) throw new Error("الطلب غير موجود · Order not found");
-
-      const currentDeposit = Number(existing.deposit_paid ?? 0);
-      const newDeposit =
-        data.paymentType === "refund"
-          ? Math.max(currentDeposit - data.amount, 0)
-          : currentDeposit + data.amount;
-
-      const { data: updated, error: updateErr } = await context.supabase
-        .from("orders")
-        .update({
-          deposit_paid: roundJod(newDeposit),
-          version: ((existing as any).version || 1) + 1,
-          last_edited_at: new Date().toISOString(),
-          last_edited_by: context.userId,
-        } as any)
-        .eq("id", data.orderId)
-        .select(SELECT)
-        .single();
-
-      if (updateErr) throw new Error(updateErr.message);
-      return toOrder(updated as Row);
+      throw new Error(error.message || "تعذّر تسجيل الدفعة في الدفتر المالي · Could not record payment");
     }
 
     const { data: fullOrder, error: fetchErr } = await context.supabase

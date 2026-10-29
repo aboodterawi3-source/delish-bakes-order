@@ -52,7 +52,6 @@ import { OrdersCalendar } from "@/components/staff/OrdersCalendar";
 import type { SalesOrder, SalesStatus } from "@/lib/sales.functions";
 import { PRIORITY_META, type PriorityColor } from "@/lib/priority";
 import { formatTimeSlotArabic, printKitchenTicket } from "@/lib/receipt-templates";
-import bellAsset from "@/assets/Bell.mp3.asset.json";
 import { orderLabel } from "@/lib/order-label";
 import { isoDay, matchesDateFilter, type CustomRange, type DateFilterKey } from "@/lib/date-filter";
 import { formatArabicDate } from "@/lib/confirmation-message";
@@ -1083,8 +1082,6 @@ export function KitchenPanel() {
   const [zoom, setZoom] = useState<string | null>(null);
   const [selectedKitchenOrder, setSelectedKitchenOrder] = useState<KdsOrder | null>(null);
 
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-
   const enableAudio = useCallback(() => {
     try {
       const ctx = new (
@@ -1093,17 +1090,6 @@ export function KitchenPanel() {
       )();
       if (ctx.state === "suspended") {
         void ctx.resume();
-      }
-      if (audioRef.current) {
-        audioRef.current
-          .play()
-          .then(() => {
-            audioRef.current?.pause();
-            if (audioRef.current) audioRef.current.currentTime = 0;
-          })
-          .catch(() => {
-            /* ignore autoplay catch */
-          });
       }
       playKitchenChimeSound();
     } catch {
@@ -1140,16 +1126,6 @@ export function KitchenPanel() {
       window.removeEventListener("touchstart", handleFirstInteraction);
       window.removeEventListener("keydown", handleFirstInteraction);
     };
-  }, []);
-
-  useEffect(() => {
-    try {
-      const audio = new Audio(bellAsset.url);
-      audio.preload = "auto";
-      audioRef.current = audio;
-    } catch {
-      /* ignore audio error */
-    }
   }, []);
 
   const access = useQuery({
@@ -1227,15 +1203,9 @@ export function KitchenPanel() {
         }
       } else {
         try {
-          if (audioRef.current) {
-            audioRef.current.play().catch(() => {
-              playKitchenChimeSound();
-            });
-          } else {
-            playKitchenChimeSound();
-          }
-        } catch {
           playKitchenChimeSound();
+        } catch {
+          /* ignore */
         }
       }
     }

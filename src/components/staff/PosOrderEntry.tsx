@@ -362,14 +362,11 @@ export function PosOrderEntry() {
   // Automatically synchronize deposit_paid with grandTotal when full prepayment (cliq/visa) is selected
   // Respect cashier deposit input; only set to grandTotal if explicitly desired via quick buttons
 
-  // Strict mathematical clamp: deposit can never exceed grandTotal
+  // Strict mathematical clamp: deposit can never exceed grandTotal; respect cashier input
   const depositVal = useMemo(() => {
     const raw = roundJod(Number(depositPaid) || 0);
-    if (paymentMethod === "cliq" || paymentMethod === "visa") {
-      return grandTotal;
-    }
     return roundJod(Math.min(Math.max(raw, 0), grandTotal));
-  }, [depositPaid, grandTotal, paymentMethod]);
+  }, [depositPaid, grandTotal]);
 
   const totalCartCount = useMemo(() => cart.reduce((sum, it) => sum + it.quantity, 0), [cart]);
   const remainingBalance = roundJod(Math.max(grandTotal - depositVal, 0));

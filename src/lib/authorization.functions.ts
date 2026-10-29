@@ -553,7 +553,15 @@ export const submitOrderEdit = createServerFn({ method: "POST" })
         ...(newDiffs.length > 0 ? { modifications: updatedMods as any } : {}),
       } as never)
       .eq("id", row.order_id);
-    if (error) throw publicError("order-edit.update", error);
+
+    if (error) {
+      // Revert token lock so user can retry on failure
+      await supabaseAdmin
+        .from("order_edit_tokens")
+        .update({ used_at: null } as never)
+        .eq("id", row.id);
+      throw publicError("order-edit.update", error);
+    }
 
     return { ok: true };
   });

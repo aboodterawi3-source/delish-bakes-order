@@ -200,6 +200,23 @@ export const createSocialOrder = createServerFn({ method: "POST" })
     orderNumber = (atomicResult as any).order_number;
     orderTotal = Number((atomicResult as any).total ?? subtotal + deliveryFee);
 
+    const isDuplicate = Boolean((atomicResult as any).is_duplicate);
+    if (isDuplicate) {
+      // Idempotent retry: do not overwrite the confirmation message or alter previous state
+      const { data: existingOrder } = await context.supabase
+        .from("orders")
+        .select("confirmation_message, staff_code, total")
+        .eq("id", orderId)
+        .single();
+      return {
+        id: orderId,
+        order_number: orderNumber,
+        total: Number(existingOrder?.total ?? orderTotal),
+        confirmation_message: existingOrder?.confirmation_message || null,
+        staff_code: existingOrder?.staff_code ?? orderStaffCode,
+      };
+    }
+
     // Now the sequence number exists, store the message that quotes it.
     const message = template
       ? template.replace(/\{\{ORDER_NUMBER\}\}/g, orderNumber).slice(0, 8000)

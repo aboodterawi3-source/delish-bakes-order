@@ -1,5 +1,5 @@
 -- ==============================================================================
--- DELISH CAKE & BAKE — COMPLETE STANDALONE SUPABASE SCHEMA (V2 HARDENED)
+-- DELISH CAKE & BAKE — COMPLETE STANDALONE SUPABASE SCHEMA (V3 PRODUCTION READY)
 -- Idempotent, self-contained schema with strict RPC access control,
 -- Row Level Security (RLS), Optimistic Concurrency Control,
 -- and financial ledger integrity.
@@ -90,7 +90,7 @@ CREATE TABLE IF NOT EXISTS public.storefront_categories (
   icon text,
   image_url text,
   tint text DEFAULT 'blush',
-  priority_color text DEFAULT 'gold',
+  priority_color text DEFAULT 'soft_green',
   sort_order integer NOT NULL DEFAULT 0,
   is_active boolean NOT NULL DEFAULT true,
   created_at timestamptz NOT NULL DEFAULT now(),
@@ -136,7 +136,7 @@ CREATE TABLE IF NOT EXISTS public.products (
   description_en text,
   filling_ar text,
   filling_en text,
-  price numeric(10, 2) NOT NULL DEFAULT 0.00,
+  price numeric(10, 2) NOT NULL DEFAULT 0.00 CHECK (price >= 0),
   price_on_request boolean NOT NULL DEFAULT false,
   image_url text,
   sizes jsonb NOT NULL DEFAULT '[]'::jsonb,
@@ -147,7 +147,7 @@ CREATE TABLE IF NOT EXISTS public.products (
   rating_count integer NOT NULL DEFAULT 0,
   sort_order integer NOT NULL DEFAULT 0,
   tint text NOT NULL DEFAULT 'blush',
-  priority_color text DEFAULT 'gold',
+  priority_color text NOT NULL DEFAULT 'soft_green',
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
@@ -167,7 +167,7 @@ CREATE TABLE IF NOT EXISTS public.store_settings (
   store_name text NOT NULL DEFAULT 'Delish Cake & Bake',
   cliq_alias text NOT NULL DEFAULT 'DELISHBAKES',
   contact_phone text NOT NULL DEFAULT '+962790000000',
-  card_color_palette text NOT NULL DEFAULT 'gold',
+  card_color_palette text NOT NULL DEFAULT 'soft_green',
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT single_store_settings CHECK (singleton = true)
@@ -197,12 +197,12 @@ CREATE TABLE IF NOT EXISTS public.orders (
   receipt_image_url text,
   payment_receipt_url text,
   payment_method public.payment_method,
-  deposit_paid numeric(10, 2) NOT NULL DEFAULT 0.00,
-  subtotal numeric(10, 2) NOT NULL DEFAULT 0.00,
-  delivery_fee numeric(10, 2) NOT NULL DEFAULT 0.00,
-  discount_amount numeric(10, 2) NOT NULL DEFAULT 0.00,
-  discount_percent numeric(5, 2) NOT NULL DEFAULT 0.00,
-  total numeric(10, 2) NOT NULL DEFAULT 0.00,
+  deposit_paid numeric(10, 2) NOT NULL DEFAULT 0.00 CHECK (deposit_paid >= 0),
+  subtotal numeric(10, 2) NOT NULL DEFAULT 0.00 CHECK (subtotal >= 0),
+  delivery_fee numeric(10, 2) NOT NULL DEFAULT 0.00 CHECK (delivery_fee >= 0),
+  discount_amount numeric(10, 2) NOT NULL DEFAULT 0.00 CHECK (discount_amount >= 0),
+  discount_percent numeric(5, 2) NOT NULL DEFAULT 0.00 CHECK (discount_percent >= 0 AND discount_percent <= 100),
+  total numeric(10, 2) NOT NULL DEFAULT 0.00 CHECK (total >= 0),
   status public.order_status NOT NULL DEFAULT 'new',
   is_urgent boolean NOT NULL DEFAULT false,
   final_photo_requested boolean NOT NULL DEFAULT false,
@@ -230,8 +230,8 @@ CREATE TABLE IF NOT EXISTS public.order_items (
   product_id uuid REFERENCES public.products(id) ON DELETE SET NULL,
   name_ar text NOT NULL,
   name_en text NOT NULL,
-  unit_price numeric(10, 2) NOT NULL DEFAULT 0.00,
-  quantity integer NOT NULL DEFAULT 1,
+  unit_price numeric(10, 2) NOT NULL DEFAULT 0.00 CHECK (unit_price >= 0),
+  quantity integer NOT NULL DEFAULT 1 CHECK (quantity > 0),
   options_ar text[] DEFAULT '{}'::text[],
   options_en text[] DEFAULT '{}'::text[],
   notes text,
@@ -242,10 +242,10 @@ CREATE TABLE IF NOT EXISTS public.order_items (
 CREATE TABLE IF NOT EXISTS public.order_payments (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   order_id uuid NOT NULL REFERENCES public.orders(id) ON DELETE CASCADE,
-  amount numeric(10, 2) NOT NULL,
+  amount numeric(10, 2) NOT NULL CHECK (amount > 0),
   payment_method text NOT NULL DEFAULT 'cash',
-  payment_type text NOT NULL DEFAULT 'deposit', -- 'deposit', 'full', 'refund', 'balance'
-  status text NOT NULL DEFAULT 'confirmed',     -- 'confirmed', 'pending', 'voided'
+  payment_type text NOT NULL DEFAULT 'deposit' CHECK (payment_type IN ('deposit', 'remainder', 'full', 'refund')),
+  status text NOT NULL DEFAULT 'confirmed' CHECK (status IN ('confirmed', 'pending', 'voided')),
   reference_number text,
   notes text,
   staff_user_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
@@ -282,10 +282,12 @@ CREATE TABLE IF NOT EXISTS public.customer_messages (
 );
 
 CREATE TABLE IF NOT EXISTS public.order_edit_tokens (
-  token uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   order_id uuid NOT NULL REFERENCES public.orders(id) ON DELETE CASCADE,
-  expires_at timestamptz NOT NULL DEFAULT (now() + interval '48 hours'),
+  token_hash text NOT NULL UNIQUE,
+  expires_at timestamptz NOT NULL,
   used_at timestamptz,
+  created_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
@@ -301,7 +303,16 @@ DO $$ BEGIN
   END IF;
 END $$;
 
--- 10. INDEXES FOR HIGH PERFORMANCE
+-- 10. REALTIME PUBLICATION SETUP
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.orders;
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.order_items;
+  END IF;
+EXCEPTION WHEN OTHERS THEN NULL;
+END $$;
+
+-- 11. INDEXES FOR HIGH PERFORMANCE
 CREATE INDEX IF NOT EXISTS idx_orders_order_number ON public.orders(order_number);
 CREATE INDEX IF NOT EXISTS idx_orders_status ON public.orders(status);
 CREATE INDEX IF NOT EXISTS idx_orders_requested_date ON public.orders(requested_date);
@@ -316,8 +327,9 @@ CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON public.audit_logs(create
 CREATE INDEX IF NOT EXISTS idx_user_roles_user_id ON public.user_roles(user_id);
 CREATE INDEX IF NOT EXISTS idx_products_category_id ON public.products(category_id);
 CREATE INDEX IF NOT EXISTS idx_products_slug ON public.products(slug);
+CREATE INDEX IF NOT EXISTS idx_order_edit_tokens_hash ON public.order_edit_tokens(token_hash);
 
--- 11. SECURITY: ROW LEVEL SECURITY (RLS) POLICIES
+-- 12. SECURITY: ROW LEVEL SECURITY (RLS) POLICIES
 ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.order_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.order_payments ENABLE ROW LEVEL SECURITY;
@@ -335,7 +347,7 @@ ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.order_edit_tokens ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.app_setup_state ENABLE ROW LEVEL SECURITY;
 
--- Catalog Policies (Idempotent: DROP IF EXISTS then CREATE)
+-- Catalog Policies
 DROP POLICY IF EXISTS "Public read products" ON public.products;
 CREATE POLICY "Public read products" ON public.products FOR SELECT USING (is_available = true);
 
@@ -373,6 +385,14 @@ DROP POLICY IF EXISTS "Admins manage roles" ON public.user_roles;
 CREATE POLICY "Admins manage roles" ON public.user_roles FOR ALL TO authenticated
   USING (private.has_role(auth.uid(), 'admin'));
 
+DROP POLICY IF EXISTS "Staff read staff codes" ON public.staff_codes;
+CREATE POLICY "Staff read staff codes" ON public.staff_codes FOR SELECT TO authenticated
+  USING (true);
+
+DROP POLICY IF EXISTS "Admins manage staff codes" ON public.staff_codes;
+CREATE POLICY "Admins manage staff codes" ON public.staff_codes FOR ALL TO authenticated
+  USING (private.has_role(auth.uid(), 'admin'));
+
 DROP POLICY IF EXISTS "Staff read their own product permissions" ON public.sales_product_permissions;
 CREATE POLICY "Staff read their own product permissions" ON public.sales_product_permissions FOR SELECT TO authenticated
   USING (user_id = auth.uid() OR private.has_role(auth.uid(), 'admin'));
@@ -389,15 +409,15 @@ DROP POLICY IF EXISTS "Admins manage staff permissions" ON public.staff_permissi
 CREATE POLICY "Admins manage staff permissions" ON public.staff_permissions FOR ALL TO authenticated
   USING (private.has_role(auth.uid(), 'admin'));
 
--- Orders Policies
--- Sales, Social, Admin view all order data. Kitchen views active orders via KDS server functions or restricted RPC.
+-- Orders Policies:
+-- Sales, Social, Admin view all orders. Kitchen is excluded from direct table reads containing PII/money
+-- Kitchen views orders via secure RPC get_kitchen_orders()
 DROP POLICY IF EXISTS "Staff view orders" ON public.orders;
 CREATE POLICY "Staff view orders" ON public.orders FOR SELECT TO authenticated
   USING (
     private.has_role(auth.uid(), 'admin') OR
     private.has_role(auth.uid(), 'sales') OR
-    private.has_role(auth.uid(), 'social') OR
-    private.has_role(auth.uid(), 'kitchen')
+    private.has_role(auth.uid(), 'social')
   );
 
 DROP POLICY IF EXISTS "Sales, social and admin create orders" ON public.orders;
@@ -477,6 +497,11 @@ CREATE POLICY "Staff manage customer messages" ON public.customer_messages FOR A
     private.has_role(auth.uid(), 'social')
   );
 
+-- Order Edit Tokens: Managed by backend server functions
+DROP POLICY IF EXISTS "Service role manage tokens" ON public.order_edit_tokens;
+CREATE POLICY "Service role manage tokens" ON public.order_edit_tokens FOR ALL TO authenticated
+  USING (private.has_role(auth.uid(), 'admin') OR private.has_role(auth.uid(), 'sales'));
+
 -- Storage Policies
 DO $$ BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'storage' AND table_name = 'objects') THEN
@@ -488,18 +513,27 @@ DO $$ BEGIN
     CREATE POLICY "Staff manage site media" ON storage.objects FOR ALL TO authenticated
       USING (bucket_id = 'site-media' AND (private.has_role(auth.uid(), 'admin') OR private.has_role(auth.uid(), 'sales')));
 
-    DROP POLICY IF EXISTS "Staff view designs and receipts" ON storage.objects;
-    CREATE POLICY "Staff view designs and receipts" ON storage.objects FOR SELECT TO authenticated
-      USING (bucket_id IN ('order-designs', 'payment-receipts'));
+    DROP POLICY IF EXISTS "Staff view designs" ON storage.objects;
+    CREATE POLICY "Staff view designs" ON storage.objects FOR SELECT TO authenticated
+      USING (bucket_id = 'order-designs');
 
-    DROP POLICY IF EXISTS "Staff upload designs and receipts" ON storage.objects;
-    CREATE POLICY "Staff upload designs and receipts" ON storage.objects FOR INSERT TO authenticated
-      WITH CHECK (bucket_id IN ('order-designs', 'payment-receipts'));
+    DROP POLICY IF EXISTS "Staff upload designs" ON storage.objects;
+    CREATE POLICY "Staff upload designs" ON storage.objects FOR INSERT TO authenticated
+      WITH CHECK (bucket_id = 'order-designs' AND (private.has_role(auth.uid(), 'admin') OR private.has_role(auth.uid(), 'sales') OR private.has_role(auth.uid(), 'social')));
+
+    -- STRICT ISOLATION FOR PAYMENT RECEIPTS: Only Admin and Sales
+    DROP POLICY IF EXISTS "Sales view payment receipts" ON storage.objects;
+    CREATE POLICY "Sales view payment receipts" ON storage.objects FOR SELECT TO authenticated
+      USING (bucket_id = 'payment-receipts' AND (private.has_role(auth.uid(), 'admin') OR private.has_role(auth.uid(), 'sales')));
+
+    DROP POLICY IF EXISTS "Sales upload payment receipts" ON storage.objects;
+    CREATE POLICY "Sales upload payment receipts" ON storage.objects FOR INSERT TO authenticated
+      WITH CHECK (bucket_id = 'payment-receipts' AND (private.has_role(auth.uid(), 'admin') OR private.has_role(auth.uid(), 'sales') OR private.has_role(auth.uid(), 'social')));
   END IF;
 END $$;
 
 
--- 12. HARDENED ATOMIC RPC FUNCTIONS (SECURITY DEFINER + CALLER AUTH VERIFICATION)
+-- 13. HARDENED ATOMIC RPC FUNCTIONS (SECURITY DEFINER + CALLER AUTH VERIFICATION)
 
 -- A. Create Staff Order Atomic
 CREATE OR REPLACE FUNCTION public.create_staff_order_atomic(
@@ -522,7 +556,6 @@ DECLARE
   v_staff_name text;
   v_item jsonb;
 BEGIN
-  -- Strict caller verification
   IF v_caller_id IS NULL THEN
     RAISE EXCEPTION 'غير مصرّح: يجب تسجيل الدخول للقيام بهذه العملية · Unauthorized: Sign in required';
   END IF;
@@ -568,6 +601,9 @@ BEGIN
     IF ((v_item->>'unit_price')::numeric) < 0 THEN
       RAISE EXCEPTION 'سعر الصنف لا يمكن أن يكون سالباً · Item price cannot be negative';
     END IF;
+    IF COALESCE((v_item->>'quantity')::integer, 0) <= 0 THEN
+      RAISE EXCEPTION 'الكمية يجب أن تكون أكبر من صفر · Quantity must be greater than zero';
+    END IF;
     v_subtotal := v_subtotal + (((v_item->>'unit_price')::numeric) * COALESCE((v_item->>'quantity')::integer, 1));
   END LOOP;
 
@@ -576,18 +612,15 @@ BEGIN
   v_discount_percent := COALESCE((p_order->>'discount_percent')::numeric, 0);
   v_initial_deposit := GREATEST(COALESCE((p_order->>'deposit_paid')::numeric, 0), 0);
 
-  -- Server recalculates total to avoid client tampering
   v_total := GREATEST(v_subtotal + v_delivery_fee - v_discount_amount, 0);
 
   IF p_order ? 'modifications' AND p_order->'modifications' IS NOT NULL THEN
     v_initial_modifications := p_order->'modifications';
   END IF;
 
-  -- Resolve staff name
   SELECT email INTO v_staff_name FROM auth.users WHERE id = v_caller_id;
   v_staff_name := COALESCE(p_order->>'staff_name', v_staff_name, 'موظف مبيعات');
 
-  -- Insert Order Header
   INSERT INTO public.orders (
     customer_name, customer_phone, order_name, recipient_name, sender_phone, recipient_phone,
     method, area, address, requested_date, requested_time, event_date,
@@ -631,7 +664,6 @@ BEGIN
     1
   ) RETURNING id, order_number INTO v_order_id, v_order_number;
 
-  -- Insert Order Items
   INSERT INTO public.order_items (
     order_id, product_id, name_ar, name_en, unit_price, quantity,
     options_ar, options_en, notes
@@ -648,7 +680,6 @@ BEGIN
     item->>'notes'
   FROM jsonb_array_elements(p_items) AS item;
 
-  -- If deposit was provided, log into order_payments ledger
   IF v_initial_deposit > 0 THEN
     INSERT INTO public.order_payments (
       order_id, amount, payment_method, payment_type, status,
@@ -684,7 +715,7 @@ REVOKE ALL ON FUNCTION public.create_staff_order_atomic(jsonb, jsonb) FROM PUBLI
 GRANT EXECUTE ON FUNCTION public.create_staff_order_atomic(jsonb, jsonb) TO authenticated;
 
 
--- B. Create Storefront Order Atomic (Customer Web Portal)
+-- B. Create Storefront Order Atomic (Restricted to Trusted Server Function Only)
 CREATE OR REPLACE FUNCTION public.create_storefront_order_atomic(
   order_payload jsonb,
   items_payload jsonb
@@ -701,7 +732,6 @@ DECLARE
 BEGIN
   req_client_id := NULLIF(TRIM(order_payload->>'client_request_id'), '');
 
-  -- Idempotency check
   IF req_client_id IS NOT NULL THEN
     SELECT id, order_number, subtotal, delivery_fee, total
     INTO new_order_id, new_order_number, new_subtotal, new_delivery, new_total
@@ -724,10 +754,13 @@ BEGIN
 
   FOR item IN SELECT * FROM jsonb_array_elements(items_payload)
   LOOP
+    IF ((item->>'unit_price')::numeric) < 0 OR COALESCE((item->>'quantity')::integer, 0) <= 0 THEN
+      RAISE EXCEPTION 'سعر الصنف أو الكمية غير صالحة';
+    END IF;
     new_subtotal := new_subtotal + (((item->>'unit_price')::numeric) * COALESCE((item->>'quantity')::integer, 1));
   END LOOP;
 
-  new_delivery := COALESCE((order_payload->>'delivery_fee')::numeric, 0);
+  new_delivery := GREATEST(COALESCE((order_payload->>'delivery_fee')::numeric, 0), 0);
   new_total := new_subtotal + new_delivery;
 
   INSERT INTO public.orders (
@@ -769,9 +802,6 @@ BEGIN
     item->>'notes'
   FROM jsonb_array_elements(items_payload) AS item;
 
-  -- Create order edit token for customer
-  INSERT INTO public.order_edit_tokens (order_id) VALUES (new_order_id);
-
   RETURN jsonb_build_object(
     'id', new_order_id,
     'order_number', new_order_number,
@@ -782,7 +812,9 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.create_storefront_order_atomic(jsonb, jsonb) TO anon, authenticated;
+-- STRICT: Revoked from anon/public! Can only be called via server functions using service_role!
+REVOKE ALL ON FUNCTION public.create_storefront_order_atomic(jsonb, jsonb) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.create_storefront_order_atomic(jsonb, jsonb) TO service_role;
 
 
 -- C. Patch Sales Order Atomic with Optimistic Concurrency Control (OCC)
@@ -830,7 +862,7 @@ BEGIN
     RAISE EXCEPTION 'تعارض في التعديل: تم تعديل هذا الطلب مسبقاً (النسخة الحالية: %, نسختك: %). يرجى إعادة تحميل الطلب · Optimistic locking conflict (current: %, expected: %)', v_current_version, p_expected_version, v_current_version, p_expected_version;
   END IF;
 
-  -- Recalculate totals if fee, discount or subtotal were updated
+  -- Recalculate totals
   v_new_subtotal := CASE WHEN p_patch ? 'subtotal' THEN (p_patch->>'subtotal')::numeric ELSE v_current_subtotal END;
   v_new_delivery := CASE WHEN p_patch ? 'delivery_fee' THEN (p_patch->>'delivery_fee')::numeric ELSE v_current_delivery END;
   v_new_discount := CASE WHEN p_patch ? 'discount_amount' THEN (p_patch->>'discount_amount')::numeric ELSE v_current_discount END;
@@ -912,8 +944,12 @@ BEGIN
     RAISE EXCEPTION 'غير مصرّح: يجب تسجيل الدخول';
   END IF;
 
-  IF NOT (private.has_role(v_caller_id, 'admin') OR private.has_role(v_caller_id, 'sales')) THEN
+  IF NOT (private.has_role(v_caller_id, 'admin') OR private.has_role(v_caller_id, 'sales') OR private.has_role(v_caller_id, 'social')) THEN
     RAISE EXCEPTION 'غير مصرّح: صلاحية تسجيل الدفعات مقصورة على المبيعات والإدارة';
+  END IF;
+
+  IF p_amount <= 0 THEN
+    RAISE EXCEPTION 'مبلغ الحركة المالية يجب أن يكون أكبر من صفر';
   END IF;
 
   -- Idempotency check on payment
@@ -945,7 +981,7 @@ BEGIN
     RAISE EXCEPTION 'الطلب غير موجود · Order not found';
   END IF;
 
-  -- Calculate current net collected payments
+  -- Calculate current net confirmed payments
   SELECT COALESCE(
     SUM(CASE WHEN payment_type = 'refund' THEN -amount ELSE amount END),
     0
@@ -956,10 +992,6 @@ BEGIN
 
   -- Refund validation: Refund cannot exceed allowable refund
   IF p_payment_type = 'refund' THEN
-    IF p_amount <= 0 THEN
-      RAISE EXCEPTION 'مبلغ الاسترجاع يجب أن يكون أكبر من صفر';
-    END IF;
-
     IF v_order_status = 'cancelled' THEN
       v_max_refundable := v_total_collected;
     ELSE
@@ -1103,7 +1135,43 @@ REVOKE ALL ON FUNCTION public.acknowledge_kds_modifications_atomic FROM PUBLIC, 
 GRANT EXECUTE ON FUNCTION public.acknowledge_kds_modifications_atomic TO authenticated;
 
 
--- F. Get Kitchen Order Items (Secure View)
+-- F. Get Kitchen Orders Feed (Secure View)
+CREATE OR REPLACE FUNCTION public.get_kitchen_orders()
+RETURNS TABLE(
+  id uuid,
+  order_number text,
+  staff_code integer,
+  customer_name text,
+  method public.order_method,
+  requested_date date,
+  requested_time time without time zone,
+  status public.order_status,
+  inscription text,
+  design_image_url text,
+  notes text,
+  schedule_updated_at timestamptz,
+  last_edited_at timestamptz,
+  created_at timestamptz,
+  modifications jsonb,
+  queue_rank integer,
+  card_note text
+)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT o.id, o.order_number, o.staff_code, o.customer_name, o.method,
+         o.requested_date, o.requested_time, o.status, o.inscription,
+         o.design_image_url, o.notes, o.schedule_updated_at, o.last_edited_at,
+         o.created_at, o.modifications, o.queue_rank, o.card_note
+  FROM public.orders o
+  WHERE (private.has_role(auth.uid(), 'kitchen') OR private.has_role(auth.uid(), 'admin'))
+    AND o.status IN ('new', 'confirmed', 'baking', 'ready')
+  ORDER BY o.requested_date ASC, o.requested_time ASC;
+$$;
+
+REVOKE ALL ON FUNCTION public.get_kitchen_orders() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.get_kitchen_orders() TO authenticated;
+
+
+-- G. Get Kitchen Order Items (Secure View)
 CREATE OR REPLACE FUNCTION public.get_kitchen_order_items(_order_ids uuid[])
 RETURNS TABLE (
   id uuid,
@@ -1120,14 +1188,58 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   SELECT i.id, i.order_id, i.product_id, i.name_ar, i.name_en,
          i.quantity, i.options_ar, i.options_en, i.notes
   FROM public.order_items i
-  WHERE i.order_id = ANY(_order_ids);
+  WHERE i.order_id = ANY(_order_ids)
+    AND (private.has_role(auth.uid(), 'kitchen') OR private.has_role(auth.uid(), 'admin'));
 $$;
 
 REVOKE ALL ON FUNCTION public.get_kitchen_order_items(uuid[]) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.get_kitchen_order_items(uuid[]) TO authenticated;
 
 
--- G. Rebuild Sales Order Atomic
+-- H. Update Kitchen Order Preparation Status Atomic
+CREATE OR REPLACE FUNCTION public.update_kitchen_order_status(
+  p_order_id uuid,
+  p_status text
+)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v_caller_id uuid := auth.uid();
+  v_current_status text;
+BEGIN
+  IF v_caller_id IS NULL THEN
+    RAISE EXCEPTION 'غير مصرّح: يجب تسجيل الدخول';
+  END IF;
+
+  IF NOT (private.has_role(v_caller_id, 'kitchen') OR private.has_role(v_caller_id, 'admin')) THEN
+    RAISE EXCEPTION 'غير مصرّح: صلاحية تحديث المطبخ مقصورة على الشيف والإدارة';
+  END IF;
+
+  IF p_status NOT IN ('confirmed', 'baking', 'ready') THEN
+    RAISE EXCEPTION 'مرحلة غير صالحة للمطبخ · Invalid kitchen status transition';
+  END IF;
+
+  SELECT status INTO v_current_status FROM public.orders WHERE id = p_order_id FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'الطلب غير موجود';
+  END IF;
+
+  UPDATE public.orders
+  SET
+    status = p_status::public.order_status,
+    last_edited_at = now(),
+    last_edited_by = v_caller_id
+  WHERE id = p_order_id;
+
+  RETURN jsonb_build_object('ok', true, 'order_id', p_order_id, 'status', p_status);
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.update_kitchen_order_status(uuid, text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.update_kitchen_order_status(uuid, text) TO authenticated;
+
+
+-- I. Rebuild Sales Order Atomic
 CREATE OR REPLACE FUNCTION public.rebuild_sales_order_atomic(
   p_order_id uuid,
   p_lines jsonb,
@@ -1143,7 +1255,6 @@ DECLARE
   v_current_mods jsonb;
   v_updated_mods jsonb;
   v_version integer;
-  v_item jsonb;
 BEGIN
   IF v_caller_id IS NULL THEN
     RAISE EXCEPTION 'غير مصرّح: يجب تسجيل الدخول';
@@ -1162,7 +1273,6 @@ BEGIN
 
   v_updated_mods := COALESCE(v_current_mods, '[]'::jsonb) || COALESCE(p_new_mods, '[]'::jsonb);
 
-  -- Delete existing items and re-insert atomically
   DELETE FROM public.order_items WHERE order_id = p_order_id;
 
   INSERT INTO public.order_items (
@@ -1198,7 +1308,7 @@ REVOKE ALL ON FUNCTION public.rebuild_sales_order_atomic FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.rebuild_sales_order_atomic TO authenticated;
 
 
--- H. Record Staff Audit
+-- J. Record Staff Audit
 CREATE OR REPLACE FUNCTION public.record_staff_audit(
   _order_id uuid,
   _order_number text,
@@ -1227,7 +1337,28 @@ REVOKE ALL ON FUNCTION public.record_staff_audit FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.record_staff_audit TO authenticated;
 
 
--- I. Delete Sales Order Atomic (Admin Only)
+-- K. Clear All Sales Orders Atomic (Admin Only)
+CREATE OR REPLACE FUNCTION public.clear_all_sales_orders_atomic()
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v_caller_id uuid := auth.uid();
+BEGIN
+  IF NOT (private.has_role(v_caller_id, 'admin')) THEN
+    RAISE EXCEPTION 'غير مصرّح: صلاحية مسح الطلبات متاحة للمدير فقط';
+  END IF;
+
+  DELETE FROM public.order_edit_tokens;
+  DELETE FROM public.order_items;
+  DELETE FROM public.order_payments;
+  DELETE FROM public.orders;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.clear_all_sales_orders_atomic FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.clear_all_sales_orders_atomic TO authenticated;
+
+
+-- L. Delete Sales Order Atomic (Admin Only)
 CREATE OR REPLACE FUNCTION public.delete_sales_order_atomic(target_order_id uuid)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
