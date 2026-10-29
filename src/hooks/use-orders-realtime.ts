@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQueryClient, type QueryKey } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -11,7 +11,7 @@ export interface UseOrdersRealtimeOptions {
 
 /**
  * SEC-08: Production-grade Realtime Channel with burst debouncing, throttling cooldown,
- * and visibility awareness to prevent server hammering with concurrent users.
+ * network reconnection recovery, and live connection status tracking.
  */
 export function useOrdersRealtime(
   queryKey: QueryKey,
@@ -23,6 +23,9 @@ export function useOrdersRealtime(
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastExecutedAt = useRef<number>(0);
   const refreshPending = useRef<boolean>(false);
+  const [connectionStatus, setConnectionStatus] = useState<
+    "SUBSCRIBED" | "TIMED_OUT" | "CLOSED" | "CHANNEL_ERROR" | "CONNECTING"
+  >("CONNECTING");
 
   const debounceMs = options?.debounceMs ?? 1500;
   const cooldownMs = options?.cooldownMs ?? 2000;
@@ -67,27 +70,54 @@ export function useOrdersRealtime(
       }, debounceMs);
     };
 
-    // When returning to tab, flush any pending refresh
+    // When returning to tab or regaining network, flush any pending refresh
     const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible" && refreshPending.current) {
+      if (document.visibilityState === "visible") {
         executeRefresh();
       }
     };
 
-    document.addEventListener("visibilitychange", handleVisibilityChange);
+    const handleOnline = () => {
+      executeRefresh();
+    };
+
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", handleVisibilityChange);
+    }
+    if (typeof window !== "undefined") {
+      window.addEventListener("online", handleOnline);
+    }
+
+    setConnectionStatus("CONNECTING");
 
     const channel = supabase
       .channel(`${channelName}-live`)
       .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, triggerDebounced)
       .on("postgres_changes", { event: "*", schema: "public", table: "order_items" }, triggerDebounced)
-      .subscribe();
+      .subscribe((status) => {
+        setConnectionStatus(status as any);
+        if (status === "SUBSCRIBED") {
+          // Immediately sync current data when subscribed
+          executeRefresh();
+        }
+      });
 
     return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      if (typeof document !== "undefined") {
+        document.removeEventListener("visibilitychange", handleVisibilityChange);
+      }
+      if (typeof window !== "undefined") {
+        window.removeEventListener("online", handleOnline);
+      }
       if (timer.current) clearTimeout(timer.current);
       timer.current = null;
       void supabase.removeChannel(channel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, channelName, queryClient, JSON.stringify(queryKey), debounceMs, cooldownMs]);
+
+  return {
+    isConnected: connectionStatus === "SUBSCRIBED",
+    status: connectionStatus,
+  };
 }

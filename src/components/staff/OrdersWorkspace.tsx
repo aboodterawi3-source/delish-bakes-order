@@ -928,6 +928,8 @@ const OrderRowCard = memo(function OrderRowCard({
   onQuickPaid: () => void;
 }) {
   const remaining = Math.max(order.total - order.deposit_paid, 0);
+  const refundDue = Math.max(order.deposit_paid - order.total, 0);
+  const isOverpaid = refundDue > 0.001;
   const statusInfo = statusMeta[order.status] || statusMeta.new;
 
   return (
@@ -1003,9 +1005,15 @@ const OrderRowCard = memo(function OrderRowCard({
           <span className="text-base font-black text-foreground">{jd(order.total)}</span>
           <div className="flex items-center gap-2 text-xs">
             <span className="text-muted-foreground">مدفوع: {jd(order.deposit_paid)}</span>
-            <span className={`font-black ${remaining > 0 ? "text-rose-600" : "text-emerald-600"}`}>
-              {remaining > 0 ? `باقي ${jd(remaining)}` : "مدفوع بالكامل ✓"}
-            </span>
+            {isOverpaid ? (
+              <span className="font-black text-purple-600 bg-purple-500/10 px-2 py-0.5 rounded-md border border-purple-500/20">
+                مستحق إرجاع: {jd(refundDue)} 🔄
+              </span>
+            ) : (
+              <span className={`font-black ${remaining > 0 ? "text-rose-600" : "text-emerald-600"}`}>
+                {remaining > 0 ? `باقي ${jd(remaining)}` : "مدفوع بالكامل ✓"}
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -1157,6 +1165,8 @@ function OrderPanelDrawer({
     0,
   );
   const remaining = Math.max(liveTotal - (Number(deposit) || 0), 0);
+  const drawerRefundDue = Math.max((Number(deposit) || 0) - liveTotal, 0);
+  const isDrawerOverpaid = drawerRefundDue > 0.001;
 
   const confirmationMessage = useMemo(
     () =>
@@ -1188,8 +1198,35 @@ function OrderPanelDrawer({
   );
 
   const driverDispatchMessage = useMemo(() => {
+    const isGift = Boolean(
+      order.recipient_phone &&
+        order.recipient_phone.trim() &&
+        order.recipient_phone.trim() !== order.sender_phone?.trim(),
+    );
+    const recipientPhone = order.recipient_phone?.trim() || order.customer_phone;
+    const senderPhone = order.sender_phone?.trim() || order.customer_phone;
+    const recipientName =
+      order.order_name?.trim() || (order as any).recipient_name?.trim() || order.customer_name;
+    const collectionText =
+      remaining > 0
+        ? `المبلغ المطلوب تحصيله من المستلم: ${jd(remaining)} (كاش)`
+        : isGift
+          ? `المبلغ: مدفوع بالكامل مسبقاً ✅ (هدية - ممنوع طلب أي مبلغ من المستلم)`
+          : `المبلغ: مدفوع بالكامل مسبقاً ✅`;
+
+    if (isGift) {
+      return `🚗 **طلب توصيل هدية - ${orderLabel(order.order_number, order.staff_code)}**
+المستلم: ${recipientName}
+هاتف المستلم للتوصيل: ${recipientPhone}
+هاتف صاحب الطلب / المرسل (للطوارئ): ${senderPhone}
+العنوان: ${order.area || ""} - ${order.address || ""}
+الموعد: ${order.requested_date} ${order.requested_time.slice(0, 5)}
+${collectionText}
+ملاحظات: ${order.notes || "لا يوجد"}`;
+    }
+
     return `🚗 **طلب توصيل جديد - ${orderLabel(order.order_number, order.staff_code)}**
-العميل: ${order.order_name?.trim() || order.customer_name}
+العميل: ${recipientName}
 الهاتف: ${order.customer_phone}
 العنوان: ${order.area || ""} - ${order.address || ""}
 الموعد: ${order.requested_date} ${order.requested_time.slice(0, 5)}
@@ -1287,14 +1324,35 @@ function OrderPanelDrawer({
               <span className="font-bold text-muted-foreground">
                 المدفوع: <strong className="text-emerald-600">{jd(Number(deposit) || 0)}</strong>
               </span>
-              <span
-                className={`font-black ${remaining > 0 ? "text-rose-600" : "text-emerald-600"}`}
-              >
-                المتبقي: {jd(remaining)}
-              </span>
+              {drawerRefundDue > 0 ? (
+                <span className="font-black text-purple-600 bg-purple-500/10 px-2 py-0.5 rounded-md border border-purple-500/20">
+                  مستحق إرجاع: {jd(drawerRefundDue)} 🔄
+                </span>
+              ) : (
+                <span
+                  className={`font-black ${remaining > 0 ? "text-rose-600" : "text-emerald-600"}`}
+                >
+                  المتبقي: {jd(remaining)}
+                </span>
+              )}
             </div>
 
-            {remaining > 0 ? (
+            {drawerRefundDue > 0 ? (
+              <div className="rounded-xl bg-purple-50 dark:bg-purple-950/40 p-2.5 text-center text-xs font-black text-purple-800 dark:text-purple-200 border border-purple-200 space-y-1">
+                <div>🔄 يوجد فائض دفع بقيمة {jd(drawerRefundDue)} واجب إرجاعه للعميل</div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDeposit(liveTotal.toFixed(2));
+                    onPatch({ deposit_paid: liveTotal });
+                    toast.success(`تم تسجيل تسوية الاسترجاع للعميل بقيمة ${jd(drawerRefundDue)}`);
+                  }}
+                  className="mt-1 px-3 py-1 rounded-lg bg-purple-600 text-white text-[11px] font-bold hover:bg-purple-700 cursor-pointer"
+                >
+                  تسجيل إرجاع المبلغ للعميل ({jd(drawerRefundDue)})
+                </button>
+              </div>
+            ) : remaining > 0 ? (
               <div className="space-y-1.5 pt-1">
                 <button
                   type="button"

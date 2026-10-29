@@ -546,6 +546,7 @@ export function SocialOrderEntryForm({
 
     submit.mutate(
       {
+        client_request_id: crypto.randomUUID(),
         order_name: orderNameWithChannel,
         sender_phone: effectiveSenderPhone || null,
         recipient_phone: effectiveRecipientPhone || null,

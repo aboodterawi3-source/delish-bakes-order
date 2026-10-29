@@ -210,6 +210,56 @@ export type Database = {
           },
         ]
       }
+      order_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          notes: string | null
+          order_id: string
+          payment_method: string
+          payment_type: string
+          reference_number: string | null
+          staff_name: string | null
+          staff_user_id: string | null
+          status: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          order_id: string
+          payment_method: string
+          payment_type?: string
+          reference_number?: string | null
+          staff_name?: string | null
+          staff_user_id?: string | null
+          status?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          order_id?: string
+          payment_method?: string
+          payment_type?: string
+          reference_number?: string | null
+          staff_name?: string | null
+          staff_user_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_payments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           address: string | null
@@ -261,6 +311,7 @@ export type Database = {
           subtotal: number
           total: number
           updated_at: string
+          version: number
         }
         Insert: {
           address?: string | null
@@ -312,6 +363,7 @@ export type Database = {
           subtotal?: number
           total?: number
           updated_at?: string
+          version?: number
         }
         Update: {
           address?: string | null
@@ -363,6 +415,7 @@ export type Database = {
           subtotal?: number
           total?: number
           updated_at?: string
+          version?: number
         }
         Relationships: []
       }
@@ -728,12 +781,43 @@ export type Database = {
           status: Database["public"]["Enums"]["order_status"]
         }[]
       }
+      acknowledge_kds_modifications_atomic: {
+        Args: {
+          p_chef_name?: string
+          p_chef_user_id?: string
+          p_mod_ids: string[]
+          p_order_id: string
+        }
+        Returns: Json
+      }
+      create_staff_order_atomic: {
+        Args: {
+          p_items: Json
+          p_order: Json
+        }
+        Returns: Json
+      }
       patch_sales_order_atomic: {
         Args: {
+          p_expected_version?: number | null
           p_new_mods?: Json
           p_order_id: string
           p_patch: Json
           p_user_id?: string
+        }
+        Returns: Json
+      }
+      record_order_payment_atomic: {
+        Args: {
+          p_amount: number
+          p_notes?: string | null
+          p_order_id: string
+          p_payment_method?: string
+          p_payment_type?: string
+          p_reference?: string | null
+          p_staff_name?: string | null
+          p_staff_user_id?: string | null
+          p_status?: string
         }
         Returns: Json
       }

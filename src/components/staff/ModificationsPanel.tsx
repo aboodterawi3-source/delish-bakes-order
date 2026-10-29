@@ -349,14 +349,26 @@ export function ModificationsPanel({
   const handleFinishEdit = async (patchPayload: Omit<OrderPatch, "orderId">) => {
     if (!selectedId) return;
     try {
-      await save.mutateAsync({ orderId: selectedId, ...patchPayload });
+      await save.mutateAsync({
+        orderId: selectedId,
+        ...(selected?.version ? { expected_version: selected.version } : {}),
+        ...patchPayload,
+      });
       toast.success("تم حفظ كافة التعديلات على الطلب بنجاح ✅");
       if (onCloseEdit) {
         setSelectedId(null);
         onCloseEdit();
       }
     } catch (err) {
-      toast.error((err as Error).message || "حدث خطأ أثناء حفظ التعديل");
+      const msg = (err as Error).message || "";
+      if (msg.includes("تعارض") || msg.includes("conflict")) {
+        toast.error(
+          "⚠️ تنبيه تعارض: قام موظف آخر بتعديل هذا الطلب أثناء تحريرك! تم الاحتفاظ بتعديلاتك الحالية لمراجعتها قبل الحفظ.",
+          { duration: 8000 },
+        );
+      } else {
+        toast.error(msg || "حدث خطأ أثناء حفظ التعديل");
+      }
     }
   };
 
@@ -545,7 +557,11 @@ export function ModificationsPanel({
                       {/* Right Total & Balance */}
                       <div className="text-end shrink-0">
                         <div className="text-xs font-black text-foreground">{jd(order.total)}</div>
-                        {remaining > 0 ? (
+                        {order.deposit_paid > order.total ? (
+                          <div className="text-[10px] font-black text-purple-600 bg-purple-500/10 px-1.5 py-0.5 rounded border border-purple-500/20">
+                            إرجاع: {jd(order.deposit_paid - order.total)} 🔄
+                          </div>
+                        ) : remaining > 0 ? (
                           <div className="text-[10px] font-bold text-rose-600">
                             متبقي: {jd(remaining)}
                           </div>
@@ -1381,14 +1397,21 @@ function MasterOrderEditor({
               <span>{jd(order.total)}</span>
             </div>
 
-            <div
-              className={`flex justify-between font-black text-sm pt-1 ${
-                remaining > 0 ? "text-rose-600" : "text-emerald-600"
-              }`}
-            >
-              <span>المتبقي للتحصيل</span>
-              <span>{jd(remaining)}</span>
-            </div>
+            {order.deposit_paid > order.total ? (
+              <div className="flex justify-between font-black text-xs pt-1 text-purple-600 bg-purple-500/10 p-2 rounded-lg border border-purple-500/20">
+                <span>مستحق إرجاع للزبون 🔄</span>
+                <span>{jd(order.deposit_paid - order.total)}</span>
+              </div>
+            ) : (
+              <div
+                className={`flex justify-between font-black text-sm pt-1 ${
+                  remaining > 0 ? "text-rose-600" : "text-emerald-600"
+                }`}
+              >
+                <span>المتبقي للتحصيل</span>
+                <span>{remaining > 0 ? jd(remaining) : "0.00 د.أ (مسدد بالكامل)"}</span>
+              </div>
+            )}
           </div>
 
           {/* Payment & Deposit Inputs */}

@@ -327,12 +327,33 @@ export const markOrderReady = createServerFn({ method: "POST" })
 /** Kitchen staff acknowledges modifications on an order */
 export const acknowledgeOrderModification = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { orderId: string }) => {
+  .inputValidator((input: { orderId: string; modIds?: string[] | undefined }) => {
     if (!input?.orderId) throw new Error("orderId is required");
-    return input;
+    return {
+      orderId: String(input.orderId),
+      modIds: Array.isArray(input.modIds) ? input.modIds.map(String) : [],
+    };
   })
   .handler(async ({ data, context }) => {
     await assertRole(context, KITCHEN_ROLES);
+    const { getStaffCodeForUser } = await import("@/lib/server-shared");
+    const staffCode = await getStaffCodeForUser(context.supabase, context.userId);
+    const chefName = staffCode ? `شيف المطبخ #${staffCode}` : "شيف المطبخ";
+
+    const { data: result, error: rpcError } = await context.supabase.rpc(
+      "acknowledge_kds_modifications_atomic",
+      {
+        p_order_id: data.orderId,
+        p_mod_ids: data.modIds,
+        p_chef_user_id: context.userId,
+        p_chef_name: chefName,
+      },
+    );
+
+    if (!rpcError && result) {
+      return { ok: true, result };
+    }
+
     let orderRow: { modifications?: any } | null = null;
 
     try {
@@ -365,16 +386,27 @@ export const acknowledgeOrderModification = createServerFn({ method: "POST" })
     let updatedMods: OrderModification[];
 
     if (currentMods.length > 0) {
-      updatedMods = currentMods.map((mod) => ({
-        ...mod,
-        acknowledgedAt: mod.acknowledgedAt || nowIso,
-      }));
+      updatedMods = currentMods.map((mod: any) => {
+        const match =
+          data.modIds.length === 0 ||
+          data.modIds.includes(mod.id) ||
+          data.modIds.includes(mod.updatedAt);
+        if (match) {
+          return {
+            ...mod,
+            acknowledgedAt: mod.acknowledgedAt || nowIso,
+            acknowledgedBy: context.userId,
+            acknowledgedByName: chefName,
+          };
+        }
+        return mod;
+      });
     } else {
       updatedMods = [
         {
           field: "اعتماد التعديل بالمطبخ",
           oldValue: "تم التعديل",
-          newValue: "تم الاطلاع والاعتماد من قبل فريق المطبخ ✓",
+          newValue: `تم الاطلاع والاعتماد من قبل ${chefName} ✓`,
           updatedAt: nowIso,
           acknowledgedAt: nowIso,
         },

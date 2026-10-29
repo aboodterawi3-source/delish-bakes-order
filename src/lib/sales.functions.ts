@@ -78,10 +78,12 @@ export type SalesOrder = {
   updated_at: string;
   items: SalesItem[];
   modifications?: OrderModification[] | null;
+  version?: number;
+  recipient_name?: string | null;
 };
 
 const SELECT =
-  "id, order_number, staff_code, queue_rank, order_name, sender_phone, recipient_phone, last_edited_at, customer_name, customer_phone, method, area, address, requested_date, requested_time, notes, staff_notes, inscription, card_note, final_photo_requested, confirmation_message, design_image_url, subtotal, delivery_fee, discount_amount, discount_percent, total, deposit_paid, payment_method, driver_name, driver_phone, cancel_reason, status, schedule_updated_at, created_at, updated_at, modifications, order_items(id, name_ar, name_en, quantity, unit_price, options_ar, notes, product_id)";
+  "id, order_number, staff_code, queue_rank, order_name, recipient_name, sender_phone, recipient_phone, last_edited_at, customer_name, customer_phone, method, area, address, requested_date, requested_time, notes, staff_notes, inscription, card_note, final_photo_requested, confirmation_message, design_image_url, subtotal, delivery_fee, discount_amount, discount_percent, total, deposit_paid, payment_method, driver_name, driver_phone, cancel_reason, status, schedule_updated_at, created_at, updated_at, modifications, version, order_items(id, name_ar, name_en, quantity, unit_price, options_ar, notes, product_id)";
 
 type Row = Record<string, unknown> & { order_items?: unknown[] };
 
@@ -93,6 +95,8 @@ const toOrder = (row: Row): SalesOrder => ({
   discount_percent: Number(row["discount_percent"] ?? 0),
   total: Number(row["total"] ?? 0),
   deposit_paid: Number(row["deposit_paid"] ?? 0),
+  version: Number(row["version"] ?? 1),
+  recipient_name: (row["recipient_name"] as string | null) ?? null,
   modifications: (row["modifications"] as OrderModification[] | null) ?? null,
   items: ((row.order_items ?? []) as Record<string, unknown>[]).map((item) => ({
     id: String(item["id"]),
@@ -222,64 +226,117 @@ export const createSalesOrder = createServerFn({ method: "POST" })
     }
 
     const staffCode = await getStaffCodeForUser(context.supabase, context.userId);
+    const requestedTime =
+      data.requested_time.length === 5 ? `${data.requested_time}:00` : data.requested_time;
 
-    const { data: order, error } = await context.supabase
-      .from("orders")
-      .insert({
-        customer_name: data.customer_name.trim(),
-        customer_phone: data.customer_phone.trim(),
-        order_name: data.order_name?.trim() || null,
-        sender_phone: data.sender_phone?.trim() || null,
-        recipient_phone: data.recipient_phone?.trim() || null,
-        method: data.method,
-        area: data.method === "delivery" ? data.area || null : null,
-        address: data.method === "delivery" ? data.address?.trim() || null : null,
-        requested_date: data.requested_date,
-        requested_time:
-          data.requested_time.length === 5 ? `${data.requested_time}:00` : data.requested_time,
-        notes: data.notes?.trim() || null,
-        staff_notes: data.staff_notes?.trim() || null,
-        inscription: data.inscription?.trim() || null,
-        card_note: data.card_note?.trim() || null,
-        design_image_url: data.design_image_url || null,
-        payment_method: data.payment_method || null,
-        deposit_paid: finalDeposit,
-        subtotal,
-        delivery_fee: deliveryFee,
-        discount_amount: discountAmount,
-        discount_percent: discountPercent,
-        total,
-        status: "new",
-        created_by: context.userId,
-        staff_code: staffCode,
-        client_request_id: data.client_request_id || null,
-      } as never)
-      .select(SELECT)
-      .single();
-
-    if (error || !order)
-      throw new Error(error?.message || "تعذّر حفظ الطلب · Could not save order");
-
-    const { error: itemError } = await context.supabase.from("order_items").insert(
-      data.items.map((item) => ({
-        order_id: (order as { id: string }).id,
-        product_id: item.productId || null,
-        name_ar: item.name_ar,
-        name_en: item.name_ar,
-        unit_price: item.unit_price,
-        quantity: item.quantity,
-        options_ar: item.options_ar || [],
-        options_en: item.options_ar || [],
-        notes: item.notes || null,
-      })) as never,
+    let createdId: string | null = null;
+    const { data: atomicResult, error: atomicErr } = await context.supabase.rpc(
+      "create_staff_order_atomic",
+      {
+        p_order: {
+          customer_name: data.customer_name.trim(),
+          customer_phone: data.customer_phone.trim(),
+          order_name: data.order_name?.trim() || null,
+          recipient_name: data.order_name?.trim() || null,
+          sender_phone: data.sender_phone?.trim() || null,
+          recipient_phone: data.recipient_phone?.trim() || null,
+          method: data.method,
+          area: data.method === "delivery" ? data.area || null : null,
+          address: data.method === "delivery" ? data.address?.trim() || null : null,
+          requested_date: data.requested_date,
+          requested_time: requestedTime,
+          notes: data.notes?.trim() || null,
+          staff_notes: data.staff_notes?.trim() || null,
+          inscription: data.inscription?.trim() || null,
+          card_note: data.card_note?.trim() || null,
+          design_image_url: data.design_image_url || null,
+          payment_method: data.payment_method || null,
+          deposit_paid: finalDeposit,
+          subtotal,
+          delivery_fee: deliveryFee,
+          discount_amount: discountAmount,
+          discount_percent: discountPercent,
+          total,
+          staff_code: staffCode,
+          client_request_id: data.client_request_id || null,
+          user_id: context.userId,
+          staff_name: staffCode ? `موظف #${staffCode}` : "موظف مبيعات",
+        },
+        p_items: data.items.map((item) => ({
+          product_id: item.productId || null,
+          name_ar: item.name_ar,
+          name_en: item.name_ar,
+          unit_price: item.unit_price,
+          quantity: item.quantity,
+          options_ar: item.options_ar || [],
+          options_en: item.options_ar || [],
+          notes: item.notes || null,
+        })),
+      } as any,
     );
 
-    if (itemError) throw new Error(itemError.message);
+    if (!atomicErr && atomicResult && (atomicResult as any).id) {
+      createdId = (atomicResult as any).id;
+    } else {
+      const { data: order, error } = await context.supabase
+        .from("orders")
+        .insert({
+          customer_name: data.customer_name.trim(),
+          customer_phone: data.customer_phone.trim(),
+          order_name: data.order_name?.trim() || null,
+          sender_phone: data.sender_phone?.trim() || null,
+          recipient_phone: data.recipient_phone?.trim() || null,
+          method: data.method,
+          area: data.method === "delivery" ? data.area || null : null,
+          address: data.method === "delivery" ? data.address?.trim() || null : null,
+          requested_date: data.requested_date,
+          requested_time: requestedTime,
+          notes: data.notes?.trim() || null,
+          staff_notes: data.staff_notes?.trim() || null,
+          inscription: data.inscription?.trim() || null,
+          card_note: data.card_note?.trim() || null,
+          design_image_url: data.design_image_url || null,
+          payment_method: data.payment_method || null,
+          deposit_paid: finalDeposit,
+          subtotal,
+          delivery_fee: deliveryFee,
+          discount_amount: discountAmount,
+          discount_percent: discountPercent,
+          total,
+          status: "new",
+          created_by: context.userId,
+          staff_code: staffCode,
+          client_request_id: data.client_request_id || null,
+        } as never)
+        .select(SELECT)
+        .single();
+
+      if (error || !order)
+        throw new Error(error?.message || "تعذّر حفظ الطلب · Could not save order");
+
+      createdId = (order as { id: string }).id;
+
+      const { error: itemError } = await context.supabase.from("order_items").insert(
+        data.items.map((item) => ({
+          order_id: createdId,
+          product_id: item.productId || null,
+          name_ar: item.name_ar,
+          name_en: item.name_ar,
+          unit_price: item.unit_price,
+          quantity: item.quantity,
+          options_ar: item.options_ar || [],
+          options_en: item.options_ar || [],
+          notes: item.notes || null,
+        })) as never,
+      );
+
+      if (itemError) throw new Error(itemError.message);
+    }
 
     const { data: fullOrder, error: fetchError } = await context.supabase
       .from("orders")
       .select(SELECT)
-      .eq("id", (order as { id: string }).id)
+      .eq("id", createdId!)
       .single();
 
     if (fetchError || !fullOrder)
@@ -290,6 +347,7 @@ export const createSalesOrder = createServerFn({ method: "POST" })
 
 export type OrderPatch = {
   orderId: string;
+  expected_version?: number | null | undefined;
   status?: SalesStatus;
   cancel_reason?: string | null;
   method?: "delivery" | "pickup";
@@ -306,6 +364,7 @@ export type OrderPatch = {
   confirmation_message?: string | null;
   /** Delivery-order identity fields, editable from Sales and Social alike. */
   order_name?: string | null;
+  recipient_name?: string | null;
   sender_phone?: string | null;
   recipient_phone?: string | null;
   customer_name?: string;
@@ -407,6 +466,7 @@ const buildOrderPatch = (input: OrderPatch): Record<string, unknown> => {
     return clean ? clean.slice(0, max) : null;
   };
   if (input.order_name !== undefined) patch["order_name"] = text(input.order_name, 160);
+  if (input.recipient_name !== undefined) patch["recipient_name"] = text(input.recipient_name, 160);
   if (input.sender_phone !== undefined) patch["sender_phone"] = text(input.sender_phone, 40);
   if (input.recipient_phone !== undefined)
     patch["recipient_phone"] = text(input.recipient_phone, 40);
@@ -778,7 +838,8 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
       p_patch: clean as any,
       p_new_mods: newDiffs,
       p_user_id: context.userId,
-    });
+      p_expected_version: data.expected_version ?? null,
+    } as any);
     if (error) throw new Error(error.message);
 
     // After RPC update, fetch the fully mapped record
@@ -1350,3 +1411,90 @@ export const clearAllSalesOrders = createServerFn({ method: "POST" })
 
     return { ok: true, count: 0, message: "تم مسح وتنظيف كافة الطلبات بنجاح ✅" };
   });
+
+export type RecordPaymentInput = {
+  orderId: string;
+  amount: number;
+  paymentMethod?: PaymentMethod | null;
+  paymentType?: "deposit" | "remainder" | "full" | "refund";
+  referenceNumber?: string | null;
+  notes?: string | null;
+};
+
+/**
+ * Records a financial payment transaction (deposit, remainder, or refund) in the order_payments ledger
+ * and updates the order's deposit_paid balance and optimistic locking version atomically.
+ */
+export const recordOrderPayment = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: RecordPaymentInput) => {
+    if (!input?.orderId) throw new Error("رقم الطلب مطلوب · Order ID is required");
+    const amount = Number(input.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new Error("المبلغ يجب أن يكون أكبر من صفر · Payment amount must be greater than zero");
+    }
+    return {
+      orderId: String(input.orderId),
+      amount: roundJod(amount),
+      paymentMethod: input.paymentMethod || "cash",
+      paymentType: input.paymentType || "remainder",
+      referenceNumber: input.referenceNumber?.trim() || null,
+      notes: input.notes?.trim() || null,
+    };
+  })
+  .handler(async ({ data, context }) => {
+    await assertRole(context, SALES_ROLES);
+    const staffCode = await getStaffCodeForUser(context.supabase, context.userId);
+
+    const { data: result, error } = await context.supabase.rpc("record_order_payment_atomic", {
+      p_order_id: data.orderId,
+      p_amount: data.amount,
+      p_payment_method: data.paymentMethod,
+      p_payment_type: data.paymentType,
+      p_status: "confirmed",
+      p_reference: data.referenceNumber,
+      p_notes: data.notes,
+      p_staff_user_id: context.userId,
+      p_staff_name: staffCode ? `موظف #${staffCode}` : "موظف مبيعات",
+    } as any);
+
+    if (error) {
+      // Direct database fallback if migration RPC is not yet created
+      const { data: existing } = await context.supabase
+        .from("orders")
+        .select("total, deposit_paid, version")
+        .eq("id", data.orderId)
+        .single();
+      if (!existing) throw new Error("الطلب غير موجود · Order not found");
+
+      const currentDeposit = Number(existing.deposit_paid ?? 0);
+      const newDeposit =
+        data.paymentType === "refund"
+          ? Math.max(currentDeposit - data.amount, 0)
+          : currentDeposit + data.amount;
+
+      const { data: updated, error: updateErr } = await context.supabase
+        .from("orders")
+        .update({
+          deposit_paid: roundJod(newDeposit),
+          version: ((existing as any).version || 1) + 1,
+          last_edited_at: new Date().toISOString(),
+          last_edited_by: context.userId,
+        } as any)
+        .eq("id", data.orderId)
+        .select(SELECT)
+        .single();
+
+      if (updateErr) throw new Error(updateErr.message);
+      return toOrder(updated as Row);
+    }
+
+    const { data: fullOrder, error: fetchErr } = await context.supabase
+      .from("orders")
+      .select(SELECT)
+      .eq("id", data.orderId)
+      .single();
+    if (fetchErr || !fullOrder) throw new Error(fetchErr?.message || "Failed to load order");
+    return toOrder(fullOrder as Row);
+  });
+

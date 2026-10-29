@@ -379,7 +379,7 @@ const KdsCleanCard = memo(function KdsCleanCard({
   stageBorder: string;
   busy: boolean;
   alerted?: boolean;
-  onAck: (id: string) => void;
+  onAck: (id: string, modIds?: string[]) => void;
   onStage: (id: string, stage: KitchenStage) => void;
   onZoom: (url: string) => void;
   onOpenDetails: (order: KdsOrder) => void;
@@ -624,7 +624,8 @@ const KdsCleanCard = memo(function KdsCleanCard({
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  onAck(order.id);
+                  const targetModIds = unackMods.map((m: any) => m.id || m.updatedAt).filter(Boolean);
+                  onAck(order.id, targetModIds);
                 }}
                 className="min-h-[30px] px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black text-[11px] shadow-xs transition-all flex items-center gap-1 cursor-pointer shrink-0"
                 title="اعتماد التعديل في المطبخ"
@@ -1166,7 +1167,7 @@ export function KitchenPanel() {
   useScreenWakeLock(true);
 
   // Realtime subscription (refetches the kitchen queue on any order change)
-  useOrdersRealtime(ORDERS_KEY, true, "kitchen-live");
+  const realtime = useOrdersRealtime(ORDERS_KEY, true, "kitchen-live");
 
   // Any newly appearing order or modification raises an alert and rings the kitchen chime.
   const knownIds = useRef<Set<string> | null>(null);
@@ -1338,9 +1339,9 @@ export function KitchenPanel() {
   );
 
   const acknowledge = useCallback(
-    async (id: string) => {
+    async (id: string, modIds?: string[]) => {
       try {
-        await ackModFn({ data: { orderId: id } });
+        await ackModFn({ data: { orderId: id, ...(modIds ? { modIds } : {}) } });
         setAlerts((curr) => curr.filter((v) => v !== id));
         void queryClient.invalidateQueries({ queryKey: ORDERS_KEY });
       } catch (e) {
@@ -1522,6 +1523,23 @@ export function KitchenPanel() {
                 <span>{soundEnabled ? "رنين التنبيهات شغال" : "صامت"}</span>
               </button>
             )}
+
+            {/* Live Connection Pill */}
+            <div
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-[11px] font-bold ${
+                realtime.isConnected
+                  ? "bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border-emerald-500/30"
+                  : "bg-amber-500/10 text-amber-800 dark:text-amber-300 border-amber-500/30 animate-pulse"
+              }`}
+              title={realtime.isConnected ? "مزامنة لحظية نشطة مع السيرفر" : "جارِ المزامنة مع السيرفر..."}
+            >
+              <span
+                className={`h-2 w-2 rounded-full ${
+                  realtime.isConnected ? "bg-emerald-500 animate-pulse" : "bg-amber-500"
+                }`}
+              />
+              <span>{realtime.isConnected ? "متصل لحظياً" : "جارِ المزامنة..."}</span>
+            </div>
 
             {/* Refresh Button */}
             <button

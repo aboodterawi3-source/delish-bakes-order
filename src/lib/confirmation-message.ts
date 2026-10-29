@@ -55,6 +55,20 @@ const orDash = (value: string | undefined | null) => (value && value.trim() ? va
 export const remainingBalance = (total: number, paid: number) =>
   Math.max((Number(total) || 0) - (Number(paid) || 0), 0);
 
+export const calculateFinancials = (total: number, paid: number) => {
+  const t = Number(total) || 0;
+  const p = Number(paid) || 0;
+  const diff = p - t;
+  return {
+    total: t,
+    paid: p,
+    remaining: Math.max(t - p, 0),
+    refundDue: Math.max(diff, 0),
+    isOverpaid: diff > 0.001,
+    isFullyPaid: Math.abs(diff) <= 0.001,
+  };
+};
+
 export function formatArabicDate(dateStr?: string | null): string {
   if (!dateStr || !dateStr.trim()) return "—";
   try {
@@ -183,13 +197,23 @@ export function buildConfirmationMessage(input: ConfirmationInput): string {
     ? `${input.paymentMethod} (${input.cliqAccount})`
     : input.paymentMethod;
 
+  const fin = calculateFinancials(input.total, input.paid);
+
   lines.push(
     "",
     `💰 الحساب كامل: ${money(input.total)}`,
     `💵 المبلغ المدفوع (عربون/كليك): ${money(input.paid)}`,
-    `💳 المبلغ المتبقي: ${money(remaining)}`,
-    `طريقة الدفع: ${orDash(paymentDesc)}`,
   );
+
+  if (fin.isOverpaid) {
+    lines.push(`🔄 مبلغ مستحق الإرجاع للزبون: ${money(fin.refundDue)}`);
+  } else if (fin.remaining > 0) {
+    lines.push(`💳 المبلغ المتبقي: ${money(fin.remaining)}`);
+  } else {
+    lines.push(`💳 المبلغ المتبقي: 0.00 د.أ (مسدد بالكامل ✅)`);
+  }
+
+  lines.push(`طريقة الدفع: ${orDash(paymentDesc)}`);
 
   if (
     input.isGift ||

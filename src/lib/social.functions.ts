@@ -9,6 +9,7 @@ import { roundJod } from "@/lib/currency";
 const SOCIAL_ROLES: StaffRoleName[] = ["social", "sales", "admin"];
 
 export type SocialOrderInput = {
+  client_request_id?: string | null;
   /** Short label shown in the orders list instead of the phone number. */
   order_name?: string | null;
   /** Delivery order: who sends and who receives. */
@@ -127,81 +128,146 @@ export const createSocialOrder = createServerFn({ method: "POST" })
         : null;
 
     const staffCode = await getStaffCodeForUser(context.supabase, context.userId);
+    const initialMods = receiptImage
+      ? [
+          {
+            field: "حوالة كليك",
+            oldValue: "",
+            newValue: "صورة الحوالة مرفقة",
+            updatedAt: new Date().toISOString(),
+          },
+        ]
+      : [];
 
-    const { data: order, error: orderError } = await context.supabase
-      .from("orders")
-      .insert({
-        customer_name: data.customer_name.trim(),
-        customer_phone: data.customer_phone.trim(),
-        order_name: data.order_name?.trim().slice(0, 160) || null,
-        sender_phone: data.sender_phone?.trim().slice(0, 40) || null,
-        recipient_phone: data.recipient_phone?.trim().slice(0, 40) || null,
-        method: data.method,
-        area,
-        address: data.method === "delivery" ? data.address?.trim() || null : null,
-        payment_method: paymentMethod,
-        deposit_paid: deposit,
-        requested_date: data.requested_date,
-        requested_time: data.requested_time,
-        event_date: data.event_date?.trim() ? data.event_date : null,
-        is_urgent: data.is_urgent,
-        inscription: data.design_notes?.trim() || null,
-        staff_notes: data.staff_notes?.trim() || null,
-        card_note: data.card_note?.trim() || null,
-        final_photo_requested: Boolean(data.final_photo_requested),
-        design_image_url: designImage || receiptImage,
-        modifications: receiptImage
-          ? [
-              {
-                field: "حوالة كليك",
-                oldValue: "",
-                newValue: "صورة الحوالة مرفقة",
-                updatedAt: new Date().toISOString(),
-              },
-            ]
-          : [],
-        subtotal,
-        delivery_fee: deliveryFee,
-        total: subtotal + deliveryFee,
-        status: "new",
-        created_by: context.userId,
-        staff_code: staffCode,
-      })
-      .select("id, order_number, total, staff_code")
-      .single();
-    if (orderError) throw new Error(orderError.message);
+    let orderId: string;
+    let orderNumber: string;
+    let orderTotal: number;
+    let orderStaffCode: number | null = staffCode;
+
+    const { data: atomicResult, error: atomicErr } = await context.supabase.rpc(
+      "create_staff_order_atomic",
+      {
+        p_order: {
+          customer_name: data.customer_name.trim(),
+          customer_phone: data.customer_phone.trim(),
+          order_name: data.order_name?.trim().slice(0, 160) || null,
+          recipient_name: data.order_name?.trim().slice(0, 160) || null,
+          sender_phone: data.sender_phone?.trim().slice(0, 40) || null,
+          recipient_phone: data.recipient_phone?.trim().slice(0, 40) || null,
+          method: data.method,
+          area,
+          address: data.method === "delivery" ? data.address?.trim() || null : null,
+          payment_method: paymentMethod,
+          deposit_paid: deposit,
+          requested_date: data.requested_date,
+          requested_time: data.requested_time,
+          event_date: data.event_date?.trim() ? data.event_date : null,
+          is_urgent: data.is_urgent,
+          inscription: data.design_notes?.trim() || null,
+          staff_notes: data.staff_notes?.trim() || null,
+          card_note: data.card_note?.trim() || null,
+          design_image_url: designImage || receiptImage,
+          modifications: initialMods,
+          subtotal,
+          delivery_fee: deliveryFee,
+          total: subtotal + deliveryFee,
+          staff_code: staffCode,
+          client_request_id: data.client_request_id || null,
+          user_id: context.userId,
+          staff_name: staffCode ? `موظف #${staffCode}` : "موظف سوشيال",
+        },
+        p_items: [
+          {
+            product_id: null,
+            name_ar: orderDetails,
+            name_en: orderDetails,
+            unit_price: unitPrice,
+            quantity: data.quantity,
+            options_ar: [...(data.is_urgent ? ["مستعجل"] : []), ...extrasAr],
+            options_en: [...(data.is_urgent ? ["Urgent"] : []), ...extrasEn],
+            notes: data.design_notes?.trim() || null,
+          },
+        ],
+      } as any,
+    );
+
+    if (!atomicErr && atomicResult && (atomicResult as any).id) {
+      orderId = (atomicResult as any).id;
+      orderNumber = (atomicResult as any).order_number;
+      orderTotal = Number((atomicResult as any).total ?? subtotal + deliveryFee);
+    } else {
+      const { data: order, error: orderError } = await context.supabase
+        .from("orders")
+        .insert({
+          customer_name: data.customer_name.trim(),
+          customer_phone: data.customer_phone.trim(),
+          order_name: data.order_name?.trim().slice(0, 160) || null,
+          sender_phone: data.sender_phone?.trim().slice(0, 40) || null,
+          recipient_phone: data.recipient_phone?.trim().slice(0, 40) || null,
+          method: data.method,
+          area,
+          address: data.method === "delivery" ? data.address?.trim() || null : null,
+          payment_method: paymentMethod,
+          deposit_paid: deposit,
+          requested_date: data.requested_date,
+          requested_time: data.requested_time,
+          event_date: data.event_date?.trim() ? data.event_date : null,
+          is_urgent: data.is_urgent,
+          inscription: data.design_notes?.trim() || null,
+          staff_notes: data.staff_notes?.trim() || null,
+          card_note: data.card_note?.trim() || null,
+          final_photo_requested: Boolean(data.final_photo_requested),
+          design_image_url: designImage || receiptImage,
+          modifications: initialMods,
+          subtotal,
+          delivery_fee: deliveryFee,
+          total: subtotal + deliveryFee,
+          status: "new",
+          created_by: context.userId,
+          staff_code: staffCode,
+          client_request_id: data.client_request_id || null,
+        } as any)
+        .select("id, order_number, total, staff_code")
+        .single();
+      if (orderError) throw new Error(orderError.message);
+
+      orderId = order.id;
+      orderNumber = order.order_number;
+      orderTotal = Number(order.total ?? 0);
+      orderStaffCode = (order.staff_code as number | null) ?? null;
+
+      const { error: itemError } = await context.supabase.from("order_items").insert({
+        order_id: order.id,
+        product_id: null,
+        name_ar: orderDetails,
+        name_en: orderDetails,
+        unit_price: unitPrice,
+        quantity: data.quantity,
+        options_ar: [...(data.is_urgent ? ["مستعجل"] : []), ...extrasAr],
+        options_en: [...(data.is_urgent ? ["Urgent"] : []), ...extrasEn],
+        notes: data.design_notes?.trim() || null,
+      });
+
+      if (itemError) throw new Error(itemError.message);
+    }
 
     // Now the sequence number exists, store the message that quotes it.
     const message = template
-      ? template.replace(/\{\{ORDER_NUMBER\}\}/g, order.order_number).slice(0, 8000)
+      ? template.replace(/\{\{ORDER_NUMBER\}\}/g, orderNumber).slice(0, 8000)
       : null;
     if (message) {
       await context.supabase
         .from("orders")
-        .update({ confirmation_message: message })
-        .eq("id", order.id);
+        .update({ confirmation_message: message } as any)
+        .eq("id", orderId);
     }
 
-    const { error: itemError } = await context.supabase.from("order_items").insert({
-      order_id: order.id,
-      product_id: null,
-      name_ar: orderDetails,
-      name_en: orderDetails,
-      unit_price: unitPrice,
-      quantity: data.quantity,
-      options_ar: [...(data.is_urgent ? ["مستعجل"] : []), ...extrasAr],
-      options_en: [...(data.is_urgent ? ["Urgent"] : []), ...extrasEn],
-      notes: data.design_notes?.trim() || null,
-    });
-
-    if (itemError) throw new Error(itemError.message);
-
     return {
-      id: order.id,
-      order_number: order.order_number,
-      total: Number(order.total ?? 0),
+      id: orderId,
+      order_number: orderNumber,
+      total: orderTotal,
       confirmation_message: message,
-      staff_code: (order.staff_code as number | null) ?? null,
+      staff_code: orderStaffCode,
     };
   });
 

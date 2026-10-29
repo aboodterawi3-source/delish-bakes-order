@@ -572,6 +572,7 @@ export function PosOrderEntry() {
     setShouldPrintAfterCreate(andPrint);
 
     const payload: CreateSalesOrderInput = {
+      client_request_id: crypto.randomUUID(),
       customer_name: finalCustomerName,
       customer_phone: finalCustomerPhone,
       order_name: orderName.trim() || (stationMode === "quick" ? "كاشير محلي فوري" : undefined),

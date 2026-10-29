@@ -340,9 +340,12 @@ export const createOrderEditLink = createServerFn({ method: "POST" })
  * host (which sits behind the Lovable interface and would ask for a login).
  */
 function publicSiteOrigin(): string {
-  const configured = process.env["PUBLIC_SITE_URL"];
+  const configured =
+    process.env["PUBLIC_SITE_URL"] ||
+    process.env["VITE_SITE_URL"] ||
+    process.env["SITE_URL"];
   if (configured) return configured.replace(/\/+$/, "");
-  return "https://unknowncake.lovable.app";
+  return "";
 }
 
 type TokenRow = { id: string; order_id: string; expires_at: string; used_at: string | null };
