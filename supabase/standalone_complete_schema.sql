@@ -503,14 +503,19 @@ BEGIN
     RETURN COALESCE(NEW, OLD);
   END IF;
 
-  -- Allow foreign key ON DELETE SET NULL cascade when product is deleted from catalog
+  -- Allow foreign key ON DELETE SET NULL cascade ONLY when product is actually deleted from catalog
   IF TG_OP = 'UPDATE' THEN
     IF NEW.product_id IS NULL AND OLD.product_id IS NOT NULL
        AND NEW.id = OLD.id
        AND NEW.order_id = OLD.order_id
        AND NEW.name_ar = OLD.name_ar
+       AND NEW.name_en = OLD.name_en
        AND NEW.unit_price = OLD.unit_price
-       AND NEW.quantity = OLD.quantity THEN
+       AND NEW.quantity = OLD.quantity
+       AND NEW.options_ar = OLD.options_ar
+       AND NEW.options_en = OLD.options_en
+       AND NEW.notes IS NOT DISTINCT FROM OLD.notes
+       AND NOT EXISTS (SELECT 1 FROM public.products WHERE id = OLD.product_id) THEN
       RETURN NEW;
     END IF;
   END IF;
@@ -997,6 +1002,8 @@ GRANT EXECUTE ON FUNCTION public.create_storefront_order_atomic(jsonb, jsonb) TO
 
 
 -- C. Patch Sales Order Atomic with Optimistic Concurrency Control (OCC)
+DROP FUNCTION IF EXISTS public.patch_sales_order_atomic(uuid, jsonb, jsonb, uuid);
+DROP FUNCTION IF EXISTS public.patch_sales_order_atomic(uuid, jsonb, jsonb, uuid, integer);
 CREATE OR REPLACE FUNCTION public.patch_sales_order_atomic(
   p_order_id uuid,
   p_patch jsonb,
@@ -1061,12 +1068,23 @@ BEGIN
 
   v_new_delivery := CASE WHEN p_patch ? 'delivery_fee' THEN (p_patch->>'delivery_fee')::numeric ELSE v_current_delivery END;
   
-  IF p_patch ? 'discount_percent' AND NOT p_patch ? 'discount_amount' THEN
+  IF p_patch ? 'discount_percent' THEN
     v_new_discount_percent := (p_patch->>'discount_percent')::numeric;
-    v_new_discount := ROUND((v_new_subtotal * v_new_discount_percent / 100.0), 2);
+    IF v_new_discount_percent > 0 THEN
+      DECLARE
+        v_expected_discount numeric := ROUND((v_new_subtotal * v_new_discount_percent / 100.0), 2);
+      BEGIN
+        IF p_patch ? 'discount_amount' AND abs(((p_patch->>'discount_amount')::numeric) - v_expected_discount) > 0.05 THEN
+          RAISE EXCEPTION 'مبلغ الخصم (%) لا يتطابق مع النسبة المحددة (%)', (p_patch->>'discount_amount')::numeric, v_new_discount_percent;
+        END IF;
+        v_new_discount := v_expected_discount;
+      END;
+    ELSE
+      v_new_discount := CASE WHEN p_patch ? 'discount_amount' THEN (p_patch->>'discount_amount')::numeric ELSE 0 END;
+    END IF;
   ELSIF p_patch ? 'discount_amount' THEN
     v_new_discount := (p_patch->>'discount_amount')::numeric;
-    v_new_discount_percent := CASE WHEN p_patch ? 'discount_percent' THEN (p_patch->>'discount_percent')::numeric ELSE v_current_discount_percent END;
+    v_new_discount_percent := 0;
   ELSE
     v_new_discount := v_current_discount;
     v_new_discount_percent := v_current_discount_percent;
@@ -1143,8 +1161,8 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.patch_sales_order_atomic FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.patch_sales_order_atomic TO authenticated;
+REVOKE ALL ON FUNCTION public.patch_sales_order_atomic(uuid, jsonb, jsonb, uuid, integer) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.patch_sales_order_atomic(uuid, jsonb, jsonb, uuid, integer) TO authenticated;
 
 
 -- D. Record Order Payment Atomic (Ledger Integrity + Refund Cap)
@@ -1482,25 +1500,33 @@ RETURNS TABLE (
   notes text
 )
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
-  SELECT i.id, i.order_id, i.product_id, i.name_ar, i.name_en,
+  SELECT i.id, i.order_id, i.product_id,
+         regexp_replace(
+           regexp_replace(i.name_ar, '(\+?962[\s-]*|0)?7[789]([\s-]*\d){7}|\+?[\d٠-٩][\d٠-٩\s-]{6,}[\d٠-٩]', '***', 'g'),
+           '(\d+(\.\d+)?\s*(د\.أ|JD|jd|دينار))|(قيمة|مبلغ|سعر)\s*[:=]?\s*\d+(\.\d+)?(\s*(د\.أ|JD|jd|دينار))?', '***', 'gi'
+         ) AS name_ar,
+         regexp_replace(
+           regexp_replace(i.name_en, '(\+?962[\s-]*|0)?7[789]([\s-]*\d){7}|\+?[\d٠-٩][\d٠-٩\s-]{6,}[\d٠-٩]', '***', 'g'),
+           '(\d+(\.\d+)?\s*(د\.أ|JD|jd|دينار))|(قيمة|مبلغ|سعر)\s*[:=]?\s*\d+(\.\d+)?(\s*(د\.أ|JD|jd|دينار))?', '***', 'gi'
+         ) AS name_en,
          i.quantity,
          ARRAY(
            SELECT regexp_replace(
-             regexp_replace(opt, '(\+?962[\s-]*|0)?7[789]([\s-]*\d){7}', '***', 'g'),
-             '\d+(\.\d+)?\s*(د\.أ|JD|jd)', '***', 'gi'
+             regexp_replace(opt, '(\+?962[\s-]*|0)?7[789]([\s-]*\d){7}|\+?[\d٠-٩][\d٠-٩\s-]{6,}[\d٠-٩]', '***', 'g'),
+             '(\d+(\.\d+)?\s*(د\.أ|JD|jd|دينار))|(قيمة|مبلغ|سعر)\s*[:=]?\s*\d+(\.\d+)?(\s*(د\.أ|JD|jd|دينار))?', '***', 'gi'
            )
            FROM unnest(COALESCE(i.options_ar, ARRAY[]::text[])) AS opt
          ) AS options_ar,
          ARRAY(
            SELECT regexp_replace(
-             regexp_replace(opt, '(\+?962[\s-]*|0)?7[789]([\s-]*\d){7}', '***', 'g'),
-             '\d+(\.\d+)?\s*(د\.أ|JD|jd)', '***', 'gi'
+             regexp_replace(opt, '(\+?962[\s-]*|0)?7[789]([\s-]*\d){7}|\+?[\d٠-٩][\d٠-٩\s-]{6,}[\d٠-٩]', '***', 'g'),
+             '(\d+(\.\d+)?\s*(د\.أ|JD|jd|دينار))|(قيمة|مبلغ|سعر)\s*[:=]?\s*\d+(\.\d+)?(\s*(د\.أ|JD|jd|دينار))?', '***', 'gi'
            )
            FROM unnest(COALESCE(i.options_en, ARRAY[]::text[])) AS opt
          ) AS options_en,
          regexp_replace(
-           regexp_replace(i.notes, '(\+?962[\s-]*|0)?7[789]([\s-]*\d){7}', '***', 'g'),
-           '\d+(\.\d+)?\s*(د\.أ|JD|jd)', '***', 'gi'
+           regexp_replace(i.notes, '(\+?962[\s-]*|0)?7[789]([\s-]*\d){7}|\+?[\d٠-٩][\d٠-٩\s-]{6,}[\d٠-٩]', '***', 'g'),
+           '(\d+(\.\d+)?\s*(د\.أ|JD|jd|دينار))|(قيمة|مبلغ|سعر)\s*[:=]?\s*\d+(\.\d+)?(\s*(د\.أ|JD|jd|دينار))?', '***', 'gi'
          ) AS notes
   FROM public.order_items i
   WHERE i.order_id = ANY(_order_ids)
@@ -1563,6 +1589,8 @@ GRANT EXECUTE ON FUNCTION public.update_kitchen_order_status(uuid, text) TO auth
 
 
 -- I. Rebuild Sales Order Atomic
+DROP FUNCTION IF EXISTS public.rebuild_sales_order_atomic(uuid, jsonb, numeric, numeric, numeric, numeric, uuid, jsonb);
+DROP FUNCTION IF EXISTS public.rebuild_sales_order_atomic(uuid, jsonb, numeric, numeric, numeric, numeric, uuid, jsonb, integer);
 CREATE OR REPLACE FUNCTION public.rebuild_sales_order_atomic(
   p_order_id uuid,
   p_lines jsonb,
@@ -1660,12 +1688,14 @@ BEGIN
     v_final_discount_percent := v_old_discount_percent;
     v_final_discount_amount := ROUND((v_calc_subtotal * v_old_discount_percent / 100.0), 2);
   ELSE
-    v_final_discount_amount := COALESCE(p_discount_amount, 0);
+    v_final_discount_amount := LEAST(COALESCE(p_discount_amount, v_old_discount_amount), v_calc_subtotal);
     v_final_discount_percent := 0;
   END IF;
 
-  -- Only enforce permission if the staff member is newly granting or increasing a discount
-  IF v_final_discount_amount > v_old_discount_amount + 0.05 THEN
+  -- Only enforce permission if the staff member is newly granting a discount or increasing the approved discount rate
+  IF (v_old_discount_percent = 0 AND v_old_discount_amount = 0 AND v_final_discount_amount > 0)
+     OR (v_old_discount_percent > 0 AND v_final_discount_percent > v_old_discount_percent + 0.01)
+     OR (v_old_discount_percent = 0 AND v_final_discount_amount > v_old_discount_amount + 0.05) THEN
     IF NOT private.has_role(v_caller_id, 'admin') THEN
       SELECT allow_custom_discount, COALESCE(max_discount_percent, 0)
       INTO v_allow_discount, v_max_discount
@@ -1727,8 +1757,8 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.rebuild_sales_order_atomic FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.rebuild_sales_order_atomic TO authenticated;
+REVOKE ALL ON FUNCTION public.rebuild_sales_order_atomic(uuid, jsonb, numeric, numeric, numeric, numeric, uuid, jsonb, integer) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.rebuild_sales_order_atomic(uuid, jsonb, numeric, numeric, numeric, numeric, uuid, jsonb, integer) TO authenticated;
 
 
 -- J. Record Staff Audit
@@ -1823,6 +1853,8 @@ GRANT EXECUTE ON FUNCTION public.delete_sales_order_atomic TO authenticated;
 
 
 -- M. Update Order Item Atomic with Concurrency Control & Audit
+DROP FUNCTION IF EXISTS public.update_order_item_atomic(uuid, uuid, numeric, integer, integer, text, text, text, text, text[], text[], text);
+DROP FUNCTION IF EXISTS public.update_order_item_atomic(uuid, uuid, numeric, integer, integer, text, text, text, text, text[], text[], text, jsonb);
 CREATE OR REPLACE FUNCTION public.update_order_item_atomic(
   p_order_id uuid,
   p_item_id uuid,
@@ -2023,11 +2055,13 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.update_order_item_atomic FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.update_order_item_atomic TO authenticated;
+REVOKE ALL ON FUNCTION public.update_order_item_atomic(uuid, uuid, numeric, integer, integer, text, text, text, text, text[], text[], text, jsonb) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.update_order_item_atomic(uuid, uuid, numeric, integer, integer, text, text, text, text, text[], text[], text, jsonb) TO authenticated;
 
 
 -- N. Apply Order Discount Atomic
+DROP FUNCTION IF EXISTS public.apply_order_discount_atomic(uuid, numeric, numeric);
+DROP FUNCTION IF EXISTS public.apply_order_discount_atomic(uuid, numeric, numeric, integer, text, text);
 CREATE OR REPLACE FUNCTION public.apply_order_discount_atomic(
   p_order_id uuid,
   p_discount_amount numeric,
@@ -2148,8 +2182,8 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.apply_order_discount_atomic FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.apply_order_discount_atomic TO authenticated;
+REVOKE ALL ON FUNCTION public.apply_order_discount_atomic(uuid, numeric, numeric, integer, text, text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.apply_order_discount_atomic(uuid, numeric, numeric, integer, text, text) TO authenticated;
 
 
 -- O. Submit Customer Order Edit Atomic

@@ -630,7 +630,10 @@ export function ModificationsPanel({
                 rebuild.mutate({
                   orderId: selected.id,
                   lines,
-                  expectedVersion: expectedVersion !== undefined ? expectedVersion : selected.version ?? 1,
+                  expectedVersion:
+                    expectedVersion !== undefined && expectedVersion !== null
+                      ? expectedVersion
+                      : (lines as any)?.version ?? (lines as any)?.[0]?.draftVersion ?? selected.version ?? null,
                 })
               }
               onDiscount={(percent, reason, expectedVersion) =>
@@ -756,9 +759,14 @@ function MasterOrderEditor({
     onDiscount(percent, reason, initialVersionRef.current);
   };
 
-  const handleReplaceItems = (lines: RebuildLine[]) => {
+  const handleReplaceItems = (lines: RebuildLine[], expectedVersion?: number | null) => {
     pendingSelfMutationRef.current = true;
-    onReplaceItems(lines, initialVersionRef.current);
+    onReplaceItems(
+      lines,
+      expectedVersion !== undefined && expectedVersion !== null
+        ? expectedVersion
+        : initialVersionRef.current,
+    );
   };
 
   // Form State
@@ -1369,7 +1377,7 @@ function MasterOrderEditor({
             order={order}
             products={products}
             busy={busy}
-            onReplace={onReplaceItems}
+            onReplace={handleReplaceItems}
           />
         ) : (
           <div className="space-y-4">

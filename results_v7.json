@@ -1,0 +1,170 @@
+{
+  "environment": "Exact standalone SQL on local PGlite; distinct SET ROLE and UID; modeled Auth/Storage and legacy grants. Actual application TS validators and handlers executed with a local SQL-backed Supabase adapter; framework HTTP/auth middleware bypassed. No real Supabase and no browser E2E.",
+  "observations": [
+    {
+      "kind": "fixed",
+      "name": "Exact standalone schema can be reapplied on a database already initialized with this version",
+      "verified": true,
+      "evidence": {
+        "reapplied": true
+      }
+    },
+    {
+      "kind": "fixed",
+      "name": "Previous arbitrary subtotal change and unauthorized creation discount are rejected",
+      "verified": true,
+      "evidence": {
+        "patchRejection": {
+          "code": "P0001",
+          "message": "المجموع الفرعي مشتق من بنود الطلب ولا يمكن تعديله مباشرة"
+        },
+        "createRejection": {
+          "message": "غير مصرّح: لا تملك صلاحية تطبيق الخصم · You are not allowed to apply discounts"
+        }
+      }
+    },
+    {
+      "kind": "fixed",
+      "name": "Locked product repricing through the actual item handler is rejected while its link is intact",
+      "verified": true,
+      "evidence": {
+        "message": "لا تملك صلاحية تعديل سعر هذا المنتج · You are not allowed to change this product's price"
+      }
+    },
+    {
+      "kind": "fixed",
+      "name": "Catalog-cascade exception blocks direct manual unlink while product exists",
+      "verified": true,
+      "evidence": {
+        "rejected": true,
+        "code": "42501",
+        "product_id": "06dd1bda-3335-42d9-ae80-cedf376408b0"
+      }
+    },
+    {
+      "kind": "fixed",
+      "name": "Catalog-cascade exception strictly blocks direct option and note changes",
+      "verified": true,
+      "evidence": {
+        "rejected": true,
+        "code": "42501",
+        "notes": "Original note"
+      }
+    },
+    {
+      "kind": "fixed",
+      "name": "Size choice now emits one versioned request and saves price and options together",
+      "verified": true,
+      "evidence": {
+        "request": {
+          "orderId": "2a487495-499e-4804-854d-03427a9914a6",
+          "itemId": "a7b19a7b-1ecd-4750-adbb-bb67912f7aac",
+          "newUnitPrice": 30,
+          "options": [
+            "الحجم: Large"
+          ],
+          "expectedVersion": 1
+        },
+        "saved_options": [
+          "الحجم: Large"
+        ]
+      }
+    },
+    {
+      "kind": "fixed",
+      "name": "Website builder submits draft version and rejects stale rebuild against newer quantity",
+      "verified": true,
+      "evidence": {
+        "sent_version": 1,
+        "rejection": "تعارض في التعديل: تم تعديل هذا الطلب مسبقاً (النسخة الحالية: 2, نسختك: 1)",
+        "preserved_quantity": 3
+      }
+    },
+    {
+      "kind": "fixed",
+      "name": "Explicit draft version through handleReplaceItems does reject stale rebuild",
+      "verified": true,
+      "evidence": {
+        "message": "تعارض في التعديل: تم تعديل هذا الطلب مسبقاً (النسخة الحالية: 2, نسختك: 1)"
+      }
+    },
+    {
+      "kind": "fixed",
+      "name": "Fixed discount is clamped to subtotal on rebuild and a note-only save keeps total unchanged",
+      "verified": true,
+      "evidence": {
+        "after_rebuild": {
+          "subtotal": 5,
+          "discount_amount": 5,
+          "total": 0
+        },
+        "after_note_only": {
+          "subtotal": "5.00",
+          "discount_amount": "5.00",
+          "total": "0.00"
+        }
+      }
+    },
+    {
+      "kind": "fixed",
+      "name": "Patch rejects inconsistent discount amount and percent",
+      "verified": true,
+      "evidence": {
+        "rejected": true,
+        "error": "مبلغ الخصم (0) لا يتطابق مع النسبة المحددة (10)"
+      }
+    },
+    {
+      "kind": "fixed",
+      "name": "Increasing quantity on an approved percentage discount is permitted consistently in both item and rebuild paths",
+      "verified": true,
+      "evidence": {
+        "item_total": 32,
+        "rebuild_total": 32,
+        "rebuild_discount": 8
+      }
+    },
+    {
+      "kind": "fixed",
+      "name": "Actual social order description masks phone in kitchen item name",
+      "verified": true,
+      "evidence": {
+        "kitchen_name_ar": "Chocolate cake; contact ***",
+        "kitchen_name_en": "Chocolate cake; contact ***"
+      }
+    },
+    {
+      "kind": "fixed",
+      "name": "Kitchen feed masks price included in free-form item description",
+      "verified": true,
+      "evidence": {
+        "id": "96f01f20-5916-464a-8b02-9b9c6956d1a4",
+        "name_ar": "Chocolate cake ***",
+        "name_en": "Cake ***",
+        "quantity": 1,
+        "options_ar": [],
+        "options_en": [],
+        "notes": "Contact ***",
+        "category": null,
+        "priority_color": null
+      }
+    },
+    {
+      "kind": "fixed",
+      "name": "New order_items cascade exception permits real catalog deletion without deleting historical order",
+      "verified": true,
+      "evidence": {
+        "product_id": null,
+        "order_total": "20.00"
+      }
+    },
+    {
+      "kind": "fixed",
+      "name": "Applying this schema over a prior schema with older function signatures succeeds cleanly",
+      "verified": true,
+      "evidence": {
+        "upgrade_successful": true
+      }
+    }
+  ]
+}

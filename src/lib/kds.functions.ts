@@ -21,8 +21,11 @@ const prepOptions = (options: string[]): string[] =>
  * digit run is masked before the data leaves the server.
  */
 const PHONE_LIKE = /\+?[\d٠-٩][\d٠-٩\s-]{6,}[\d٠-٩]/g;
+const PRICE_LIKE = /\d+(\.\d+)?\s*(د\.أ|JD|jd|دينار)/gi;
 const stripPhones = (text: string | null): string | null =>
   text ? text.replace(PHONE_LIKE, "—") : text;
+const stripPhonesAndPrices = (text: string | null): string | null =>
+  text ? text.replace(PHONE_LIKE, "—").replace(PRICE_LIKE, "—") : text;
 
 import type { OrderModification } from "@/lib/server-shared";
 export type { OrderModification };
@@ -178,12 +181,12 @@ export const getKitchenOrders = createServerFn({ method: "GET" })
       const list = itemsByOrder.get(item.order_id) ?? [];
       list.push({
         id: item.id,
-        name_ar: item.name_ar,
-        name_en: item.name_en,
+        name_ar: stripPhonesAndPrices(item.name_ar) ?? item.name_ar,
+        name_en: stripPhonesAndPrices(item.name_en) ?? item.name_en,
         quantity: item.quantity,
         options_ar: prepOptions(item.options_ar ?? []),
         options_en: prepOptions(item.options_en ?? []),
-        notes: stripPhones(item.notes),
+        notes: stripPhonesAndPrices(item.notes),
         category: categoryByProduct.get(item.product_id) ?? null,
         priority_color: priorityByProduct.get(item.product_id) ?? null,
       });

@@ -10,7 +10,7 @@ import type { StorefrontProduct } from "@/lib/storefront-content";
 import type { RebuildLine, SalesOrder } from "@/lib/sales.functions";
 import { jd } from "@/lib/currency";
 
-type Draft = RebuildLine & { key: string };
+type Draft = RebuildLine & { key: string; draftVersion?: number };
 
 /**
  * Website-style modification screen: staff rebuild the order using the exact
@@ -26,7 +26,7 @@ export function WebsiteRebuildPanel({
   order: SalesOrder;
   products: StorefrontProduct[];
   busy: boolean;
-  onReplace: (lines: RebuildLine[]) => void;
+  onReplace: (lines: RebuildLine[], expectedVersion?: number | null) => void;
 }) {
   const [query, setQuery] = useState("");
   const [picked, setPicked] = useState<StorefrontProduct | null>(null);
@@ -72,18 +72,20 @@ export function WebsiteRebuildPanel({
     toast.success("تمت إضافة الصنف إلى الطلب الجديد");
   };
 
-  const importCurrent = () =>
-    setLines(
-      order.items.map((item, index) => ({
-        key: `current-${item.id}-${index}`,
-        productId: item.product_id ?? null,
-        name: item.name_ar,
-        quantity: item.quantity,
-        unitPrice: item.unit_price,
-        options: item.options_ar,
-        notes: item.notes,
-      })),
-    );
+  const importCurrent = () => {
+    const list: Draft[] = order.items.map((item, index) => ({
+      key: `current-${item.id}-${index}`,
+      productId: item.product_id ?? null,
+      name: item.name_ar,
+      quantity: item.quantity,
+      unitPrice: item.unit_price,
+      options: item.options_ar,
+      notes: item.notes,
+      draftVersion: order.version || 1,
+    }));
+    (list as any).version = order.version || 1;
+    setLines(list);
+  };
 
   return (
     <section
@@ -234,7 +236,9 @@ export function WebsiteRebuildPanel({
         <button
           type="button"
           disabled={busy || lines.length === 0}
-          onClick={() => onReplace(lines.map(({ key: _key, ...line }) => line))}
+          onClick={() =>
+            onReplace(lines.map(({ key: _key, draftVersion: _dv, ...line }) => line), (lines as any).version ?? (lines[0] as any)?.draftVersion)
+          }
           className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-primary px-5 text-sm font-extrabold text-primary-foreground disabled:opacity-50"
         >
           <Plus className="h-4 w-4" aria-hidden /> استبدال أصناف الطلب · Replace items
