@@ -687,16 +687,15 @@ function MasterOrderEditor({
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isFinishing, setIsFinishing] = useState(false);
   const initialVersionRef = useRef<number>(order.version || 1);
+  const hasConcurrentConflict = (order.version || 1) > initialVersionRef.current;
 
-  useEffect(() => {
-    if (order.version) {
-      initialVersionRef.current = order.version;
-    }
-  }, [order.version]);
+  const [isProcessingQuickPayment, setIsProcessingQuickPayment] = useState(false);
+  const quickPaymentIdempotencyKeyRef = useRef<string>(crypto.randomUUID());
 
   const recordPaymentServer = useServerFn(recordOrderPayment);
   const handleQuickAddPayment = async (amount: number, type: "deposit" | "remainder" | "full" = "remainder") => {
-    if (amount <= 0) return;
+    if (amount <= 0 || isProcessingQuickPayment) return;
+    setIsProcessingQuickPayment(true);
     try {
       await recordPaymentServer({
         data: {
@@ -705,12 +704,15 @@ function MasterOrderEditor({
           paymentMethod: order.payment_method || "cash",
           paymentType: type,
           notes: `دفعة عبر استوديو التعديل (${amount} د.أ)`,
-          idempotencyKey: crypto.randomUUID(),
+          idempotencyKey: quickPaymentIdempotencyKeyRef.current,
         },
       });
+      quickPaymentIdempotencyKeyRef.current = crypto.randomUUID();
       toast.success(`تم تسجيل دفعة بقيمة ${jd(amount)} في سجل الحركات المالية بنجاح ✅`);
     } catch (err: any) {
       toast.error(err?.message || "تعذّر تسجيل الدفعة");
+    } finally {
+      setIsProcessingQuickPayment(false);
     }
   };
 
@@ -762,7 +764,7 @@ function MasterOrderEditor({
   const remaining = Math.max(order.total - (Number(deposit) || 0), 0);
   const statusInfo = statusMeta[order.status];
 
-  // Helper date presets
+  // Helper date presets (updates local date without premature server mutation)
   const setQuickDate = (offsetDays: number) => {
     const d = new Date();
     d.setDate(d.getDate() + offsetDays);
@@ -770,7 +772,6 @@ function MasterOrderEditor({
       d.getDate(),
     ).padStart(2, "0")}`;
     setDate(iso);
-    onPatch({ requested_date: iso });
   };
 
   // Helper quick phrases for cake inscription
@@ -833,6 +834,39 @@ function MasterOrderEditor({
 
   return (
     <div className="space-y-4 pb-20">
+      {/* Concurrency Conflict Warning Banner */}
+      {hasConcurrentConflict && (
+        <div className="rounded-2xl border-2 border-amber-500 bg-amber-50 dark:bg-amber-950/40 p-3.5 text-xs font-bold text-amber-900 dark:text-amber-200 flex flex-wrap items-center justify-between gap-3 shadow-md">
+          <div className="flex items-center gap-2">
+            <span className="text-base">⚠️</span>
+            <span>
+              تم تحديث هذا الطلب في الخلفية بواسطة موظف آخر (إصدار الخادم: {order.version}، إصدارك الحالي: {initialVersionRef.current}).
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              initialVersionRef.current = order.version ?? 1;
+              setOrderName(order.order_name ?? "");
+              setCustomerName(order.customer_name);
+              setCustomerPhone(order.customer_phone);
+              setDate(order.requested_date);
+              setTime(order.requested_time.slice(0, 5));
+              setAddress(order.address ?? "");
+              setInscription(order.inscription ?? "");
+              setCardNote(order.card_note ?? "");
+              setNotes(order.notes ?? "");
+              setStaffNotes(order.staff_notes ?? "");
+              setDeposit(String(order.deposit_paid));
+              toast.info("تمت مزامنة حقول التعديل مع أحدث نسخة بنجاح ✅");
+            }}
+            className="rounded-xl bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 font-black text-xs cursor-pointer shadow-xs"
+          >
+            تحديث ومزامنة البيانات الآن
+          </button>
+        </div>
+      )}
+
       {/* Top Sticky Command Header */}
       <div className="sticky top-2 z-20 rounded-3xl border border-primary/30 bg-card/95 backdrop-blur-md p-3.5 sm:p-4 shadow-lg">
         <div className="flex flex-wrap items-center justify-between gap-3">

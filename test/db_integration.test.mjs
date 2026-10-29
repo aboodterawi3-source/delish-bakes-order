@@ -171,19 +171,21 @@ await test("4. OCC Lock: Two simultaneous updates on same order version reject s
   const orderId = createRes.data.id;
 
   // Worker 1 patches expecting version 1
-  const patch1 = await rpc("update_sales_order_patch_atomic", {
+  const patch1 = await rpc("patch_sales_order_atomic", {
     p_order_id: orderId,
     p_expected_version: 1,
     p_patch: { notes: "Worker 1 update" },
+    p_new_mods: null,
     p_user_id: null,
   });
   assert.ok(patch1.ok, "Worker 1 patch must succeed and bump version to 2");
 
   // Worker 2 attempts patch also expecting version 1
-  const patch2 = await rpc("update_sales_order_patch_atomic", {
+  const patch2 = await rpc("patch_sales_order_atomic", {
     p_order_id: orderId,
     p_expected_version: 1,
     p_patch: { notes: "Worker 2 stale update" },
+    p_new_mods: null,
     p_user_id: null,
   });
   assert.equal(patch2.ok, false, "Worker 2 patch must be rejected due to version mismatch");
@@ -310,10 +312,11 @@ await test("7. KDS Selective Ack: Acknowledging modification #1 keeps newer modi
   });
 
   // Acknowledge only mod1
-  const ackRes = await rpc("acknowledge_order_modification", {
+  const ackRes = await rpc("acknowledge_kds_modifications_atomic", {
     p_order_id: orderId,
     p_mod_ids: [mod1.id],
-    p_staff_user_id: null,
+    p_chef_user_id: null,
+    p_chef_name: "شيف الاختبار",
   });
   assert.ok(ackRes.ok, "Acknowledgement RPC must succeed");
 
@@ -336,16 +339,15 @@ await test("8. Storefront RPC Defense: create_storefront_order_atomic cannot be 
     return;
   }
   const forgedPayload = {
-    p_order: {
+    order_payload: {
       customer_name: "Malicious Attacker",
       customer_phone: "0790000009",
       method: "pickup",
       requested_date: "2026-11-05",
       requested_time: "12:00:00",
       delivery_fee: 0,
-      total: 0.01, // Forged price
     },
-    p_items: [
+    items_payload: [
       {
         product_id: null,
         name_ar: "Luxury Tiered Cake",

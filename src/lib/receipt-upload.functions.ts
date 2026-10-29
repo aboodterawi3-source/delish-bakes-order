@@ -6,7 +6,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertRole, type StaffRoleName } from "@/lib/role-guard";
 
 const BUCKET = "payment-receipts";
-const SALES_ROLES: StaffRoleName[] = ["sales", "admin"];
+const SALES_ROLES: StaffRoleName[] = ["sales", "admin", "social"];
 
 export type ReceiptUploadRequest = {
   data_url: string;

@@ -186,11 +186,13 @@ export function useBrandPalette() {
     applyThemeCssVariables(BRAND_PALETTES[newId]!);
     queryClient.setQueryData(STORE_SETTINGS_KEY, { card_color_palette: newId });
 
-    // Save to Supabase store_settings table
+    // Save to Supabase store_settings table (singleton upsert ensures persistence)
     const { error } = await supabase
       .from("store_settings")
-      .update({ card_color_palette: newId } as never)
-      .eq("singleton", true);
+      .upsert(
+        { singleton: true, card_color_palette: newId } as never,
+        { onConflict: "singleton" }
+      );
 
     if (error) {
       console.error("[store_settings] failed to save card_color_palette:", error);

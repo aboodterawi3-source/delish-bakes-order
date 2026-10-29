@@ -49,6 +49,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   const [sending, setSending] = useState(false);
   const isSubmittingRef = useRef(false);
   const sendingRef = useRef(false);
+  const draftRequestIdRef = useRef<string>(crypto.randomUUID());
   const [saveError, setSaveError] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const submitOrder = useServerFn(submitStorefrontOrder);
@@ -174,6 +175,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
     try {
       saved = await submitOrder({
         data: {
+          client_request_id: draftRequestIdRef.current,
           customer_name: form.name.trim(),
           customer_phone: form.phone.trim(),
           method: form.method,
@@ -231,6 +233,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
       return;
     }
 
+    draftRequestIdRef.current = crypto.randomUUID();
     setOrderNumber(saved.order_number);
     const url = getWhatsAppChatUrl(undefined, buildMessage(saved.order_number));
     setWaUrl(url);

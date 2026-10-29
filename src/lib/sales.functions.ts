@@ -4,6 +4,7 @@ import { assertRole, getRoles, type StaffRoleName } from "@/lib/role-guard";
 import { feeForArea } from "@/lib/delivery-zones";
 import { getStaffCodeForUser, type OrderModification } from "@/lib/server-shared";
 import { roundJod } from "@/lib/currency";
+import { logServerError } from "@/lib/server-log";
 
 /** The order desk: sales, social media and admins all manage the same orders. */
 const SALES_ROLES: StaffRoleName[] = ["sales", "admin", "social"];
@@ -303,7 +304,6 @@ export type OrderPatch = {
   delivery_fee?: number;
   driver_name?: string | null;
   driver_phone?: string | null;
-  deposit_paid?: number;
   payment_method?: PaymentMethod | null;
   /** Card writing, final-photo request and the generated confirmation message. */
   card_note?: string | null;
@@ -373,13 +373,6 @@ const buildOrderPatch = (input: OrderPatch): Record<string, unknown> => {
       patch["area"] = area;
       patch["delivery_fee"] = zoneFee;
     }
-  }
-  if (input.deposit_paid !== undefined) {
-    const deposit = Number(input.deposit_paid);
-    if (!Number.isFinite(deposit) || deposit < 0 || deposit > 100000) {
-      throw new Error("عربون غير صالح · Invalid deposit");
-    }
-    patch["deposit_paid"] = deposit;
   }
   if (input.payment_method !== undefined) {
     if (input.payment_method !== null && !PAYMENT_METHODS.includes(input.payment_method)) {
@@ -703,28 +696,6 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
         }
       }
 
-      if (clean["payment_method"] === "cliq" || clean["payment_method"] === "visa") {
-        if (clean["deposit_paid"] === undefined) {
-          clean["deposit_paid"] = Number(existing.total ?? 0);
-        }
-      }
-
-      if (clean["deposit_paid"] !== undefined) {
-        const orderTotal = Number(existing.total ?? 0);
-        clean["deposit_paid"] = roundJod(Math.min(Math.max(Number(clean["deposit_paid"]), 0), orderTotal));
-        const oldVal = Number(existing.deposit_paid ?? 0);
-        const newVal = Number(clean["deposit_paid"] ?? 0);
-        if (oldVal !== newVal) {
-          newDiffs.push({
-            field: "العربون المدفوع",
-            oldValue: `${oldVal.toFixed(2)} د.أ`,
-            newValue: `${newVal.toFixed(2)} د.أ`,
-            updatedAt: nowIso,
-            acknowledgedAt: null,
-          });
-        }
-      }
-
       if (clean["driver_name"] !== undefined) {
         const oldVal = (existing.driver_name ?? "").trim();
         const newVal = String(clean["driver_name"] ?? "").trim();
@@ -980,85 +951,47 @@ export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
       }
     }
 
-    const itemPatch: Record<string, unknown> = {};
-    if (data.newUnitPrice !== undefined) itemPatch["unit_price"] = data.newUnitPrice;
-    if (data.quantity !== undefined) itemPatch["quantity"] = data.quantity;
+    const newPrice = data.newUnitPrice !== undefined ? data.newUnitPrice : Number(before.unit_price ?? 0);
+    const newQty = data.quantity !== undefined ? data.quantity : Number(before.quantity ?? 1);
+
+    const { error: rpcError } = await context.supabase.rpc("update_order_item_atomic", {
+      p_order_id: data.orderId,
+      p_item_id: data.itemId,
+      p_unit_price: newPrice,
+      p_quantity: newQty,
+      p_expected_version: null,
+      p_staff_name: staffName(context as never),
+      p_reason: `تعديل صنف: ${data.name || before.name_ar}`,
+    });
+
+    if (rpcError) {
+      logServerError("sales.updateSalesOrderItemPrice.rpc", rpcError);
+      throw new Error(rpcError.message);
+    }
+
+    // If options or name were also edited, patch them on order_items
+    const textPatch: Record<string, unknown> = {};
     if (data.name !== undefined) {
-      itemPatch["name_ar"] = data.name;
-      itemPatch["name_en"] = data.name;
+      textPatch["name_ar"] = data.name;
+      textPatch["name_en"] = data.name;
     }
-    if (data.notes !== undefined) itemPatch["notes"] = data.notes;
+    if (data.notes !== undefined) textPatch["notes"] = data.notes;
     if (data.options !== undefined) {
-      itemPatch["options_ar"] = data.options;
-      itemPatch["options_en"] = data.options;
+      textPatch["options_ar"] = data.options;
+      textPatch["options_en"] = data.options;
     }
-    if (Object.keys(itemPatch).length === 0) {
-      throw new Error("لا يوجد تغيير · Nothing to update");
+    if (Object.keys(textPatch).length > 0) {
+      await context.supabase.from("order_items").update(textPatch as never).eq("id", data.itemId);
     }
-
-    const { error: itemError } = await context.supabase
-      .from("order_items")
-      .update(itemPatch as never)
-      .eq("id", data.itemId);
-    if (itemError) throw new Error(itemError.message);
-
-    // Recalculate order subtotal and total
-    const { data: items, error: fetchError } = await context.supabase
-      .from("order_items")
-      .select("unit_price, quantity")
-      .eq("order_id", data.orderId);
-    if (fetchError) throw new Error(fetchError.message);
-
-    const subtotal = roundJod(
-      (items ?? []).reduce(
-        (acc, it) => acc + Number(it.unit_price) * Number(it.quantity),
-        0,
-      ),
-    );
-
-    const { data: currentOrder } = await context.supabase
-      .from("orders")
-      .select("version, delivery_fee, method, discount_amount")
-      .eq("id", data.orderId)
-      .single();
-
-    const currentVersion = Number((currentOrder as any)?.version) || 1;
-
-    const deliveryFee =
-      currentOrder?.method === "delivery" ? roundJod(Number(currentOrder?.delivery_fee ?? 0)) : 0;
-    const discountAmount = roundJod(Number(currentOrder?.discount_amount ?? 0));
-    const total = roundJod(Math.max(subtotal + deliveryFee - discountAmount, 0));
 
     const { data: updatedOrder, error: orderError } = await context.supabase
       .from("orders")
-      .update({
-        subtotal,
-        total,
-        last_edited_at: new Date().toISOString(),
-        last_edited_by: context.userId,
-        version: currentVersion + 1,
-        ...(newDiffs.length > 0 ? { modifications: [...currentMods, ...newDiffs] } : {}),
-      } as never)
-      .eq("id", data.orderId)
       .select(SELECT)
+      .eq("id", data.orderId)
       .single();
     if (orderError) throw new Error(orderError.message);
 
-    const order = toOrder(updatedOrder as Row);
-
-    await writeAudit(context as never, {
-      order_id: order.id,
-      order_number: order.order_number,
-      staff_user_id: context.userId,
-      staff_name: staffName(context as never),
-      action: "price_override",
-      original_amount: Number(before?.unit_price ?? 0),
-      modified_amount: data.newUnitPrice ?? Number(before?.unit_price ?? 0),
-      discount_percent: null,
-      reason: "Order line edited on the order desk",
-    });
-
-    return order;
+    return toOrder(updatedOrder as Row);
   });
 
 /** One rebuilt order line coming from the website-style modification screen. */

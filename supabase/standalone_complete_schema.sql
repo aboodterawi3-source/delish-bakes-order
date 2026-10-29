@@ -6,6 +6,12 @@
 -- ==============================================================================
 
 -- 1. EXTENSIONS & SCHEMAS
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN CREATE ROLE anon; END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN CREATE ROLE authenticated; END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN CREATE ROLE service_role; END IF;
+END $$;
+
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 CREATE SCHEMA IF NOT EXISTS private;
@@ -307,6 +313,12 @@ END $$;
 DO $$ BEGIN
   IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
     ALTER PUBLICATION supabase_realtime ADD TABLE public.orders;
+  END IF;
+EXCEPTION WHEN OTHERS THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
     ALTER PUBLICATION supabase_realtime ADD TABLE public.order_items;
   END IF;
 EXCEPTION WHEN OTHERS THEN NULL;
@@ -441,14 +453,14 @@ DROP POLICY IF EXISTS "Admins delete orders" ON public.orders;
 CREATE POLICY "Admins delete orders" ON public.orders FOR DELETE TO authenticated
   USING (private.has_role(auth.uid(), 'admin'));
 
--- Order Items Policies
+-- Order Items Policies: Direct SELECT restricted to Sales, Social, Admin.
+-- Kitchen reads sanitized preparation items without unit_price via get_kitchen_order_items()
 DROP POLICY IF EXISTS "Staff view order items" ON public.order_items;
 CREATE POLICY "Staff view order items" ON public.order_items FOR SELECT TO authenticated
   USING (
     private.has_role(auth.uid(), 'admin') OR
     private.has_role(auth.uid(), 'sales') OR
-    private.has_role(auth.uid(), 'social') OR
-    private.has_role(auth.uid(), 'kitchen')
+    private.has_role(auth.uid(), 'social')
   );
 
 DROP POLICY IF EXISTS "Sales and admin manage order items" ON public.order_items;
@@ -460,6 +472,8 @@ CREATE POLICY "Sales and admin manage order items" ON public.order_items FOR ALL
   );
 
 -- Order Payments Ledger Policies
+-- Staff can view financial transactions. Direct INSERT/UPDATE/DELETE is strictly forbidden;
+-- all financial entries must go through record_order_payment_atomic() to maintain ledger integrity.
 DROP POLICY IF EXISTS "Staff view order payments" ON public.order_payments;
 CREATE POLICY "Staff view order payments" ON public.order_payments FOR SELECT TO authenticated
   USING (
@@ -469,11 +483,6 @@ CREATE POLICY "Staff view order payments" ON public.order_payments FOR SELECT TO
   );
 
 DROP POLICY IF EXISTS "Sales and admin create payments" ON public.order_payments;
-CREATE POLICY "Sales and admin create payments" ON public.order_payments FOR INSERT TO authenticated
-  WITH CHECK (
-    private.has_role(auth.uid(), 'admin') OR
-    private.has_role(auth.uid(), 'sales')
-  );
 
 -- Audit Logs Policies: STRICT INSERT only by owner
 DROP POLICY IF EXISTS "Staff view audit logs" ON public.audit_logs;
@@ -515,20 +524,45 @@ DO $$ BEGIN
 
     DROP POLICY IF EXISTS "Staff view designs" ON storage.objects;
     CREATE POLICY "Staff view designs" ON storage.objects FOR SELECT TO authenticated
-      USING (bucket_id = 'order-designs');
+      USING (
+        bucket_id = 'order-designs' AND (
+          private.has_role(auth.uid(), 'admin') OR
+          private.has_role(auth.uid(), 'sales') OR
+          private.has_role(auth.uid(), 'kitchen') OR
+          private.has_role(auth.uid(), 'social')
+        )
+      );
 
     DROP POLICY IF EXISTS "Staff upload designs" ON storage.objects;
     CREATE POLICY "Staff upload designs" ON storage.objects FOR INSERT TO authenticated
-      WITH CHECK (bucket_id = 'order-designs' AND (private.has_role(auth.uid(), 'admin') OR private.has_role(auth.uid(), 'sales') OR private.has_role(auth.uid(), 'social')));
+      WITH CHECK (
+        bucket_id = 'order-designs' AND (
+          private.has_role(auth.uid(), 'admin') OR
+          private.has_role(auth.uid(), 'sales') OR
+          private.has_role(auth.uid(), 'social')
+        )
+      );
 
-    -- STRICT ISOLATION FOR PAYMENT RECEIPTS: Only Admin and Sales
+    -- STRICT ISOLATION FOR PAYMENT RECEIPTS: Admin, Sales, and Social
     DROP POLICY IF EXISTS "Sales view payment receipts" ON storage.objects;
     CREATE POLICY "Sales view payment receipts" ON storage.objects FOR SELECT TO authenticated
-      USING (bucket_id = 'payment-receipts' AND (private.has_role(auth.uid(), 'admin') OR private.has_role(auth.uid(), 'sales')));
+      USING (
+        bucket_id = 'payment-receipts' AND (
+          private.has_role(auth.uid(), 'admin') OR
+          private.has_role(auth.uid(), 'sales') OR
+          private.has_role(auth.uid(), 'social')
+        )
+      );
 
     DROP POLICY IF EXISTS "Sales upload payment receipts" ON storage.objects;
     CREATE POLICY "Sales upload payment receipts" ON storage.objects FOR INSERT TO authenticated
-      WITH CHECK (bucket_id = 'payment-receipts' AND (private.has_role(auth.uid(), 'admin') OR private.has_role(auth.uid(), 'sales') OR private.has_role(auth.uid(), 'social')));
+      WITH CHECK (
+        bucket_id = 'payment-receipts' AND (
+          private.has_role(auth.uid(), 'admin') OR
+          private.has_role(auth.uid(), 'sales') OR
+          private.has_role(auth.uid(), 'social')
+        )
+      );
   END IF;
 END $$;
 
@@ -554,6 +588,13 @@ DECLARE
   v_client_request_id text;
   v_initial_modifications jsonb := '[]'::jsonb;
   v_staff_name text;
+  v_dup_id uuid;
+  v_dup_order_number text;
+  v_dup_total numeric;
+  v_dup_subtotal numeric;
+  v_dup_delivery_fee numeric;
+  v_dup_deposit numeric;
+  v_dup_version integer;
   v_item jsonb;
 BEGIN
   IF v_caller_id IS NULL THEN
@@ -568,21 +609,21 @@ BEGIN
 
   -- Idempotency Check: return existing order if request ID already exists
   IF v_client_request_id IS NOT NULL THEN
-    SELECT id, order_number, total, subtotal, delivery_fee, deposit_paid
-    INTO v_order_id, v_order_number, v_total, v_subtotal, v_delivery_fee, v_initial_deposit
+    SELECT id, order_number, total, subtotal, delivery_fee, deposit_paid, COALESCE(version, 1)
+    INTO v_dup_id, v_dup_order_number, v_dup_total, v_dup_subtotal, v_dup_delivery_fee, v_dup_deposit, v_dup_version
     FROM public.orders
     WHERE client_request_id = v_client_request_id;
     
     IF FOUND THEN
       RETURN jsonb_build_object(
-        'id', v_order_id,
-        'order_number', v_order_number,
-        'total', v_total,
-        'subtotal', v_subtotal,
-        'delivery_fee', v_delivery_fee,
-        'deposit_paid', v_initial_deposit,
+        'id', v_dup_id,
+        'order_number', v_dup_order_number,
+        'total', v_dup_total,
+        'subtotal', v_dup_subtotal,
+        'delivery_fee', v_dup_delivery_fee,
+        'deposit_paid', v_dup_deposit,
         'is_duplicate', true,
-        'version', 1
+        'version', v_dup_version
       );
     END IF;
   END IF;
@@ -728,22 +769,28 @@ DECLARE
   new_delivery numeric := 0;
   new_total numeric := 0;
   req_client_id text;
-  item jsonb;
+  v_dup_id uuid;
+  v_dup_order_number text;
+  v_dup_subtotal numeric;
+  v_dup_delivery numeric;
+  v_dup_total numeric;
+  v_item_elem jsonb;
 BEGIN
   req_client_id := NULLIF(TRIM(order_payload->>'client_request_id'), '');
 
   IF req_client_id IS NOT NULL THEN
     SELECT id, order_number, subtotal, delivery_fee, total
-    INTO new_order_id, new_order_number, new_subtotal, new_delivery, new_total
+    INTO v_dup_id, v_dup_order_number, v_dup_subtotal, v_dup_delivery, v_dup_total
     FROM public.orders
     WHERE client_request_id = req_client_id;
     IF FOUND THEN
       RETURN jsonb_build_object(
-        'id', new_order_id,
-        'order_number', new_order_number,
-        'subtotal', new_subtotal,
-        'delivery_fee', new_delivery,
-        'total', new_total
+        'id', v_dup_id,
+        'order_number', v_dup_order_number,
+        'subtotal', v_dup_subtotal,
+        'delivery_fee', v_dup_delivery,
+        'total', v_dup_total,
+        'is_duplicate', true
       );
     END IF;
   END IF;
@@ -752,12 +799,12 @@ BEGIN
     RAISE EXCEPTION 'يجب إضافة صنف واحد على الأقل';
   END IF;
 
-  FOR item IN SELECT * FROM jsonb_array_elements(items_payload)
+  FOR v_item_elem IN SELECT * FROM jsonb_array_elements(items_payload)
   LOOP
-    IF ((item->>'unit_price')::numeric) < 0 OR COALESCE((item->>'quantity')::integer, 0) <= 0 THEN
+    IF ((v_item_elem->>'unit_price')::numeric) < 0 OR COALESCE((v_item_elem->>'quantity')::integer, 0) <= 0 THEN
       RAISE EXCEPTION 'سعر الصنف أو الكمية غير صالحة';
     END IF;
-    new_subtotal := new_subtotal + (((item->>'unit_price')::numeric) * COALESCE((item->>'quantity')::integer, 1));
+    new_subtotal := new_subtotal + (((v_item_elem->>'unit_price')::numeric) * COALESCE((v_item_elem->>'quantity')::integer, 1));
   END LOOP;
 
   new_delivery := GREATEST(COALESCE((order_payload->>'delivery_fee')::numeric, 0), 0);
@@ -793,27 +840,28 @@ BEGIN
   )
   SELECT
     new_order_id,
-    item->>'name_ar',
-    COALESCE(item->>'name_en', item->>'name_ar'),
-    (item->>'unit_price')::numeric,
-    COALESCE((item->>'quantity')::integer, 1),
-    ARRAY(SELECT jsonb_array_elements_text(COALESCE(item->'options_ar', '[]'::jsonb))),
-    ARRAY(SELECT jsonb_array_elements_text(COALESCE(item->'options_en', '[]'::jsonb))),
-    item->>'notes'
-  FROM jsonb_array_elements(items_payload) AS item;
+    it->>'name_ar',
+    COALESCE(it->>'name_en', it->>'name_ar'),
+    (it->>'unit_price')::numeric,
+    COALESCE((it->>'quantity')::integer, 1),
+    ARRAY(SELECT jsonb_array_elements_text(COALESCE(it->'options_ar', '[]'::jsonb))),
+    ARRAY(SELECT jsonb_array_elements_text(COALESCE(it->'options_en', '[]'::jsonb))),
+    it->>'notes'
+  FROM jsonb_array_elements(items_payload) AS it;
 
   RETURN jsonb_build_object(
     'id', new_order_id,
     'order_number', new_order_number,
     'subtotal', new_subtotal,
     'delivery_fee', new_delivery,
-    'total', new_total
+    'total', new_total,
+    'is_duplicate', false
   );
 END;
 $$;
 
--- STRICT: Revoked from anon/public! Can only be called via server functions using service_role!
-REVOKE ALL ON FUNCTION public.create_storefront_order_atomic(jsonb, jsonb) FROM PUBLIC, anon;
+-- STRICT: Revoked from anon/public and authenticated! Can only be called via server functions using service_role!
+REVOKE ALL ON FUNCTION public.create_storefront_order_atomic(jsonb, jsonb) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.create_storefront_order_atomic(jsonb, jsonb) TO service_role;
 
 
@@ -937,7 +985,7 @@ DECLARE
   v_version integer;
   v_total_collected numeric;
   v_max_refundable numeric;
-  v_existing_payment_id uuid;
+  v_existing_rec record;
   v_result jsonb;
 BEGIN
   IF v_caller_id IS NULL THEN
@@ -952,25 +1000,7 @@ BEGIN
     RAISE EXCEPTION 'مبلغ الحركة المالية يجب أن يكون أكبر من صفر';
   END IF;
 
-  -- Idempotency check on payment
-  IF p_idempotency_key IS NOT NULL AND p_idempotency_key != '' THEN
-    SELECT id INTO v_existing_payment_id FROM public.order_payments WHERE idempotency_key = p_idempotency_key;
-    IF FOUND THEN
-      SELECT total, deposit_paid, COALESCE(version, 1)
-      INTO v_current_total, v_total_collected, v_version
-      FROM public.orders WHERE id = p_order_id;
-      RETURN jsonb_build_object(
-        'order_id', p_order_id,
-        'total', v_current_total,
-        'deposit_paid', v_total_collected,
-        'remaining', GREATEST(v_current_total - v_total_collected, 0),
-        'refund_due', GREATEST(v_total_collected - v_current_total, 0),
-        'version', v_version,
-        'is_duplicate', true
-      );
-    END IF;
-  END IF;
-
+  -- Lock order row first to serialize concurrent payment operations on this order
   SELECT total, deposit_paid, status, order_number, COALESCE(version, 1)
   INTO v_current_total, v_current_deposit, v_order_status, v_order_number, v_version
   FROM public.orders
@@ -981,7 +1011,31 @@ BEGIN
     RAISE EXCEPTION 'الطلب غير موجود · Order not found';
   END IF;
 
-  -- Calculate current net confirmed payments
+  -- Idempotency check with payload verification
+  IF p_idempotency_key IS NOT NULL AND TRIM(p_idempotency_key) != '' THEN
+    SELECT id, order_id, amount, payment_type, status
+    INTO v_existing_rec
+    FROM public.order_payments
+    WHERE idempotency_key = p_idempotency_key;
+
+    IF FOUND THEN
+      IF v_existing_rec.order_id <> p_order_id OR v_existing_rec.amount <> p_amount OR v_existing_rec.payment_type <> p_payment_type THEN
+        RAISE EXCEPTION 'مفتاح عدم التكرار مستخدم مسبقاً لحركة مختلفة · Idempotency key conflict';
+      END IF;
+
+      RETURN jsonb_build_object(
+        'order_id', p_order_id,
+        'total', v_current_total,
+        'deposit_paid', v_current_deposit,
+        'remaining', GREATEST(v_current_total - v_current_deposit, 0),
+        'refund_due', GREATEST(v_current_deposit - v_current_total, 0),
+        'version', v_version,
+        'is_duplicate', true
+      );
+    END IF;
+  END IF;
+
+  -- Calculate current net confirmed payments from the ledger
   SELECT COALESCE(
     SUM(CASE WHEN payment_type = 'refund' THEN -amount ELSE amount END),
     0
@@ -1009,24 +1063,31 @@ BEGIN
     reference_number, notes, staff_user_id, staff_name, idempotency_key
   ) VALUES (
     p_order_id, p_amount, p_payment_method, p_payment_type, p_status,
-    p_reference, p_notes, v_caller_id, COALESCE(p_staff_name, 'موظف مبيعات'), p_idempotency_key
+    p_reference, p_notes, v_caller_id, COALESCE(p_staff_name, 'موظف مبيعات'), NULLIF(TRIM(p_idempotency_key), '')
   );
 
-  -- Recalculate net collected
-  v_total_collected := CASE
-    WHEN p_payment_type = 'refund' THEN v_total_collected - p_amount
-    ELSE v_total_collected + p_amount
-  END;
+  -- Financial ledger integrity: ONLY confirmed payments mutate orders.deposit_paid and bump version
+  IF p_status = 'confirmed' THEN
+    v_total_collected := CASE
+      WHEN p_payment_type = 'refund' THEN v_total_collected - p_amount
+      ELSE v_total_collected + p_amount
+    END;
 
-  UPDATE public.orders
-  SET
-    deposit_paid = v_total_collected,
-    version = COALESCE(version, 1) + 1,
-    last_edited_at = now(),
-    last_edited_by = v_caller_id
-  WHERE id = p_order_id;
+    UPDATE public.orders
+    SET
+      deposit_paid = v_total_collected,
+      version = v_version + 1,
+      last_edited_at = now(),
+      last_edited_by = v_caller_id
+    WHERE id = p_order_id;
 
-  IF p_payment_type = 'refund' THEN
+    v_version := v_version + 1;
+  ELSE
+    -- If status is not confirmed (e.g. pending/failed), deposit_paid remains unchanged
+    v_total_collected := v_current_deposit;
+  END IF;
+
+  IF p_payment_type = 'refund' AND p_status = 'confirmed' THEN
     INSERT INTO public.audit_logs (
       order_id, order_number, staff_user_id, staff_name,
       action, original_amount, modified_amount, reason
@@ -1043,7 +1104,7 @@ BEGIN
     'deposit_paid', v_total_collected,
     'remaining', GREATEST(v_current_total - v_total_collected, 0),
     'refund_due', GREATEST(v_total_collected - v_current_total, 0),
-    'version', v_version + 1,
+    'version', v_version,
     'is_duplicate', false
   );
 
@@ -1160,7 +1221,35 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   SELECT o.id, o.order_number, o.staff_code, o.customer_name, o.method,
          o.requested_date, o.requested_time, o.status, o.inscription,
          o.design_image_url, o.notes, o.schedule_updated_at, o.last_edited_at,
-         o.created_at, o.modifications, o.queue_rank, o.card_note
+         o.created_at,
+         COALESCE(
+           (
+             SELECT jsonb_agg(
+               jsonb_build_object(
+                 'id', m->>'id',
+                 'field', m->>'field',
+                 'timestamp', COALESCE(m->>'timestamp', m->>'updatedAt'),
+                 'updatedAt', COALESCE(m->>'updatedAt', m->>'timestamp'),
+                 'staff_name', m->>'staff_name',
+                 'acknowledged', COALESCE((m->>'acknowledged')::boolean, (m->>'acknowledgedAt') IS NOT NULL, false),
+                 'acknowledgedAt', m->>'acknowledgedAt',
+                 'acknowledgedBy', m->>'acknowledgedBy',
+                 'acknowledgedByName', m->>'acknowledgedByName',
+                 'oldValue', CASE 
+                   WHEN m->>'field' ~* '(phone|هاتف|جوال|total|إجمالي|subtotal|مجموع|deposit|عربون|مدفوع|discount|خصم)' THEN '***'
+                   ELSE COALESCE(m->>'oldValue', m->>'old_value')
+                 END,
+                 'newValue', CASE 
+                   WHEN m->>'field' ~* '(phone|هاتف|جوال|total|إجمالي|subtotal|مجموع|deposit|عربون|مدفوع|discount|خصم)' THEN '***'
+                   ELSE COALESCE(m->>'newValue', m->>'new_value')
+                 END
+               )
+             )
+             FROM jsonb_array_elements(COALESCE(o.modifications, '[]'::jsonb)) AS m
+           ),
+           '[]'::jsonb
+         ) AS modifications,
+         o.queue_rank, o.card_note
   FROM public.orders o
   WHERE (private.has_role(auth.uid(), 'kitchen') OR private.has_role(auth.uid(), 'admin'))
     AND o.status IN ('new', 'confirmed', 'baking', 'ready')
@@ -1214,14 +1303,19 @@ BEGIN
     RAISE EXCEPTION 'غير مصرّح: صلاحية تحديث المطبخ مقصورة على الشيف والإدارة';
   END IF;
 
-  IF p_status NOT IN ('confirmed', 'baking', 'ready') THEN
+  IF p_status NOT IN ('new', 'confirmed', 'baking', 'ready') THEN
     RAISE EXCEPTION 'مرحلة غير صالحة للمطبخ · Invalid kitchen status transition';
   END IF;
 
   SELECT status INTO v_current_status FROM public.orders WHERE id = p_order_id FOR UPDATE;
 
   IF NOT FOUND THEN
-    RAISE EXCEPTION 'الطلب غير موجود';
+    RAISE EXCEPTION 'الطلب غير موجود · Order not found';
+  END IF;
+
+  -- Kitchen cannot reactivate terminal/finalized orders
+  IF v_current_status IN ('cancelled', 'completed', 'delivered', 'out_for_delivery') THEN
+    RAISE EXCEPTION 'لا يمكن تعديل حالة طلب مكتمل أو ملغى أو مسلم من قبل المطبخ (%s) · Kitchen cannot modify finalized order', v_current_status;
   END IF;
 
   UPDATE public.orders
@@ -1377,3 +1471,255 @@ $$;
 
 REVOKE ALL ON FUNCTION public.delete_sales_order_atomic FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.delete_sales_order_atomic TO authenticated;
+
+
+-- M. Update Order Item Atomic with Concurrency Control & Audit
+CREATE OR REPLACE FUNCTION public.update_order_item_atomic(
+  p_order_id uuid,
+  p_item_id uuid,
+  p_unit_price numeric,
+  p_quantity integer DEFAULT NULL,
+  p_expected_version integer DEFAULT NULL,
+  p_staff_name text DEFAULT NULL,
+  p_reason text DEFAULT NULL
+)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v_caller_id uuid := auth.uid();
+  v_current_version integer;
+  v_old_unit_price numeric;
+  v_old_quantity integer;
+  v_item_name text;
+  v_new_subtotal numeric;
+  v_delivery_fee numeric;
+  v_discount_amount numeric;
+  v_discount_percent numeric;
+  v_new_total numeric;
+  v_new_quantity integer;
+  v_mod_entry jsonb;
+  v_now_iso text := to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"');
+  v_order_num text;
+  v_result jsonb;
+BEGIN
+  IF v_caller_id IS NULL THEN
+    RAISE EXCEPTION 'غير مصرّح: يجب تسجيل الدخول';
+  END IF;
+
+  IF NOT (private.has_role(v_caller_id, 'admin') OR private.has_role(v_caller_id, 'sales')) THEN
+    RAISE EXCEPTION 'غير مصرّح: لا تملك صلاحية تعديل بنود الطلبات';
+  END IF;
+
+  IF p_unit_price < 0 THEN
+    RAISE EXCEPTION 'سعر الصنف لا يمكن أن يكون سالباً';
+  END IF;
+
+  -- Lock order row
+  SELECT order_number, COALESCE(version, 1), delivery_fee, discount_amount, discount_percent
+  INTO v_order_num, v_current_version, v_delivery_fee, v_discount_amount, v_discount_percent
+  FROM public.orders
+  WHERE id = p_order_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'الطلب غير موجود';
+  END IF;
+
+  -- Concurrency check
+  IF p_expected_version IS NOT NULL AND p_expected_version <> v_current_version THEN
+    RAISE EXCEPTION 'OCC_VERSION_MISMATCH: Order version changed (expected %, current %)', p_expected_version, v_current_version;
+  END IF;
+
+  -- Fetch & lock item
+  SELECT unit_price, quantity, name_ar
+  INTO v_old_unit_price, v_old_quantity, v_item_name
+  FROM public.order_items
+  WHERE id = p_item_id AND order_id = p_order_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'البند غير موجود في الطلب';
+  END IF;
+
+  v_new_quantity := COALESCE(p_quantity, v_old_quantity);
+  IF v_new_quantity <= 0 THEN
+    RAISE EXCEPTION 'الكمية يجب أن تكون أكبر من صفر';
+  END IF;
+
+  -- Update item
+  UPDATE public.order_items
+  SET unit_price = p_unit_price,
+      quantity = v_new_quantity
+  WHERE id = p_item_id;
+
+  -- Recalculate subtotal
+  SELECT COALESCE(SUM(unit_price * quantity), 0)
+  INTO v_new_subtotal
+  FROM public.order_items
+  WHERE order_id = p_order_id;
+
+  -- Recalculate total with discount and delivery
+  IF v_discount_percent > 0 THEN
+    v_discount_amount := ROUND((v_new_subtotal * v_discount_percent / 100), 2);
+  END IF;
+  v_new_total := GREATEST(v_new_subtotal + COALESCE(v_delivery_fee, 0) - COALESCE(v_discount_amount, 0), 0);
+
+  -- Build modification entry
+  v_mod_entry := jsonb_build_object(
+    'id', gen_random_uuid()::text,
+    'field', 'تعديل صنف: ' || v_item_name,
+    'oldValue', v_old_unit_price::text || ' د.أ (كمية: ' || v_old_quantity::text || ')',
+    'newValue', p_unit_price::text || ' د.أ (كمية: ' || v_new_quantity::text || ')',
+    'staff_name', COALESCE(p_staff_name, 'موظف مبيعات'),
+    'timestamp', v_now_iso,
+    'updatedAt', v_now_iso,
+    'acknowledged', false,
+    'acknowledgedAt', null
+  );
+
+  -- Update order
+  UPDATE public.orders
+  SET
+    subtotal = v_new_subtotal,
+    discount_amount = v_discount_amount,
+    total = v_new_total,
+    modifications = COALESCE(modifications, '[]'::jsonb) || jsonb_build_array(v_mod_entry),
+    version = v_current_version + 1,
+    last_edited_at = now(),
+    last_edited_by = v_caller_id
+  WHERE id = p_order_id
+  RETURNING row_to_json(orders.*) INTO v_result;
+
+  -- Audit log
+  INSERT INTO public.audit_logs (
+    order_id, order_number, staff_user_id, staff_name,
+    action, original_amount, modified_amount, reason
+  ) VALUES (
+    p_order_id, v_order_num, v_caller_id, COALESCE(p_staff_name, 'موظف مبيعات'),
+    'item_price_update', v_old_unit_price, p_unit_price,
+    COALESCE(p_reason, 'تعديل سعر/كمية الصنف: ' || v_item_name)
+  );
+
+  RETURN v_result;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.update_order_item_atomic FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.update_order_item_atomic TO authenticated;
+
+
+-- N. Apply Order Discount Atomic
+CREATE OR REPLACE FUNCTION public.apply_order_discount_atomic(
+  p_order_id uuid,
+  p_discount_amount numeric,
+  p_discount_percent numeric,
+  p_expected_version integer DEFAULT NULL,
+  p_staff_name text DEFAULT NULL,
+  p_reason text DEFAULT NULL
+)
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v_caller_id uuid := auth.uid();
+  v_current_version integer;
+  v_subtotal numeric;
+  v_delivery_fee numeric;
+  v_old_total numeric;
+  v_new_total numeric;
+  v_order_num text;
+  v_mod_entry jsonb;
+  v_now_iso text := to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"');
+  v_result jsonb;
+BEGIN
+  IF v_caller_id IS NULL THEN
+    RAISE EXCEPTION 'غير مصرّح: يجب تسجيل الدخول';
+  END IF;
+
+  IF NOT (private.has_role(v_caller_id, 'admin') OR private.has_role(v_caller_id, 'sales')) THEN
+    RAISE EXCEPTION 'غير مصرّح: لا تملك صلاحية منح الخصومات';
+  END IF;
+
+  IF p_discount_amount < 0 OR p_discount_percent < 0 THEN
+    RAISE EXCEPTION 'قيمة الخصم لا يمكن أن تكون سالبة';
+  END IF;
+
+  SELECT order_number, COALESCE(version, 1), subtotal, delivery_fee, total
+  INTO v_order_num, v_current_version, v_subtotal, v_delivery_fee, v_old_total
+  FROM public.orders
+  WHERE id = p_order_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'الطلب غير موجود';
+  END IF;
+
+  IF p_expected_version IS NOT NULL AND p_expected_version <> v_current_version THEN
+    RAISE EXCEPTION 'OCC_VERSION_MISMATCH: Order version changed (expected %, current %)', p_expected_version, v_current_version;
+  END IF;
+
+  v_new_total := GREATEST(v_subtotal + COALESCE(v_delivery_fee, 0) - p_discount_amount, 0);
+
+  v_mod_entry := jsonb_build_object(
+    'id', gen_random_uuid()::text,
+    'field', 'الخصم المالي',
+    'oldValue', (v_old_total)::text || ' د.أ',
+    'newValue', (v_new_total)::text || ' د.أ (خصم ' || p_discount_percent::text || '%)',
+    'staff_name', COALESCE(p_staff_name, 'موظف مبيعات'),
+    'timestamp', v_now_iso,
+    'updatedAt', v_now_iso,
+    'acknowledged', false,
+    'acknowledgedAt', null
+  );
+
+  UPDATE public.orders
+  SET
+    discount_amount = p_discount_amount,
+    discount_percent = p_discount_percent,
+    total = v_new_total,
+    modifications = COALESCE(modifications, '[]'::jsonb) || jsonb_build_array(v_mod_entry),
+    version = v_current_version + 1,
+    last_edited_at = now(),
+    last_edited_by = v_caller_id
+  WHERE id = p_order_id
+  RETURNING row_to_json(orders.*) INTO v_result;
+
+  INSERT INTO public.audit_logs (
+    order_id, order_number, staff_user_id, staff_name,
+    action, original_amount, modified_amount, discount_percent, reason
+  ) VALUES (
+    p_order_id, v_order_num, v_caller_id, COALESCE(p_staff_name, 'موظف مبيعات'),
+    'discount_applied', v_old_total, v_new_total, p_discount_percent,
+    COALESCE(p_reason, 'تطبيق خصم على الطلب')
+  );
+
+  RETURN v_result;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.apply_order_discount_atomic FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.apply_order_discount_atomic TO authenticated;
+
+
+-- ==============================================================================
+-- 14. INITIAL BOOTSTRAP SEEDS (STORE SETTINGS & BANNER)
+-- ==============================================================================
+
+-- Seed default store settings (singleton)
+INSERT INTO public.store_settings (singleton, store_name, cliq_alias, contact_phone, card_color_palette)
+VALUES (true, 'Delish Cake & Bake', 'DELISHBAKES', '+962790000000', 'soft_green')
+ON CONFLICT (singleton) DO NOTHING;
+
+-- Seed default storefront banner
+INSERT INTO public.storefront_banner (
+  id, title_ar, title_en, subtitle_ar, subtitle_en, subtitle, discount_text, button_text, badge_ar, badge_en, is_active
+) VALUES (
+  '00000000-0000-0000-0000-000000000001'::uuid,
+  'كيك ومخبوزات طازجة يومياً',
+  'Fresh Daily Cakes & Bakes',
+  'أشهى الحلويات والكيك المخصص لجميع مناسباتكم في عمّان',
+  'Delicious custom cakes & desserts for all occasions in Amman',
+  'أشهى الحلويات والكيك المخصص لجميع مناسباتكم في عمّان',
+  'خصم 10% على طلبات التوصيل المسبقة',
+  'اطلب الآن',
+  'عرض خاص',
+  'Special Offer',
+  true
+) ON CONFLICT (id) DO NOTHING;

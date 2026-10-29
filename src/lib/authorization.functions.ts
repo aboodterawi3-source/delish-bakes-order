@@ -246,23 +246,16 @@ export const applyOrderDiscount = createServerFn({ method: "POST" })
     const subtotal = Number(order.subtotal ?? 0);
     const discountAmount = Number(((subtotal * data.percent) / 100).toFixed(2));
 
-    const { error } = await context.supabase
-      .from("orders")
-      .update({ discount_amount: discountAmount, discount_percent: data.percent })
-      .eq("id", data.orderId);
-    if (error) throw new Error(error.message);
-
-    await writeAudit(ctx, {
-      order_id: order.id,
-      order_number: order.order_number,
-      staff_user_id: ctx.userId,
-      staff_name: staffName(ctx),
-      action: "discount_applied",
-      original_amount: Number(order.total ?? 0),
-      modified_amount: Number(order.total ?? 0) - discountAmount,
-      discount_percent: data.percent,
-      reason: data.reason || null,
+    const { error: rpcError } = await context.supabase.rpc("apply_order_discount_atomic", {
+      p_order_id: data.orderId,
+      p_discount_amount: discountAmount,
+      p_discount_percent: data.percent,
+      p_expected_version: null,
+      p_staff_name: staffName(ctx),
+      p_reason: data.reason || null,
     });
+
+    if (rpcError) throw new Error(rpcError.message);
 
     return { ok: true, discount_amount: discountAmount, discount_percent: data.percent };
   });

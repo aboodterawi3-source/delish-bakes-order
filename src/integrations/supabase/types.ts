@@ -847,6 +847,29 @@ export type Database = {
         }
         Returns: undefined
       }
+      apply_order_discount_atomic: {
+        Args: {
+          p_discount_amount: number
+          p_discount_percent: number
+          p_expected_version?: number | null
+          p_order_id: string
+          p_reason?: string | null
+          p_staff_name?: string | null
+        }
+        Returns: Json
+      }
+      update_order_item_atomic: {
+        Args: {
+          p_expected_version?: number | null
+          p_item_id: string
+          p_order_id: string
+          p_quantity?: number | null
+          p_reason?: string | null
+          p_staff_name?: string | null
+          p_unit_price: number
+        }
+        Returns: Json
+      }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
     }

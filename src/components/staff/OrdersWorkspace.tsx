@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -175,7 +175,6 @@ function applyPatch(order: SalesOrder, input: OrderPatch): SalesOrder {
   if (input.delivery_fee !== undefined) next.delivery_fee = input.delivery_fee;
   if (input.driver_name !== undefined) next.driver_name = input.driver_name;
   if (input.driver_phone !== undefined) next.driver_phone = input.driver_phone;
-  if (input.deposit_paid !== undefined) next.deposit_paid = input.deposit_paid;
   if (input.payment_method !== undefined) next.payment_method = input.payment_method;
   if (input.card_note !== undefined) next.card_note = input.card_note;
   if (input.final_photo_requested !== undefined)
@@ -1279,9 +1278,13 @@ ${collectionText}
 
   const queryClient = useQueryClient();
   const recordPaymentServer = useServerFn(recordOrderPayment);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const paymentIdempotencyKeyRef = useRef<string>(crypto.randomUUID());
+  const refundIdempotencyKeyRef = useRef<string>(crypto.randomUUID());
+
   const handleMarkPaidInFull = (method: "cash" | "cliq" = "cash") => {
-    if (remaining <= 0) return;
-    const idKey = crypto.randomUUID();
+    if (remaining <= 0 || isProcessingPayment) return;
+    setIsProcessingPayment(true);
     recordPaymentServer({
       data: {
         orderId: order.id,
@@ -1289,16 +1292,47 @@ ${collectionText}
         paymentMethod: method,
         paymentType: "full",
         notes: `تسجيل استلام المتبقي كاملاً (${method === "cash" ? "كاش" : "كليك"})`,
-        idempotencyKey: idKey,
+        idempotencyKey: paymentIdempotencyKeyRef.current,
       },
     })
       .then((updatedOrder) => {
+        paymentIdempotencyKeyRef.current = crypto.randomUUID();
         setDeposit(String(updatedOrder.deposit_paid));
         toast.success(`تم استلام وتسجيل كامل المبلغ ${jd(remaining)} (${method === "cash" ? "كاش" : "كليك"}) في سجل الدفعات ✅`);
         void queryClient.invalidateQueries({ queryKey: ORDERS_KEY });
       })
       .catch((err) => {
         toast.error(err?.message || "تعذّر تسجيل الدفعة");
+      })
+      .finally(() => {
+        setIsProcessingPayment(false);
+      });
+  };
+
+  const handleSettleRefund = () => {
+    if (drawerRefundDue <= 0 || isProcessingPayment) return;
+    setIsProcessingPayment(true);
+    recordPaymentServer({
+      data: {
+        orderId: order.id,
+        amount: drawerRefundDue,
+        paymentMethod: order.payment_method || "cash",
+        paymentType: "refund",
+        notes: `تسوية إرجاع الفائض المالي للزبون`,
+        idempotencyKey: refundIdempotencyKeyRef.current,
+      },
+    })
+      .then((updatedOrder) => {
+        refundIdempotencyKeyRef.current = crypto.randomUUID();
+        setDeposit(String(updatedOrder.deposit_paid));
+        toast.success(`تم تسجيل تسوية الاسترجاع للعميل بقيمة ${jd(drawerRefundDue)} في سجل الحركات المالية 🔄`);
+        void queryClient.invalidateQueries({ queryKey: ORDERS_KEY });
+      })
+      .catch((err) => {
+        toast.error(err?.message || "تعذّر تسجيل الاسترجاع");
+      })
+      .finally(() => {
+        setIsProcessingPayment(false);
       });
   };
 
@@ -1393,47 +1427,29 @@ ${collectionText}
                 <div>🔄 يوجد فائض دفع بقيمة {jd(drawerRefundDue)} واجب إرجاعه للعميل</div>
                 <button
                   type="button"
-                  onClick={() => {
-                    if (drawerRefundDue <= 0) return;
-                    const idKey = crypto.randomUUID();
-                    recordPaymentServer({
-                      data: {
-                        orderId: order.id,
-                        amount: drawerRefundDue,
-                        paymentMethod: order.payment_method || "cash",
-                        paymentType: "refund",
-                        notes: `تسوية إرجاع الفائض المالي للزبون`,
-                        idempotencyKey: idKey,
-                      },
-                    })
-                      .then((updatedOrder) => {
-                        setDeposit(String(updatedOrder.deposit_paid));
-                        toast.success(`تم تسجيل تسوية الاسترجاع للعميل بقيمة ${jd(drawerRefundDue)} في سجل الحركات المالية 🔄`);
-                        void queryClient.invalidateQueries({ queryKey: ORDERS_KEY });
-                      })
-                      .catch((err) => {
-                        toast.error(err?.message || "تعذّر تسجيل الاسترجاع");
-                      });
-                  }}
-                  className="mt-1 px-3 py-1 rounded-lg bg-purple-600 text-white text-[11px] font-bold hover:bg-purple-700 cursor-pointer"
+                  disabled={isProcessingPayment}
+                  onClick={handleSettleRefund}
+                  className="mt-1 px-3 py-1 rounded-lg bg-purple-600 text-white text-[11px] font-bold hover:bg-purple-700 disabled:opacity-50 cursor-pointer"
                 >
-                  تسجيل إرجاع المبلغ للعميل ({jd(drawerRefundDue)})
+                  {isProcessingPayment ? "جاري المعالجة..." : `تسجيل إرجاع المبلغ للعميل (${jd(drawerRefundDue)})`}
                 </button>
               </div>
             ) : remaining > 0 ? (
               <div className="space-y-1.5 pt-1">
                 <button
                   type="button"
+                  disabled={isProcessingPayment}
                   onClick={() => handleMarkPaidInFull("cash")}
-                  className="w-full min-h-[46px] rounded-xl bg-emerald-600 text-white font-black text-xs shadow-sm hover:bg-emerald-700 active:scale-95 transition flex items-center justify-center gap-1.5 cursor-pointer"
+                  className="w-full min-h-[46px] rounded-xl bg-emerald-600 text-white font-black text-xs shadow-sm hover:bg-emerald-700 active:scale-95 transition flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
                 >
                   <CheckCircle2 className="h-4 w-4" />
                   <span>💵 تم استلام المتبقي كاملاً ({jd(remaining)} - كاش)</span>
                 </button>
                 <button
                   type="button"
+                  disabled={isProcessingPayment}
                   onClick={() => handleMarkPaidInFull("cliq")}
-                  className="w-full min-h-[40px] rounded-xl border border-emerald-600/30 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 font-bold text-xs hover:bg-emerald-100 cursor-pointer"
+                  className="w-full min-h-[40px] rounded-xl border border-emerald-600/30 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 font-bold text-xs hover:bg-emerald-100 disabled:opacity-50 cursor-pointer"
                 >
                   💳 تم استلام المتبقي عبر CliQ
                 </button>
