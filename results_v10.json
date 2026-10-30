@@ -1,0 +1,144 @@
+{
+  "environment": "Exact standalone SQL on local PGlite; distinct SET ROLE and UID; modeled Auth/Storage and legacy grants. Actual application TS validators and handlers executed with a local SQL-backed Supabase adapter; framework HTTP/auth middleware bypassed. No real Supabase and no browser E2E.",
+  "observations": [
+    {
+      "kind": "fixed",
+      "name": "Current standalone schema reapplies successfully",
+      "verified": true,
+      "evidence": {
+        "reapplied": true
+      }
+    },
+    {
+      "kind": "fixed",
+      "name": "Hidden catalog product remains locked for social employee",
+      "verified": true,
+      "evidence": {
+        "unlink": {
+          "code": "42501",
+          "message": "Direct mutation of order_items is prohibited. Use authorized atomic functions (e.g. update_order_item_atomic, rebuild_sales_order_atomic)."
+        },
+        "price": {
+          "message": "لا تملك صلاحية تعديل سعر هذا المنتج · You are not allowed to change this product's price"
+        },
+        "total": 20
+      }
+    },
+    {
+      "kind": "fixed",
+      "name": "Atomic version preserves colleague edits across item, discount, rebuild, general patch and payment paths",
+      "verified": true,
+      "evidence": [
+        {
+          "kind": "item",
+          "atomic_version": 2,
+          "returned_version": 2,
+          "ui_reference": 2,
+          "colleague_version": 3,
+          "conflict": true,
+          "finish_rejection": {
+            "message": "تعارض في التعديل: تم تعديل هذا الطلب مسبقاً (النسخة الحالية: 3, نسختك: 2). يرجى إعادة تحميل الطلب · Optimistic locking conflict (current: 3, expected: 2)"
+          },
+          "colleague_name_preserved": "COLLEAGUE AFTER OWN COMMIT"
+        },
+        {
+          "kind": "discount",
+          "atomic_version": 2,
+          "returned_version": 2,
+          "ui_reference": 2,
+          "colleague_version": 3,
+          "conflict": true,
+          "finish_rejection": {
+            "message": "تعارض في التعديل: تم تعديل هذا الطلب مسبقاً (النسخة الحالية: 3, نسختك: 2). يرجى إعادة تحميل الطلب · Optimistic locking conflict (current: 3, expected: 2)"
+          },
+          "colleague_name_preserved": "COLLEAGUE AFTER OWN COMMIT"
+        },
+        {
+          "kind": "rebuild",
+          "atomic_version": 2,
+          "returned_version": 2,
+          "ui_reference": 2,
+          "colleague_version": 3,
+          "conflict": true,
+          "finish_rejection": {
+            "message": "تعارض في التعديل: تم تعديل هذا الطلب مسبقاً (النسخة الحالية: 3, نسختك: 2). يرجى إعادة تحميل الطلب · Optimistic locking conflict (current: 3, expected: 2)"
+          },
+          "colleague_name_preserved": "COLLEAGUE AFTER OWN COMMIT"
+        },
+        {
+          "kind": "patch",
+          "atomic_version": 2,
+          "returned_version": 2,
+          "ui_reference": 2,
+          "colleague_version": 3,
+          "conflict": true,
+          "finish_rejection": {
+            "message": "تعارض في التعديل: تم تعديل هذا الطلب مسبقاً (النسخة الحالية: 3, نسختك: 2). يرجى إعادة تحميل الطلب · Optimistic locking conflict (current: 3, expected: 2)"
+          },
+          "colleague_name_preserved": "COLLEAGUE AFTER OWN COMMIT"
+        },
+        {
+          "kind": "payment",
+          "atomic_version": 2,
+          "returned_version": 2,
+          "ui_reference": 2,
+          "colleague_version": 3,
+          "conflict": true,
+          "finish_rejection": {
+            "message": "تعارض في التعديل: تم تعديل هذا الطلب مسبقاً (النسخة الحالية: 3, نسختك: 2). يرجى إعادة تحميل الطلب · Optimistic locking conflict (current: 3, expected: 2)"
+          },
+          "colleague_name_preserved": "COLLEAGUE AFTER OWN COMMIT"
+        }
+      ]
+    },
+    {
+      "kind": "fixed",
+      "name": "Quick payment advances editor version and allows subsequent own header save",
+      "verified": true,
+      "evidence": {
+        "payment_saved": "5.00",
+        "ledger_count": 1,
+        "ui_reference": 3,
+        "final_saved_version": 3
+      }
+    },
+    {
+      "kind": "fixed",
+      "name": "Fulfillment button uses handlePatch and permits next header save without false conflict",
+      "verified": true,
+      "evidence": {
+        "saved_method": "delivery",
+        "reference_after_partial": 3,
+        "final_version": 3
+      }
+    },
+    {
+      "kind": "fixed",
+      "name": "Adding a new item from TouchItemEditorSheet uses handleReplaceItems and permits subsequent header save without false conflict",
+      "verified": true,
+      "evidence": {
+        "add_succeeded": true,
+        "items": 2,
+        "total": "25.00",
+        "request_expected_version": 1,
+        "stored_version": 2,
+        "ui_reference": 3,
+        "false_conflict": false,
+        "final_saved_version": 3
+      }
+    },
+    {
+      "kind": "fixed",
+      "name": "Main save updates active editor reference and permits consecutive saves without false conflict",
+      "verified": true,
+      "evidence": {
+        "first_save_succeeded": true,
+        "first_version": 2,
+        "second_save_succeeded": true,
+        "second_version": 3,
+        "ui_reference": 3,
+        "false_conflict": false
+      }
+    }
+  ]
+}

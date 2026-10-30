@@ -129,7 +129,7 @@
         "ledger_count": 1,
         "ledger_amount": "5.00",
         "stored_version": 2,
-        "ui_reference": 2,
+        "ui_reference": 3,
         "false_conflict": false,
         "final_saved_version": 3
       }
@@ -141,7 +141,7 @@
       "evidence": {
         "saved_method": "delivery",
         "stored_version": 2,
-        "ui_reference": 2,
+        "ui_reference": 3,
         "false_conflict": false,
         "final_saved_version": 3
       }

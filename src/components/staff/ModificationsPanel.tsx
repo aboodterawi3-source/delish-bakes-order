@@ -351,7 +351,7 @@ export function ModificationsPanel({
   const handleFinishEdit = async (patchPayload: Omit<OrderPatch, "orderId">) => {
     if (!selectedId) return;
     try {
-      await (save.mutateAsync || save.mutate)({
+      const res = await (save.mutateAsync || save.mutate)({
         orderId: selectedId,
         ...patchPayload,
         expected_version:
@@ -364,6 +364,7 @@ export function ModificationsPanel({
         setSelectedId(null);
         onCloseEdit();
       }
+      return res;
     } catch (err) {
       const msg = (err as Error).message || "";
       if (msg.includes("تعارض") || msg.includes("conflict")) {
@@ -697,7 +698,7 @@ function MasterOrderEditor({
   onItemPatch: (patch: Omit<OrderItemPatch, "orderId">) => void | Promise<any>;
   onReplaceItems: (lines: RebuildLine[], expectedVersion?: number | null) => void | Promise<any>;
   onDiscount: (percent: number, reason: string, expectedVersion?: number | null) => void | Promise<any>;
-  onFinishEdit: (patch: Omit<OrderPatch, "orderId">) => Promise<void> | void;
+  onFinishEdit: (patch: Omit<OrderPatch, "orderId">) => Promise<any> | any;
 }) {
   const [itemsMode, setItemsMode] = useState<"cards" | "builder">("cards");
   const [activeSheetItem, setActiveSheetItem] = useState<
@@ -825,7 +826,9 @@ function MasterOrderEditor({
       (p as Promise<any>).then(
         (res) => {
           if (res && typeof res === "object" && typeof res.version === "number") {
-            initialVersionRef.current = res.version;
+            if (typeof initialVersionRef !== "undefined" && initialVersionRef) {
+              initialVersionRef.current = res.version;
+            }
           }
           pendingSelfMutationRef.current = false;
         },
@@ -834,6 +837,7 @@ function MasterOrderEditor({
         },
       );
     }
+    return p;
   };
 
   // Form State
@@ -861,7 +865,7 @@ function MasterOrderEditor({
   const handleFinish = async () => {
     setIsFinishing(true);
     try {
-      await onFinishEdit({
+      const res = await onFinishEdit({
         order_name: orderName.trim() || null,
         customer_name: customerName.trim() || order.customer_name,
         customer_phone: customerPhone.trim() || order.customer_phone,
@@ -876,6 +880,12 @@ function MasterOrderEditor({
         notes: notes.trim() || null,
         staff_notes: staffNotes.trim() || null,
       });
+      if (res && typeof res === "object" && typeof (res as any).version === "number") {
+        if (typeof initialVersionRef !== "undefined" && initialVersionRef) {
+          initialVersionRef.current = (res as any).version;
+        }
+      }
+      return res;
     } finally {
       setIsFinishing(false);
     }
@@ -1531,7 +1541,7 @@ function MasterOrderEditor({
                   notes: payload.notes ?? null,
                 },
               ];
-              onReplaceItems(nextLines);
+              (typeof handleReplaceItems === "function" ? handleReplaceItems : onReplaceItems)(nextLines);
             }
           }}
         />
