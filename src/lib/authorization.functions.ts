@@ -262,7 +262,18 @@ export const applyOrderDiscount = createServerFn({ method: "POST" })
 
     if (rpcError) throw new Error(rpcError.message);
 
-    return { ok: true, discount_amount: discountAmount, discount_percent: data.percent };
+    const { data: updated } = await context.supabase
+      .from("orders")
+      .select("version")
+      .eq("id", data.orderId)
+      .single();
+
+    return {
+      ok: true,
+      discount_amount: discountAmount,
+      discount_percent: data.percent,
+      version: updated?.version ? Number(updated.version) : null,
+    };
   });
 
 /* --------------------- one-time, one-hour customer link -------------------- */

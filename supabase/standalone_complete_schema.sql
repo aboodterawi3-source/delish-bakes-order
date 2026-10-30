@@ -495,9 +495,18 @@ CREATE TRIGGER trg_guard_orders_sensitive_columns
   FOR EACH ROW
   EXECUTE FUNCTION public.guard_orders_sensitive_columns();
 
+-- Physical product existence lookup helper in private schema (bypasses caller RLS)
+CREATE OR REPLACE FUNCTION private.product_exists(p_product_id uuid)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.products
+    WHERE id = p_product_id
+  );
+$$;
+
 -- Security Guard Trigger: Prohibit direct INSERT, UPDATE, DELETE on order_items unless performed by authorized atomic RPCs.
 CREATE OR REPLACE FUNCTION public.guard_order_items_mutation()
-RETURNS trigger LANGUAGE plpgsql AS $$
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 BEGIN
   IF current_setting('delish.internal_mutation', true) = 'true' THEN
     RETURN COALESCE(NEW, OLD);
@@ -515,7 +524,7 @@ BEGIN
        AND NEW.options_ar = OLD.options_ar
        AND NEW.options_en = OLD.options_en
        AND NEW.notes IS NOT DISTINCT FROM OLD.notes
-       AND NOT EXISTS (SELECT 1 FROM public.products WHERE id = OLD.product_id) THEN
+       AND NOT private.product_exists(OLD.product_id) THEN
       RETURN NEW;
     END IF;
   END IF;

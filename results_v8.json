@@ -1,0 +1,146 @@
+{
+  "environment": "Exact standalone SQL on local PGlite; distinct SET ROLE and UID; modeled Auth/Storage and legacy grants. Actual application TS validators and handlers executed with a local SQL-backed Supabase adapter; framework HTTP/auth middleware bypassed. No real Supabase and no browser E2E.",
+  "observations": [
+    {
+      "kind": "fixed",
+      "name": "Current schema reapplies cleanly on a current-version database",
+      "verified": true,
+      "evidence": {
+        "reapplied": true
+      }
+    },
+    {
+      "kind": "fixed",
+      "name": "Manual unlink of a visible product is rejected for sales and social roles",
+      "verified": true,
+      "evidence": {
+        "sales": {
+          "code": "42501",
+          "message": "Direct mutation of order_items is prohibited. Use authorized atomic functions (e.g. update_order_item_atomic, rebuild_sales_order_atomic)."
+        },
+        "social": {
+          "code": "42501",
+          "message": "Direct mutation of order_items is prohibited. Use authorized atomic functions (e.g. update_order_item_atomic, rebuild_sales_order_atomic)."
+        }
+      }
+    },
+    {
+      "kind": "fixed",
+      "name": "Real catalog deletion preserves order and clears product link",
+      "verified": true,
+      "evidence": {
+        "total": "20.00",
+        "product_id": null
+      }
+    },
+    {
+      "kind": "fixed",
+      "name": "RLS-hidden catalog product direct unlink is strictly blocked and social employee cannot bypass locked price",
+      "verified": true,
+      "evidence": {
+        "role": "social",
+        "initial_repricing_rejected": {
+          "message": "لا تملك صلاحية تعديل سعر هذا المنتج · You are not allowed to change this product's price"
+        },
+        "unlink_rejected": {
+          "code": "42501",
+          "message": "Direct mutation of order_items is prohibited. Use authorized atomic functions (e.g. update_order_item_atomic, rebuild_sales_order_atomic)."
+        },
+        "locked_link_preserved": true,
+        "repricing_still_denied": {
+          "message": "لا تملك صلاحية تعديل سعر هذا المنتج · You are not allowed to change this product's price"
+        },
+        "final_total": "20.00"
+      }
+    },
+    {
+      "kind": "fixed",
+      "name": "Website builder now sends draft version and rejects newer order overwrite",
+      "verified": true,
+      "evidence": {
+        "sent_version": 1,
+        "preserved_quantity": 3,
+        "rejection": {
+          "message": "تعارض في التعديل: تم تعديل هذا الطلب مسبقاً (النسخة الحالية: 2, نسختك: 1)"
+        }
+      }
+    },
+    {
+      "kind": "fixed",
+      "name": "Failed self-mutation preserves colleague edits and refuses stale overwrite whether refresh arrives before or after rejection",
+      "verified": true,
+      "evidence": {
+        "error_then_refresh": {
+          "refresh_before_rejection": false,
+          "first_item_write_rejected": {
+            "message": "OCC_VERSION_MISMATCH: Order version changed (expected 1, current 2)"
+          },
+          "pending_flag_after_error": true,
+          "preserved_draft_version": 1,
+          "conflict_warning": true,
+          "finish_rejection": {
+            "message": "تعارض في التعديل: تم تعديل هذا الطلب مسبقاً (النسخة الحالية: 2, نسختك: 1). يرجى إعادة تحميل الطلب · Optimistic locking conflict (current: 2, expected: 1)"
+          },
+          "colleague_name_preserved": "COLLEAGUE NEW CUSTOMER NAME",
+          "final_version": 2
+        },
+        "refresh_then_error": {
+          "refresh_before_rejection": true,
+          "first_item_write_rejected": {
+            "message": "OCC_VERSION_MISMATCH: Order version changed (expected 1, current 2)"
+          },
+          "pending_flag_after_error": false,
+          "preserved_draft_version": 1,
+          "conflict_warning": true,
+          "finish_rejection": {
+            "message": "تعارض في التعديل: تم تعديل هذا الطلب مسبقاً (النسخة الحالية: 2, نسختك: 1). يرجى إعادة تحميل الطلب · Optimistic locking conflict (current: 2, expected: 1)"
+          },
+          "colleague_name_preserved": "COLLEAGUE NEW CUSTOMER NAME",
+          "final_version": 2
+        }
+      }
+    },
+    {
+      "kind": "fixed",
+      "name": "Consecutive successful item mutations advance version cleanly without false conflict",
+      "verified": true,
+      "evidence": {
+        "first_version": 2,
+        "second_version": 3,
+        "final_version": 4,
+        "customer_name": "Successfully Updated"
+      }
+    },
+    {
+      "kind": "fixed",
+      "name": "Phone and price in social order description are masked in actual kitchen feed",
+      "verified": true,
+      "evidence": {
+        "name_ar": "Chocolate cake; contact ***; ***",
+        "name_en": "Chocolate cake; contact ***; ***"
+      }
+    },
+    {
+      "kind": "fixed",
+      "name": "General patch rejects inconsistent percentage and amount without changing order",
+      "verified": true,
+      "evidence": {
+        "rejection": {
+          "code": "P0001",
+          "message": "مبلغ الخصم (0) لا يتطابق مع النسبة المحددة (10)"
+        },
+        "total": "20.00",
+        "version": 1
+      }
+    },
+    {
+      "kind": "fixed",
+      "name": "Preapproved percentage discount remains authorized identically through item and rebuild paths",
+      "verified": true,
+      "evidence": {
+        "item_total": 32,
+        "rebuild_total": 32
+      }
+    }
+  ]
+}

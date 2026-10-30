@@ -67,9 +67,9 @@
       "name": "UI rebuild callback passes expectedVersion and rejects stale rebuild",
       "verified": true,
       "evidence": {
-        "ui_callback": "(lines, expectedVersion) =>\n                rebuild.mutate({\n                  orderId: selected.id,\n                  lines,\n                  expectedVersion:\n                    expectedVersion !== undefined && expectedVersion !== null\n                      ? expectedVersion\n                      : (lines as any)?.version ?? (lines as any)?.[0]?.draftVersion ?? selected.version ?? null,\n                })",
+        "ui_callback": "(lines, expectedVersion) =>\n                (rebuild.mutateAsync || rebuild.mutate)({\n                  orderId: selected.id,\n                  lines,\n                  expectedVersion:\n                    expectedVersion !== undefined && expectedVersion !== null\n                      ? expectedVersion\n                      : (lines as any)?.version ?? (lines as any)?.[0]?.draftVersion ?? selected.version ?? null,\n                })",
         "sent_to_rebuild": {
-          "orderId": "db0658a1-7f08-4e93-b528-0fc19fb37bb3",
+          "orderId": "6090b599-9916-4856-9e6f-b8fdfb6c83b8",
           "lines": [
             {
               "name": "Synthetic cake",
@@ -109,8 +109,8 @@
       "evidence": {
         "emitted_requests": [
           {
-            "orderId": "316188bd-f793-47ab-9e57-d0552523583b",
-            "itemId": "2e773d5a-cc4d-43ba-8963-bdf4609b8e63",
+            "orderId": "f0d420d9-0b43-4372-9e6c-b9272edf025b",
+            "itemId": "93066c4e-9186-4518-9580-2b660f5391e1",
             "newUnitPrice": 30,
             "options": [
               "الحجم: Large"
@@ -134,56 +134,56 @@
         ],
         "stored_modifications": [
           {
-            "id": "2ba82788-21db-4cc8-a850-a52ab8667ead",
+            "id": "235d6991-9a61-427f-a282-cd4d3355d03c",
             "field": "الطلب الأساسي (النسخة الأصلية عند الإنشاء)",
             "newValue": "تم إجراء أول تعديل على هذا الطلب",
             "oldValue": "1× Synthetic cake (Original filling)",
-            "timestamp": "2026-10-29T18:34:02Z",
-            "updatedAt": "2026-10-29T18:34:02.973Z",
+            "timestamp": "2026-10-30T11:00:30Z",
+            "updatedAt": "2026-10-30T11:00:30.842Z",
             "staff_name": "sales@synthetic.invalid",
             "acknowledged": false,
             "acknowledgedAt": null
           },
           {
-            "id": "f8395054-6fcb-4430-b558-17cef5ddfa41",
+            "id": "87278640-ce72-467d-9270-6dc626aa3d5f",
             "field": "اسم الصنف",
             "newValue": "Changed cake",
             "oldValue": "Synthetic cake",
-            "timestamp": "2026-10-29T18:34:02Z",
-            "updatedAt": "2026-10-29T18:34:02.973Z",
+            "timestamp": "2026-10-30T11:00:30Z",
+            "updatedAt": "2026-10-30T11:00:30.842Z",
             "staff_name": "sales@synthetic.invalid",
             "acknowledged": false,
             "acknowledgedAt": null
           },
           {
-            "id": "c764008a-b12c-440f-a370-30c8e0d0e35d",
+            "id": "27b00c43-c624-4cb8-96dd-0988bde495bd",
             "field": "خيار حُذف",
             "newValue": "— (تم حذفه)",
             "oldValue": "Original filling",
-            "timestamp": "2026-10-29T18:34:02Z",
-            "updatedAt": "2026-10-29T18:34:02.973Z",
+            "timestamp": "2026-10-30T11:00:30Z",
+            "updatedAt": "2026-10-30T11:00:30.842Z",
             "staff_name": "sales@synthetic.invalid",
             "acknowledged": false,
             "acknowledgedAt": null
           },
           {
-            "id": "0b0893dc-dc11-4762-89d7-188faccf4c00",
+            "id": "c7672a28-e0e1-484d-b8d7-3f68a4e1516e",
             "field": "خيار جديد ✨",
             "newValue": "New filling",
             "oldValue": "— (لم يكن موجودًا)",
-            "timestamp": "2026-10-29T18:34:02Z",
-            "updatedAt": "2026-10-29T18:34:02.973Z",
+            "timestamp": "2026-10-30T11:00:30Z",
+            "updatedAt": "2026-10-30T11:00:30.842Z",
             "staff_name": "sales@synthetic.invalid",
             "acknowledged": false,
             "acknowledgedAt": null
           },
           {
-            "id": "61a8eced-e794-4569-8260-32e91507c5ec",
+            "id": "7f99648e-44f9-4e6d-84bc-d34e3bb741a8",
             "field": "ملاحظة الصنف",
             "newValue": "Changed item note",
             "oldValue": "Original item note",
-            "timestamp": "2026-10-29T18:34:02Z",
-            "updatedAt": "2026-10-29T18:34:02.973Z",
+            "timestamp": "2026-10-30T11:00:30Z",
+            "updatedAt": "2026-10-30T11:00:30.842Z",
             "staff_name": "sales@synthetic.invalid",
             "acknowledged": false,
             "acknowledgedAt": null
@@ -191,12 +191,12 @@
         ],
         "kitchen_modifications": [
           {
-            "id": "2ba82788-21db-4cc8-a850-a52ab8667ead",
+            "id": "235d6991-9a61-427f-a282-cd4d3355d03c",
             "field": "الطلب الأساسي (النسخة الأصلية عند الإنشاء)",
             "newValue": "***",
             "oldValue": "***",
-            "timestamp": "2026-10-29T18:34:02Z",
-            "updatedAt": "2026-10-29T18:34:02.973Z",
+            "timestamp": "2026-10-30T11:00:30Z",
+            "updatedAt": "2026-10-30T11:00:30.842Z",
             "staff_name": "sales@synthetic.invalid",
             "acknowledged": false,
             "acknowledgedAt": null,
@@ -204,12 +204,12 @@
             "acknowledgedByName": null
           },
           {
-            "id": "f8395054-6fcb-4430-b558-17cef5ddfa41",
+            "id": "87278640-ce72-467d-9270-6dc626aa3d5f",
             "field": "اسم الصنف",
             "newValue": "Changed cake",
             "oldValue": "Synthetic cake",
-            "timestamp": "2026-10-29T18:34:02Z",
-            "updatedAt": "2026-10-29T18:34:02.973Z",
+            "timestamp": "2026-10-30T11:00:30Z",
+            "updatedAt": "2026-10-30T11:00:30.842Z",
             "staff_name": "sales@synthetic.invalid",
             "acknowledged": false,
             "acknowledgedAt": null,
@@ -217,12 +217,12 @@
             "acknowledgedByName": null
           },
           {
-            "id": "c764008a-b12c-440f-a370-30c8e0d0e35d",
+            "id": "27b00c43-c624-4cb8-96dd-0988bde495bd",
             "field": "خيار حُذف",
             "newValue": "— (تم حذفه)",
             "oldValue": "Original filling",
-            "timestamp": "2026-10-29T18:34:02Z",
-            "updatedAt": "2026-10-29T18:34:02.973Z",
+            "timestamp": "2026-10-30T11:00:30Z",
+            "updatedAt": "2026-10-30T11:00:30.842Z",
             "staff_name": "sales@synthetic.invalid",
             "acknowledged": false,
             "acknowledgedAt": null,
@@ -230,12 +230,12 @@
             "acknowledgedByName": null
           },
           {
-            "id": "0b0893dc-dc11-4762-89d7-188faccf4c00",
+            "id": "c7672a28-e0e1-484d-b8d7-3f68a4e1516e",
             "field": "خيار جديد ✨",
             "newValue": "New filling",
             "oldValue": "— (لم يكن موجودًا)",
-            "timestamp": "2026-10-29T18:34:02Z",
-            "updatedAt": "2026-10-29T18:34:02.973Z",
+            "timestamp": "2026-10-30T11:00:30Z",
+            "updatedAt": "2026-10-30T11:00:30.842Z",
             "staff_name": "sales@synthetic.invalid",
             "acknowledged": false,
             "acknowledgedAt": null,
@@ -243,12 +243,12 @@
             "acknowledgedByName": null
           },
           {
-            "id": "61a8eced-e794-4569-8260-32e91507c5ec",
+            "id": "7f99648e-44f9-4e6d-84bc-d34e3bb741a8",
             "field": "ملاحظة الصنف",
             "newValue": "Changed item note",
             "oldValue": "Original item note",
-            "timestamp": "2026-10-29T18:34:02Z",
-            "updatedAt": "2026-10-29T18:34:02.973Z",
+            "timestamp": "2026-10-30T11:00:30Z",
+            "updatedAt": "2026-10-30T11:00:30.842Z",
             "staff_name": "sales@synthetic.invalid",
             "acknowledged": false,
             "acknowledgedAt": null,
@@ -308,8 +308,8 @@
       "name": "Kitchen item RPC masks phones and prices in notes and options",
       "verified": true,
       "evidence": {
-        "id": "bb7bc25e-e283-4396-9ff3-f4dc2c16e7a3",
-        "order_id": "7210b0b1-f6ca-4c8d-ace6-899c669c82ab",
+        "id": "2e0e547a-67de-4529-83ac-ca374068428d",
+        "order_id": "244bda29-000a-41f2-9ef3-5bff6af41171",
         "product_id": null,
         "name_ar": "Cake",
         "name_en": "Synthetic cake",
@@ -380,7 +380,7 @@
       "name": "Order items trigger permits deleting catalog product via ON DELETE SET NULL cascade",
       "verified": true,
       "evidence": {
-        "deleted_product_id": "3b4edaef-1eb5-4ee1-b6d3-b1afeb1d1f2f"
+        "deleted_product_id": "5817ac85-6509-424a-8196-a3fe082278e7"
       }
     },
     {

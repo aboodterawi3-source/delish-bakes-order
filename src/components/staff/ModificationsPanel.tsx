@@ -351,10 +351,13 @@ export function ModificationsPanel({
   const handleFinishEdit = async (patchPayload: Omit<OrderPatch, "orderId">) => {
     if (!selectedId) return;
     try {
-      await save.mutateAsync({
+      await (save.mutateAsync || save.mutate)({
         orderId: selectedId,
-        ...(selected?.version ? { expected_version: selected.version } : {}),
         ...patchPayload,
+        expected_version:
+          patchPayload.expected_version !== undefined && patchPayload.expected_version !== null
+            ? patchPayload.expected_version
+            : selected?.version,
       });
       toast.success("تم حفظ كافة التعديلات على الطلب بنجاح ✅");
       if (onCloseEdit) {
@@ -371,6 +374,7 @@ export function ModificationsPanel({
       } else {
         toast.error(msg || "حدث خطأ أثناء حفظ التعديل");
       }
+      throw err;
     }
   };
 
@@ -624,10 +628,10 @@ export function ModificationsPanel({
               discountCap={authorization.data?.max_discount_percent ?? 0}
               products={storefront.data?.products ?? []}
               onBackToList={() => setSelectedId(null)}
-              onPatch={(patch) => save.mutate({ orderId: selected.id, ...patch })}
-              onItemPatch={(patch) => saveItem.mutate({ orderId: selected.id, ...patch })}
+              onPatch={(patch) => (save.mutateAsync || save.mutate)({ orderId: selected.id, ...patch })}
+              onItemPatch={(patch) => (saveItem.mutateAsync || saveItem.mutate)({ orderId: selected.id, ...patch })}
               onReplaceItems={(lines, expectedVersion) =>
-                rebuild.mutate({
+                (rebuild.mutateAsync || rebuild.mutate)({
                   orderId: selected.id,
                   lines,
                   expectedVersion:
@@ -637,7 +641,7 @@ export function ModificationsPanel({
                 })
               }
               onDiscount={(percent, reason, expectedVersion) =>
-                discount.mutate({
+                (discount.mutateAsync || discount.mutate)({
                   orderId: selected.id,
                   percent,
                   reason,
@@ -689,10 +693,10 @@ function MasterOrderEditor({
   mayDiscount: boolean;
   discountCap: number;
   onBackToList: () => void;
-  onPatch: (patch: Omit<OrderPatch, "orderId">) => void;
-  onItemPatch: (patch: Omit<OrderItemPatch, "orderId">) => void;
-  onReplaceItems: (lines: RebuildLine[], expectedVersion?: number | null) => void;
-  onDiscount: (percent: number, reason: string, expectedVersion?: number | null) => void;
+  onPatch: (patch: Omit<OrderPatch, "orderId">) => void | Promise<any>;
+  onItemPatch: (patch: Omit<OrderItemPatch, "orderId">) => void | Promise<any>;
+  onReplaceItems: (lines: RebuildLine[], expectedVersion?: number | null) => void | Promise<any>;
+  onDiscount: (percent: number, reason: string, expectedVersion?: number | null) => void | Promise<any>;
   onFinishEdit: (patch: Omit<OrderPatch, "orderId">) => Promise<void> | void;
 }) {
   const [itemsMode, setItemsMode] = useState<"cards" | "builder">("cards");
@@ -713,7 +717,6 @@ function MasterOrderEditor({
 
   useEffect(() => {
     if (pendingSelfMutationRef.current) {
-      initialVersionRef.current = order.version || 1;
       pendingSelfMutationRef.current = false;
     }
   }, [order.version]);
@@ -751,22 +754,61 @@ function MasterOrderEditor({
 
   const handleItemPatch = (patch: Omit<OrderItemPatch, "orderId">) => {
     pendingSelfMutationRef.current = true;
-    onItemPatch({ ...patch, expectedVersion: initialVersionRef.current });
+    const p = onItemPatch({ ...patch, expectedVersion: initialVersionRef.current });
+    if (p && typeof (p as any).then === "function") {
+      (p as Promise<any>).then(
+        (res) => {
+          if (res && typeof res === "object" && typeof res.version === "number") {
+            initialVersionRef.current = res.version;
+          }
+          pendingSelfMutationRef.current = false;
+        },
+        () => {
+          pendingSelfMutationRef.current = false;
+        },
+      );
+    }
   };
 
   const handleDiscount = (percent: number, reason: string) => {
     pendingSelfMutationRef.current = true;
-    onDiscount(percent, reason, initialVersionRef.current);
+    const p = onDiscount(percent, reason, initialVersionRef.current);
+    if (p && typeof (p as any).then === "function") {
+      (p as Promise<any>).then(
+        (res) => {
+          if (res && typeof res === "object" && typeof res.version === "number") {
+            initialVersionRef.current = res.version;
+          }
+          pendingSelfMutationRef.current = false;
+        },
+        () => {
+          pendingSelfMutationRef.current = false;
+        },
+      );
+    }
   };
 
   const handleReplaceItems = (lines: RebuildLine[], expectedVersion?: number | null) => {
     pendingSelfMutationRef.current = true;
-    onReplaceItems(
+    const p = onReplaceItems(
       lines,
       expectedVersion !== undefined && expectedVersion !== null
         ? expectedVersion
         : initialVersionRef.current,
     );
+    if (p && typeof (p as any).then === "function") {
+      (p as Promise<any>).then(
+        (res) => {
+          if (res && typeof res === "object" && typeof res.version === "number") {
+            initialVersionRef.current = res.version;
+          }
+          pendingSelfMutationRef.current = false;
+        },
+        () => {
+          pendingSelfMutationRef.current = false;
+        },
+      );
+    }
   };
 
   // Form State
