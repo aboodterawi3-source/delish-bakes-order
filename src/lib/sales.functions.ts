@@ -793,7 +793,11 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
       .single();
     if (fetchError || !fullOrder) throw new Error(fetchError?.message || "Failed to load updated order");
 
-    return toOrder(fullOrder as Row);
+    const order = toOrder(fullOrder as Row);
+    if (row && typeof (row as any).version === "number") {
+      order.version = (row as any).version;
+    }
+    return order;
   });
 
 export type OrderItemPatch = {
@@ -993,7 +997,7 @@ export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
     const newPrice = data.newUnitPrice !== undefined ? data.newUnitPrice : Number(before.unit_price ?? 0);
     const newQty = data.quantity !== undefined ? data.quantity : Number(before.quantity ?? 1);
 
-    const { error: rpcError } = await context.supabase.rpc("update_order_item_atomic", {
+    const { data: rpcData, error: rpcError } = await context.supabase.rpc("update_order_item_atomic", {
       p_order_id: data.orderId,
       p_item_id: data.itemId,
       p_unit_price: newPrice,
@@ -1021,7 +1025,11 @@ export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
       .single();
     if (orderError) throw new Error(orderError.message);
 
-    return toOrder(updatedOrder as Row);
+    const order = toOrder(updatedOrder as Row);
+    if (rpcData && typeof (rpcData as any).version === "number") {
+      order.version = (rpcData as any).version;
+    }
+    return order;
   });
 
 /** One rebuilt order line coming from the website-style modification screen. */
@@ -1194,7 +1202,7 @@ export const replaceSalesOrderItems = createServerFn({ method: "POST" })
     const total = roundJod(Math.max(subtotal + deliveryFee - discountAmount, 0));
 
     // DB-03: Atomic Rebuild
-    const { error: rpcError } = await context.supabase.rpc("rebuild_sales_order_atomic", {
+    const { data: rpcData, error: rpcError } = await context.supabase.rpc("rebuild_sales_order_atomic", {
       p_order_id: data.orderId,
       p_lines: data.lines.map((line) => ({
         product_id: line.productId,
@@ -1224,6 +1232,9 @@ export const replaceSalesOrderItems = createServerFn({ method: "POST" })
     if (orderError) throw new Error(orderError.message);
 
     const order = toOrder(row as Row);
+    if (rpcData && typeof (rpcData as any).version === "number") {
+      order.version = (rpcData as any).version;
+    }
     await writeAudit(context as never, {
       order_id: order.id,
       order_number: order.order_number,
@@ -1420,6 +1431,10 @@ export const recordOrderPayment = createServerFn({ method: "POST" })
       .eq("id", data.orderId)
       .single();
     if (fetchErr || !fullOrder) throw new Error(fetchErr?.message || "Failed to load order");
-    return toOrder(fullOrder as Row);
+    const order = toOrder(fullOrder as Row);
+    if (result && typeof (result as any).version === "number") {
+      order.version = (result as any).version;
+    }
+    return order;
   });
 

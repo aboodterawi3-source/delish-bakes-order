@@ -1610,12 +1610,13 @@ CREATE OR REPLACE FUNCTION public.rebuild_sales_order_atomic(
   p_user_id uuid,
   p_new_mods jsonb,
   p_expected_version integer DEFAULT NULL
-) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
   v_caller_id uuid := auth.uid();
   v_current_mods jsonb;
   v_updated_mods jsonb;
   v_version integer;
+  v_result jsonb;
   v_old_discount_amount numeric := 0;
   v_old_discount_percent numeric := 0;
   v_final_discount_amount numeric := 0;
@@ -1762,7 +1763,10 @@ BEGIN
     version = v_version + 1,
     last_edited_at = now(),
     last_edited_by = v_caller_id
-  WHERE id = p_order_id;
+  WHERE id = p_order_id
+  RETURNING row_to_json(orders.*) INTO v_result;
+
+  RETURN v_result;
 END;
 $$;
 

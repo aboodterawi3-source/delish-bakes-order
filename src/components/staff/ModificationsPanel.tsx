@@ -681,7 +681,7 @@ function MasterOrderEditor({
   discountCap,
   products,
   onBackToList,
-  onPatch,
+  onPatch: onPatchProp,
   onItemPatch,
   onReplaceItems,
   onDiscount,
@@ -732,7 +732,7 @@ function MasterOrderEditor({
     setIsProcessingQuickPayment(true);
     pendingSelfMutationRef.current = true;
     try {
-      await recordPaymentServer({
+      const res = await recordPaymentServer({
         data: {
           orderId: order.id,
           amount,
@@ -742,6 +742,10 @@ function MasterOrderEditor({
           idempotencyKey: quickPaymentIdempotencyKeyRef.current,
         },
       });
+      if (res && typeof (res as any).version === "number") {
+        initialVersionRef.current = (res as any).version;
+      }
+      pendingSelfMutationRef.current = false;
       quickPaymentIdempotencyKeyRef.current = crypto.randomUUID();
       toast.success(`تم تسجيل دفعة بقيمة ${jd(amount)} في سجل الحركات المالية بنجاح ✅`);
     } catch (err: any) {
@@ -751,6 +755,27 @@ function MasterOrderEditor({
       setIsProcessingQuickPayment(false);
     }
   };
+
+  const handlePatch = (patch: Omit<OrderPatch, "orderId">) => {
+    pendingSelfMutationRef.current = true;
+    const caller = (typeof onPatchProp !== "undefined" && onPatchProp) || (typeof (globalThis as any).onPatchProp !== "undefined" && (globalThis as any).onPatchProp) || (typeof (globalThis as any).onPatch !== "undefined" && (globalThis as any).onPatch);
+    const p = caller({ ...patch, expected_version: initialVersionRef.current });
+    if (p && typeof (p as any).then === "function") {
+      (p as Promise<any>).then(
+        (res) => {
+          if (res && typeof res === "object" && typeof res.version === "number") {
+            initialVersionRef.current = res.version;
+          }
+          pendingSelfMutationRef.current = false;
+        },
+        () => {
+          pendingSelfMutationRef.current = false;
+        }
+      );
+    }
+    return p;
+  };
+  const onPatch = handlePatch;
 
   const handleItemPatch = (patch: Omit<OrderItemPatch, "orderId">) => {
     pendingSelfMutationRef.current = true;

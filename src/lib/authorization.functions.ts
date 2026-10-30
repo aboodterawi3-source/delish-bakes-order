@@ -251,7 +251,7 @@ export const applyOrderDiscount = createServerFn({ method: "POST" })
     const subtotal = Number(order.subtotal ?? 0);
     const discountAmount = Number(((subtotal * data.percent) / 100).toFixed(2));
 
-    const { error: rpcError } = await context.supabase.rpc("apply_order_discount_atomic", {
+    const { data: rpcData, error: rpcError } = await context.supabase.rpc("apply_order_discount_atomic", {
       p_order_id: data.orderId,
       p_discount_amount: discountAmount,
       p_discount_percent: data.percent,
@@ -272,7 +272,12 @@ export const applyOrderDiscount = createServerFn({ method: "POST" })
       ok: true,
       discount_amount: discountAmount,
       discount_percent: data.percent,
-      version: updated?.version ? Number(updated.version) : null,
+      version:
+        rpcData && typeof (rpcData as any).version === "number"
+          ? (rpcData as any).version
+          : updated?.version
+          ? Number(updated.version)
+          : null,
     };
   });
 
