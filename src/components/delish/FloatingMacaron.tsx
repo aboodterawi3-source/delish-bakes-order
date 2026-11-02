@@ -13,9 +13,11 @@ export function FloatingMacaron({ src, alt, className = "" }: FloatingMacaronPro
         src={src}
         alt={alt}
         className="h-full w-full object-contain"
-        width={768}
-        height={768}
-        loading="eager"
+        width={240}
+        height={240}
+        loading="lazy"
+        decoding="async"
+        fetchPriority="low"
       />
     </div>
   );

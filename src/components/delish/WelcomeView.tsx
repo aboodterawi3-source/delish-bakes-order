@@ -3,10 +3,10 @@ import { Link } from "@tanstack/react-router";
 import { DelishLogo } from "./DelishLogo";
 import { BackgroundCurves } from "./BackgroundCurves";
 import { FloatingMacaron } from "./FloatingMacaron";
-import pistachioMacaron from "@/assets/macaron-pistachio.png";
-import roseMacaron from "@/assets/macaron-rose.png";
-import berryMacaron from "@/assets/macaron-berry.png";
-import peachMacaron from "@/assets/macaron-peach.png";
+import pistachioMacaron from "@/assets/macaron-pistachio.webp";
+import roseMacaron from "@/assets/macaron-rose.webp";
+import berryMacaron from "@/assets/macaron-berry.webp";
+import peachMacaron from "@/assets/macaron-peach.webp";
 
 interface WelcomeViewProps {
   onExplore?: () => void;
