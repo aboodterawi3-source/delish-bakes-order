@@ -1,0 +1,21 @@
+{
+  "$schema": "https://raw.githubusercontent.com/stryker-mutator/stryker-js/master/packages/core/schema/stryker-schema.json",
+  "packageManager": "npm",
+  "reporters": ["html", "clear-text", "progress"],
+  "testRunner": "command",
+  "commandRunner": {
+    "command": "node --experimental-strip-types test/acceptance_hardening.test.mjs"
+  },
+  "mutate": [
+    "src/lib/confirmation-message.ts",
+    "src/lib/role-guard.ts",
+    "src/lib/username.ts"
+  ],
+  "tempDirName": ".stryker-tmp",
+  "cleanTempDir": true,
+  "thresholds": {
+    "high": 80,
+    "low": 60,
+    "break": 50
+  }
+}

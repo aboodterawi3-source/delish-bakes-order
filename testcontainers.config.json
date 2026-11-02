@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "name": "Delish & Bake Testcontainers Integration Configuration",
+  "engine": "docker",
+  "containers": {
+    "postgres": {
+      "image": "postgres:16-alpine",
+      "environment": {
+        "POSTGRES_DB": "delish_test_db",
+        "POSTGRES_USER": "delish_admin",
+        "POSTGRES_PASSWORD": "delish_secret_password"
+      },
+      "exposedPorts": [5432],
+      "startupTimeoutSeconds": 60,
+      "reuse": false
+    }
+  },
+  "fallback": {
+    "enabled": true,
+    "driver": "@electric-sql/pglite",
+    "description": "Seamless in-process fallback when Docker daemon is not active on local host"
+  }
+}

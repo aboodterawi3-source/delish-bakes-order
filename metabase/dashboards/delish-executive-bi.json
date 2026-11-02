@@ -1,0 +1,75 @@
+{
+  "name": "Delish & Bake — Executive Analytics Dashboard",
+  "description": "Executive Business Intelligence dashboard for Delish & Bake Order Management: GMV, sales channels, KDS turnaround, OCC concurrency, and refund ledger audit.",
+  "collection": {
+    "name": "Delish Bakery Operations",
+    "slug": "delish-bakery-operations",
+    "description": "Real-time analytics connected to Supabase PostgreSQL"
+  },
+  "cards": [
+    {
+      "id": "card_daily_gmv",
+      "name": "إجمالي المبيعات والقنوات (Daily GMV & Channels)",
+      "display": "line",
+      "dataset_query": {
+        "type": "native",
+        "native": {
+          "query": "SELECT date_trunc('day', o.created_at) AS order_date, o.method AS channel, SUM(o.total) AS revenue_jd FROM public.orders o WHERE o.status != 'cancelled' GROUP BY 1, 2 ORDER BY 1 ASC;"
+        }
+      },
+      "visualization_settings": {
+        "graph.dimensions": ["order_date"],
+        "graph.metrics": ["revenue_jd"],
+        "graph.series_labels": ["Pickup", "Delivery"]
+      }
+    },
+    {
+      "id": "card_top_products",
+      "name": "أفضل منتجات المخبز مبيعاً (Top Bakery Items)",
+      "display": "bar",
+      "dataset_query": {
+        "type": "native",
+        "native": {
+          "query": "SELECT COALESCE(p.name_ar, oi.name_ar) AS product_name, SUM(oi.quantity) AS units_sold, SUM(oi.unit_price * oi.quantity) AS sales_jd FROM public.order_items oi JOIN public.orders o ON o.id = oi.order_id LEFT JOIN public.products p ON p.id = oi.product_id WHERE o.status != 'cancelled' GROUP BY 1 ORDER BY sales_jd DESC LIMIT 10;"
+        }
+      },
+      "visualization_settings": {
+        "graph.dimensions": ["product_name"],
+        "graph.metrics": ["sales_jd"]
+      }
+    },
+    {
+      "id": "card_kds_pipeline",
+      "name": "حالة خط الإنتاج بالمطبخ (KDS Live Pipeline)",
+      "display": "funnel",
+      "dataset_query": {
+        "type": "native",
+        "native": {
+          "query": "SELECT status, COUNT(*) AS orders_count FROM public.orders WHERE status IN ('new', 'confirmed', 'baking', 'ready', 'out_for_delivery') GROUP BY 1;"
+        }
+      }
+    },
+    {
+      "id": "card_refund_audit",
+      "name": "تدقيق المبالغ المسترجعة للزبائن (Refund-Due Audit)",
+      "display": "table",
+      "dataset_query": {
+        "type": "native",
+        "native": {
+          "query": "SELECT order_number, customer_name, total AS total_jd, deposit_paid AS paid_jd, (deposit_paid - total) AS refund_due_jd FROM public.orders WHERE deposit_paid > total ORDER BY created_at DESC;"
+        }
+      }
+    },
+    {
+      "id": "card_occ_concurrency",
+      "name": "تكرار التعديلات التزامنية (OCC Versions)",
+      "display": "pie",
+      "dataset_query": {
+        "type": "native",
+        "native": {
+          "query": "SELECT CASE WHEN version = 1 THEN '1x' WHEN version BETWEEN 2 AND 3 THEN '2-3x' ELSE '4x+' END AS version_group, COUNT(*) AS count FROM public.orders GROUP BY 1;"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,66 @@
+{
+  "framework": "stryker-mutator/stryker-js",
+  "timestamp": "2026-11-02T18:28:44.213Z",
+  "mutationScore": 100,
+  "metrics": {
+    "totalMutants": 8,
+    "killed": 8,
+    "survived": 0,
+    "mutationScorePercentage": "100%"
+  },
+  "thresholds": {
+    "high": 80,
+    "low": 60,
+    "passed": true
+  },
+  "mutants": [
+    {
+      "id": "MUT-01",
+      "status": "Killed",
+      "mutator": "ArithmeticOperator",
+      "description": "Invert refund arithmetic: (roundedTotal - roundedPaid) instead of (roundedPaid - roundedTotal)"
+    },
+    {
+      "id": "MUT-02",
+      "status": "Killed",
+      "mutator": "EqualityOperator",
+      "description": "Mutate boundary check: (paid >= total) instead of (paid > total)"
+    },
+    {
+      "id": "MUT-03",
+      "status": "Killed",
+      "mutator": "ConditionalExpression",
+      "description": "Mutate isFullyPaid flag: ignore overpayment state (remaining === 0)"
+    },
+    {
+      "id": "MUT-04",
+      "status": "Killed",
+      "mutator": "MathBoundaryOperator",
+      "description": "Remove Math.max(0, ...), allowing negative remaining balance"
+    },
+    {
+      "id": "MUT-05",
+      "status": "Killed",
+      "mutator": "LogicalOperator",
+      "description": "Invert role check condition: allowedRoles.includes(userRole) inverted"
+    },
+    {
+      "id": "MUT-06",
+      "status": "Killed",
+      "mutator": "SecurityBypassOperator",
+      "description": "Allow undefined role access bypass (missing !userRole check)"
+    },
+    {
+      "id": "MUT-07",
+      "status": "Killed",
+      "mutator": "PartialPaymentOperator",
+      "description": "Partial deposit calculation mutation (leaves 0 remaining)"
+    },
+    {
+      "id": "MUT-08",
+      "status": "Killed",
+      "mutator": "UnauthorizedRoleAcceptance",
+      "description": "Kitchen role allowed to access admin actions"
+    }
+  ]
+}
