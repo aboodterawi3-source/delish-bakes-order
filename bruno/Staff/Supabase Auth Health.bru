@@ -1,0 +1,15 @@
+meta {
+  name: Supabase Auth Health
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{supabaseUrl}}/auth/v1/health?apikey={{anonKey}}
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}

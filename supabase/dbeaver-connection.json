@@ -1,0 +1,33 @@
+{
+  "connection": {
+    "name": "Delish Bakes Production Supabase (PostgreSQL 15)",
+    "provider": "postgresql",
+    "driver": "postgres-jdbc",
+    "configuration": {
+      "host": "aws-0-eu-central-1.pooler.supabase.com",
+      "port": "6543",
+      "database": "postgres",
+      "user": "postgres.dmvwdkxcltnomigoqtue",
+      "ssl": {
+        "sslmode": "require",
+        "sslfactory": "org.postgresql.ssl.NonValidatingFactory"
+      },
+      "properties": {
+        "connectTimeout": "20",
+        "loginTimeout": "20",
+        "tcpKeepAlive": "true",
+        "application_name": "DBeaver-Delish-Production"
+      }
+    },
+    "custom_views": [
+      {
+        "name": "Live Orders OCC Audit",
+        "query": "SELECT id, order_number, customer_name, status, total_amount, deposit_amount, version, updated_at FROM orders ORDER BY updated_at DESC LIMIT 50;"
+      },
+      {
+        "name": "Active Staff Roles",
+        "query": "SELECT user_id, role, created_at FROM user_roles ORDER BY role, created_at;"
+      }
+    ]
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "brandTag": "Luxury Patisserie · Amman, Jordan",
+  "navMenu": "Menu",
+  "navBuilder": "Cake Builder",
+  "navAbout": "About",
+  "navContact": "Contact",
+  "heroTitle": "Every bite, a little celebration",
+  "heroSub": "Cakes and desserts baked fresh daily with premium ingredients, delivered across Amman.",
+  "heroCta": "Order now",
+  "heroCta2": "Build your cake",
+  "categories": "Browse categories",
+  "all": "All",
+  "addToCart": "Add to cart",
+  "customize": "Customize",
+  "size": "Size",
+  "flavor": "Flavor",
+  "qty": "Quantity",
+  "notes": "Notes",
+  "cartTitle": "Shopping Cart",
+  "checkout": "Checkout",
+  "orderSuccess": "Your order was received successfully!"
+}

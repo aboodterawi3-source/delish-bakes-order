@@ -1,0 +1,16 @@
+{
+  "$schema": "https://docs.weblate.org/en/latest/schemas/weblate.json",
+  "project": "delish-bakes-order",
+  "components": [
+    {
+      "name": "storefront-i18n",
+      "filemask": "locales/*.json",
+      "template": "locales/ar.json",
+      "new_base": "locales/en.json",
+      "file_format": "json",
+      "source_language": "ar",
+      "edit_template": true,
+      "language_code_style": "bcp47"
+    }
+  ]
+}

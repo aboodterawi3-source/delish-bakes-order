@@ -1,0 +1,61 @@
+{
+  "version": "1.0.0",
+  "source": "Plane Open-Source Project Management",
+  "workspace": {
+    "name": "Delish Bakes Workspace",
+    "slug": "delish-bakes"
+  },
+  "project": {
+    "name": "Delish Cake & Bake Order System",
+    "identifier": "DELISH",
+    "description": "Luxury artisan bakery order management, KDS, POS, and digital storefront",
+    "network": "Cloudflare Workers + Supabase PostgreSQL",
+    "modules": [
+      {
+        "id": "MOD-1",
+        "name": "Storefront Performance & Web Vitals",
+        "status": "completed",
+        "target_date": "2026-11-02",
+        "issues": [
+          { "id": "DELISH-101", "name": "Optimize decorative images to WebP (-97.3% byte reduction)", "state": "Done", "priority": "Urgent" },
+          { "id": "DELISH-102", "name": "Set absolute canonical URL for 100/100 SEO", "state": "Done", "priority": "High" },
+          { "id": "DELISH-103", "name": "Reduce Google Fonts weights to eliminate render blocking", "state": "Done", "priority": "High" }
+        ]
+      },
+      {
+        "id": "MOD-2",
+        "name": "POS & Multi-Role Order Management",
+        "status": "completed",
+        "target_date": "2026-11-02",
+        "issues": [
+          { "id": "DELISH-201", "name": "Enforce atomic CAS OCC concurrency versioning on order mutations", "state": "Done", "priority": "Urgent" },
+          { "id": "DELISH-202", "name": "Link TouchItemEditorSheet addition branch to wrapper version updater", "state": "Done", "priority": "Urgent" },
+          { "id": "DELISH-203", "name": "Strict Role-Based Access Control (Admin, Sales, Kitchen, Social)", "state": "Done", "priority": "High" }
+        ]
+      },
+      {
+        "id": "MOD-3",
+        "name": "Kitchen Display System (KDS)",
+        "status": "completed",
+        "target_date": "2026-11-02",
+        "issues": [
+          { "id": "DELISH-301", "name": "Real-time kitchen order queue and state transitions", "state": "Done", "priority": "High" },
+          { "id": "DELISH-302", "name": "Mask customer private and financial data from kitchen staff", "state": "Done", "priority": "High" }
+        ]
+      },
+      {
+        "id": "MOD-4",
+        "name": "Continuous Observability & Tooling",
+        "status": "completed",
+        "target_date": "2026-11-02",
+        "issues": [
+          { "id": "DELISH-401", "name": "Set up Git hooks via Lefthook for pre-commit lint and tests", "state": "Done", "priority": "Medium" },
+          { "id": "DELISH-402", "name": "Enforce dependency boundaries via Dependency-Cruiser", "state": "Done", "priority": "Medium" },
+          { "id": "DELISH-403", "name": "Generate automated Bruno API test collection", "state": "Done", "priority": "High" },
+          { "id": "DELISH-404", "name": "Configure Google Release Please automated changelogs", "state": "Done", "priority": "Medium" },
+          { "id": "DELISH-405", "name": "Weblate continuous localization configuration", "state": "Done", "priority": "Medium" }
+        ]
+      }
+    ]
+  }
+}

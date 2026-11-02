@@ -1,0 +1,16 @@
+# Lefthook Configuration — Fast & Robust Git Hooks for Delish Cake & Bake
+# https://github.com/evilmartians/lefthook
+
+pre-commit:
+  parallel: false
+  commands:
+    typecheck:
+      run: npx tsc --noEmit
+    acceptance-tests:
+      run: node --experimental-strip-types test/acceptance_hardening.test.mjs
+
+pre-push:
+  parallel: false
+  commands:
+    production-build:
+      run: npm run build

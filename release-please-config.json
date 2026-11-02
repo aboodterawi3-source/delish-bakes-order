@@ -1,0 +1,20 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "packages": {
+    ".": {
+      "release-type": "node",
+      "package-name": "delish-bakes-order",
+      "changelog-path": "CHANGELOG.md",
+      "bump-minor-pre-major": false,
+      "bump-patch-for-minor-pre-major": false,
+      "include-component-in-tag": false,
+      "changelog-sections": [
+        { "type": "feat", "section": "✨ Features & Enhancements" },
+        { "type": "fix", "section": "🐛 Bug Fixes & Hardening" },
+        { "type": "perf", "section": "⚡ Performance & Web Vitals" },
+        { "type": "security", "section": "🔒 Security & Access Control" },
+        { "type": "chore", "section": "🔧 Maintenance & Tooling", "hidden": false }
+      ]
+    }
+  }
+}
