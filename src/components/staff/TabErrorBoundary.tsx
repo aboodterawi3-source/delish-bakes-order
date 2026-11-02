@@ -22,7 +22,7 @@ export class TabErrorBoundary extends Component<TabErrorBoundaryProps, TabErrorB
   }
 
   override componentDidCatch(error: unknown, info: ErrorInfo) {
-    console.error(`[TabErrorBoundary:${this.props.tabName}]`, error, info.componentStack);
+    console.error("[TabErrorBoundary]", this.props.tabName, error, info.componentStack);
   }
 
   handleReset = () => {
