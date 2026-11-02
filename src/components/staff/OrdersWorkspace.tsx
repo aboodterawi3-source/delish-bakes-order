@@ -1510,41 +1510,49 @@ ${collectionText}
               )}
             </div>
 
-            <div className="space-y-2.5">
+            <div className="space-y-3">
               {order.items.map((item, idx) => (
                 <div
                   key={idx}
-                  className="rounded-xl border border-border/70 bg-secondary/20 p-2.5 space-y-2"
+                  className="rounded-2xl border border-amber-200/80 bg-gradient-to-b from-amber-50/50 to-orange-50/20 dark:from-amber-950/20 dark:to-orange-950/10 p-3.5 space-y-2.5 shadow-2xs"
                 >
                   <div className="flex justify-between items-center gap-2">
-                    <p className="font-black text-xs text-foreground flex items-center gap-1.5">
-                      <span className="inline-flex items-center justify-center h-5 w-5 rounded-md bg-[#8B4513] text-white text-[10px] font-black shrink-0">
+                    <p className="font-black text-sm text-foreground flex items-center gap-2">
+                      <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-md bg-[#8B4513] text-white text-xs font-black shrink-0">
                         {item.quantity}×
                       </span>
-                      <span>{item.name_ar}</span>
+                      <span className="text-sm font-black">{item.name_ar}</span>
                     </p>
-                    <span className="font-black text-xs text-foreground bg-background px-2 py-0.5 rounded-md border border-border/40 shrink-0">
+                    <span className="font-black text-xs text-foreground bg-white dark:bg-card px-2.5 py-1 rounded-lg border border-amber-200/80 dark:border-amber-800/50 shrink-0 whitespace-nowrap shadow-2xs">
                       {jd(item.unit_price * item.quantity)}
                     </span>
                   </div>
 
                   {item.options_ar.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 pt-1.5 border-t border-border/40">
-                      {item.options_ar.map((option, optIdx) => (
-                        <span
-                          key={optIdx}
-                          className="inline-flex items-center rounded-lg bg-amber-500/10 dark:bg-amber-950/40 px-2 py-0.5 text-[11px] font-bold text-amber-900 dark:text-amber-200 border border-amber-500/20 shadow-2xs"
-                        >
-                          {option}
-                        </span>
-                      ))}
+                    <div className="space-y-1.5 pt-2 border-t border-amber-200/60 dark:border-amber-800/40">
+                      <span className="text-[11px] font-bold text-amber-900/80 dark:text-amber-300/80 block mb-1">
+                        تفاصيل ومواصفات الكيكة:
+                      </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                        {item.options_ar.map((option, optIdx) => (
+                          <div
+                            key={optIdx}
+                            className="flex items-center gap-2 rounded-xl bg-white dark:bg-card px-3 py-2 text-xs font-bold text-foreground border border-amber-200/70 dark:border-amber-800/40 shadow-2xs"
+                            dir="auto"
+                          >
+                            <span className="h-2 w-2 rounded-full bg-amber-500 shrink-0" />
+                            <span className="leading-snug">{option}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
 
                   {item.notes && (
-                    <p className="text-[11px] text-muted-foreground bg-card p-1.5 rounded-lg border border-border/40">
-                      ملاحظة: {item.notes}
-                    </p>
+                    <div className="text-xs text-foreground bg-white dark:bg-card p-2.5 rounded-xl border border-amber-200/70 dark:border-amber-800/40">
+                      <span className="font-bold text-amber-900 dark:text-amber-300">ملاحظة الصنف: </span>
+                      <span>{item.notes}</span>
+                    </div>
                   )}
                 </div>
               ))}

@@ -1089,8 +1089,16 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                         ) : null}
                       </div>
                       {it.options_ar?.length ? (
-                        <div className="text-xs font-semibold text-muted-foreground mt-0.5">
-                          الخيارات: {it.options_ar.join(" ، ")}
+                        <div className="flex flex-wrap gap-1.5 mt-2 pt-1.5 border-t border-border/40">
+                          {it.options_ar.map((opt, oIdx) => (
+                            <span
+                              key={oIdx}
+                              className="inline-flex items-center rounded-lg bg-amber-500/10 px-2 py-0.5 text-[11px] font-bold text-amber-900 border border-amber-500/20"
+                              dir="auto"
+                            >
+                              {opt}
+                            </span>
+                          ))}
                         </div>
                       ) : null}
                     </div>
