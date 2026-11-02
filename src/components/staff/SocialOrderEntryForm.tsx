@@ -306,7 +306,7 @@ export function SocialOrderEntryForm({
             ? `توصيل · ${form.address.trim() || form.area || "—"}`
             : "استلام من المحل",
         items: [`${form.quantity} × ${form.order_details.trim() || "—"}`, ...extras.ar],
-        cakeWriting: form.design_notes || customization.topperText,
+        cakeWriting: customization.topperText || "",
         cardWriting: form.card_note,
         extraNote: form.is_urgent ? "طلب مستعجل · Urgent" : "",
         notes: customization.notes,
@@ -367,7 +367,6 @@ export function SocialOrderEntryForm({
         orderDetails: form.order_details.trim() || "نفس البكج يلي بالصوره",
         designNotes: [
           ...(customization.filling ? [`حشوة الكيكة: ${customization.filling}`] : []),
-          ...(form.design_notes ? [form.design_notes] : []),
           ...(customization.notes ? [customization.notes] : []),
           ...(form.card_note ? [`الكرت: ${form.card_note}`] : []),
         ],
@@ -582,11 +581,9 @@ export function SocialOrderEntryForm({
         deposit_paid: form.payment_option === "cash" ? 0 : Number(form.deposit_paid) || 0,
         requested_date: form.requested_date,
         requested_time: form.requested_time,
-        event_date: form.event_date || null,
+        event_date: null,
         is_urgent: form.is_urgent,
-        design_notes: [form.design_notes.trim(), customization.notes.trim()]
-          .filter(Boolean)
-          .join(" — "),
+        design_notes: customization.notes.trim() || null,
         staff_notes: combinedStaffNotes,
         extras_ar: [
           `المصدر: ${CHANNEL_CONFIG[form.order_source].ar}`,
@@ -1379,7 +1376,7 @@ export function SocialOrderEntryForm({
         </fieldset>
 
         {/* DATES & TIME */}
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2">
           <label className="block text-sm font-bold text-[#3E2723]">
             تاريخ التسليم · Date
             <input
@@ -1401,16 +1398,6 @@ export function SocialOrderEntryForm({
               className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
             />
           </label>
-
-          <label className="block text-sm font-bold text-[#3E2723]">
-            تاريخ المناسبة (اختياري)
-            <input
-              type="date"
-              value={form.event_date}
-              onChange={(event) => set("event_date", event.target.value)}
-              className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
-            />
-          </label>
         </div>
 
         {/* URGENT BUTTON */}
@@ -1428,17 +1415,6 @@ export function SocialOrderEntryForm({
             <AlertTriangle className="h-4 w-4" aria-hidden="true" /> 🚨 مستعجل · Urgent
           </button>
         </div>
-
-        {/* DESIGN NOTES */}
-        <label className="block text-sm font-bold text-[#3E2723]">
-          ملاحظات التصميم الخاص · Special custom design notes
-          <textarea
-            rows={2}
-            value={form.design_notes}
-            onChange={(event) => set("design_notes", event.target.value)}
-            className="mt-1 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
-          />
-        </label>
 
         {/* CARD NOTE */}
         <label className="block text-sm font-bold text-[#3E2723]">
