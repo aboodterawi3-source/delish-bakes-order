@@ -4,9 +4,10 @@ interface FloatingMacaronProps {
   src: string;
   alt: string;
   className?: string;
+  priority?: boolean;
 }
 
-export function FloatingMacaron({ src, alt, className = "" }: FloatingMacaronProps) {
+export function FloatingMacaron({ src, alt, className = "", priority = true }: FloatingMacaronProps) {
   return (
     <div className={`pointer-events-none absolute select-none drop-shadow-xl ${className}`}>
       <img
@@ -15,9 +16,9 @@ export function FloatingMacaron({ src, alt, className = "" }: FloatingMacaronPro
         className="h-full w-full object-contain"
         width={240}
         height={240}
-        loading="lazy"
+        loading={priority ? "eager" : "lazy"}
         decoding="async"
-        fetchPriority="low"
+        fetchPriority={priority ? "high" : "low"}
       />
     </div>
   );
