@@ -1,0 +1,44 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    ":semanticCommits"
+  ],
+  "labels": ["dependencies", "automated"],
+  "rangeStrategy": "pin",
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": ["security"]
+  },
+  "packageRules": [
+    {
+      "description": "Group TanStack packages and lock to strict compatible releases",
+      "matchPackageNames": ["@tanstack/{/,}**"],
+      "groupName": "tanstack-framework",
+      "automerge": false,
+      "minimumReleaseAge": "3 days"
+    },
+    {
+      "description": "Lock Vite and Nitro build tools to verified stable releases",
+      "matchPackageNames": [
+        "vite",
+        "nitro",
+        "@lovable.dev/vite-tanstack-config"
+      ],
+      "groupName": "build-toolchain",
+      "automerge": false
+    },
+    {
+      "description": "Automate patch updates for UI icons and helpers after CI passes",
+      "matchPackageNames": [
+        "lucide-react",
+        "clsx",
+        "tailwind-merge",
+        "date-fns"
+      ],
+      "matchUpdateTypes": ["patch"],
+      "automerge": true
+    }
+  ]
+}

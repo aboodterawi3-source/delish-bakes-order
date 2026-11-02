@@ -120,6 +120,9 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="ar" dir="rtl">
       <head>
         <HeadContent />
+        {import.meta.env.DEV && (
+          <script src="https://unpkg.com/react-scan/dist/auto.global.js" async />
+        )}
       </head>
       <body>
         {children}

@@ -1,0 +1,44 @@
+{
+  "version": "1.23.0",
+  "monitors": [
+    {
+      "name": "Delish Bakes — Production Homepage",
+      "type": "http",
+      "url": "https://delish-bakes-order.aboodterawi3.workers.dev/",
+      "interval": 60,
+      "retryInterval": 20,
+      "maxretries": 3,
+      "method": "GET",
+      "accepted_statuscodes": ["200-299"],
+      "keyword": "DELISH Bakes",
+      "invertKeyword": false,
+      "expiryNotification": true,
+      "ignoreTLSError": false
+    },
+    {
+      "name": "Delish Bakes — Staff Auth Portal",
+      "type": "http",
+      "url": "https://delish-bakes-order.aboodterawi3.workers.dev/auth",
+      "interval": 60,
+      "retryInterval": 20,
+      "maxretries": 3,
+      "method": "GET",
+      "accepted_statuscodes": ["200-299"],
+      "keyword": "delish",
+      "expiryNotification": true
+    },
+    {
+      "name": "Delish Bakes — Supabase Database & Auth API",
+      "type": "http",
+      "url": "https://dmvwdkxcltnomigoqtue.supabase.co/rest/v1/",
+      "interval": 120,
+      "retryInterval": 30,
+      "maxretries": 2,
+      "method": "GET",
+      "headers": {
+        "apikey": "sb_publishable_4o-FrhbFZSg-sCqYdA9s6g_qBDFmxNj"
+      },
+      "accepted_statuscodes": ["200-299", "401"]
+    }
+  ]
+}
