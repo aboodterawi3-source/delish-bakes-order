@@ -53,3 +53,5 @@ SQLEXPRADV_x64_ENU/
 repomix-output.*
 
 
+bun.lock
+bun.lockb
