@@ -1,26 +1,44 @@
-# Delish Jordan Bakery
+# Delish Jordan Bakery — Delish Cake & Bake
 
-Build the Delish Jordan / Delish Cake & Bake mobile-first bilingual (Arabic default RTL, English LTR) luxury bakery ordering web app exactly as requested. Use the attached logo as branding/color reference. Include polished responsive UI, interactive categories/products with customization modal, multi-step custom cake builder, cart and checkout that produces the specified structured WhatsApp message to +962779179995, social proof, footer, and conduct the requested functional, RTL/LTR, responsive, and visual self-audit. Use the supplied uploaded image as the Delish logo asset.
+Mobile-first bilingual (Arabic default RTL, English LTR) luxury bakery ordering web app for Delish Cake & Bake in Amman, Jordan.
 
-This project was built with [Lovable](https://lovable.dev).
+## Architecture & Technology Stack
+- **Frontend & Routing:** React 18, TanStack Router, TanStack Start (SSR), Tailwind CSS.
+- **Backend & Database:** Supabase (PostgreSQL 15+), Row-Level Security (RLS), Optimistic Concurrency Control, Atomic SECURITY DEFINER RPCs.
+- **Build & Server Engine:** Vite, Nitro (supporting Cloudflare Pages/Workers & standalone Node.js server targets).
 
-**Live app**: https://delish-bakes-order.lovable.app
+---
 
-## Build with Lovable
+## Database Setup & SQL Scripts (Strict Execution Order)
 
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/40d6e519-0330-4c45-85e7-09d49fb691ab).
+When provisioning a fresh Supabase project, execute the SQL files located in `supabase/` in the following sequence:
 
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
+1. **`supabase/standalone_complete_schema.sql`**: Full standalone schema, roles, custom types, audit triggers, RLS policies, and atomic transaction RPCs.
+2. **`supabase/seed_initial_store.sql`**: Initial boutique catalogue, categories, and storefront banner.
+3. **`supabase/delish_api_permissions.sql`**: Explicit PostgREST Data API permissions enforcing least-privilege access (public read for catalogue, strict 401 isolation for orders, payments, tokens, and staff tables).
 
-## Development
+For step-by-step instructions on setting up the initial admin user and environment variables, consult [DEPLOYMENT_RUNBOOK.md](./DEPLOYMENT_RUNBOOK.md).
 
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+---
+
+## Local Development
 
 ```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
+# Clean install locked dependencies
+npm ci
+
+# Start development server
+npm run dev -- --port 3000 --strictPort
+```
+
+---
+
+## Production Build
+
+```sh
+# Build for Cloudflare Pages / Edge
+npm run build
+
+# Build for standalone Node.js container (Docker / VPS)
+npm run build:node
 ```
