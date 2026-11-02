@@ -58,6 +58,9 @@ export function DeliveryZoneSelect({
         className={className}
       >
         <option value="">{defaultPlaceholder}</option>
+        {value && !DELIVERY_ZONES.some((zone) => zone.areas.includes(value)) && (
+          <option value={value}>{value}</option>
+        )}
         {DELIVERY_ZONES.map((zone) => (
           <optgroup
             key={zone.labelEn}

@@ -147,7 +147,10 @@ export function buildConfirmationMessage(input: ConfirmationInput): string {
     Boolean(input.address?.trim()) ||
     Boolean(input.area?.trim());
 
-  const fullAddress = [input.area?.trim(), input.address?.trim()].filter(Boolean).join(" — ");
+  const fullAddress =
+    input.area?.trim() && input.address?.trim() && input.area.trim() !== input.address.trim()
+      ? `${input.area.trim()} — ${input.address.trim()}`
+      : input.address?.trim() || input.area?.trim() || "";
 
   const lines: string[] = [
     "📌 تثبيت الأوردر",
@@ -161,7 +164,7 @@ export function buildConfirmationMessage(input: ConfirmationInput): string {
   if (isDelivery) {
     lines.push(`📍 العنوان: ${orDash(fullAddress || input.fulfilment)}`);
     lines.push(
-      `📦 التوصيل: ${input.deliveryFee > 0 ? `${input.deliveryFee.toFixed(0)} دنانير` : "مجاني"}`,
+      `📦 التوصيل: ${input.deliveryFee > 0 ? `${input.deliveryFee % 1 === 0 ? input.deliveryFee.toFixed(0) : input.deliveryFee.toFixed(2)} دنانير` : "مجاني"}`,
     );
   }
 

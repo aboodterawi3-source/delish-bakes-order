@@ -26,7 +26,6 @@ import { getWhatsAppChatUrl } from "@/lib/whatsapp";
 import { createSocialOrder, type SocialOrderInput } from "@/lib/social.functions";
 import { jd } from "@/lib/currency";
 import { DELIVERY_ZONES, OTHER_GOVERNORATES_AREA, feeForArea } from "@/lib/delivery-zones";
-import { DeliveryZoneSelect } from "@/components/delish/DeliveryZoneSelect";
 import {
   buildConfirmationMessage,
   buildModificationMessage,
@@ -75,6 +74,7 @@ const emptyForm = {
   method: "pickup" as "pickup" | "delivery",
   area: "",
   address: "",
+  delivery_fee: "",
   // Payment
   payment_option: "cash" as "cash" | "cliq_full" | "cliq_deposit",
   cliq_account: "mahmoud" as CliqAccount,
@@ -225,7 +225,12 @@ export function SocialOrderEntryForm({
   const extras = useMemo(() => customizationSummary(customization), [customization]);
 
   const areaFee = feeForArea(form.area);
-  const deliveryFee = form.method === "delivery" ? (areaFee ?? 0) : 0;
+  const deliveryFee =
+    form.method === "delivery"
+      ? form.delivery_fee !== ""
+        ? Math.max(0, Number(form.delivery_fee) || 0)
+        : (areaFee ?? 0)
+      : 0;
 
   const { accounts: cliqAccounts } = useCliqAccounts();
 
@@ -293,12 +298,12 @@ export function SocialOrderEntryForm({
         when: `${form.requested_date} ${form.requested_time}`.trim(),
         date: form.requested_date,
         time: form.requested_time,
-        address: form.address,
-        area: form.area,
+        address: form.address.trim() || form.area.trim(),
+        area: "",
         filling: customization.filling,
         fulfilment:
           form.method === "delivery"
-            ? `توصيل · ${form.area || "—"}${form.address.trim() ? ` — ${form.address.trim()}` : ""}`
+            ? `توصيل · ${form.address.trim() || form.area || "—"}`
             : "استلام من المحل",
         items: [`${form.quantity} × ${form.order_details.trim() || "—"}`, ...extras.ar],
         cakeWriting: form.design_notes || customization.topperText,
@@ -358,7 +363,7 @@ export function SocialOrderEntryForm({
         orderNumber: "{{ORDER_NUMBER}}",
         time: `${formatArabicDate(form.requested_date)} الساعة ${formatArabicTime(form.requested_time)}`.trim(),
         fulfilment:
-          form.method === "delivery" ? form.area || form.address || "توصيل" : "استلام من المحل",
+          form.method === "delivery" ? form.address || form.area || "توصيل" : "استلام من المحل",
         orderDetails: form.order_details.trim() || "نفس البكج يلي بالصوره",
         designNotes: [
           ...(customization.filling ? [`حشوة الكيكة: ${customization.filling}`] : []),
@@ -367,7 +372,9 @@ export function SocialOrderEntryForm({
           ...(form.card_note ? [`الكرت: ${form.card_note}`] : []),
         ],
         modifications: [
-          ...(form.method === "delivery" && form.area ? [`توصيل ${form.area}`] : []),
+          ...(form.method === "delivery" && (form.address || form.area)
+            ? [`توصيل ${form.address || form.area}`]
+            : []),
           ...(customization.filling ? [`حشوة ${customization.filling}`] : []),
           ...(customization.numberCandles && customization.candleDigits
             ? [`شمع ${customization.candleDigits}`]
@@ -511,6 +518,13 @@ export function SocialOrderEntryForm({
     }
     setCustomErrors({});
 
+    // Validation for Mandatory Delivery Address
+    if (form.method === "delivery" && !form.address.trim() && !form.area.trim()) {
+      isSubmittingRef.current = false;
+      setError("⚠️ يرجى كتابة عنوان التوصيل (خانة إجبارية عند اختيار التوصيل).");
+      return;
+    }
+
     // Validation for Mandatory CliQ Receipt Photo
     if (form.payment_option !== "cash" && !receiptUrl) {
       isSubmittingRef.current = false;
@@ -561,8 +575,9 @@ export function SocialOrderEntryForm({
         card_note: form.card_note,
         confirmation_message: confirmationTemplate,
         method: form.method,
-        area: form.method === "delivery" ? form.area : null,
-        address: form.method === "delivery" ? form.address : null,
+        area: form.method === "delivery" ? (form.address.trim() || form.area || null) : null,
+        address: form.method === "delivery" ? (form.address.trim() || form.area || null) : null,
+        delivery_fee: form.method === "delivery" ? deliveryFee : 0,
         payment_option: form.payment_option,
         deposit_paid: form.payment_option === "cash" ? 0 : Number(form.deposit_paid) || 0,
         requested_date: form.requested_date,
@@ -1079,24 +1094,32 @@ export function SocialOrderEntryForm({
         </fieldset>
 
         {form.method === "delivery" ? (
-          <div className="grid gap-4 sm:grid-cols-2 bg-blue-50/30 p-4 rounded-2xl border border-blue-200/60">
+          <div className="space-y-3.5 bg-blue-50/30 p-4 rounded-2xl border border-blue-200/60">
             <label className="block text-sm font-bold text-[#3E2723]">
-              منطقة التوصيل · Delivery area
-              <DeliveryZoneSelect
+              عنوان التوصيل · Delivery Address
+              <input
                 required
-                value={form.area}
-                onChange={(area) => set("area", area)}
+                type="text"
+                value={form.address}
+                onChange={(event) => {
+                  const val = event.target.value;
+                  set("address", val);
+                  set("area", val);
+                }}
+                placeholder="اسم المنطقة، الشارع، البناية، رقم الشقة أو علامة مميزة..."
                 className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
-                noteClassName="mt-1 block text-xs font-normal text-[#7A6458]"
               />
             </label>
 
             <label className="block text-sm font-bold text-[#3E2723]">
-              العنوان التفصيلي (اختياري)
+              تحديد سعر التوصيل (د.أ) · Delivery Fee (JOD)
               <input
-                value={form.address}
-                onChange={(event) => set("address", event.target.value)}
-                placeholder="اسم الشارع، البناية، رقم الشقة أو علامة مميزة"
+                type="number"
+                step="0.5"
+                min="0"
+                value={form.delivery_fee}
+                onChange={(event) => set("delivery_fee", event.target.value)}
+                placeholder="مثال: 3.00"
                 className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
               />
             </label>

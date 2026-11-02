@@ -29,9 +29,11 @@ export type SocialOrderInput = {
   /** Ready-to-send confirmation message stored with the order. */
   confirmation_message?: string | null;
   method: "pickup" | "delivery";
-  /** Amman / other-governorate zone name; the fee is resolved server-side. */
+  /** Amman / other-governorate zone name, or delivery address */
   area?: string | null;
   address?: string | null;
+  /** Custom delivery fee entered manually by staff */
+  delivery_fee?: number | null;
   /** Cash on delivery, fully paid via CliQ, or a deposit via CliQ. */
   payment_option: "cash" | "cliq_full" | "cliq_deposit";
   /** Amount already collected via CliQ (full payment or deposit). */
@@ -90,8 +92,8 @@ export const createSocialOrder = createServerFn({ method: "POST" })
     if (!["cash", "cliq_full", "cliq_deposit"].includes(input?.payment_option as string)) {
       throw new Error("طريقة الدفع مطلوبة · Payment method is required");
     }
-    if (input.method === "delivery" && !input.area?.trim()) {
-      throw new Error("منطقة التوصيل مطلوبة · Delivery area is required");
+    if (input.method === "delivery" && !input.area?.trim() && !input.address?.trim()) {
+      throw new Error("عنوان وتفاصيل التوصيل مطلوبة · Delivery address is required");
     }
     return input;
   })
@@ -101,9 +103,15 @@ export const createSocialOrder = createServerFn({ method: "POST" })
     // Original price agreed with the customer; the row total is recomputed in the DB.
     const unitPrice = roundJod(Math.min(Math.max(Number(data.unit_price) || 0, 0), 100000));
     const subtotal = roundJod(unitPrice * data.quantity);
-    const area = data.method === "delivery" ? data.area?.trim() || null : null;
-    // The browser never sets the fee: it is resolved from the trusted zone table.
-    const deliveryFee = area ? roundJod(feeForArea(area) ?? 0) : 0;
+    const address = data.method === "delivery" ? data.address?.trim() || data.area?.trim() || null : null;
+    const area = data.method === "delivery" ? data.area?.trim() || data.address?.trim() || null : null;
+    // Use manual delivery fee if provided by staff; otherwise resolve from zone table if available.
+    const deliveryFee =
+      data.method === "delivery"
+        ? data.delivery_fee !== undefined && data.delivery_fee !== null
+          ? roundJod(Math.max(0, Number(data.delivery_fee)))
+          : area ? roundJod(feeForArea(area) ?? 0) : 0
+        : 0;
     // A paid amount is stored for deposits and for CliQ payments alike.
     const deposit =
       data.payment_option === "cash" ? 0 : roundJod(Math.max(0, Number(data.deposit_paid) || 0));
@@ -157,7 +165,7 @@ export const createSocialOrder = createServerFn({ method: "POST" })
           recipient_phone: data.recipient_phone?.trim().slice(0, 40) || null,
           method: data.method,
           area,
-          address: data.method === "delivery" ? data.address?.trim() || null : null,
+          address,
           payment_method: paymentMethod,
           deposit_paid: deposit,
           requested_date: data.requested_date,
