@@ -6,6 +6,7 @@ import { esc, printDocument } from "@/lib/print";
 import { formatJod } from "@/lib/currency";
 import { formatJordanianPhone } from "@/lib/whatsapp";
 import { orderLabel } from "@/lib/order-label";
+import { formatStaffNotes } from "@/lib/utils";
 
 export const PAYMENT_METHOD_NAMES: Record<string, string> = {
   cash: "كاش",
@@ -219,7 +220,7 @@ ${lines}
 <div style="border-top:2px dashed #000;margin:6px 0;"></div>
 ${order.inscription ? `<div style="background:#FFF3CD;padding:8px;border:2px solid #000;border-radius:6px;margin:8px 0;font-size:16px;font-weight:bold;">✍️ الكتابة على الكيك:<br><span style="font-size:18px;">${esc(order.inscription)}</span></div>` : ""}
 ${order.notes ? `<div style="margin-top:6px;font-size:13px;background:#f5f5f5;padding:6px;border-radius:4px;"><b>ملاحظات:</b> ${esc(order.notes)}</div>` : ""}
-${order.staff_notes ? `<div style="margin-top:6px;font-size:13px;background:#fdf2e9;padding:6px;border-radius:4px;color:#7c2d12;"><b>ملاحظات الفريق:</b> ${esc(order.staff_notes)}</div>` : ""}`;
+${order.staff_notes && formatStaffNotes(order.staff_notes) ? `<div style="margin-top:6px;font-size:13px;background:#fdf2e9;padding:6px;border-radius:4px;color:#7c2d12;"><b>ملاحظات الفريق:</b> ${esc(formatStaffNotes(order.staff_notes))}</div>` : ""}`;
 }
 
 export function printKitchenTicket(order: KitchenTicketOrder): boolean {

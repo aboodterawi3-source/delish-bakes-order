@@ -539,7 +539,7 @@ export function SocialOrderEntryForm({
 
     // Staff notes enriched with channel & cliq details
     const cliqTag = form.payment_option !== "cash" ? `[كليك: ${cliqAccountText}]` : "";
-    const cliqReceiptTag = receiptUrl ? `[صورة الحوالة: ${receiptUrl}]` : "";
+    const cliqReceiptTag = receiptUrl ? "[صورة الحوالة مرفقة 📄]" : "";
     const sourceTag = `[المصدر: ${CHANNEL_CONFIG[form.order_source].ar}]`;
     const giftTag = form.is_gift
       ? `[طلب هدية - المرسل: ${form.sender_name || effectiveCustomerName} (${effectiveSenderPhone}) / المستلم: ${form.recipient_name || "—"} (${effectiveRecipientPhone || "—"})]`

@@ -83,4 +83,15 @@ assert.ok(msg3.includes("استلام من المحل"), "Must show pickup");
 assert.ok(!msg3.includes("📦 التوصيل"), "Must not include delivery fee line for pickup");
 console.log("✅ Test 3 Passed: Pickup orders correctly omit delivery details.");
 
-console.log("\n🎉 ALL DELIVERY FEATURE TESTS PASSED SUCCESSFULLY!");
+// Test 4: formatStaffNotes sanitizes raw storage URLs
+import { formatStaffNotes } from "../src/lib/utils.ts";
+const rawNotes =
+  "المصدر: انستغرام [كليك: كليك محل] [صورة الحوالة: https://zmeijwtivmniqpwyxezk.supabase.co/storage/v1/object/sign/order-designs/2026-10-06/07e3a2a4-1e5b-40d5-9668-9f864068cc0a.webp?token=xyz123] [طلب هدية - المرسل: حنين حمودة (0796427917)]";
+const cleaned = formatStaffNotes(rawNotes);
+assert.ok(!cleaned.includes("https://"), "Cleaned staff notes must not contain raw URLs");
+assert.ok(cleaned.includes("[صورة الحوالة مرفقة 📄]"), "Cleaned staff notes must use friendly label");
+assert.ok(cleaned.includes("المصدر: انستغرام"), "Must preserve source");
+assert.ok(cleaned.includes("حنين حمودة"), "Must preserve gift customer details");
+console.log("✅ Test 4 Passed: Raw image URL sanitization verified cleanly.");
+
+console.log("\n🎉 ALL FEATURE TESTS PASSED SUCCESSFULLY!");

@@ -80,6 +80,7 @@ import { jd } from "@/lib/currency";
 import { todayIso } from "@/lib/date-filter";
 import { ORDER_STATUS_META } from "@/lib/order-status";
 import { waNumber } from "@/lib/whatsapp";
+import { formatStaffNotes } from "@/lib/utils";
 
 export const ORDERS_KEY = ["sales-orders"] as const;
 
@@ -1509,45 +1510,64 @@ ${collectionText}
               )}
             </div>
 
-            <div className="space-y-1.5 text-xs">
+            <div className="space-y-2.5">
               {order.items.map((item, idx) => (
                 <div
                   key={idx}
-                  className="flex justify-between items-start border-b border-border/30 pb-1 last:border-0"
+                  className="rounded-xl border border-border/70 bg-secondary/20 p-2.5 space-y-2"
                 >
-                  <div>
-                    <p className="font-black text-foreground">
-                      {item.quantity} × {item.name_ar}
+                  <div className="flex justify-between items-center gap-2">
+                    <p className="font-black text-xs text-foreground flex items-center gap-1.5">
+                      <span className="inline-flex items-center justify-center h-5 w-5 rounded-md bg-[#8B4513] text-white text-[10px] font-black shrink-0">
+                        {item.quantity}×
+                      </span>
+                      <span>{item.name_ar}</span>
                     </p>
-                    {item.options_ar.length > 0 && (
-                      <p className="text-[10px] text-muted-foreground">
-                        {item.options_ar.join(" • ")}
-                      </p>
-                    )}
+                    <span className="font-black text-xs text-foreground bg-background px-2 py-0.5 rounded-md border border-border/40 shrink-0">
+                      {jd(item.unit_price * item.quantity)}
+                    </span>
                   </div>
-                  <span className="font-bold">{jd(item.unit_price * item.quantity)}</span>
+
+                  {item.options_ar.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1.5 border-t border-border/40">
+                      {item.options_ar.map((option, optIdx) => (
+                        <span
+                          key={optIdx}
+                          className="inline-flex items-center rounded-lg bg-amber-500/10 dark:bg-amber-950/40 px-2 py-0.5 text-[11px] font-bold text-amber-900 dark:text-amber-200 border border-amber-500/20 shadow-2xs"
+                        >
+                          {option}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {item.notes && (
+                    <p className="text-[11px] text-muted-foreground bg-card p-1.5 rounded-lg border border-border/40">
+                      ملاحظة: {item.notes}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
 
             {order.inscription && (
-              <div className="rounded-xl border border-amber-400 bg-amber-500/10 p-2 text-xs font-black text-amber-900 dark:text-amber-200">
+              <div className="rounded-xl border border-amber-400 bg-amber-500/10 p-2.5 text-xs font-black text-amber-900 dark:text-amber-200">
                 ✍️ الكتابة على الكيك: "{order.inscription}"
               </div>
             )}
 
             {order.notes && (
-              <div className="text-[11px] text-muted-foreground bg-secondary/30 p-2 rounded-xl">
+              <div className="text-[11px] text-muted-foreground bg-secondary/30 p-2.5 rounded-xl">
                 ملاحظات: {order.notes}
               </div>
             )}
 
-            {order.staff_notes && (
+            {order.staff_notes && formatStaffNotes(order.staff_notes) && (
               <div className="text-[11px] text-amber-950 dark:text-amber-200 bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-xl space-y-1">
                 <span className="font-bold block text-foreground">
                   ملاحظات الفريق والسوشيال / إشعار كليك:
                 </span>
-                <p className="whitespace-pre-wrap">{order.staff_notes}</p>
+                <p className="whitespace-pre-wrap">{formatStaffNotes(order.staff_notes)}</p>
               </div>
             )}
 
