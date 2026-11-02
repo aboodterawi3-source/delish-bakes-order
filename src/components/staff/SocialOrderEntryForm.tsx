@@ -475,7 +475,7 @@ export function SocialOrderEntryForm({
     // Validation for Mandatory Customization Fields
     const newErrors: CakeCustomizationErrors = {};
     if (!customization.filling.trim()) {
-      newErrors.filling = "⚠️ يرجى كتابة أو اختيار نوع الحشوة للكيكة (خانة إجبارية)";
+      newErrors.filling = "⚠️ يرجى كتابة نوع الحشوة للكيكة (خانة إجبارية)";
     }
     if (customization.numberCandles && !customization.candleDigits.trim()) {
       newErrors.candles = "⚠️ يرجى كتابة أرقام الشموع المطلوبة أو اختيار 'بدون شموع'";

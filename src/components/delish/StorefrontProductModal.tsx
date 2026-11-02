@@ -34,13 +34,6 @@ const FLAVOR_OPTIONS = [
   { value: "PISTACHIO", ar: "فستق حلبي · PISTACHIO", en: "PISTACHIO" },
 ];
 
-const FILLING_OPTIONS = [
-  { value: "chocolate_chips", ar: "قطع شوكولاتة · chocolate chips", en: "chocolate chips" },
-  { value: "nutella_hazelnut", ar: "نوتيلا وبندق · Nutella & Hazelnut", en: "Nutella & Hazelnut" },
-  { value: "lotus_cream", ar: "كريمة اللوتس · Lotus Cream", en: "Lotus Cream" },
-  { value: "pistachio_cream", ar: "فستق حلبي غني · Pistachio Cream", en: "Pistachio Cream" },
-  { value: "fresh_strawberry", ar: "توت وفراولة طازجة · Fresh Berries", en: "Fresh Berries" },
-];
 
 /**
  * Quick Order Modal matching Rawan Cake benchmark structure, updated with DELISH Bakes identity.
@@ -63,7 +56,8 @@ export function StorefrontProductModal({
   const [size, setSize] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [flavor, setFlavor] = useState("VANILLA");
-  const [filling, setFilling] = useState("chocolate_chips");
+  const [filling, setFilling] = useState("");
+  const [fillingError, setFillingError] = useState(false);
   const [inscription, setInscription] = useState("");
   const [notes, setNotes] = useState("");
   const [showExtras, setShowExtras] = useState(false);
@@ -76,7 +70,8 @@ export function StorefrontProductModal({
       setSize(product.sizes[0]?.label ?? SERVING_SIZE_OFFSETS[0]!.label);
       setQuantity(1);
       setFlavor("VANILLA");
-      setFilling("chocolate_chips");
+      setFilling(product?.filling_ar?.trim() || "");
+      setFillingError(false);
       setInscription("");
       setNotes("");
       setShowExtras(false);
@@ -286,25 +281,37 @@ export function StorefrontProductModal({
                 </div>
               </div>
 
-              {/* Filling Dropdown (الحشوة) */}
+              {/* Filling Input (الحشوة) */}
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-[#26160F] block">
-                  {ar ? "الحشوة" : "Filling"}
-                </label>
-                <div className="relative">
-                  <select
-                    value={filling}
-                    onChange={(e) => setFilling(e.target.value)}
-                    className="w-full appearance-none rounded-xl border border-[#EFE8DC] bg-white px-3.5 py-2.5 text-xs font-bold text-[#26160F] outline-none focus:border-[#B8801C] focus:ring-2 focus:ring-[#B8801C]/20"
-                  >
-                    {FILLING_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {ar ? opt.ar : opt.en}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute top-1/2 end-3 h-4 w-4 -translate-y-1/2 text-[#4A3B32]/60" />
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-[#26160F] block">
+                    {ar ? "نوع الحشوة" : "Cake Filling"} <span className="text-red-500">*</span>
+                  </label>
+                  {filling.trim() ? (
+                    <span className="text-[11px] font-bold text-emerald-700">✓ {ar ? "تم التحديد" : "Selected"}</span>
+                  ) : (
+                    <span className="text-[11px] font-bold text-red-600">{ar ? "إجباري *" : "Required *"}</span>
+                  )}
                 </div>
+                <input
+                  type="text"
+                  value={filling}
+                  onChange={(e) => {
+                    setFilling(e.target.value);
+                    if (fillingError) setFillingError(false);
+                  }}
+                  placeholder={ar ? "اكتب نوع الحشوة المطلوبة بالتفصيل…" : "Enter required cake filling…"}
+                  className={`w-full rounded-xl border px-3.5 py-2.5 text-xs font-semibold text-[#26160F] outline-none transition-all placeholder:font-normal placeholder:text-[#4A3B32]/40 ${
+                    fillingError
+                      ? "border-red-500 bg-red-50/40 focus:border-red-600 focus:ring-2 focus:ring-red-200"
+                      : "border-[#EFE8DC] bg-white focus:border-[#B8801C] focus:ring-2 focus:ring-[#B8801C]/20"
+                  }`}
+                />
+                {fillingError && (
+                  <p className="text-[11px] font-bold text-red-600">
+                    {ar ? "⚠️ يرجى كتابة نوع الحشوة للكيكة (خانة إجبارية)" : "⚠️ Please enter cake filling (required)"}
+                  </p>
+                )}
               </div>
 
               {/* Cake Writing Input (الكتابة على الكيك) */}
@@ -377,19 +384,23 @@ export function StorefrontProductModal({
                 {/* Add to Cart CTA Button */}
                 <button
                   type="button"
-                  onClick={() =>
+                  onClick={() => {
+                    if (!filling.trim()) {
+                      setFillingError(true);
+                      return;
+                    }
                     onAdd({
                       product,
                       size,
                       quantity,
                       price: unitPrice,
                       flavor,
-                      filling,
+                      filling: filling.trim(),
                       inscription,
                       notes,
                       customization,
-                    })
-                  }
+                    });
+                  }}
                   style={{ backgroundColor: palette.btnBg }}
                   className="flex-1 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl text-white text-xs font-bold shadow-md transition-all hover:opacity-90 active:scale-[0.98] cursor-pointer"
                 >

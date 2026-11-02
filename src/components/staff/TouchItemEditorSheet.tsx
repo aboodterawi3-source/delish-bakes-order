@@ -25,16 +25,6 @@ const PREDEFINED_SIZES = [
   { label: "عائلي (20+ شخص)", extraFee: 10 },
 ];
 
-const PREDEFINED_FILLINGS = [
-  "لوتس",
-  "نوتيلا",
-  "بستاشيو",
-  "كيندر",
-  "فراولة",
-  "فانيلا وتوت",
-  "شوكلاتة داكنة",
-  "كراميل ممجوح",
-];
 
 export type BakeryExtraItem = {
   id: string;
@@ -398,30 +388,25 @@ export function TouchItemEditorSheet({
                   </div>
                 </div>
 
-                {/* Flavor & Filling Chips */}
+                {/* Flavor & Filling Input */}
                 <div>
-                  <label className="block text-xs font-bold text-foreground mb-2">
-                    نوع الحشوة (Filling Flavor)
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {PREDEFINED_FILLINGS.map((fil) => {
-                      const active = selectedFilling === fil;
-                      return (
-                        <button
-                          key={fil}
-                          type="button"
-                          onClick={() => setSelectedFilling(active ? "" : fil)}
-                          className={`min-h-11 rounded-full px-3.5 text-xs font-bold transition-all cursor-pointer ${
-                            active
-                              ? "bg-primary text-primary-foreground shadow-xs"
-                              : "border border-border bg-background text-foreground hover:bg-secondary"
-                          }`}
-                        >
-                          {fil}
-                        </button>
-                      );
-                    })}
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-bold text-foreground">
+                      نوع الحشوة (Filling Flavor) <span className="text-red-500">*</span>
+                    </label>
+                    {selectedFilling.trim() ? (
+                      <span className="text-[11px] font-bold text-emerald-700">✓ تم التحديد</span>
+                    ) : (
+                      <span className="text-[11px] font-bold text-red-600">إجباري *</span>
+                    )}
                   </div>
+                  <input
+                    type="text"
+                    value={selectedFilling}
+                    onChange={(e) => setSelectedFilling(e.target.value)}
+                    placeholder="اكتب نوع الحشوة المطلوبة بالتفصيل…"
+                    className="min-h-11 w-full rounded-xl border border-input bg-background px-3 text-xs font-bold text-foreground focus:border-primary focus:outline-none"
+                  />
                 </div>
 
                 {/* Cake Writing */}

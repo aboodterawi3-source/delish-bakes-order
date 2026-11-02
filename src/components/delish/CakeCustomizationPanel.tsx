@@ -59,17 +59,6 @@ export const emptyCustomization: Customization = {
   designImageUrl: null,
 };
 
-const POPULAR_FILLINGS = [
-  "نوتيلا وبندق",
-  "لوتس كراميل",
-  "فستق حلبي",
-  "شوكولاتة بلجيكية",
-  "فراولة طازجة وكريمة",
-  "فانيلا كلاسيك",
-  "كراميل مملح",
-  "أوريو وكريمة",
-  "رد فيلفت وجبنة",
-];
 
 const BALLOON_COLORS = [
   { id: "gold", ar: "ذهبي", en: "Gold", swatch: "#B8860B" },
@@ -253,7 +242,7 @@ export function CakeCustomizationPanel({
           errors?.filling ? "border-red-400 bg-red-50/30 shadow-xs" : "border-slate-200/90 bg-white"
         }`}
       >
-        <div className="flex items-center justify-between mb-1.5">
+        <div className="flex items-center justify-between mb-2">
           <label htmlFor="field-input-filling" className="block text-sm font-bold text-[#3E2723]">
             نوع الحشوة · Cake Filling <span className="text-red-500">*</span>
           </label>
@@ -266,31 +255,6 @@ export function CakeCustomizationPanel({
           )}
         </div>
 
-        {/* Quick filling selection pills */}
-        <div className="mb-2 flex flex-wrap items-center gap-1.5 pt-1">
-          <span className="text-[11px] font-bold text-[#7A6458]">اقتراحات سريعة:</span>
-          {POPULAR_FILLINGS.map((fill) => {
-            const isSelected = value.filling === fill;
-            return (
-              <button
-                key={fill}
-                type="button"
-                onClick={() => {
-                  set("filling", fill);
-                  clear("filling");
-                }}
-                className={`rounded-lg border px-2.5 py-1 text-xs font-bold transition-all ${
-                  isSelected
-                    ? "border-[#8B4513] bg-[#8B4513] text-white shadow-xs"
-                    : "border-slate-200 bg-white text-[#5D2E17] hover:bg-amber-50"
-                }`}
-              >
-                {fill}
-              </button>
-            );
-          })}
-        </div>
-
         {/* Input box */}
         <input
           id="field-input-filling"
@@ -300,7 +264,7 @@ export function CakeCustomizationPanel({
             set("filling", e.target.value);
             if (e.target.value.trim()) clear("filling");
           }}
-          placeholder="اكتب نوع الحشوة المطلوبة بالتفصيل (أو اختر من الاقتراحات أعلاه)…"
+          placeholder="اكتب نوع الحشوة المطلوبة بالتفصيل…"
           className={errors?.filling ? errorInputClass : normalInputClass}
         />
 
