@@ -15,7 +15,29 @@ export function SocialPanel() {
   const accessFn = useServerFn(getSocialAccess);
   const [view, setView] = useState<"new" | "stats" | "orders" | "modifications">("new");
 
-  const access = useQuery({ queryKey: ["social-access"], queryFn: () => accessFn({}) });
+  const access = useQuery({
+    queryKey: ["social-access"],
+    queryFn: async () => {
+      try {
+        const res = await accessFn({});
+        if (res?.allowed) return res;
+      } catch (err) {
+        console.warn("[SocialPanel] accessFn error, using direct user_roles check:", err);
+      }
+      const { data: sessionData } = await supabase.auth.getUser();
+      if (!sessionData?.user) return { allowed: false, roles: [] };
+      const { data: roleRows } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", sessionData.user.id);
+      const userRoles = (roleRows ?? []).map((r) => r.role as string);
+      return {
+        allowed: userRoles.includes("social") || userRoles.includes("admin"),
+        roles: userRoles,
+      };
+    },
+    staleTime: 30_000,
+  });
 
   const signOut = useCallback(async () => {
     if (typeof window !== "undefined" && window.sessionStorage) {

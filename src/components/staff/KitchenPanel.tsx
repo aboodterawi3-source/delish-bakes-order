@@ -1130,11 +1130,27 @@ export function KitchenPanel() {
 
   const access = useQuery({
     queryKey: ["kitchen-access"],
-    queryFn: () => fetchAccess({}),
-    staleTime: 0,
-    gcTime: 0,
-    refetchOnMount: "always",
-    retry: 1,
+    queryFn: async () => {
+      try {
+        const res = await fetchAccess({});
+        if (res?.allowed) return res;
+      } catch (err) {
+        console.warn("[KitchenPanel] fetchAccess error, using direct user_roles check:", err);
+      }
+      const { data: sessionData } = await supabase.auth.getUser();
+      if (!sessionData?.user) return { allowed: false, roles: [] };
+      const { data: roleRows } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", sessionData.user.id);
+      const userRoles = (roleRows ?? []).map((r) => r.role as string);
+      return {
+        allowed: userRoles.includes("kitchen") || userRoles.includes("admin"),
+        roles: userRoles,
+      };
+    },
+    staleTime: 30_000,
+    gcTime: 60_000,
   });
 
   const orders = useQuery({

@@ -146,8 +146,25 @@ export function AdminPanel() {
   const accessFn = useServerFn(getAdminAccess);
   const access = useQuery({
     queryKey: ["admin", "access"],
-    queryFn: () => accessFn({}),
-    staleTime: 0,
+    queryFn: async () => {
+      try {
+        const res = await accessFn({});
+        if (res?.allowed) return res;
+      } catch (err) {
+        console.warn("[AdminPanel] accessFn error, using direct user_roles check:", err);
+      }
+      const { data: sessionData } = await supabase.auth.getUser();
+      if (!sessionData?.user) return { allowed: false, error: "Not logged in" };
+      const { data: roleRows } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", sessionData.user.id);
+      const userRoles = (roleRows ?? []).map((r) => r.role as string);
+      return {
+        allowed: userRoles.includes("admin"),
+      };
+    },
+    staleTime: 30_000,
     retry: false,
   });
 
