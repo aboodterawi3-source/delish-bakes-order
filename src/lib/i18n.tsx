@@ -159,13 +159,21 @@ export function LangToggle({
       <button
         type="button"
         onClick={toggle}
-        aria-label={lang === "ar" ? "التبديل إلى الإنجليزية" : "Switch to Arabic"}
+        aria-label={
+          lang === "ar"
+            ? "عربي | EN — التبديل إلى الإنجليزية"
+            : "عربي | EN — Switch to Arabic"
+        }
         title={lang === "ar" ? "English" : "العربية"}
-        className={`inline-flex items-center gap-1.5 rounded-full bg-[#FDE2CF] px-3 py-1 text-xs font-semibold text-[#7B3F00] shadow-sm transition-transform hover:scale-105 active:scale-95 ${className}`}
+        className={`inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-bold text-foreground shadow-2xs transition-all hover:bg-secondary/40 active:scale-95 ${className}`}
       >
-        <span className={lang === "ar" ? "opacity-100" : "opacity-60"}>عربي</span>
-        <span className="opacity-60">|</span>
-        <span className={lang === "en" ? "opacity-100" : "opacity-60"}>EN</span>
+        <span className={lang === "ar" ? "text-primary font-black" : "text-muted-foreground font-semibold"}>
+          عربي
+        </span>
+        <span className="text-muted-foreground/60">|</span>
+        <span className={lang === "en" ? "text-primary font-black" : "text-muted-foreground font-semibold"}>
+          EN
+        </span>
       </button>
     );
   }

@@ -1,12 +1,12 @@
-import { useEffect, useId, useMemo, useState } from "react";
-import { Minus, Plus, X, ImageOff, ShoppingBag, Eye, ChevronDown } from "lucide-react";
+import React, { useEffect, useId, useMemo, useState } from "react";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { Minus, Plus, X, ShoppingBag, ChevronDown, Sparkles } from "lucide-react";
 import { useLang } from "@/lib/i18n";
-import { useDismissable } from "@/lib/a11y";
 import { formatJod } from "@/lib/currency";
 import { WHATSAPP } from "@/lib/menu";
 import { priceForSize, type StorefrontProduct } from "@/lib/storefront-content";
-import { useBrandPalette } from "@/lib/brand-palette";
 import { SERVING_SIZE_OFFSETS, getServingSizeOffset } from "@/lib/order-pricing";
+import { resolveProductPhoto } from "@/lib/product-media";
 import {
   CakeCustomizationPanel,
   emptyCustomization,
@@ -34,10 +34,6 @@ const FLAVOR_OPTIONS = [
   { value: "PISTACHIO", ar: "فستق حلبي · PISTACHIO", en: "PISTACHIO" },
 ];
 
-/**
- * Quick Order Modal matching Rawan Cake benchmark structure, updated with DELISH Bakes identity.
- * Split 2-Column layout on desktop, top buttercream showcase + bottom form on mobile.
- */
 export function StorefrontProductModal({
   product,
   onClose,
@@ -47,10 +43,13 @@ export function StorefrontProductModal({
   onClose: () => void;
   onAdd: (payload: ModalAddPayload) => void;
 }) {
-  const { t, lang } = useLang();
+  const { t, lang, dir } = useLang();
   const ar = lang === "ar";
   const titleId = useId();
-  const { palette } = useBrandPalette();
+  const descriptionId = useId();
+  const flavorSelectId = useId();
+  const fillingInputId = useId();
+  const inscriptionInputId = useId();
 
   const [size, setSize] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
@@ -61,8 +60,6 @@ export function StorefrontProductModal({
   const [notes, setNotes] = useState("");
   const [showExtras, setShowExtras] = useState(false);
   const [customization, setCustomization] = useState<Customization>(emptyCustomization);
-
-  useDismissable(Boolean(product), onClose);
 
   useEffect(() => {
     if (product) {
@@ -79,321 +76,334 @@ export function StorefrontProductModal({
   }, [product]);
 
   const baseUnitPrice = useMemo(() => (product ? priceForSize(product, size) : 0), [product, size]);
-
-  // Calculate price including size offsets if present
   const activeOffset = useMemo(() => getServingSizeOffset(size), [size]);
-
   const unitPrice = baseUnitPrice + (product?.sizes.length ? 0 : activeOffset);
 
   if (!product) return null;
 
   const name = ar ? product.name_ar : product.name_en;
-  const description = ar
-    ? product.description_ar
-    : (product.description_en ??
-      (ar ? "كيك فاخر مغطى بالكريمة والسكر" : "Cake covered with sugar"));
+  const description =
+    (ar ? product.description_ar : product.description_en) ||
+    (ar
+      ? "كيك فاخر مخبوز طازجاً يومياً بأجود المكونات الطبيعية والشوكولاتة البلجيكية."
+      : "Handcrafted artisan cake baked daily using fine natural ingredients.");
+
+  const photoSrc = resolveProductPhoto(product);
+
   const askUrl = `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(
     ar
-      ? `مرحباً، أريد معرفة سعر: ${product.name_ar}`
-      : `Hello, I would like the price for: ${product.name_en}`,
+      ? `مرحباً، أريد معرفة سعر وتفاصيل كيكة: ${product.name_ar}`
+      : `Hello, I would like price details for: ${product.name_en}`,
   )}`;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-3 backdrop-blur-xs transition-opacity duration-300 sm:p-4">
-      {/* Background overlay click */}
-      <button
-        type="button"
-        tabIndex={-1}
-        aria-label={ar ? "إغلاق النافذة" : "Close dialog"}
-        onClick={onClose}
-        className="absolute inset-0 cursor-default"
-      />
+    <DialogPrimitive.Root open={Boolean(product)} onOpenChange={(open) => !open && onClose()}>
+      <DialogPrimitive.Portal>
+        {/* Backdrop Overlay */}
+        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs transition-opacity duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
 
-      {/* Main 2-Column Dialog Container */}
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        dir={ar ? "rtl" : "ltr"}
-        style={{ borderColor: palette.border }}
-        className="relative z-10 flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl border bg-white shadow-2xl md:flex-row"
-      >
-        {/* LEFT COLUMN: Visual Showcase */}
-        <div
-          style={{ backgroundColor: palette.cardBg }}
-          className="relative flex min-h-[260px] w-full shrink-0 flex-col items-center justify-center p-6 transition-colors duration-300 md:min-h-[460px] md:w-1/2"
+        {/* Modal Window Container with Automatic Focus Trap and Escape Listener */}
+        <DialogPrimitive.Content
+          dir={dir}
+          aria-labelledby={titleId}
+          aria-describedby={descriptionId}
+          className="fixed left-1/2 top-1/2 z-50 flex max-h-[94vh] w-[calc(100%-1.5rem)] max-w-4xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-[2rem] border border-border bg-card text-foreground shadow-2xl duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 md:flex-row"
         >
-          {/* Large Cake Showcase Image */}
-          <div className="relative my-auto flex h-full w-full items-center justify-center p-4">
-            {product.image_url ? (
+          {/* DESKTOP LEFT COLUMN: High-Resolution Cake Photography Stage */}
+          <div className="relative hidden w-5/12 shrink-0 flex-col items-center justify-center border-e border-border/80 bg-secondary/15 p-6 md:flex">
+            <div className="relative flex aspect-square w-full max-w-xs items-center justify-center overflow-hidden rounded-2xl border border-border/60 bg-card p-1 shadow-md">
               <img
-                src={product.image_url}
+                src={photoSrc}
                 alt={name}
-                className="max-h-56 max-w-full object-contain drop-shadow-xl transition-transform duration-300 hover:scale-105 md:max-h-80"
+                className="h-full w-full rounded-xl object-cover transition-transform duration-700 hover:scale-105"
               />
-            ) : (
-              <div
-                style={{ color: palette.main }}
-                className="grid h-48 w-48 place-items-center rounded-3xl bg-white/70 shadow-inner"
-              >
-                <ImageOff className="h-10 w-10" aria-hidden />
+              <div className="absolute top-3 right-3 rounded-full border border-white/20 bg-black/60 px-3 py-1 text-[11px] font-bold text-white shadow-xs backdrop-blur-md">
+                {product.category || (ar ? "كيك فاخر" : "Cake")}
               </div>
-            )}
-          </div>
-        </div>
-
-        {/* RIGHT COLUMN: Streamlined Selection Form */}
-        <div className="flex max-h-[65vh] w-full flex-col justify-between space-y-4 overflow-y-auto p-5 sm:p-7 md:max-h-[90vh] md:w-1/2">
-          {/* Header row: Badge & Close Button */}
-          <div className="flex items-center justify-between border-b border-border pb-3">
-            <span
-              style={{ color: palette.main }}
-              className="text-[11px] font-black tracking-wider uppercase"
-            >
-              TRENDING · الأكثر طلباً
-            </span>
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label={ar ? "إغلاق" : "Close"}
-              className="grid h-8 w-8 cursor-pointer place-items-center rounded-full border border-border bg-white text-foreground shadow-xs transition hover:bg-secondary/40 active:scale-95"
-            >
-              <X className="h-4 w-4" aria-hidden />
-            </button>
-          </div>
-
-          {/* Title & Description */}
-          <div className="space-y-1">
-            <h2
-              id={titleId}
-              className="font-sans text-2xl leading-tight font-black text-foreground"
-            >
-              {name}
-            </h2>
-            <p className="text-xs leading-relaxed font-medium text-muted-foreground">
-              {description}
-            </p>
-          </div>
-
-          {product.price_on_request ? (
-            <div className="space-y-3 py-2">
-              <p style={{ color: palette.main }} className="text-sm font-bold">
-                {ar
-                  ? "هذا التصميم يُسعّر حسب الطلب — تواصل معنا لمعرفة السعر."
-                  : "This design is priced per request — contact us for a quote."}
-              </p>
-              <a
-                href={askUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="grid min-h-12 w-full place-items-center rounded-2xl bg-whatsapp text-sm font-bold text-white shadow-md hover:bg-whatsapp/90"
-              >
-                {ar ? "اطلب السعر عبر واتساب" : "On request via WhatsApp"}
-              </a>
             </div>
-          ) : (
-            <div className="space-y-4">
-              {/* Unit Price Display */}
-              <div className="space-y-0.5">
-                <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-                  {ar ? "سعر القطعة" : "Unit Price"}
+
+            <div className="mt-4 text-center">
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-primary">
+                <Sparkles className="h-3.5 w-3.5" />
+                <span>{ar ? "طازج يومياً من أتيلييه ديليش" : "Freshly Baked Daily"}</span>
+              </span>
+            </div>
+          </div>
+
+          {/* RIGHT / MAIN COLUMN: Fixed Header + Scrollable Options + Fixed Bottom CTA */}
+          <div className="flex max-h-[94vh] w-full flex-1 flex-col overflow-hidden md:w-7/12">
+            {/* 1. Fixed Modal Header (Always Visible) */}
+            <header className="sticky top-0 z-20 flex shrink-0 items-center justify-between border-b border-border/80 bg-card/95 px-5 py-3.5 backdrop-blur-md sm:px-7">
+              <div className="flex items-center gap-2">
+                <span className="rounded-full bg-primary/10 px-3 py-1 text-[11px] font-extrabold text-primary">
+                  {product.category || (ar ? "كيك احتفالي" : "Cake")}
                 </span>
-                <div className="text-2xl font-black text-foreground">
-                  {formatJod(unitPrice, lang)}
-                </div>
-              </div>
-
-              {/* Servings Selector ("Serves up to" / "يكفي لـ") */}
-              <div className="space-y-2">
-                <label className="block text-xs font-bold text-foreground">
-                  {ar ? "يكفي لـ" : "Serves up to"}
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {product.sizes.length > 0
-                    ? product.sizes.map((option) => {
-                        const active = size === option.label;
-                        return (
-                          <button
-                            key={option.label}
-                            type="button"
-                            aria-pressed={active}
-                            onClick={() => setSize(option.label)}
-                            style={{
-                              backgroundColor: active ? palette.btnBg : undefined,
-                              color: active ? "#ffffff" : undefined,
-                              borderColor: active ? palette.btnBg : palette.border,
-                            }}
-                            className={`cursor-pointer rounded-xl px-3.5 py-2 text-xs font-bold transition-all ${
-                              active
-                                ? "scale-[1.02] shadow-xs"
-                                : "border bg-white text-foreground hover:bg-secondary/40"
-                            }`}
-                          >
-                            {option.label} ({formatJod(option.price, lang)})
-                          </button>
-                        );
-                      })
-                    : SERVING_SIZE_OFFSETS.map((option) => {
-                        const active = size === option.label;
-                        const displayPrice = baseUnitPrice + option.offset;
-                        return (
-                          <button
-                            key={option.label}
-                            type="button"
-                            aria-pressed={active}
-                            onClick={() => setSize(option.label)}
-                            style={{
-                              backgroundColor: active ? palette.btnBg : undefined,
-                              color: active ? "#ffffff" : undefined,
-                              borderColor: active ? palette.btnBg : palette.border,
-                            }}
-                            className={`cursor-pointer rounded-xl px-3.5 py-2 text-xs font-bold transition-all ${
-                              active
-                                ? "scale-[1.02] shadow-xs"
-                                : "border bg-white text-foreground hover:bg-secondary/40"
-                            }`}
-                          >
-                            {ar ? option.ar : option.label} (
-                            {option.offset > 0
-                              ? `+${option.offset}.00 JOD`
-                              : formatJod(displayPrice, lang)}
-                            )
-                          </button>
-                        );
-                      })}
-                </div>
-              </div>
-
-              {/* Cake Flavor Dropdown (نكهة الكيكة) */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-foreground">
-                  {ar ? "نكهة الكيكة" : "Cake Flavor"}
-                </label>
-                <div className="relative">
-                  <select
-                    value={flavor}
-                    onChange={(e) => setFlavor(e.target.value)}
-                    className="w-full appearance-none rounded-xl border border-border bg-white px-3.5 py-2.5 text-xs font-bold text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                  >
-                    {FLAVOR_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {ar ? opt.ar : opt.en}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                </div>
-              </div>
-
-              {/* Filling Input (الحشوة) */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="block text-xs font-bold text-foreground">
-                    {ar ? "نوع الحشوة" : "Cake Filling"} <span className="text-red-500">*</span>
-                  </label>
-                  {filling.trim() ? (
-                    <span className="text-[11px] font-bold text-emerald-700">
-                      ✓ {ar ? "تم التحديد" : "Selected"}
-                    </span>
-                  ) : (
-                    <span className="text-[11px] font-bold text-red-600">
-                      {ar ? "إجباري *" : "Required *"}
-                    </span>
-                  )}
-                </div>
-                <input
-                  type="text"
-                  value={filling}
-                  onChange={(e) => {
-                    setFilling(e.target.value);
-                    if (fillingError) setFillingError(false);
-                  }}
-                  placeholder={
-                    ar ? "اكتب نوع الحشوة المطلوبة بالتفصيل…" : "Enter required cake filling…"
-                  }
-                  className={`w-full rounded-xl border px-3.5 py-2.5 text-xs font-semibold text-foreground transition-all outline-none placeholder:font-normal placeholder:text-muted-foreground ${
-                    fillingError
-                      ? "border-red-500 bg-red-50/40 focus:border-red-600 focus:ring-2 focus:ring-red-200"
-                      : "border-border bg-white focus:border-primary focus:ring-2 focus:ring-primary/20"
-                  }`}
-                />
-                {fillingError && (
-                  <p className="text-[11px] font-bold text-red-600">
-                    {ar
-                      ? "⚠️ يرجى كتابة نوع الحشوة للكيكة (خانة إجبارية)"
-                      : "⚠️ Please enter cake filling (required)"}
-                  </p>
-                )}
-              </div>
-
-              {/* Cake Writing Input (الكتابة على الكيك) */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-foreground">
-                  {ar ? "الكتابة على الكيك" : "Cake Writing"}
-                </label>
-                <input
-                  type="text"
-                  value={inscription}
-                  onChange={(e) => setInscription(e.target.value)}
-                  placeholder={ar ? "مثال: عيد ميلاد سعيد لانا 🎉" : "Happy Birthday Lana"}
-                  className="w-full rounded-xl border border-border bg-white px-3.5 py-2.5 text-xs font-semibold text-foreground outline-none placeholder:font-normal placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20"
-                />
-              </div>
-
-              {/* Expandable Optional Extras (Candles, Balloons, Gift) */}
-              <div className="pt-1">
-                <button
-                  type="button"
-                  onClick={() => setShowExtras(!showExtras)}
-                  style={{
-                    color: palette.main,
-                    backgroundColor: palette.cardBg,
-                    borderColor: palette.border,
-                  }}
-                  className="flex w-full cursor-pointer items-center justify-between rounded-xl border px-3.5 py-2.5 text-xs font-bold transition-colors hover:opacity-90"
-                >
-                  <span>
-                    {ar
-                      ? "✨ إضافات خاصة (شموع، بالونات، توبر، هدية)"
-                      : "✨ Extra Options (Candles, Balloons, Gift)"}
+                {product.is_popular && (
+                  <span className="flex items-center gap-1 rounded-full bg-amber-500/15 px-2.5 py-1 text-[10px] font-bold text-amber-700">
+                    <Sparkles className="h-3 w-3" />
+                    <span>{ar ? "الأكثر طلباً" : "Popular"}</span>
                   </span>
-                  <ChevronDown
-                    className={`h-4 w-4 transition-transform ${showExtras ? "rotate-180" : ""}`}
-                  />
-                </button>
-                {showExtras && (
-                  <div className="mt-3 border-t border-border pt-2">
-                    <CakeCustomizationPanel value={customization} onChange={setCustomization} />
-                  </div>
                 )}
               </div>
 
-              {/* Sticky Modal Bottom Action Row */}
-              <div className="flex items-center gap-3 border-t border-border pt-3">
-                {/* Stepper [- 1 +] */}
-                <div className="flex items-center gap-1 rounded-xl border border-border bg-white px-1">
+              {/* 44×44 Accessible Close Button */}
+              <DialogPrimitive.Close
+                aria-label={ar ? "إغلاق النافذة" : "Close dialog"}
+                className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-2xl border border-border bg-card text-foreground shadow-2xs transition-all hover:bg-secondary/50 active:scale-95"
+              >
+                <X className="h-5 w-5" />
+              </DialogPrimitive.Close>
+            </header>
+
+            {/* 2. Scrollable Modal Body */}
+            <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5 sm:px-7">
+              {/* Mobile Cake Image (In-flow with scrollable content, never steals fixed screen space) */}
+              <div className="relative aspect-[16/10] w-full overflow-hidden rounded-2xl border border-border/70 bg-secondary/15 md:hidden">
+                <img
+                  src={photoSrc}
+                  alt={name}
+                  className="h-full w-full object-cover"
+                />
+              </div>
+
+              {/* Title & Description */}
+              <div className="space-y-1.5">
+                <DialogPrimitive.Title
+                  id={titleId}
+                  className="font-sans text-xl font-extrabold leading-snug text-foreground sm:text-2xl"
+                >
+                  {name}
+                </DialogPrimitive.Title>
+
+                <DialogPrimitive.Description
+                  id={descriptionId}
+                  className="text-xs leading-relaxed text-muted-foreground sm:text-sm"
+                >
+                  {description}
+                </DialogPrimitive.Description>
+              </div>
+
+              {product.price_on_request ? (
+                <div className="space-y-3 rounded-2xl border border-primary/20 bg-primary/5 p-4 text-center">
+                  <p className="text-sm font-bold text-primary">
+                    {ar
+                      ? "هذا التصميم يُصنع ويُسعّر حسب الطلب المباشر."
+                      : "This custom design is quoted per order."}
+                  </p>
+                  <a
+                    href={askUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex min-h-[44px] w-full items-center justify-center rounded-xl bg-whatsapp px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-whatsapp/90"
+                  >
+                    {ar ? "استفسر عن السعر والتفاصيل عبر واتساب" : "Contact via WhatsApp"}
+                  </a>
+                </div>
+              ) : (
+                <div className="space-y-5">
+                  {/* Servings / Size Selector */}
+                  <div className="space-y-2">
+                    <label className="block text-xs font-bold text-foreground">
+                      {ar ? "حجم الكيكة (يكفي لـ)" : "Cake Size & Servings"}
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {product.sizes.length > 0
+                        ? product.sizes.map((option) => {
+                            const active = size === option.label;
+                            return (
+                              <button
+                                key={option.label}
+                                type="button"
+                                aria-pressed={active}
+                                onClick={() => setSize(option.label)}
+                                className={`min-h-[44px] cursor-pointer rounded-xl px-4 py-2 text-xs font-bold transition-all duration-200 active:scale-95 ${
+                                  active
+                                    ? "border-2 border-primary bg-primary text-primary-foreground shadow-xs"
+                                    : "border border-border bg-card text-foreground hover:bg-secondary/40"
+                                }`}
+                              >
+                                {option.label} ({formatJod(option.price, lang)})
+                              </button>
+                            );
+                          })
+                        : SERVING_SIZE_OFFSETS.map((option) => {
+                            const active = size === option.label;
+                            const displayPrice = baseUnitPrice + option.offset;
+                            return (
+                              <button
+                                key={option.label}
+                                type="button"
+                                aria-pressed={active}
+                                onClick={() => setSize(option.label)}
+                                className={`min-h-[44px] cursor-pointer rounded-xl px-4 py-2 text-xs font-bold transition-all duration-200 active:scale-95 ${
+                                  active
+                                    ? "border-2 border-primary bg-primary text-primary-foreground shadow-xs"
+                                    : "border border-border bg-card text-foreground hover:bg-secondary/40"
+                                }`}
+                              >
+                                {ar ? option.ar : option.label} (
+                                {option.offset > 0
+                                  ? `+${option.offset}.00 JOD`
+                                  : formatJod(displayPrice, lang)}
+                                )
+                              </button>
+                            );
+                          })}
+                    </div>
+                  </div>
+
+                  {/* Cake Flavor Selection (with accessible label & select-name) */}
+                  <div className="space-y-1.5">
+                    <label
+                      htmlFor={flavorSelectId}
+                      className="block text-xs font-bold text-foreground"
+                    >
+                      {ar ? "نكهة الكيكة الأساسية" : "Cake Flavor"}
+                    </label>
+                    <div className="relative">
+                      <select
+                        id={flavorSelectId}
+                        aria-label={ar ? "نكهة الكيكة الأساسية" : "Cake Flavor"}
+                        value={flavor}
+                        onChange={(e) => setFlavor(e.target.value)}
+                        className="min-h-[44px] w-full appearance-none rounded-xl border border-input bg-card px-3.5 py-2.5 text-xs font-bold text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                      >
+                        {FLAVOR_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {ar ? opt.ar : opt.en}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    </div>
+                  </div>
+
+                  {/* Single Canonical Cake Filling Field (Required & Validated, No Duplication) */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label
+                        htmlFor={fillingInputId}
+                        className="block text-xs font-bold text-foreground"
+                      >
+                        {ar ? "نوع الحشوة" : "Cake Filling"} <span className="text-destructive">*</span>
+                      </label>
+                      {filling.trim() ? (
+                        <span className="text-[11px] font-bold text-emerald-700">
+                          ✓ {ar ? "تم التحديد" : "Selected"}
+                        </span>
+                      ) : (
+                        <span className="text-[11px] font-bold text-destructive">
+                          {ar ? "إجباري *" : "Required *"}
+                        </span>
+                      )}
+                    </div>
+                    <input
+                      id={fillingInputId}
+                      type="text"
+                      value={filling}
+                      onChange={(e) => {
+                        setFilling(e.target.value);
+                        if (fillingError) setFillingError(false);
+                      }}
+                      placeholder={
+                        ar ? "اكتب نوع الحشوة المطلوبة بالتفصيل (مثل: نوتيلا كرانش، لوتس، بستاشيو)..." : "Enter cake filling..."
+                      }
+                      className={`min-h-[44px] w-full rounded-xl border px-3.5 py-2.5 text-xs font-semibold text-foreground transition-all outline-none placeholder:font-normal placeholder:text-muted-foreground ${
+                        fillingError
+                          ? "border-destructive bg-destructive/10 focus:border-destructive focus:ring-2 focus:ring-destructive/20"
+                          : "border-input bg-card focus:border-primary focus:ring-2 focus:ring-primary/20"
+                      }`}
+                    />
+                    {fillingError && (
+                      <p className="text-[11px] font-bold text-destructive">
+                        {ar
+                          ? "⚠️ يرجى كتابة نوع الحشوة للكيكة (خانة إجبارية للتأكيد)"
+                          : "⚠️ Please enter cake filling (required)"}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Cake Inscription / Writing */}
+                  <div className="space-y-1.5">
+                    <label
+                      htmlFor={inscriptionInputId}
+                      className="block text-xs font-bold text-foreground"
+                    >
+                      {ar ? "العبارة المكتوبة على الكيك (اختياري)" : "Cake Inscription (Optional)"}
+                    </label>
+                    <input
+                      id={inscriptionInputId}
+                      type="text"
+                      value={inscription}
+                      onChange={(e) => setInscription(e.target.value)}
+                      placeholder={ar ? "مثال: مبروك التخرج سند 🎉" : "e.g. Happy Birthday!"}
+                      className="min-h-[44px] w-full rounded-xl border border-input bg-card px-3.5 py-2.5 text-xs font-semibold text-foreground outline-none placeholder:font-normal placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    />
+                  </div>
+
+                  {/* Expandable Optional Extras Accordion (Candles, Balloons, Topper, Gift) */}
+                  <div className="pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setShowExtras(!showExtras)}
+                      className="flex min-h-[44px] w-full cursor-pointer items-center justify-between rounded-xl border border-border bg-secondary/30 px-4 py-2.5 text-xs font-bold text-foreground transition-colors hover:bg-secondary/50"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <Sparkles className="h-4 w-4 text-primary" />
+                        <span>
+                          {ar
+                            ? "إضافات وتجهيزات خاصة (شموع، بالونات، توبر، هدية)"
+                            : "Extra Options (Candles, Balloons, Gift)"}
+                        </span>
+                      </span>
+                      <ChevronDown
+                        className={`h-4 w-4 transition-transform duration-200 ${
+                          showExtras ? "rotate-180" : ""
+                        }`}
+                      />
+                    </button>
+
+                    {showExtras && (
+                      <div className="mt-3 rounded-2xl border border-border/80 bg-background/50 p-4">
+                        <CakeCustomizationPanel
+                          value={customization}
+                          onChange={setCustomization}
+                          hideFilling={true}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 3. Sticky Bottom Action Bar (Fixed at bottom of modal, always visible & accessible!) */}
+            {!product.price_on_request && (
+              <footer className="sticky bottom-0 z-20 flex shrink-0 items-center justify-between gap-3 border-t border-border/80 bg-card/95 px-5 py-3.5 backdrop-blur-md sm:px-7">
+                {/* Stepper [- 1 +] with 44×44 touch targets */}
+                <div className="flex items-center gap-1 rounded-xl border border-border bg-background p-1">
                   <button
                     type="button"
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
                     aria-label={ar ? "تقليل الكمية" : "Decrease quantity"}
-                    className="grid h-10 w-9 cursor-pointer place-items-center rounded-lg text-primary hover:bg-secondary/40 active:scale-95"
+                    className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-lg text-foreground hover:bg-secondary/50 active:scale-95"
                   >
-                    <Minus className="h-3.5 w-3.5" aria-hidden />
+                    <Minus className="h-4 w-4" />
                   </button>
-                  <span className="min-w-6 text-center text-xs font-bold text-foreground">
+                  <span className="min-w-8 text-center text-sm font-extrabold text-foreground">
                     {quantity}
                   </span>
                   <button
                     type="button"
                     onClick={() => setQuantity(quantity + 1)}
                     aria-label={ar ? "زيادة الكمية" : "Increase quantity"}
-                    className="grid h-10 w-9 cursor-pointer place-items-center rounded-lg text-primary hover:bg-secondary/40 active:scale-95"
+                    className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-lg text-foreground hover:bg-secondary/50 active:scale-95"
                   >
-                    <Plus className="h-3.5 w-3.5" aria-hidden />
+                    <Plus className="h-4 w-4" />
                   </button>
                 </div>
 
-                {/* Add to Cart CTA Button */}
+                {/* Total and Add to Cart Button */}
                 <button
                   type="button"
                   onClick={() => {
@@ -410,23 +420,25 @@ export function StorefrontProductModal({
                       filling: filling.trim(),
                       inscription,
                       notes,
-                      customization,
+                      customization: {
+                        ...customization,
+                        filling: "", // filling is held canonically in filling field
+                      },
                     });
                   }}
-                  style={{ backgroundColor: palette.btnBg }}
-                  className="inline-flex min-h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl text-xs font-bold text-white shadow-md transition-all hover:opacity-90 active:scale-[0.98]"
+                  className="inline-flex min-h-[46px] flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-xs font-bold text-primary-foreground shadow-md transition-all duration-200 hover:bg-primary/90 hover:shadow-lg active:scale-[0.98]"
                 >
                   <ShoppingBag className="h-4 w-4" />
                   <span>{t("addToCart")}</span>
-                  <span className="ms-1 font-extrabold text-white/90">
+                  <span className="font-extrabold text-primary-foreground/90">
                     ({formatJod(unitPrice * quantity, lang)})
                   </span>
                 </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+              </footer>
+            )}
+          </div>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 }

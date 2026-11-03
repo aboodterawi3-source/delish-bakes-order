@@ -143,7 +143,7 @@ function Counter({
   label: string;
 }) {
   return (
-    <div className="inline-flex items-center rounded-full bg-[#8B4513] px-2.5 py-1 text-white shadow-sm">
+    <div className="inline-flex items-center rounded-full bg-primary px-2.5 py-1 text-primary-foreground shadow-sm">
       <button
         type="button"
         aria-label={`${label} −`}
@@ -179,6 +179,7 @@ const errorTextareaClass = `${baseInputClass} border-2 border-red-500 bg-red-50/
 export function CakeCustomizationPanel({
   value,
   onChange,
+  hideFilling = false,
   hideGift = false,
   hidePhoto = false,
   errors = {},
@@ -186,6 +187,7 @@ export function CakeCustomizationPanel({
 }: {
   value: Customization;
   onChange: (next: Customization) => void;
+  hideFilling?: boolean;
   hideGift?: boolean;
   hidePhoto?: boolean;
   errors?: CakeCustomizationErrors;
@@ -235,6 +237,7 @@ export function CakeCustomizationPanel({
       </div>
 
       {/* 1. CAKE FILLING */}
+      {!hideFilling && (
       <div
         id="custom-field-filling"
         className={`rounded-2xl border p-4 transition-all ${
@@ -274,6 +277,7 @@ export function CakeCustomizationPanel({
           </p>
         ) : null}
       </div>
+      )}
 
       {/* 2. CANDLES */}
       <div

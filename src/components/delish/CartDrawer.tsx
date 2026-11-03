@@ -348,7 +348,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                 )}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-2">
-                    <p className="truncate text-sm font-semibold">{lang === "ar" ? l.ar : l.en}</p>
+                    <p className="line-clamp-2 text-sm leading-snug font-bold">{lang === "ar" ? l.ar : l.en}</p>
                     <button
                       onClick={() => remove(l.key)}
                       aria-label={`${lang === "ar" ? "إزالة" : "Remove"} ${lang === "ar" ? l.ar : l.en}`}
@@ -497,8 +497,11 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
               {form.method === "delivery" && (
                 <>
                   <Field label={t("area")} error={errors["area"]} errText={t("required")}>
-                    {() => (
+                    {(p) => (
                       <DeliveryZoneSelect
+                        id={p.id}
+                        aria-invalid={p["aria-invalid"]}
+                        aria-describedby={p["aria-describedby"]}
                         className={inputCls}
                         value={form.area}
                         onChange={(area) => set("area", area)}
@@ -563,12 +566,12 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
         </div>
 
         {lines.length > 0 && (
-          <div className="space-y-3 border-t border-border bg-card px-4 py-4 sm:px-5">
+          <div className="space-y-2.5 border-t border-border bg-card px-4 py-3 sm:px-5 sm:py-4">
             <Row label={t("subtotal")} value={formatJod(subtotal, lang)} />
             <Row label={t("delivery")} value={formatJod(deliveryFee, lang)} />
             <div className="flex items-center justify-between text-sm">
               <span className="font-display text-base font-semibold">{t("total")}</span>
-              <span style={{ color: palette.main }} className="font-display text-base font-black">
+              <span className="font-display text-base font-black text-foreground">
                 {formatJod(total, lang)}
               </span>
             </div>
@@ -576,8 +579,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
               <>
                 <button
                   onClick={() => setStage("checkout")}
-                  style={{ backgroundColor: palette.btnBg }}
-                  className="min-h-12 w-full rounded-full py-3.5 text-sm font-bold text-white shadow-md transition-all hover:opacity-90 active:scale-[0.98] cursor-pointer"
+                  className="min-h-12 w-full rounded-full bg-primary py-3.5 text-sm font-bold text-primary-foreground shadow-md transition-all hover:bg-primary/90 active:scale-[0.98] cursor-pointer"
                 >
                   {t("checkout")}
                 </button>
