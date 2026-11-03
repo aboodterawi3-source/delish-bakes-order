@@ -14,7 +14,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { AppErrorBoundary } from "@/components/AppErrorBoundary";
 import { LangProvider } from "../lib/i18n";
 import { CartProvider } from "../lib/cart";
-import { reportLovableError } from "../lib/lovable-error-reporting";
+import { reportError } from "../lib/error-reporting";
 import { supabase } from "@/integrations/supabase/client";
 
 function NotFoundComponent() {
@@ -45,7 +45,7 @@ function ErrorComponent({ error, reset }: { error: unknown; reset: () => void })
     // The thrown value can be anything — including a bare `undefined` — so never
     // touch its properties directly here or this screen itself goes blank.
     console.error("[route-error]", error ?? "undefined thrown value");
-    reportLovableError(error ?? new Error("Undefined value thrown"), {
+    reportError(error ?? new Error("Undefined value thrown"), {
       boundary: "tanstack_root_error_component",
     });
   }, [error]);
@@ -93,6 +93,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { property: "og:locale", content: "ar_JO" },
       { name: "twitter:card", content: "summary_large_image" },
+      { property: "og:title", content: "ديليش كيك آند بيك | Delish Cake & Bake" },
+      {
+        property: "og:description",
+        content: "كيك وحلويات فاخرة تُخبز طازجة يومياً في عمّان، الأردن.",
+      },
+      { property: "og:image", content: "/og-delish.jpg" },
+      { name: "twitter:image", content: "/og-delish.jpg" },
+      { property: "og:url", content: "https://delish-bakes-order.aboodterawi3.workers.dev" },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },

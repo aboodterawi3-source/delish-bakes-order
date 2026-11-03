@@ -18,82 +18,78 @@ export function WelcomeView({ onExplore, isEmbedded = false }: WelcomeViewProps)
     <div
       className={`relative isolate flex min-h-dvh w-full flex-col justify-between overflow-hidden bg-background text-foreground select-none ${
         isEmbedded
-          ? "min-h-[740px] max-h-[820px] rounded-[38px] shadow-2xl border-4 border-[#2A2421]"
+          ? "max-h-[820px] min-h-[740px] rounded-[38px] border-4 border-foreground/80 shadow-2xl"
           : ""
       }`}
     >
       {/* Organic sweeping background contours */}
       <BackgroundCurves />
 
-      {/* Floating Corner Macaroon Graphics (isolated, outside photo boxes) */}
-      {/* 1. Top-Left: Stacked Green & Pastel Blue macaroons */}
+      {/* Floating Corner Macaron Graphics (isolated, outside photo boxes) */}
       <FloatingMacaron
         src={pistachioMacaron}
         alt="Pistachio macaron"
-        className="-left-14 -top-14 w-40 rotate-[-14deg] sm:-left-10 sm:-top-12 sm:w-52 lg:w-64"
+        className="-top-14 -left-14 w-40 rotate-[-14deg] sm:-top-12 sm:-left-10 sm:w-52 lg:w-64"
       />
 
-      {/* 2. Top-Right: Stacked Pistachio Green, Blue, Pink & Yellow macaroons */}
       <FloatingMacaron
         src={roseMacaron}
         alt="Rose pink macaron"
-        className="-right-14 -top-14 w-40 rotate-[13deg] sm:-right-10 sm:-top-12 sm:w-52 lg:w-64"
+        className="-top-14 -right-14 w-40 rotate-[13deg] sm:-top-12 sm:-right-10 sm:w-52 lg:w-64"
       />
 
-      {/* 3. Bottom-Left: Pistachio & Pastel Blue macaroons */}
       <FloatingMacaron
         src={berryMacaron}
         alt="Berry pink macaron"
         className="-bottom-16 -left-14 w-40 rotate-[14deg] sm:-bottom-14 sm:-left-10 sm:w-52 lg:w-64"
       />
 
-      {/* 4. Bottom-Right: Pastel Blue, Pink & Yellow macaroons */}
       <FloatingMacaron
         src={peachMacaron}
         alt="Warm peach macaron"
-        className="-bottom-16 -right-14 w-40 rotate-[-13deg] sm:-bottom-14 sm:-right-10 sm:w-52 lg:w-64"
+        className="-right-14 -bottom-16 w-40 rotate-[-13deg] sm:-right-10 sm:-bottom-14 sm:w-52 lg:w-64"
       />
 
       {/* Top Header */}
-      <header className="relative z-10 flex justify-center pt-20 sm:pt-16">
+      <header className="relative z-10 flex justify-center pt-16 sm:pt-20">
         <DelishLogo size="lg" />
       </header>
 
       {/* Center Content Block */}
       <main className="relative z-10 mx-auto flex w-full max-w-xl min-w-0 flex-col items-center px-4 py-8 text-center sm:px-8">
-        {/* Subtitle: SMALL JOYS, BAKED DAILY */}
-        <p className="text-[11px] sm:text-xs font-bold uppercase tracking-[0.28em] text-[#B8860B] drop-shadow-sm">
+        {/* Subtitle */}
+        <p className="text-xs font-bold tracking-[0.25em] text-primary uppercase">
           Small Joys, Baked Daily
         </p>
 
-        {/* Main Headline: CLOSER TO LOVE WITH every bite */}
-        <h1 className="mt-5 max-w-full break-words font-sans text-3xl sm:text-5xl font-extrabold uppercase text-foreground leading-[1.14]">
+        {/* Main Headline */}
+        <h1 className="mt-4 max-w-full font-display text-4xl leading-[1.12] font-extrabold break-words text-foreground uppercase sm:text-6xl">
           Closer to Love <br />
           With{" "}
-          <span className="font-script lowercase font-normal italic text-primary text-5xl sm:text-7xl normal-case inline-block -translate-y-1">
+          <span className="inline-block -translate-y-1 font-script text-6xl font-normal text-primary lowercase normal-case italic sm:text-8xl">
             every bite
           </span>
         </h1>
 
         {/* Descriptive paragraph */}
-        <p className="mt-6 max-w-sm text-xs sm:text-sm leading-relaxed text-muted-foreground">
+        <p className="mt-5 max-w-md text-sm leading-relaxed text-muted-foreground sm:text-base">
           Indulge in the deliciousness of freshly baked treats to kickstart your mornings with joy!
         </p>
 
-        {/* CTA Button: LET'S EXPLORE */}
+        {/* Tactile CTA Button */}
         <div className="mt-8 sm:mt-10">
           {onExplore ? (
             <button
               type="button"
               onClick={onExplore}
-              className="inline-flex min-h-[50px] items-center justify-center rounded-full bg-secondary px-8 py-3 text-xs sm:text-sm font-semibold uppercase text-secondary-foreground shadow-sm transition-transform duration-300 hover:scale-[1.03] active:scale-[0.98]"
+              className="inline-flex min-h-[52px] cursor-pointer items-center justify-center rounded-full bg-primary px-9 py-3.5 text-xs font-bold tracking-wider text-primary-foreground uppercase shadow-sm transition-all duration-200 hover:bg-primary/90 hover:shadow-md active:scale-95 sm:text-sm"
             >
               Let's Explore
             </button>
           ) : (
             <Link
               to="/discover"
-              className="inline-flex min-h-[50px] items-center justify-center rounded-full bg-secondary px-8 py-3 text-xs sm:text-sm font-semibold uppercase text-secondary-foreground shadow-sm transition-transform duration-300 hover:scale-[1.03] active:scale-[0.98]"
+              className="inline-flex min-h-[52px] cursor-pointer items-center justify-center rounded-full bg-primary px-9 py-3.5 text-xs font-bold tracking-wider text-primary-foreground uppercase shadow-sm transition-all duration-200 hover:bg-primary/90 hover:shadow-md active:scale-95 sm:text-sm"
             >
               Let's Explore
             </Link>
@@ -102,7 +98,7 @@ export function WelcomeView({ onExplore, isEmbedded = false }: WelcomeViewProps)
       </main>
 
       {/* Bottom spacer for balance */}
-      <footer className="relative z-10 pb-8 sm:pb-12 text-center text-[10px] text-[#A08C82] tracking-wider uppercase font-medium">
+      <footer className="relative z-10 pb-8 text-center text-xs font-medium tracking-wider text-muted-foreground/80 uppercase sm:pb-12">
         Delish Cake &amp; Bake · Amman, Jordan
       </footer>
     </div>

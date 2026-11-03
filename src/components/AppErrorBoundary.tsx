@@ -1,6 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 
-import { reportLovableError } from "@/lib/lovable-error-reporting";
+import { reportError } from "@/lib/error-reporting";
 
 /**
  * Last-resort boundary. React rethrows any value a component throws — including
@@ -17,7 +17,7 @@ export class AppErrorBoundary extends Component<{ children: ReactNode }, { faile
 
   override componentDidCatch(error: unknown, info: ErrorInfo) {
     console.error("[app-error-boundary]", error ?? "undefined thrown value", info.componentStack);
-    reportLovableError(error ?? new Error("Undefined value thrown during render"), {
+    reportError(error ?? new Error("Undefined value thrown during render"), {
       boundary: "app_error_boundary",
     });
   }

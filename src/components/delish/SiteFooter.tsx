@@ -21,8 +21,8 @@ export function SiteFooter() {
   ];
 
   return (
-    <footer className="mt-2 space-y-3 border-t border-[#EFE8DC] pt-6 pb-10 text-center">
-      <p className="text-xs font-bold text-[#26160F]">
+    <footer className="mt-4 space-y-3 border-t border-border pt-6 pb-10 text-center">
+      <p className="text-xs font-bold text-foreground">
         {ar ? "تابعونا · تواصلوا معنا" : "Follow us · Talk to us"}
       </p>
       <div className="flex items-center justify-center gap-3">
@@ -33,13 +33,13 @@ export function SiteFooter() {
             target="_blank"
             rel="noopener noreferrer"
             aria-label={label}
-            className="grid h-10 w-10 place-items-center rounded-full border border-[#EFE8DC] bg-white text-[#B8801C] shadow-xs transition-transform hover:scale-105 hover:bg-[#FEF7EB] hover:text-[#9E6C14] active:scale-95"
+            className="grid h-10 w-10 cursor-pointer place-items-center rounded-full border border-border bg-card text-primary shadow-xs transition hover:bg-secondary/40 active:scale-95"
           >
             <Icon className="h-4 w-4" aria-hidden />
           </a>
         ))}
       </div>
-      <p className="text-[11px] font-medium text-[#4A3B32]/70">
+      <p className="text-xs font-medium text-muted-foreground">
         © {year} DELISH Bakes — {ar ? "جميع الحقوق محفوظة" : "All rights reserved"}
       </p>
     </footer>
