@@ -174,6 +174,14 @@ await test("3. Atomic Rollback: create_staff_order_atomic completely rolls back 
 
   const res = await rpc("create_staff_order_atomic", payload);
   assert.equal(res.ok, false, "Must reject invalid item quantity with DB constraint error");
+  const errMsg = JSON.stringify(res.data).toLowerCase();
+  assert.ok(
+    errMsg.includes("quantity") ||
+      errMsg.includes("check") ||
+      errMsg.includes("23514") ||
+      errMsg.includes("violates check constraint"),
+    `Rejection must specifically be caused by quantity check constraint violation, got: ${errMsg}`,
+  );
 
   // Verify that the order header was NOT created (clean rollback)
   const verify = await rest(`orders?client_request_id=eq.${uniqueId}&select=id`);
@@ -365,14 +373,17 @@ await test("7. KDS Selective Ack: Acknowledging modification #1 keeps newer modi
   assert.ok(createRes.ok);
   const orderId = createRes.data.id;
 
-  // Attach modifications with verified status
-  const patchRes = await rest(`orders?id=eq.${orderId}`, {
-    method: "PATCH",
-    body: JSON.stringify({ modifications: [mod1, mod2] }),
+  // Attach modifications via authorized RPC patch_sales_order_atomic (avoids trigger trg_guard_orders_sensitive_columns)
+  const patchRes = await rpc("patch_sales_order_atomic", {
+    p_order_id: orderId,
+    p_expected_version: 1,
+    p_patch: {},
+    p_new_mods: [mod1, mod2],
+    p_user_id: null,
   });
   assert.ok(
     patchRes.ok,
-    `Modifications setup patch must succeed: ${JSON.stringify(patchRes.data)}`,
+    `Modifications setup via patch_sales_order_atomic must succeed: ${JSON.stringify(patchRes.data)}`,
   );
 
   // Acknowledge only mod1
@@ -404,7 +415,7 @@ await test("8. Storefront RPC Defense: create_storefront_order_atomic cannot be 
     return;
   }
   const forgedPayload = {
-    order_payload: {
+    p_order: {
       customer_name: "Malicious Attacker",
       customer_phone: "0790000009",
       method: "pickup",
@@ -412,7 +423,7 @@ await test("8. Storefront RPC Defense: create_storefront_order_atomic cannot be 
       requested_time: "12:00:00",
       delivery_fee: 0,
     },
-    items_payload: [
+    p_items: [
       {
         product_id: null,
         name_ar: "Luxury Tiered Cake",
@@ -431,10 +442,9 @@ await test("8. Storefront RPC Defense: create_storefront_order_atomic cannot be 
   assert.ok(
     res.status === 401 ||
       res.status === 403 ||
-      res.status === 404 ||
       JSON.stringify(res.data).includes("permission denied") ||
       JSON.stringify(res.data).includes("P0001"),
-    `Must fail with authorization denial, got: ${JSON.stringify(res.data)}`,
+    `Must fail with authorization denial (401/403/permission denied, NOT 404), got: ${res.status} ${JSON.stringify(res.data)}`,
   );
 });
 

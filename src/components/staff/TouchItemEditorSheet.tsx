@@ -84,6 +84,7 @@ export function TouchItemEditorSheet({
   const [customName, setCustomName] = useState("");
   const [itemNotes, setItemNotes] = useState("");
   const [unparsedOptions, setUnparsedOptions] = useState<string[]>([]);
+  const [savedExtrasTotal, setSavedExtrasTotal] = useState<number>(0);
 
   const lastInitializedKeyRef = useRef<string | null>(null);
 
@@ -134,6 +135,7 @@ export function TouchItemEditorSheet({
       setCakeInscription(parsed.cakeInscription);
       setUnparsedOptions(parsed.unparsedOptions);
       setExtras(parsed.extras);
+      setSavedExtrasTotal(parsed.savedExtrasTotal);
 
       // J2: Deduct saved extras total so we don't charge them twice upon save!
       const basePrice = calculateBasePriceFromSaved(item.unit_price, parsed.savedExtrasTotal);
@@ -146,6 +148,7 @@ export function TouchItemEditorSheet({
       setSelectedFilling("");
       setCakeInscription("");
       setUnparsedOptions([]);
+      setSavedExtrasTotal(0);
       setQuantity(1);
       setUnitPrice(0);
       setCustomName("");
@@ -166,6 +169,8 @@ export function TouchItemEditorSheet({
   // Update unit price when product or size changes
   const handleSelectProduct = (prod: StorefrontProduct) => {
     setSelectedProduct(prod);
+    // K3: Reset selectedSize so no stale size remains selected with new product base price
+    setSelectedSize("");
     setUnitPrice(prod.price || 0);
     // J3: Reset or update filling according to new product specification
     setSelectedFilling(prod.filling_ar?.trim() || "");
@@ -215,10 +220,15 @@ export function TouchItemEditorSheet({
 
   // Calculate live total for CTA
   const extrasTotal = useMemo(() => extras.reduce((sum, e) => sum + e.price * e.qty, 0), [extras]);
-  const liveLineTotal = useMemo(
-    () => (unitPrice + extrasTotal) * quantity,
-    [unitPrice, extrasTotal, quantity],
-  );
+  const liveLineTotal = useMemo(() => {
+    // K2: When editing an existing item, apply extras delta to saved unit price to reflect exact charge
+    if (item && typeof item.unit_price === "number") {
+      const delta = roundJod(extrasTotal - savedExtrasTotal);
+      const effectiveUnitPrice = Math.max(0, roundJod(item.unit_price + delta));
+      return effectiveUnitPrice * quantity;
+    }
+    return Math.max(0, roundJod(unitPrice + extrasTotal)) * quantity;
+  }, [item, unitPrice, extrasTotal, savedExtrasTotal, quantity]);
 
   // J5: Unify filling requirement between catalog product and validation
   const isFillingRequired = useMemo(() => {
@@ -228,7 +238,7 @@ export function TouchItemEditorSheet({
   const handleSave = () => {
     const res = compileSavePayload({
       tab,
-      productId: selectedProduct?.id,
+      productId: item ? item.product_id ?? selectedProduct?.id ?? null : selectedProduct?.id ?? null,
       productName: selectedProduct?.name_ar,
       customName,
       unitPrice,
@@ -240,6 +250,8 @@ export function TouchItemEditorSheet({
       extras,
       isFillingRequired,
       itemNotes,
+      savedUnitPrice: item ? item.unit_price : null,
+      savedExtrasTotal: item ? savedExtrasTotal : null,
     });
 
     if (!res.success || !res.payload) {
@@ -294,82 +306,101 @@ export function TouchItemEditorSheet({
           </button>
         </header>
 
-        {/* Segmented Mode Tabs */}
-        <div className="px-5 pt-3 bg-card">
-          <div className="grid grid-cols-2 gap-2 rounded-2xl bg-secondary/50 p-1">
-            <button
-              type="button"
-              onClick={() => setTab("catalog")}
-              className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                tab === "catalog"
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-foreground hover:bg-background/50"
-              }`}
-            >
-              <Cake className="h-4 w-4" />
-              كيكات الموقع 🎂
-            </button>
+        {/* Segmented Mode Tabs (Only when adding a new item) */}
+        {!item && (
+          <div className="px-5 pt-3 bg-card">
+            <div className="grid grid-cols-2 gap-2 rounded-2xl bg-secondary/50 p-1">
+              <button
+                type="button"
+                onClick={() => setTab("catalog")}
+                className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  tab === "catalog"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-foreground hover:bg-background/50"
+                }`}
+              >
+                <Cake className="h-4 w-4" />
+                كيكات الموقع 🎂
+              </button>
 
-            <button
-              type="button"
-              onClick={() => setTab("custom")}
-              className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                tab === "custom"
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-foreground hover:bg-background/50"
-              }`}
-            >
-              <PenTool className="h-4 w-4" />
-              صنف مخصص ✍️
-            </button>
+              <button
+                type="button"
+                onClick={() => setTab("custom")}
+                className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  tab === "custom"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-foreground hover:bg-background/50"
+                }`}
+              >
+                <PenTool className="h-4 w-4" />
+                صنف مخصص ✍️
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Scrollable Form Body */}
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
           {tab === "catalog" ? (
             <>
-              {/* Product Search & Selector */}
-              <div className="space-y-2">
-                <label className="block text-xs font-bold text-foreground">
-                  اختر المنتج من الكتالوج
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={catalogSearch}
-                    onChange={(e) => setCatalogSearch(e.target.value)}
-                    placeholder="ابحث عن اسم الكيكة..."
-                    className="min-h-12 w-full rounded-2xl border border-input bg-background px-4 text-xs font-bold text-foreground outline-none focus:border-primary"
-                  />
-                  <Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground pointer-events-none" />
+              {/* Product Search & Selector (Only when adding a new item; editing an existing item locks catalog identity to prevent K4 desync) */}
+              {item ? (
+                <div className="flex items-center justify-between rounded-2xl border border-primary/20 bg-primary/5 p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary">
+                      <Cake className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <span className="text-[11px] font-bold text-muted-foreground">صنف قيد التعديل (Existing Item)</span>
+                      <h4 className="text-sm font-extrabold text-foreground">{item.name_ar}</h4>
+                    </div>
+                  </div>
+                  <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">
+                    تعديل المواصفات فقط
+                  </span>
                 </div>
+              ) : (
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-foreground">
+                    اختر المنتج من الكتالوج
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={catalogSearch}
+                      onChange={(e) => setCatalogSearch(e.target.value)}
+                      placeholder="ابحث عن اسم الكيكة..."
+                      className="min-h-12 w-full rounded-2xl border border-input bg-background px-4 text-xs font-bold text-foreground outline-none focus:border-primary"
+                    />
+                    <Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground pointer-events-none" />
+                  </div>
 
-                {/* Filtered Product Selection Cards */}
-                <div className="no-scrollbar flex gap-2 overflow-x-auto py-1">
-                  {filteredProducts.map((p) => {
-                    const isPicked = selectedProduct?.id === p.id;
-                    return (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => handleSelectProduct(p)}
-                        className={`flex shrink-0 min-h-14 items-center gap-2.5 rounded-2xl border px-3.5 py-2 text-start transition-all cursor-pointer ${
-                          isPicked
-                            ? "border-primary bg-primary/10 font-bold text-primary ring-2 ring-primary/20"
-                            : "border-border bg-background text-foreground hover:border-primary/50"
-                        }`}
-                      >
-                        <div>
-                          <p className="text-xs font-bold">{p.name_ar}</p>
-                          <p className="text-[11px] text-primary">{jd(p.price)}</p>
-                        </div>
-                        {isPicked && <Check className="h-4 w-4 text-primary shrink-0" />}
-                      </button>
-                    );
-                  })}
+                  {/* Filtered Product Selection Cards */}
+                  <div className="no-scrollbar flex gap-2 overflow-x-auto py-1">
+                    {filteredProducts.map((p) => {
+                      const isPicked = selectedProduct?.id === p.id;
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => handleSelectProduct(p)}
+                          className={`flex shrink-0 min-h-14 items-center gap-2.5 rounded-2xl border px-3.5 py-2 text-start transition-all cursor-pointer ${
+                            isPicked
+                              ? "border-primary bg-primary/10 font-bold text-primary ring-2 ring-primary/20"
+                              : "border-border bg-background text-foreground hover:border-primary/50"
+                          }`}
+                        >
+                          <div>
+                            <p className="text-xs font-bold">{p.name_ar}</p>
+                            <p className="text-[11px] text-primary">{jd(p.price)}</p>
+                          </div>
+                          {isPicked && <Check className="h-4 w-4 text-primary shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Attributes as Selection Chips */}
               <div className="space-y-4 rounded-2xl border border-border bg-secondary/20 p-4">

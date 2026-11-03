@@ -27,11 +27,9 @@ export interface ParsedItemOptionsResult {
 
 /**
  * Regex to parse extra formatted string:
- * e.g. "🕯️ شموع أرقام (2 × 0.75 د.أ)" or "✨ شموع أرقام ذهبية (1 × 4.00 د.أ)" or "بالونات هيليوم (3 × 1.00 JD)"
+ * e.g. "🕯️ شموع أرقام (2 × 0.75 د.أ)" or "✨ شموع أرقام (1 × 4.00 د.أ)" or "بالونات هيليوم (3 × 1.00 JD)"
  */
-export function parseExtraString(
-  str: string,
-): { icon: string; name: string; qty: number; price: number } | null {
+export function parseExtraString(str: string): { icon: string; name: string; qty: number; price: number } | null {
   const match = str.match(
     /^(?:([\p{Extended_Pictographic}\p{Emoji}\uFE0F]+)\s*)?(.+?)\s*\(\s*(\d+)\s*[×xX*]\s*([\d.]+)(?:\s*(?:د\.أ|JD|JOD))?\s*\)$/u,
   );
@@ -47,8 +45,9 @@ export function parseExtraString(
 /**
  * Parses options_ar strings into structured fields while preserving:
  * 1. Historical unit price of default extras (J2-A).
- * 2. Custom extras distinct from default extras even with overlapping names (J2-B).
- * 3. Any unparsed / custom instructions (e.g. "بدون مكسرات") (J2-B).
+ * 2. Exact preservation of multiple extras even with identical names (K1).
+ * 3. Free extras with price = 0.00 (K2).
+ * 4. Any unparsed / custom instructions (e.g. "بدون مكسرات") (J2-B).
  */
 export function parseOptionsAndExtras(
   options: string[] = [],
@@ -59,7 +58,8 @@ export function parseOptionsAndExtras(
   let cakeInscription = "";
   const unparsedOptions: string[] = [];
 
-  // Map to track default extras matched
+  // Track which default extra IDs have already been claimed to prevent collision (K1)
+  const claimedDefaultIds = new Set<string>();
   const matchedDefaultExtras = new Map<string, { qty: number; price: number; icon: string }>();
   const parsedCustomExtras: BakeryExtraItem[] = [];
   let savedExtrasTotal = 0;
@@ -83,11 +83,44 @@ export function parseOptionsAndExtras(
 
     const parsedExtra = parseExtraString(opt);
     if (parsedExtra) {
-      // Check for EXACT name match with default extras
-      const matchingDefault = defaultExtrasList.find((def) => def.name === parsedExtra.name);
+      const hasExplicitPrice =
+        typeof parsedExtra.price === "number" && !isNaN(parsedExtra.price) && parsedExtra.price >= 0;
+
+      // Look for exact icon match first
+      let matchingDefault = defaultExtrasList.find(
+        (def) =>
+          def.name === parsedExtra.name &&
+          def.icon === parsedExtra.icon &&
+          !claimedDefaultIds.has(def.id),
+      );
+
+      // If no exact icon match, match default extra if no later option in this item has an exact icon match
+      if (!matchingDefault) {
+        const hasLaterExactMatch = options.some((otherOpt, otherIdx) => {
+          if (otherIdx <= i) return false;
+          const otherParsed = parseExtraString(otherOpt);
+          return (
+            otherParsed &&
+            otherParsed.name === parsedExtra.name &&
+            defaultExtrasList.some(
+              (def) =>
+                def.name === otherParsed.name &&
+                def.icon === otherParsed.icon &&
+                !claimedDefaultIds.has(def.id),
+            )
+          );
+        });
+
+        if (!hasLaterExactMatch) {
+          matchingDefault = defaultExtrasList.find(
+            (def) => def.name === parsedExtra.name && !claimedDefaultIds.has(def.id),
+          );
+        }
+      }
+
       if (matchingDefault) {
-        // Use historical unit price from the string if positive, otherwise default price
-        const effectivePrice = parsedExtra.price > 0 ? parsedExtra.price : matchingDefault.price;
+        claimedDefaultIds.add(matchingDefault.id);
+        const effectivePrice = hasExplicitPrice ? parsedExtra.price : matchingDefault.price;
         matchedDefaultExtras.set(matchingDefault.id, {
           qty: parsedExtra.qty,
           price: effectivePrice,
@@ -95,15 +128,16 @@ export function parseOptionsAndExtras(
         });
         savedExtrasTotal += effectivePrice * parsedExtra.qty;
       } else {
-        // Distinct custom extra (e.g. "شموع أرقام ذهبية")
+        // Distinct extra (e.g. second item with same name or custom extra) (K1)
+        const effectivePrice = hasExplicitPrice ? parsedExtra.price : 0;
         parsedCustomExtras.push({
           id: `custom-extra-${i}-${Date.now()}`,
           name: parsedExtra.name,
-          price: parsedExtra.price,
+          price: effectivePrice,
           icon: parsedExtra.icon,
           qty: parsedExtra.qty,
         });
-        savedExtrasTotal += parsedExtra.price * parsedExtra.qty;
+        savedExtrasTotal += effectivePrice * parsedExtra.qty;
       }
     } else {
       // Unrecognized option / custom spec (e.g. "بدون مكسرات") -> preserve it!
@@ -135,9 +169,11 @@ export function parseOptionsAndExtras(
 
 /**
  * Calculates net base price by deducting saved extras from stored unit price.
+ * K2: Do not clamp to 0 so authorized promotions/subsidies where unitPrice < savedExtrasTotal
+ * maintain their exact mathematical basis.
  */
 export function calculateBasePriceFromSaved(unitPrice: number, savedExtrasTotal: number): number {
-  return Math.max(0, roundJod(unitPrice - savedExtrasTotal));
+  return roundJod(unitPrice - savedExtrasTotal);
 }
 
 /**
@@ -170,6 +206,8 @@ export interface CompilePayloadInput {
   extras: BakeryExtraItem[];
   isFillingRequired?: boolean | undefined;
   itemNotes?: string | undefined;
+  savedUnitPrice?: number | null | undefined;
+  savedExtrasTotal?: number | null | undefined;
 }
 
 export interface CompilePayloadResult {
@@ -186,11 +224,10 @@ export interface CompilePayloadResult {
 }
 
 /**
- * Pure compiler for TouchItemEditor save payload with J2, J2-B, J3, J5 integrity guarantees.
+ * Pure compiler for TouchItemEditor save payload with K1, K2, K3, K4 integrity guarantees.
  */
 export function compileSavePayload(input: CompilePayloadInput): CompilePayloadResult {
-  const name =
-    (input.tab === "catalog" ? input.productName || input.customName : input.customName) || "";
+  const name = (input.tab === "catalog" ? input.productName || input.customName : input.customName) || "";
   if (!name.trim()) {
     return { success: false, error: "يرجى اختيار منتج أو كتابة اسم الصنف" };
   }
@@ -201,7 +238,7 @@ export function compileSavePayload(input: CompilePayloadInput): CompilePayloadRe
   }
 
   // Calculate live extras total
-  const extrasTotal = (input.extras || []).reduce((sum, e) => sum + e.price * e.qty, 0);
+  const currentExtrasTotal = (input.extras || []).reduce((sum, e) => sum + e.price * e.qty, 0);
 
   // Compile options array preserving unknown specs (J2-B)
   const compiledOptions: string[] = [];
@@ -215,7 +252,7 @@ export function compileSavePayload(input: CompilePayloadInput): CompilePayloadRe
     compiledOptions.push(`الكتابة: ${input.cakeInscription.trim()}`);
   }
 
-  // Preserve unparsed/custom options without mutation
+  // Preserve unparsed/custom options without mutation (J2-B)
   if (input.unparsedOptions && input.unparsedOptions.length > 0) {
     input.unparsedOptions.forEach((opt) => {
       if (opt && opt.trim() && !compiledOptions.includes(opt.trim())) {
@@ -224,14 +261,22 @@ export function compileSavePayload(input: CompilePayloadInput): CompilePayloadRe
     });
   }
 
-  // Append extras with quantity > 0
+  // Append extras with quantity > 0 (each extra is distinct and preserved) (K1)
   (input.extras || []).forEach((e) => {
     if (e.qty > 0) {
       compiledOptions.push(`${e.icon} ${e.name} (${e.qty} × ${e.price.toFixed(2)} د.أ)`);
     }
   });
 
-  const finalUnitPrice = roundJod(input.unitPrice + extrasTotal);
+  // Calculate final unit price:
+  // K2: If editing an existing item with savedUnitPrice, apply delta of extras to preserve authorized discounts / zero prices!
+  let finalUnitPrice: number;
+  if (typeof input.savedUnitPrice === "number" && !isNaN(input.savedUnitPrice)) {
+    const delta = roundJod(currentExtrasTotal - (input.savedExtrasTotal ?? 0));
+    finalUnitPrice = Math.max(0, roundJod(input.savedUnitPrice + delta));
+  } else {
+    finalUnitPrice = roundJod(input.unitPrice + currentExtrasTotal);
+  }
 
   return {
     success: true,
