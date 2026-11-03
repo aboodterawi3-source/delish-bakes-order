@@ -1,0 +1,11 @@
+# Squawk Configuration — PostgreSQL Migration Linter for Delish & Bake
+# https://github.com/sbdchd/squawk
+
+pg_version = "15.0"
+assume_in_transaction = true
+
+# Exclude rules that conflict with Supabase transactional migration runner
+exclude = [
+  "prefer-robust-stmts",
+  "prefer-bigint-over-int"
+]

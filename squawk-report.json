@@ -1,0 +1,23 @@
+{
+  "timestamp": "2026-11-03T12:09:58.359Z",
+  "report": [
+    {
+      "file": "20261029143000_production_hardening_and_ledger.sql",
+      "status": "Warnings",
+      "issuesCount": 3,
+      "raw": "[{\"file\":\"C:\\\\Users\\\\pc\\\\.gemini\\\\antigravity\\\\scratch\\\\delish-bakes-order\\\\supabase\\\\migrations\\\\20261029143000_production_hardening_and_ledger.sql\",\"line\":6,\"column\":0,\"level\":\"Warning\",\"message\":\"Missing `set lock_timeout` before potentially slow ACCESS EXCLUSIVE lock operations\",\"help\":\"Configure a `lock_timeout` before this statement. Statement requires: ACCESS EXCLUSIVE lock; blocking: reads, writes, schema changes.\",\"rule_name\":\"require-lock-timeout\",\"column_end\":86,\"line_end\":6},{\"file\":\"C:\\\\Users\\\\pc\\\\.gemini\\\\antigravity\\\\scratch\\\\delish-bakes-order\\\\supabase\\\\migrations\\\\20261029143000_production_hardening_and_ledger.sql\",\"line\":6,\"column\":0,\"level\":\"Warning\",\"message\":\"Missing `set statement_timeout` before potentially slow operations\",\"help\":\"Configure a `statement_timeout` before this statement\",\"rule_name\":\"require-statement-timeout\",\"column_end\":86,\"line_end\":6},{\"file\":\"C:\\\\Users\\\\pc\\\\.gemini\\\\antigravity\\\\scratch\\\\delish-bakes-order\\\\supabase\\\\migrations\\\\20261029143000_production_hardening_and_ledger.sql\",\"line\":6,\"column\":59,\"level\":\"Warning\",\"message\":\"Using 32-bit integer fields can result in hitting the max `int` limit.\",\"help\":\"Use 64-bit integer values instead to prevent hitting this limit.\",\"rule_name\":\"prefer-bigint-over-int\",\"column_end\":66,\"line_end\":6}]\n"
+    },
+    {
+      "file": "20261005160000_orders_idempotency_and_indexes.sql",
+      "status": "Warnings",
+      "issuesCount": 3,
+      "raw": "[{\"file\":\"C:\\\\Users\\\\pc\\\\.gemini\\\\antigravity\\\\scratch\\\\delish-bakes-order\\\\supabase\\\\migrations\\\\20261005160000_orders_idempotency_and_indexes.sql\",\"line\":1,\"column\":0,\"level\":\"Warning\",\"message\":\"Attempting to end the transaction that is managed by your migration tool\",\"help\":\"Put migration statements in separate files to have them be in separate transactions or don't use the assume-in-transaction setting.\",\"rule_name\":\"transaction-nesting\",\"column_end\":7,\"line_end\":1},{\"file\":\"C:\\\\Users\\\\pc\\\\.gemini\\\\antigravity\\\\scratch\\\\delish-bakes-order\\\\supabase\\\\migrations\\\\20261005160000_orders_idempotency_and_indexes.sql\",\"line\":4,\"column\":0,\"level\":\"Warning\",\"message\":\"Missing `set lock_timeout` before potentially slow ACCESS EXCLUSIVE lock operations\",\"help\":\"Configure a `lock_timeout` before this statement. Statement requires: ACCESS EXCLUSIVE lock; blocking: reads, writes, schema changes.\",\"rule_name\":\"require-lock-timeout\",\"column_end\":74,\"line_end\":4},{\"file\":\"C:\\\\Users\\\\pc\\\\.gemini\\\\antigravity\\\\scratch\\\\delish-bakes-order\\\\supabase\\\\migrations\\\\20261005160000_orders_idempotency_and_indexes.sql\",\"line\":4,\"column\":0,\"level\":\"Warning\",\"message\":\"Missing `set statement_timeout` before potentially slow operations\",\"help\":\"Configure a `statement_timeout` before this statement\",\"rule_name\":\"require-statement-timeout\",\"column_end\":74,\"line_end\":4}]\n"
+    },
+    {
+      "file": "20261005163000_atomic_operations.sql",
+      "status": "Warnings",
+      "issuesCount": 2,
+      "raw": "[{\"file\":\"C:\\\\Users\\\\pc\\\\.gemini\\\\antigravity\\\\scratch\\\\delish-bakes-order\\\\supabase\\\\migrations\\\\20261005163000_atomic_operations.sql\",\"line\":4,\"column\":0,\"level\":\"Warning\",\"message\":\"Missing `set lock_timeout` before potentially slow operations\",\"help\":\"Configure a `lock_timeout` before this statement.\",\"rule_name\":\"require-lock-timeout\",\"column_end\":3,\"line_end\":12},{\"file\":\"C:\\\\Users\\\\pc\\\\.gemini\\\\antigravity\\\\scratch\\\\delish-bakes-order\\\\supabase\\\\migrations\\\\20261005163000_atomic_operations.sql\",\"line\":4,\"column\":0,\"level\":\"Warning\",\"message\":\"Missing `set statement_timeout` before potentially slow operations\",\"help\":\"Configure a `statement_timeout` before this statement\",\"rule_name\":\"require-statement-timeout\",\"column_end\":3,\"line_end\":12}]\n"
+    }
+  ]
+}

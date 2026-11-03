@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  toxiproxy:
+    image: ghcr.io/shopify/toxiproxy:latest
+    container_name: delish-toxiproxy-chaos
+    restart: unless-stopped
+    ports:
+      - "8474:8474"   # Toxiproxy HTTP Management API
+      - "54320:54320" # Proxied Database / API Port
+    command: ["-host=0.0.0.0"]

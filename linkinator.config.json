@@ -1,0 +1,16 @@
+{
+  "recurse": true,
+  "timeout": 10000,
+  "concurrency": 10,
+  "skip": [
+    "^mailto:",
+    "^tel:",
+    "^javascript:",
+    "https://instagram.com",
+    "https://facebook.com",
+    "https://wa.me",
+    "https://api.whatsapp.com"
+  ],
+  "silent": false,
+  "verbosity": "warning"
+}
