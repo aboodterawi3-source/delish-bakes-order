@@ -8,7 +8,6 @@ import { SiteFooter } from "@/components/delish/SiteFooter";
 import { useCart } from "@/lib/cart";
 import { useStorefrontContent } from "@/hooks/use-storefront-content";
 import { customizationSummary } from "@/components/delish/CakeCustomizationPanel";
-import { resolveProductPhoto } from "@/lib/product-media";
 
 export const Route = createFileRoute("/discover")({
   head: () => ({
@@ -43,7 +42,7 @@ function DiscoverPage() {
   }, [content.data, selectedProductId]);
 
   return (
-    <div className="min-h-dvh w-full bg-background text-foreground">
+    <main className="min-h-dvh w-full bg-background text-foreground">
       <DiscoverView
         cartCount={count}
         onOpenCart={() => setCartOpen(true)}
@@ -75,7 +74,7 @@ function DiscoverPage() {
             en: payload.product.name_en,
             unit: payload.price,
             qty: payload.quantity,
-            image: resolveProductPhoto(payload.product),
+            image: payload.product.image_url ?? undefined,
             designImage: payload.customization.designImageUrl ?? undefined,
             notes: notes || undefined,
             detailsAr: [...details, ...extras.ar],
@@ -91,6 +90,6 @@ function DiscoverPage() {
 
       <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
       <StorefrontMenuDrawer open={menuOpen} onClose={() => setMenuOpen(false)} />
-    </div>
+    </main>
   );
 }

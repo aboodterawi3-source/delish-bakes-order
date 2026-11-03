@@ -18,7 +18,14 @@ import { LangToggle, useLang, type Lang } from "@/lib/i18n";
 import { formatJod } from "@/lib/currency";
 import { useBrandPalette } from "@/lib/brand-palette";
 
-import { resolveProductPhoto } from "@/lib/product-media";
+// Project high-resolution bakery assets for realistic visual showcase
+import cakeChocImg from "@/assets/cake-choc.jpg";
+import cakeBerryImg from "@/assets/cake-berry.jpg";
+import cakeRedImg from "@/assets/cake-red.jpg";
+import cheesecakeImg from "@/assets/cheesecake.jpg";
+import browniesImg from "@/assets/brownies.jpg";
+import cupcakesImg from "@/assets/cupcakes.jpg";
+import luxuryCakeImg from "@/assets/luxury-cake-showcase.jpg";
 
 interface DiscoverViewProps {
   onSelectProduct?: (productId: string) => void;
@@ -26,6 +33,33 @@ interface DiscoverViewProps {
   onOpenMenu?: () => void;
   cartCount?: number;
   isEmbedded?: boolean;
+}
+
+/** Resolves product photography: uses published database image or matches signature project photography */
+function resolveProductPhoto(product: StorefrontProduct): string {
+  if (product.image_url && product.image_url.trim().length > 0) {
+    return product.image_url;
+  }
+  const text = `${product.name_ar} ${product.name_en} ${product.category} ${product.slug}`.toLowerCase();
+  if (text.includes("شوكولاتة") || text.includes("نوتيلا") || text.includes("choc")) {
+    return cakeChocImg;
+  }
+  if (text.includes("ريد فيلفيت") || text.includes("red")) {
+    return cakeRedImg;
+  }
+  if (text.includes("فستق") || text.includes("pistachio") || text.includes("ورد") || text.includes("berry")) {
+    return cakeBerryImg;
+  }
+  if (text.includes("تشيز كيك") || text.includes("cheese")) {
+    return cheesecakeImg;
+  }
+  if (text.includes("براونيز") || text.includes("كوكيز") || text.includes("brownies") || text.includes("cookies")) {
+    return browniesImg;
+  }
+  if (text.includes("فردية") || text.includes("كب كيك") || text.includes("cupcake")) {
+    return cupcakesImg;
+  }
+  return luxuryCakeImg;
 }
 
 export function DiscoverView({
@@ -70,8 +104,8 @@ export function DiscoverView({
       <BackgroundCurves />
 
       {/* Top Header Bar */}
-      <header className="sticky top-0 z-30 flex items-center justify-between gap-1.5 border-b border-border/80 bg-background/95 px-2.5 py-3 backdrop-blur-md min-[380px]:gap-3 min-[380px]:px-4 sm:px-8 lg:px-12">
-        <div className="flex shrink-0 items-center gap-1.5 min-[380px]:gap-2.5">
+      <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-border/80 bg-background/95 px-4 py-3.5 backdrop-blur-md sm:px-8 lg:px-12">
+        <div className="flex items-center gap-2.5">
           {onOpenMenu && (
             <button
               type="button"
@@ -82,14 +116,14 @@ export function DiscoverView({
               <Menu className="h-5 w-5" />
             </button>
           )}
-          <LangToggle variant="peach" className="shrink-0 max-[359px]:hidden" />
+          <LangToggle variant="peach" className="shrink-0" />
         </div>
 
-        <div className="flex min-w-0 flex-1 justify-center px-1">
+        <div className="flex min-w-0 flex-col items-center">
           <DelishLogo size="sm" />
         </div>
 
-        <div className="flex shrink-0 items-center gap-1.5 min-[380px]:gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"
             onClick={() => setSearchOpen(!searchOpen)}
@@ -106,13 +140,7 @@ export function DiscoverView({
           <button
             type="button"
             onClick={onOpenCart}
-            aria-label={
-              cartCount > 0
-                ? lang === "ar"
-                  ? `سلة المشتريات (${cartCount})`
-                  : `Shopping Cart (${cartCount})`
-                : t("cart")
-            }
+            aria-label={t("cart")}
             className="relative flex h-11 w-11 cursor-pointer items-center justify-center rounded-2xl border border-border bg-card text-foreground shadow-2xs transition-all hover:bg-secondary/50 active:scale-95"
           >
             <ShoppingBag className="h-4 w-4" />
@@ -310,7 +338,7 @@ const ProductCard = memo(function ProductCard({
           <span className="text-[11px] font-bold text-primary tracking-wide">
             {product.category || (lang === "ar" ? "كيك فاخر" : "Artisan Cake")}
           </span>
-          <h2 className="mt-0.5 font-sans text-base font-bold leading-snug text-foreground transition-colors group-hover:text-primary sm:text-lg line-clamp-2 min-h-[2.5rem] sm:min-h-[2.75rem]">
+          <h2 className="mt-0.5 font-sans text-lg font-bold leading-snug text-foreground transition-colors group-hover:text-primary sm:text-xl">
             {name}
           </h2>
           <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
