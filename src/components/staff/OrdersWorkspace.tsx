@@ -723,12 +723,14 @@ export function OrdersWorkspace({
                     onSuccess: () => {
                       quickCollectKeyMap.current.delete(order.id);
                       setCollectingOrderId(null);
-                      toast.success(`تم تسجيل تحصيل كامل المبلغ (${jd(remaining)}) نقداً في سجل الدفعات للطلب ${order.order_number} ✅`);
+                      toast.success(
+                        `تم تسجيل تحصيل كامل المبلغ (${jd(remaining)}) نقداً في سجل الدفعات للطلب ${order.order_number} ✅`,
+                      );
                     },
                     onError: () => {
                       setCollectingOrderId(null);
                     },
-                  }
+                  },
                 );
               }}
             />
@@ -1074,7 +1076,9 @@ const OrderRowCard = memo(function OrderRowCard({
                 مستحق إرجاع: {jd(refundDue)} 🔄
               </span>
             ) : (
-              <span className={`font-black ${remaining > 0 ? "text-rose-600" : "text-emerald-600"}`}>
+              <span
+                className={`font-black ${remaining > 0 ? "text-rose-600" : "text-emerald-600"}`}
+              >
                 {remaining > 0 ? `باقي ${jd(remaining)}` : "مدفوع بالكامل ✓"}
               </span>
             )}
@@ -1265,8 +1269,8 @@ function OrderPanelDrawer({
   const driverDispatchMessage = useMemo(() => {
     const isGift = Boolean(
       order.recipient_phone &&
-        order.recipient_phone.trim() &&
-        order.recipient_phone.trim() !== order.sender_phone?.trim(),
+      order.recipient_phone.trim() &&
+      order.recipient_phone.trim() !== order.sender_phone?.trim(),
     );
     const recipientPhone = order.recipient_phone?.trim() || order.customer_phone;
     const senderPhone = order.sender_phone?.trim() || order.customer_phone;
@@ -1329,7 +1333,9 @@ ${collectionText}
       .then((updatedOrder) => {
         paymentIdempotencyKeyRef.current = crypto.randomUUID();
         setDeposit(String(updatedOrder.deposit_paid));
-        toast.success(`تم استلام وتسجيل كامل المبلغ ${jd(remaining)} (${method === "cash" ? "كاش" : "كليك"}) في سجل الدفعات ✅`);
+        toast.success(
+          `تم استلام وتسجيل كامل المبلغ ${jd(remaining)} (${method === "cash" ? "كاش" : "كليك"}) في سجل الدفعات ✅`,
+        );
         void queryClient.invalidateQueries({ queryKey: ORDERS_KEY });
       })
       .catch((err) => {
@@ -1356,7 +1362,9 @@ ${collectionText}
       .then((updatedOrder) => {
         refundIdempotencyKeyRef.current = crypto.randomUUID();
         setDeposit(String(updatedOrder.deposit_paid));
-        toast.success(`تم تسجيل تسوية الاسترجاع للعميل بقيمة ${jd(drawerRefundDue)} في سجل الحركات المالية 🔄`);
+        toast.success(
+          `تم تسجيل تسوية الاسترجاع للعميل بقيمة ${jd(drawerRefundDue)} في سجل الحركات المالية 🔄`,
+        );
         void queryClient.invalidateQueries({ queryKey: ORDERS_KEY });
       })
       .catch((err) => {
@@ -1462,7 +1470,9 @@ ${collectionText}
                   onClick={handleSettleRefund}
                   className="mt-1 px-3 py-1 rounded-lg bg-purple-600 text-white text-[11px] font-bold hover:bg-purple-700 disabled:opacity-50 cursor-pointer"
                 >
-                  {isProcessingPayment ? "جاري المعالجة..." : `تسجيل إرجاع المبلغ للعميل (${jd(drawerRefundDue)})`}
+                  {isProcessingPayment
+                    ? "جاري المعالجة..."
+                    : `تسجيل إرجاع المبلغ للعميل (${jd(drawerRefundDue)})`}
                 </button>
               </div>
             ) : remaining > 0 ? (
@@ -1550,7 +1560,9 @@ ${collectionText}
 
                   {item.notes && (
                     <div className="text-xs text-foreground bg-white dark:bg-card p-2.5 rounded-xl border border-amber-200/70 dark:border-amber-800/40">
-                      <span className="font-bold text-amber-900 dark:text-amber-300">ملاحظة الصنف: </span>
+                      <span className="font-bold text-amber-900 dark:text-amber-300">
+                        ملاحظة الصنف:{" "}
+                      </span>
                       <span>{item.notes}</span>
                     </div>
                   )}
@@ -1657,10 +1669,13 @@ ${collectionText}
           </a>
 
           {/* If Gift Order, Greeting Link for Recipient (WITHOUT prices/billing) */}
-          {Boolean(order.recipient_phone && order.recipient_phone !== (order.sender_phone || order.customer_phone)) && (
+          {Boolean(
+            order.recipient_phone &&
+            order.recipient_phone !== (order.sender_phone || order.customer_phone),
+          ) && (
             <a
               href={`https://wa.me/${waNumber(order.recipient_phone!)}?text=${encodeURIComponent(
-                `🎂 مرحباً ${order.recipient_name || order.order_name || 'عزيزنا'}، لديك إهداء لطيف من Delish Cake & Bake! طلبك جاهز وسيتم توصيله لعنوانكم بكل حب 🎁✨`
+                `🎂 مرحباً ${order.recipient_name || order.order_name || "عزيزنا"}، لديك إهداء لطيف من Delish Cake & Bake! طلبك جاهز وسيتم توصيله لعنوانكم بكل حب 🎁✨`,
               )}`}
               target="_blank"
               rel="noopener noreferrer"

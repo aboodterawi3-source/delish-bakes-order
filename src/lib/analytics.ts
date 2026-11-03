@@ -68,7 +68,7 @@ class DelishAnalytics {
     if (navigator.sendBeacon) {
       navigator.sendBeacon(
         `${this.host}/capture/`,
-        new Blob([JSON.stringify(payload)], { type: "application/json" })
+        new Blob([JSON.stringify(payload)], { type: "application/json" }),
       );
     } else {
       fetch(`${this.host}/capture/`, {
@@ -88,7 +88,12 @@ class DelishAnalytics {
     });
   }
 
-  public trackOrderSubmitted(orderNumber: string, total: number, deposit: number, fulfillment: string) {
+  public trackOrderSubmitted(
+    orderNumber: string,
+    total: number,
+    deposit: number,
+    fulfillment: string,
+  ) {
     this.track("delish_order_submitted", {
       order_number: orderNumber,
       total_amount_jod: total,

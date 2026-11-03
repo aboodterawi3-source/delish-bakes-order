@@ -45,12 +45,7 @@ import {
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useOrdersRealtime, broadcastKitchenUpdate } from "@/hooks/use-orders-realtime";
 import { orderLabel } from "@/lib/order-label";
-import {
-  ORDERS_KEY,
-  statusMeta,
-  payMeta,
-  printReceipt,
-} from "@/components/staff/OrdersWorkspace";
+import { ORDERS_KEY, statusMeta, payMeta, printReceipt } from "@/components/staff/OrdersWorkspace";
 import { waNumber } from "@/lib/whatsapp";
 import { jd } from "@/lib/currency";
 import {
@@ -327,8 +322,11 @@ export function ModificationsPanel({
   });
 
   const rebuild = useMutation({
-    mutationFn: (input: { orderId: string; lines: RebuildLine[]; expectedVersion?: number | null }) =>
-      rebuildFn({ data: input }),
+    mutationFn: (input: {
+      orderId: string;
+      lines: RebuildLine[];
+      expectedVersion?: number | null;
+    }) => rebuildFn({ data: input }),
     onSuccess: (order) => {
       queryClient.setQueryData<SalesOrder[]>(ORDERS_KEY, (current) =>
         (current ?? []).map((row) => (row.id === order.id ? order : row)),
@@ -342,8 +340,12 @@ export function ModificationsPanel({
   });
 
   const discount = useMutation({
-    mutationFn: (input: { orderId: string; percent: number; reason: string; expectedVersion?: number | null }) =>
-      discountFn({ data: input }),
+    mutationFn: (input: {
+      orderId: string;
+      percent: number;
+      reason: string;
+      expectedVersion?: number | null;
+    }) => discountFn({ data: input }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ORDERS_KEY });
       toast.success("تم تطبيق الخصم الإداري بنجاح ✅");
@@ -632,8 +634,12 @@ export function ModificationsPanel({
               discountCap={authorization.data?.max_discount_percent ?? 0}
               products={storefront.data?.products ?? []}
               onBackToList={() => setSelectedId(null)}
-              onPatch={(patch) => (save.mutateAsync || save.mutate)({ orderId: selected.id, ...patch })}
-              onItemPatch={(patch) => (saveItem.mutateAsync || saveItem.mutate)({ orderId: selected.id, ...patch })}
+              onPatch={(patch) =>
+                (save.mutateAsync || save.mutate)({ orderId: selected.id, ...patch })
+              }
+              onItemPatch={(patch) =>
+                (saveItem.mutateAsync || saveItem.mutate)({ orderId: selected.id, ...patch })
+              }
               onReplaceItems={(lines, expectedVersion) =>
                 (rebuild.mutateAsync || rebuild.mutate)({
                   orderId: selected.id,
@@ -641,7 +647,10 @@ export function ModificationsPanel({
                   expectedVersion:
                     expectedVersion !== undefined && expectedVersion !== null
                       ? expectedVersion
-                      : (lines as any)?.version ?? (lines as any)?.[0]?.draftVersion ?? selected.version ?? null,
+                      : ((lines as any)?.version ??
+                        (lines as any)?.[0]?.draftVersion ??
+                        selected.version ??
+                        null),
                 })
               }
               onDiscount={(percent, reason, expectedVersion) =>
@@ -700,7 +709,11 @@ function MasterOrderEditor({
   onPatch: (patch: Omit<OrderPatch, "orderId">) => void | Promise<any>;
   onItemPatch: (patch: Omit<OrderItemPatch, "orderId">) => void | Promise<any>;
   onReplaceItems: (lines: RebuildLine[], expectedVersion?: number | null) => void | Promise<any>;
-  onDiscount: (percent: number, reason: string, expectedVersion?: number | null) => void | Promise<any>;
+  onDiscount: (
+    percent: number,
+    reason: string,
+    expectedVersion?: number | null,
+  ) => void | Promise<any>;
   onFinishEdit: (patch: Omit<OrderPatch, "orderId">) => Promise<any> | any;
 }) {
   const [itemsMode, setItemsMode] = useState<"cards" | "builder">("cards");
@@ -725,13 +738,17 @@ function MasterOrderEditor({
     }
   }, [order.version]);
 
-  const hasConcurrentConflict = !pendingSelfMutationRef.current && (order.version || 1) > initialVersionRef.current;
+  const hasConcurrentConflict =
+    !pendingSelfMutationRef.current && (order.version || 1) > initialVersionRef.current;
 
   const [isProcessingQuickPayment, setIsProcessingQuickPayment] = useState(false);
   const quickPaymentIdempotencyKeyRef = useRef<string>(crypto.randomUUID());
 
   const recordPaymentServer = useServerFn(recordOrderPayment);
-  const handleQuickAddPayment = async (amount: number, type: "deposit" | "remainder" | "full" = "remainder") => {
+  const handleQuickAddPayment = async (
+    amount: number,
+    type: "deposit" | "remainder" | "full" = "remainder",
+  ) => {
     if (amount <= 0 || isProcessingQuickPayment) return;
     setIsProcessingQuickPayment(true);
     pendingSelfMutationRef.current = true;
@@ -762,7 +779,10 @@ function MasterOrderEditor({
 
   const handlePatch = (patch: Omit<OrderPatch, "orderId">) => {
     pendingSelfMutationRef.current = true;
-    const caller = (typeof onPatchProp !== "undefined" && onPatchProp) || (typeof (globalThis as any).onPatchProp !== "undefined" && (globalThis as any).onPatchProp) || (typeof (globalThis as any).onPatch !== "undefined" && (globalThis as any).onPatch);
+    const caller =
+      (typeof onPatchProp !== "undefined" && onPatchProp) ||
+      (typeof (globalThis as any).onPatchProp !== "undefined" && (globalThis as any).onPatchProp) ||
+      (typeof (globalThis as any).onPatch !== "undefined" && (globalThis as any).onPatch);
     const p = caller({ ...patch, expected_version: initialVersionRef.current });
     if (p && typeof (p as any).then === "function") {
       (p as Promise<any>).then(
@@ -774,7 +794,7 @@ function MasterOrderEditor({
         },
         () => {
           pendingSelfMutationRef.current = false;
-        }
+        },
       );
     }
     return p;
@@ -973,7 +993,8 @@ function MasterOrderEditor({
           <div className="flex items-center gap-2">
             <span className="text-base">⚠️</span>
             <span>
-              تم تحديث هذا الطلب في الخلفية بواسطة موظف آخر (إصدار الخادم: {order.version}، إصدارك الحالي: {initialVersionRef.current}).
+              تم تحديث هذا الطلب في الخلفية بواسطة موظف آخر (إصدار الخادم: {order.version}، إصدارك
+              الحالي: {initialVersionRef.current}).
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -981,7 +1002,9 @@ function MasterOrderEditor({
               type="button"
               onClick={() => {
                 initialVersionRef.current = order.version ?? 1;
-                toast.success("تم تحديث مرجع النسخة مع الحفاظ على مدخلاتك الحالية، يمكنك المتابعة والحفظ الآن ✅");
+                toast.success(
+                  "تم تحديث مرجع النسخة مع الحفاظ على مدخلاتك الحالية، يمكنك المتابعة والحفظ الآن ✅",
+                );
               }}
               className="rounded-xl bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 font-black text-xs cursor-pointer shadow-xs"
             >
@@ -1544,7 +1567,9 @@ function MasterOrderEditor({
                   notes: payload.notes ?? null,
                 },
               ];
-              (typeof handleReplaceItems === "function" ? handleReplaceItems : onReplaceItems)(nextLines);
+              (typeof handleReplaceItems === "function" ? handleReplaceItems : onReplaceItems)(
+                nextLines,
+              );
             }
           }}
         />
@@ -1989,7 +2014,10 @@ function InteractiveItemEditorCard({
                     setSizeLabel("");
                     const picked = products.find((row) => row.id === event.target.value);
                     if (picked) {
-                      const patch: Parameters<typeof onItemPatch>[0] = { itemId: item.id, name: picked.name_ar };
+                      const patch: Parameters<typeof onItemPatch>[0] = {
+                        itemId: item.id,
+                        name: picked.name_ar,
+                      };
                       if (!picked.price_on_request && picked.price > 0) {
                         patch.newUnitPrice = picked.price;
                       }
@@ -2020,7 +2048,11 @@ function InteractiveItemEditorCard({
                     if (!size) return;
                     const nextOptions = withLabel(options, "الحجم", size.label);
                     setOptions(nextOptions);
-                    onItemPatch({ itemId: item.id, newUnitPrice: size.price, options: nextOptions });
+                    onItemPatch({
+                      itemId: item.id,
+                      newUnitPrice: size.price,
+                      options: nextOptions,
+                    });
                   }}
                   disabled={!product || product.sizes.length === 0}
                   className={inputClass}

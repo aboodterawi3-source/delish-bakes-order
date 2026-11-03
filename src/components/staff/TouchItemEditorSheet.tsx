@@ -16,6 +16,14 @@ import { toast } from "sonner";
 import type { StorefrontProduct } from "@/lib/storefront-content";
 import type { SalesItem } from "@/lib/sales.functions";
 import { jd, roundJod } from "@/lib/currency";
+import {
+  DEFAULT_EXTRAS,
+  type BakeryExtraItem,
+  parseOptionsAndExtras,
+  calculateBasePriceFromSaved,
+  evaluateFillingRequirement,
+  compileSavePayload,
+} from "./touch-item-editor-utils";
 
 // Predefined Bakery Attributes & Extras
 const PREDEFINED_SIZES = [
@@ -23,23 +31,6 @@ const PREDEFINED_SIZES = [
   { label: "وسط (10 أشخاص)", extraFee: 3 },
   { label: "كبير (15 شخص)", extraFee: 6 },
   { label: "عائلي (20+ شخص)", extraFee: 10 },
-];
-
-
-export type BakeryExtraItem = {
-  id: string;
-  name: string;
-  price: number;
-  icon: string;
-  qty: number;
-};
-
-const DEFAULT_EXTRAS: Omit<BakeryExtraItem, "qty">[] = [
-  { id: "candles", name: "شموع أرقام", price: 0.5, icon: "🕯️" },
-  { id: "balloons", name: "بالونات هيليوم", price: 1.0, icon: "🎈" },
-  { id: "topper", name: "توبير أكريليك / مجسم", price: 3.0, icon: "🎂" },
-  { id: "cutlery", name: "طقم صحون وشوك", price: 0.5, icon: "🍽️" },
-  { id: "flowers", name: "ورد طبيعي للتزيين", price: 2.5, icon: "🌸" },
 ];
 
 export type TouchItemSavePayload = {
@@ -92,13 +83,14 @@ export function TouchItemEditorSheet({
   // Custom Item Fields
   const [customName, setCustomName] = useState("");
   const [itemNotes, setItemNotes] = useState("");
+  const [unparsedOptions, setUnparsedOptions] = useState<string[]>([]);
 
   const lastInitializedKeyRef = useRef<string | null>(null);
 
   // J3: Session key uniquely identifies this item edit session
   const sessionKey = isOpen
     ? item
-      ? (item.id || `${item.product_id || "custom"}-${item.name_ar}`)
+      ? item.id || `${item.product_id || "custom"}-${item.name_ar}`
       : "new-item"
     : null;
 
@@ -135,58 +127,16 @@ export function TouchItemEditorSheet({
       setQuantity(item.quantity || 1);
       setItemNotes(item.notes || "");
 
-      // Parse options array (size, filling, inscription, extras)
-      const opts = item.options_ar || [];
-
-      // J3: Reset fields explicitly to prevent leaking from previous items
-      const sizeOpt = opts.find((o) => o.startsWith("الحجم:"));
-      setSelectedSize(sizeOpt ? sizeOpt.replace("الحجم:", "").trim() : "");
-
-      const fillingOpt = opts.find((o) => o.startsWith("الحشوة:"));
-      setSelectedFilling(fillingOpt ? fillingOpt.replace("الحشوة:", "").trim() : "");
-
-      const writingOpt = opts.find((o) => o.startsWith("الكتابة:"));
-      setCakeInscription(writingOpt ? writingOpt.replace("الكتابة:", "").trim() : "");
-
-      // J2: Parse extras quantities and custom extras from options
-      let savedExtrasTotal = 0;
-      const updatedDefaultExtras = DEFAULT_EXTRAS.map((def) => {
-        const match = opts.find((o) => o.includes(def.name));
-        if (match) {
-          const qtyMatch = match.match(/\((\d+)\s*[×xX*]/) || match.match(/(\d+)/);
-          const qty = qtyMatch?.[1] ? parseInt(qtyMatch[1], 10) : 1;
-          savedExtrasTotal += def.price * qty;
-          return { ...def, qty };
-        }
-        return { ...def, qty: 0 };
-      });
-
-      const parsedCustomExtras: BakeryExtraItem[] = [];
-      opts.forEach((optStr, idx) => {
-        if (optStr.startsWith("الحجم:") || optStr.startsWith("الحشوة:") || optStr.startsWith("الكتابة:")) return;
-        if (DEFAULT_EXTRAS.some((def) => optStr.includes(def.name))) return;
-        const customMatch = optStr.match(/^(?:(?:\p{Extended_Pictographic}|\p{Emoji}|[^\w\s])\s*)?(.+?)\s*\(\s*(\d+)\s*[×xX*]\s*([\d.]+)/u);
-        if (customMatch && customMatch[1]) {
-          const name = customMatch[1].trim();
-          const qty = customMatch[2] ? parseInt(customMatch[2], 10) : 1;
-          const price = customMatch[3] ? parseFloat(customMatch[3]) : 0;
-          const iconMatch = optStr.match(/^(\p{Extended_Pictographic}|\p{Emoji})/u);
-          const icon: string = (iconMatch && iconMatch[1]) ? iconMatch[1] : "✨";
-          parsedCustomExtras.push({
-            id: `custom-extra-${idx}-${Date.now()}`,
-            name,
-            price,
-            icon,
-            qty,
-          });
-          savedExtrasTotal += price * qty;
-        }
-      });
-
-      setExtras([...updatedDefaultExtras, ...parsedCustomExtras]);
+      // J2-A & J2-B: Parse structured options preserving historical prices & custom specs
+      const parsed = parseOptionsAndExtras(item.options_ar || [], DEFAULT_EXTRAS);
+      setSelectedSize(parsed.selectedSize);
+      setSelectedFilling(parsed.selectedFilling);
+      setCakeInscription(parsed.cakeInscription);
+      setUnparsedOptions(parsed.unparsedOptions);
+      setExtras(parsed.extras);
 
       // J2: Deduct saved extras total so we don't charge them twice upon save!
-      const basePrice = Math.max(0, roundJod(item.unit_price - savedExtrasTotal));
+      const basePrice = calculateBasePriceFromSaved(item.unit_price, parsed.savedExtrasTotal);
       setUnitPrice(basePrice);
     } else {
       // Adding new item - reset all defaults completely (J3)
@@ -195,6 +145,7 @@ export function TouchItemEditorSheet({
       setSelectedSize("");
       setSelectedFilling("");
       setCakeInscription("");
+      setUnparsedOptions([]);
       setQuantity(1);
       setUnitPrice(0);
       setCustomName("");
@@ -216,8 +167,12 @@ export function TouchItemEditorSheet({
   const handleSelectProduct = (prod: StorefrontProduct) => {
     setSelectedProduct(prod);
     setUnitPrice(prod.price || 0);
-    if (prod.filling_ar?.trim()) {
-      setSelectedFilling(prod.filling_ar.trim());
+    // J3: Reset or update filling according to new product specification
+    setSelectedFilling(prod.filling_ar?.trim() || "");
+    const cat = (prod.category || "").toLowerCase();
+    const isCake = cat.includes("cake") || cat.includes("كيك");
+    if (!isCake) {
+      setCakeInscription("");
     }
   };
 
@@ -267,42 +222,38 @@ export function TouchItemEditorSheet({
 
   // J5: Unify filling requirement between catalog product and validation
   const isFillingRequired = useMemo(() => {
-    if (tab === "catalog" && selectedProduct) {
-      const cat = (selectedProduct.category || "").toLowerCase();
-      const isCake = cat.includes("cake") || cat.includes("كيك");
-      return Boolean(selectedProduct.filling_ar?.trim() || isCake);
-    }
-    return false;
+    return evaluateFillingRequirement(tab, selectedProduct?.category, selectedProduct?.filling_ar);
   }, [tab, selectedProduct]);
 
   const handleSave = () => {
-    const name = tab === "catalog" ? selectedProduct?.name_ar || customName : customName;
-    if (!name.trim()) {
-      toast.error("يرجى اختيار منتج أو كتابة اسم الصنف");
+    const res = compileSavePayload({
+      tab,
+      productId: selectedProduct?.id,
+      productName: selectedProduct?.name_ar,
+      customName,
+      unitPrice,
+      quantity,
+      selectedSize,
+      selectedFilling,
+      cakeInscription,
+      unparsedOptions,
+      extras,
+      isFillingRequired,
+      itemNotes,
+    });
+
+    if (!res.success || !res.payload) {
+      toast.error(res.error || "يرجى التحقق من بيانات الصنف");
       return;
     }
 
-    // Compile options array
-    const compiledOptions: string[] = [];
-    if (selectedSize) compiledOptions.push(`الحجم: ${selectedSize}`);
-    if (selectedFilling) compiledOptions.push(`الحشوة: ${selectedFilling}`);
-    if (cakeInscription.trim()) compiledOptions.push(`الكتابة: ${cakeInscription.trim()}`);
-
-    extras.forEach((e) => {
-      if (e.qty > 0) {
-        compiledOptions.push(`${e.icon} ${e.name} (${e.qty} × ${jd(e.price)})`);
-      }
-    });
-
-    const finalUnitPrice = roundJod(unitPrice + extrasTotal);
-
     onSave({
-      productId: tab === "catalog" ? selectedProduct?.id : null,
-      name: name.trim(),
-      quantity,
-      unitPrice: finalUnitPrice,
-      options: compiledOptions,
-      notes: itemNotes.trim() || null,
+      productId: res.payload.productId,
+      name: res.payload.name,
+      quantity: res.payload.quantity,
+      unitPrice: res.payload.unitPrice,
+      options: res.payload.options,
+      notes: res.payload.notes || null,
     });
 
     onClose();
@@ -452,19 +403,32 @@ export function TouchItemEditorSheet({
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="block text-xs font-bold text-foreground">
-                      نوع الحشوة (Filling Flavor) <span className="text-red-500">*</span>
+                      نوع الحشوة (Filling Flavor){" "}
+                      {isFillingRequired ? (
+                        <span className="text-red-500">*</span>
+                      ) : (
+                        <span className="text-[10px] font-normal text-muted-foreground">
+                          (اختياري)
+                        </span>
+                      )}
                     </label>
                     {selectedFilling.trim() ? (
                       <span className="text-[11px] font-bold text-emerald-700">✓ تم التحديد</span>
-                    ) : (
+                    ) : isFillingRequired ? (
                       <span className="text-[11px] font-bold text-red-600">إجباري *</span>
+                    ) : (
+                      <span className="text-[11px] font-normal text-muted-foreground">اختياري</span>
                     )}
                   </div>
                   <input
                     type="text"
                     value={selectedFilling}
                     onChange={(e) => setSelectedFilling(e.target.value)}
-                    placeholder={isFillingRequired ? "اكتب نوع الحشوة المطلوبة بالتفصيل (إجباري)…" : "اكتب نوع الحشوة إن وجدت (اختياري)…"}
+                    placeholder={
+                      isFillingRequired
+                        ? "اكتب نوع الحشوة المطلوبة بالتفصيل (إجباري)…"
+                        : "اكتب نوع الحشوة إن وجدت (اختياري)…"
+                    }
                     className="min-h-11 w-full rounded-xl border border-input bg-background px-3 text-xs font-bold text-foreground focus:border-primary focus:outline-none"
                   />
                 </div>

@@ -45,8 +45,8 @@ async function run() {
   let schemaSql = fs.readFileSync(path.resolve("supabase/standalone_complete_schema.sql"), "utf8");
   // In PGlite, extensions like uuid-ossp and pgcrypto are not bundled; gen_random_uuid() is built-in
   schemaSql = schemaSql
-    .replace('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";', '-- uuid-ossp skipped for pglite')
-    .replace('CREATE EXTENSION IF NOT EXISTS "pgcrypto";', '-- pgcrypto skipped for pglite');
+    .replace('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";', "-- uuid-ossp skipped for pglite")
+    .replace('CREATE EXTENSION IF NOT EXISTS "pgcrypto";', "-- pgcrypto skipped for pglite");
   await pg.exec(schemaSql);
   console.log("✅ Schema executed successfully on clean PostgreSQL!");
 
@@ -76,7 +76,7 @@ async function run() {
 
   // Helper to set current user context
   const setAuthUser = async (userId) => {
-    await pg.exec(`SET LOCAL request.jwt.claim.sub = '${userId || ''}';`);
+    await pg.exec(`SET LOCAL request.jwt.claim.sub = '${userId || ""}';`);
   };
 
   // TEST 1: Test create_staff_order_atomic with new client_request_id (B1 issue 1)
@@ -111,7 +111,9 @@ async function run() {
   }
 
   // TEST 3: Check authenticated grant on create_storefront_order_atomic (B2)
-  console.log("\n--- TEST B2: has_function_privilege for authenticated on create_storefront_order_atomic ---");
+  console.log(
+    "\n--- TEST B2: has_function_privilege for authenticated on create_storefront_order_atomic ---",
+  );
   const b2Res = await pg.query(`
     SELECT
       has_function_privilege('anon', 'public.create_storefront_order_atomic(jsonb, jsonb)', 'execute') AS anon_can_exec,
@@ -169,8 +171,13 @@ async function run() {
         SELECT public.update_kitchen_order_status('${testOrderId}', 'ready');
       `);
     });
-    const checkCancelled = await pg.query(`SELECT status FROM public.orders WHERE id = '${testOrderId}';`);
-    console.log("❌ REPRODUCED B5: Cancelled order was transitioned to:", checkCancelled.rows[0].status);
+    const checkCancelled = await pg.query(
+      `SELECT status FROM public.orders WHERE id = '${testOrderId}';`,
+    );
+    console.log(
+      "❌ REPRODUCED B5: Cancelled order was transitioned to:",
+      checkCancelled.rows[0].status,
+    );
   } catch (err) {
     console.log("✅ Transition was rejected:", err.message);
   }

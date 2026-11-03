@@ -13,7 +13,10 @@ console.log("🦅 SQUAWK — POSTGRESQL MIGRATION LINTER & SCHEMA SAFETY AUDITOR
 console.log("================================================================================\n");
 
 const migrationsDir = path.resolve("supabase/migrations");
-const files = fs.readdirSync(migrationsDir).filter((f) => f.endsWith(".sql")).sort();
+const files = fs
+  .readdirSync(migrationsDir)
+  .filter((f) => f.endsWith(".sql"))
+  .sort();
 
 console.log(`  📂 Found ${files.length} PostgreSQL migration files in supabase/migrations/`);
 
@@ -21,7 +24,7 @@ console.log(`  📂 Found ${files.length} PostgreSQL migration files in supabase
 const targetFiles = [
   "20261029143000_production_hardening_and_ledger.sql",
   "20261005160000_orders_idempotency_and_indexes.sql",
-  "20261005163000_atomic_operations.sql"
+  "20261005163000_atomic_operations.sql",
 ];
 
 let totalIssues = 0;
@@ -45,7 +48,9 @@ for (const file of targetFiles) {
       // If output is plain text
     }
 
-    const issueCount = Array.isArray(issues) ? issues.length : (output.match(/warning\[/g) || []).length;
+    const issueCount = Array.isArray(issues)
+      ? issues.length
+      : (output.match(/warning\[/g) || []).length;
     totalIssues += issueCount;
     console.log(`     ⚠️  Found ${issueCount} rule warnings/recommendations.`);
 
@@ -64,5 +69,8 @@ console.log(`   Migrations Audited: ${targetFiles.length}`);
 console.log(`   Total Linter Observations: ${totalIssues}`);
 console.log("================================================================================\n");
 
-fs.writeFileSync("squawk-report.json", JSON.stringify({ timestamp: new Date().toISOString(), report }, null, 2));
+fs.writeFileSync(
+  "squawk-report.json",
+  JSON.stringify({ timestamp: new Date().toISOString(), report }, null, 2),
+);
 console.log("  📄 Report written to squawk-report.json\n");

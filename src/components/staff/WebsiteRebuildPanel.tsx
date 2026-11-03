@@ -237,7 +237,10 @@ export function WebsiteRebuildPanel({
           type="button"
           disabled={busy || lines.length === 0}
           onClick={() =>
-            onReplace(lines.map(({ key: _key, draftVersion: _dv, ...line }) => line), (lines as any).version ?? (lines[0] as any)?.draftVersion)
+            onReplace(
+              lines.map(({ key: _key, draftVersion: _dv, ...line }) => line),
+              (lines as any).version ?? (lines[0] as any)?.draftVersion,
+            )
           }
           className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-primary px-5 text-sm font-extrabold text-primary-foreground disabled:opacity-50"
         >

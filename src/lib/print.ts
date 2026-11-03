@@ -124,4 +124,3 @@ ${extraStyle}</style></head><body><div class="receipt">${bodyHtml}</div></body><
 
   return true;
 }
-

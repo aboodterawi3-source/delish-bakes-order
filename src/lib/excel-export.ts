@@ -40,7 +40,7 @@ export interface ReportMetadata {
  */
 export async function generateDailySalesWorkbook(
   orders: ExportOrder[],
-  meta: ReportMetadata
+  meta: ReportMetadata,
 ): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "Delish Cake & Bake Accounting";
@@ -182,13 +182,7 @@ export async function generateDailySalesWorkbook(
 
   orders.forEach((o) => {
     o.items.forEach((it) => {
-      const row = sheet2.addRow([
-        o.orderNumber,
-        it.name,
-        it.quantity,
-        it.unitPrice,
-        it.totalPrice,
-      ]);
+      const row = sheet2.addRow([o.orderNumber, it.name, it.quantity, it.unitPrice, it.totalPrice]);
       row.getCell(4).numFmt = '#,##0.00 "د.أ"';
       row.getCell(5).numFmt = '#,##0.00 "د.أ"';
     });
@@ -205,7 +199,9 @@ export async function generateDailySalesWorkbook(
 /**
  * Reads and parses an uploaded Excel sales workbook.
  */
-export async function parseExcelWorkbook(buffer: Buffer): Promise<{ sheetNames: string[]; rowCount: number }> {
+export async function parseExcelWorkbook(
+  buffer: Buffer,
+): Promise<{ sheetNames: string[]; rowCount: number }> {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(buffer as any);
   const sheetNames = workbook.worksheets.map((ws) => ws.name);

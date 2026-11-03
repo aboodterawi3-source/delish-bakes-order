@@ -54,8 +54,13 @@ const msg2 = buildConfirmationMessage({
 
 assert.ok(msg2.includes("Khalda - Sugar Circle"), "Must include address");
 assert.ok(msg2.includes("3 دنانير"), "Must format integer fee cleanly");
-assert.ok(!msg2.includes("Khalda - Sugar Circle — Khalda"), "Must deduplicate identical area/address");
-console.log("✅ Test 2 Passed: Integer delivery fee and identical area/address deduplication verified.");
+assert.ok(
+  !msg2.includes("Khalda - Sugar Circle — Khalda"),
+  "Must deduplicate identical area/address",
+);
+console.log(
+  "✅ Test 2 Passed: Integer delivery fee and identical area/address deduplication verified.",
+);
 
 // Test 3: Pickup (no delivery lines)
 const msg3 = buildConfirmationMessage({
@@ -89,7 +94,10 @@ const rawNotes =
   "المصدر: انستغرام [كليك: كليك محل] [صورة الحوالة: https://zmeijwtivmniqpwyxezk.supabase.co/storage/v1/object/sign/order-designs/2026-10-06/07e3a2a4-1e5b-40d5-9668-9f864068cc0a.webp?token=xyz123] [طلب هدية - المرسل: حنين حمودة (0796427917)]";
 const cleaned = formatStaffNotes(rawNotes);
 assert.ok(!cleaned.includes("https://"), "Cleaned staff notes must not contain raw URLs");
-assert.ok(cleaned.includes("[صورة الحوالة مرفقة 📄]"), "Cleaned staff notes must use friendly label");
+assert.ok(
+  cleaned.includes("[صورة الحوالة مرفقة 📄]"),
+  "Cleaned staff notes must use friendly label",
+);
 assert.ok(cleaned.includes("المصدر: انستغرام"), "Must preserve source");
 assert.ok(cleaned.includes("حنين حمودة"), "Must preserve gift customer details");
 console.log("✅ Test 4 Passed: Raw image URL sanitization verified cleanly.");

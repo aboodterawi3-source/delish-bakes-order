@@ -35,27 +35,31 @@ async function test(name, fn) {
 // TEST 1: Financial Precision & Refund-Due Logic via calculateFinancials()
 // ------------------------------------------------------------------------------
 await test("1. calculateFinancials(): correctly computes refund due when paid exceeds total (25 JD on 20 JD)", () => {
-  const fin = calculateFinancials(20.00, 25.00);
+  const fin = calculateFinancials(20.0, 25.0);
 
-  assert.equal(fin.total, 20.00);
-  assert.equal(fin.paid, 25.00);
+  assert.equal(fin.total, 20.0);
+  assert.equal(fin.paid, 25.0);
   assert.equal(fin.remaining, 0, "Remaining balance must be 0 when overpaid");
-  assert.equal(fin.refundDue, 5.00, "Refund due must be exactly 5.00 JD");
+  assert.equal(fin.refundDue, 5.0, "Refund due must be exactly 5.00 JD");
   assert.equal(fin.isOverpaid, true, "isOverpaid must be true");
-  assert.equal(fin.isFullyPaid, false, "Overpaid order requires refund action before settling as standard fully paid");
+  assert.equal(
+    fin.isFullyPaid,
+    false,
+    "Overpaid order requires refund action before settling as standard fully paid",
+  );
 });
 
 await test("2. calculateFinancials(): partial deposit (10 JD on 35 JD) leaves 25 JD remaining and 0 refund due", () => {
-  const fin = calculateFinancials(35.00, 10.00);
+  const fin = calculateFinancials(35.0, 10.0);
 
-  assert.equal(fin.remaining, 25.00, "Remaining balance must be 25.00 JD");
+  assert.equal(fin.remaining, 25.0, "Remaining balance must be 25.00 JD");
   assert.equal(fin.refundDue, 0, "Refund due must be 0");
   assert.equal(fin.isOverpaid, false, "isOverpaid must be false");
   assert.equal(fin.isFullyPaid, false, "Partially paid order is not fully paid");
 });
 
 await test("3. calculateFinancials(): exact payment (30 JD on 30 JD) settles fully with 0 balance and 0 refund due", () => {
-  const fin = calculateFinancials(30.00, 30.00);
+  const fin = calculateFinancials(30.0, 30.0);
 
   assert.equal(fin.remaining, 0);
   assert.equal(fin.refundDue, 0);
@@ -76,20 +80,20 @@ await test("4. buildConfirmationMessage(): includes prominent refund-due line wh
     cakeWriting: "Happy Birthday",
     cardWriting: "",
     notes: "",
-    price: 20.00,
+    price: 20.0,
     deliveryFee: 0,
-    total: 20.00,
-    paid: 25.00,
+    total: 20.0,
+    paid: 25.0,
     paymentMethod: "cliq",
   });
 
   assert.ok(
     msg.includes("🔄 مبلغ مستحق الإرجاع للزبون: 5.00 د.أ") || msg.includes("مستحق الإرجاع"),
-    "WhatsApp message must explicitly declare the 5.00 JD refund due"
+    "WhatsApp message must explicitly declare the 5.00 JD refund due",
   );
   assert.ok(
     !msg.includes("المبلغ المتبقي: 0.00 د.أ (مسدد بالكامل ✅)"),
-    "Must not mask an overpayment as regular full settlement without refund notice"
+    "Must not mask an overpayment as regular full settlement without refund notice",
   );
 });
 
@@ -112,13 +116,13 @@ await test("5. assertRole(): validates allowed roles and strictly rejects unauth
   await assert.rejects(
     () => assertRole(mockKitchenContext, ["sales", "admin"]),
     /غير مصرّح · Not authorised/,
-    "Kitchen role must be rejected from sales actions"
+    "Kitchen role must be rejected from sales actions",
   );
 
   // Kitchen attempting kitchen role action
   await assert.doesNotReject(
     () => assertRole(mockKitchenContext, ["kitchen", "admin"]),
-    "Kitchen role must be accepted for kitchen actions"
+    "Kitchen role must be accepted for kitchen actions",
   );
 });
 

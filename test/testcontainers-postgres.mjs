@@ -40,7 +40,9 @@ function isDockerAvailable() {
 }
 
 const dockerOnline = isDockerAvailable();
-console.log(`  ℹ️  Docker Daemon Status: ${dockerOnline ? "ONLINE" : "OFFLINE / LOCAL WORKSTATION"}`);
+console.log(
+  `  ℹ️  Docker Daemon Status: ${dockerOnline ? "ONLINE" : "OFFLINE / LOCAL WORKSTATION"}`,
+);
 console.log(`  ℹ️  Engine Mode: Deterministic Local Isolated PostgreSQL (@electric-sql/pglite)\n`);
 
 // ------------------------------------------------------------------------------
@@ -83,26 +85,34 @@ await test("2. OCC Concurrency: Stale update with mismatched version is rejected
   assert.equal(insert.rows[0].version, 1);
 
   // Cashier 1 successfully updates order and increments version to 2
-  const update1 = await dbInstance.query(`
+  const update1 = await dbInstance.query(
+    `
     UPDATE orders
     SET total = 30.00, version = version + 1
     WHERE id = $1 AND version = 1
     RETURNING version
-  `, [orderId]);
+  `,
+    [orderId],
+  );
   assert.equal(update1.rows.length, 1, "First update must succeed");
   assert.equal(update1.rows[0].version, 2, "Version must advance to 2");
 
   // Cashier 2 attempts concurrent update using stale version 1 -> Must match 0 rows!
-  const update2 = await dbInstance.query(`
+  const update2 = await dbInstance.query(
+    `
     UPDATE orders
     SET total = 35.00, version = version + 1
     WHERE id = $1 AND version = 1
     RETURNING version
-  `, [orderId]);
+  `,
+    [orderId],
+  );
   assert.equal(update2.rows.length, 0, "Concurrent stale update must match 0 rows (OCC conflict)");
 
   // Verify final record integrity
-  const finalRow = await dbInstance.query("SELECT total, version FROM orders WHERE id = $1", [orderId]);
+  const finalRow = await dbInstance.query("SELECT total, version FROM orders WHERE id = $1", [
+    orderId,
+  ]);
   assert.equal(finalRow.rows[0].total, "30.00", "Total must preserve Cashier 1's commit");
   assert.equal(finalRow.rows[0].version, 2, "Final version must be 2");
 });

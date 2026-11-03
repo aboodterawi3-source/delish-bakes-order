@@ -59,7 +59,6 @@ export const emptyCustomization: Customization = {
   designImageUrl: null,
 };
 
-
 const BALLOON_COLORS = [
   { id: "gold", ar: "ذهبي", en: "Gold", swatch: "#B8860B" },
   { id: "peach", ar: "خوخي", en: "Peach", swatch: "#FDE2CF" },
@@ -810,7 +809,10 @@ export function DesignPhotoSection({
 
   const removePhoto = () => {
     if (value.designImageUrl) {
-      const token = typeof window !== "undefined" ? sessionStorage.getItem(`delish_photo_token_${value.designImageUrl}`) : null;
+      const token =
+        typeof window !== "undefined"
+          ? sessionStorage.getItem(`delish_photo_token_${value.designImageUrl}`)
+          : null;
       void deleteImage({ data: { url: value.designImageUrl, deleteToken: token } }).catch(() => {});
     }
     onChange({ ...value, designImageUrl: null });
@@ -828,9 +830,10 @@ export function DesignPhotoSection({
         maxDimension: 800,
         quality: 0.8,
       });
-      const previousToken = value.designImageUrl && typeof window !== "undefined"
-        ? sessionStorage.getItem(`delish_photo_token_${value.designImageUrl}`)
-        : undefined;
+      const previousToken =
+        value.designImageUrl && typeof window !== "undefined"
+          ? sessionStorage.getItem(`delish_photo_token_${value.designImageUrl}`)
+          : undefined;
 
       const saved = await upload({
         data: {

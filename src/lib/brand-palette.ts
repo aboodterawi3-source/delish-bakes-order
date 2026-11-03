@@ -142,7 +142,11 @@ export function useBrandPalette() {
 
   // When database setting arrives, sync localStorage fallback so next visit is instantly aligned
   useEffect(() => {
-    if (isSuccess && storeSettings?.card_color_palette && BRAND_PALETTES[storeSettings.card_color_palette]) {
+    if (
+      isSuccess &&
+      storeSettings?.card_color_palette &&
+      BRAND_PALETTES[storeSettings.card_color_palette]
+    ) {
       const dbPaletteId = storeSettings.card_color_palette;
       setStoredPaletteId(dbPaletteId);
       setCachedPaletteId(dbPaletteId);
@@ -189,10 +193,7 @@ export function useBrandPalette() {
     // Save to Supabase store_settings table (singleton upsert ensures persistence)
     const { error } = await supabase
       .from("store_settings")
-      .upsert(
-        { singleton: true, card_color_palette: newId } as never,
-        { onConflict: "singleton" }
-      );
+      .upsert({ singleton: true, card_color_palette: newId } as never, { onConflict: "singleton" });
 
     if (error) {
       console.error("[store_settings] failed to save card_color_palette:", error);

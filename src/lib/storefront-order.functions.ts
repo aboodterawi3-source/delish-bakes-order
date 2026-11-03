@@ -40,7 +40,6 @@ export type StorefrontOrderRequest = {
   }[];
 };
 
-
 const text = (value: unknown, max: number, label: string, required = false) => {
   const trimmed = typeof value === "string" ? value.trim() : "";
   if (!trimmed) {
@@ -254,9 +253,7 @@ export const submitStorefrontOrder = createServerFn({ method: "POST" })
           name_en: product.name_en,
           unit_price: unit,
           quantity: line.quantity,
-          options_ar: [sizeLabel ? `الحجم: ${sizeLabel}` : "", ...line.extras.ar].filter(
-            Boolean,
-          ),
+          options_ar: [sizeLabel ? `الحجم: ${sizeLabel}` : "", ...line.extras.ar].filter(Boolean),
           options_en: [sizeLabel ? `Size: ${sizeLabel}` : "", ...line.extras.en].filter(Boolean),
           notes: line.notes,
           message: null,
@@ -264,7 +261,9 @@ export const submitStorefrontOrder = createServerFn({ method: "POST" })
       }
     }
 
-    const subtotal = roundJod(lines.reduce((sum, line) => sum + line.unit_price * line.quantity, 0));
+    const subtotal = roundJod(
+      lines.reduce((sum, line) => sum + line.unit_price * line.quantity, 0),
+    );
     const deliveryFee = roundJod(deliveryFeeFor(data.method, lines.length, data.area));
     const total = roundJod(subtotal + deliveryFee);
     const inscription = lines

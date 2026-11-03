@@ -34,7 +34,7 @@ await test("1. Clean network operation completes on attempt 1", async () => {
     "fetch_bakery_catalog",
     async (attempt) => {
       return { status: 200, itemsCount: 15 };
-    }
+    },
   );
 
   assert.equal(attempts, 1);
@@ -56,7 +56,7 @@ await test("2. Survives 2 consecutive transient TCP resets and succeeds on attem
       }
       return { orderNumber: "DL-9901", status: "confirmed", version: 2 };
     },
-    { maxRetries: 3, initialDelayMs: 20 }
+    { maxRetries: 3, initialDelayMs: 20 },
   );
 
   assert.equal(attempts, 3, "Operation must recover on attempt 3");
@@ -78,7 +78,7 @@ await test("3. Timeout guard rejects operations exceeding specified bound", asyn
         await new Promise((r) => setTimeout(r, 200));
         return "too late";
       },
-      { maxRetries: 1, timeoutMs: 50, initialDelayMs: 10 }
+      { maxRetries: 1, timeoutMs: 50, initialDelayMs: 10 },
     );
   } catch (err) {
     threw = true;

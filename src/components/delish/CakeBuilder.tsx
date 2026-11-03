@@ -180,9 +180,10 @@ export function CakeBuilder({ onDone }: { onDone: () => void }) {
                         maxDimension: 800,
                         quality: 0.8,
                       });
-                      const previousToken = designImage && typeof window !== "undefined"
-                        ? sessionStorage.getItem(`delish_photo_token_${designImage}`)
-                        : undefined;
+                      const previousToken =
+                        designImage && typeof window !== "undefined"
+                          ? sessionStorage.getItem(`delish_photo_token_${designImage}`)
+                          : undefined;
                       const saved = await upload({
                         data: {
                           data_url: converted.dataUrl,
@@ -191,7 +192,10 @@ export function CakeBuilder({ onDone }: { onDone: () => void }) {
                         },
                       });
                       if (typeof window !== "undefined" && saved.deleteToken) {
-                        sessionStorage.setItem(`delish_photo_token_${saved.url}`, saved.deleteToken);
+                        sessionStorage.setItem(
+                          `delish_photo_token_${saved.url}`,
+                          saved.deleteToken,
+                        );
                       }
                       setDesignImage(saved.url);
                     } catch (error) {
@@ -226,10 +230,13 @@ export function CakeBuilder({ onDone }: { onDone: () => void }) {
                     type="button"
                     onClick={() => {
                       if (designImage) {
-                        const token = typeof window !== "undefined"
-                          ? sessionStorage.getItem(`delish_photo_token_${designImage}`)
-                          : null;
-                        void deleteImage({ data: { url: designImage, deleteToken: token } }).catch(() => {});
+                        const token =
+                          typeof window !== "undefined"
+                            ? sessionStorage.getItem(`delish_photo_token_${designImage}`)
+                            : null;
+                        void deleteImage({ data: { url: designImage, deleteToken: token } }).catch(
+                          () => {},
+                        );
                       }
                       setDesignImage(undefined);
                     }}

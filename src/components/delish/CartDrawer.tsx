@@ -104,9 +104,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
     L.push("");
     L.push(ar ? "*تفاصيل الطلب*" : "*Order items*");
     lines.forEach((l, i) => {
-      L.push(
-        `${i + 1}. ${ar ? l.ar : l.en} × ${l.qty} — ${formatJod(l.unit * l.qty, lang)}`,
-      );
+      L.push(`${i + 1}. ${ar ? l.ar : l.en} × ${l.qty} — ${formatJod(l.unit * l.qty, lang)}`);
       (ar ? l.detailsAr : l.detailsEn).forEach((d) => L.push(`   • ${d}`));
       if (l.notes) L.push(`   • ${ar ? "ملاحظة" : "Note"}: ${l.notes}`);
     });

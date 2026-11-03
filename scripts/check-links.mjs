@@ -11,7 +11,8 @@ console.log("===================================================================
 console.log("🔗 LINKINATOR — LIVE STOREFRONT LINK & ASSET INTEGRITY SCANNER");
 console.log("================================================================================\n");
 
-const targetUrl = process.env.STOREFRONT_URL || "https://delish-bakes-order.aboodterawi3.workers.dev";
+const targetUrl =
+  process.env.STOREFRONT_URL || "https://delish-bakes-order.aboodterawi3.workers.dev";
 console.log(`  🎯 Target Base URL: ${targetUrl}\n`);
 
 const checker = new LinkChecker();
@@ -39,7 +40,7 @@ const result = await checker.check({
     "wa.me",
     "api.whatsapp.com",
     "fonts.googleapis.com",
-    "fonts.gstatic.com"
+    "fonts.gstatic.com",
   ],
 });
 
@@ -62,5 +63,9 @@ if (broken.length > 0) {
   }
 }
 
-assert.equal(broken.length, 0, `Expected 0 broken links on live storefront, found ${broken.length}`);
+assert.equal(
+  broken.length,
+  0,
+  `Expected 0 broken links on live storefront, found ${broken.length}`,
+);
 console.log("  🎉 All storefront navigation links and assets are intact and healthy!\n");

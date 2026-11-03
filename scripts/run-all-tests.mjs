@@ -1,10 +1,26 @@
 import { spawnSync } from "node:child_process";
 
 const suites = [
-  { name: "Unit & Acceptance Hardening", cmd: "node", args: ["test/acceptance_hardening.test.mjs"] },
-  { name: "Touch Item Editor Lifecycle (J2, J3, J5)", cmd: "node", args: ["test/item_editor_lifecycle.test.mjs"] },
-  { name: "Multi-Session E2E Order Lifecycle (Storefront, KDS, J2, OCC, Ledger)", cmd: "node", args: ["test/multisession_lifecycle_e2e.test.mjs"] },
-  { name: "PGlite In-Memory Engine Audit (V6)", cmd: "node", args: ["scripts/independent-review-v6.mjs"] },
+  {
+    name: "Unit & Acceptance Hardening",
+    cmd: "node",
+    args: ["test/acceptance_hardening.test.mjs"],
+  },
+  {
+    name: "Touch Item Editor Lifecycle (J2, J3, J5)",
+    cmd: "node",
+    args: ["test/item_editor_lifecycle.test.mjs"],
+  },
+  {
+    name: "Multi-Session E2E Order Lifecycle (Storefront, KDS, J2, OCC, Ledger)",
+    cmd: "node",
+    args: ["test/multisession_lifecycle_e2e.test.mjs"],
+  },
+  {
+    name: "PGlite In-Memory Engine Audit (V6)",
+    cmd: "node",
+    args: ["scripts/independent-review-v6.mjs"],
+  },
 ];
 
 let failed = false;

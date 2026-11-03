@@ -61,7 +61,10 @@ await test("2. optimizeImage(): downscales to max bounds and encodes to WebP", a
   assert.equal(optimized.format, "webp");
   assert.equal(optimized.width, 800);
   assert.equal(optimized.height, 600); // Maintained 4:3 ratio
-  assert.ok(optimized.sizeBytes < originalPngBuffer.length, "Optimized WebP must be smaller than original PNG");
+  assert.ok(
+    optimized.sizeBytes < originalPngBuffer.length,
+    "Optimized WebP must be smaller than original PNG",
+  );
 });
 
 // ------------------------------------------------------------------------------

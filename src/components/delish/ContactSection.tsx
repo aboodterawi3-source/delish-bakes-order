@@ -73,7 +73,11 @@ export function ContactSection() {
           }}
         >
           {/* Honeypot field for anti-bot protection */}
-          <div className="absolute -left-[9999px] h-0 w-0 overflow-hidden" aria-hidden="true" tabIndex={-1}>
+          <div
+            className="absolute -left-[9999px] h-0 w-0 overflow-hidden"
+            aria-hidden="true"
+            tabIndex={-1}
+          >
             <label htmlFor="contact_website_hp">Website</label>
             <input
               id="contact_website_hp"

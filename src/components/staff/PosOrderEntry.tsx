@@ -657,7 +657,14 @@ export function PosOrderEntry() {
       inscription,
       notes,
       staff_notes: staffNotes,
-      items: cart.map((it) => ({ name_ar: it.name, name: it.name, quantity: it.quantity, options_ar: it.options, options: it.options, notes: it.notes ?? null })),
+      items: cart.map((it) => ({
+        name_ar: it.name,
+        name: it.name,
+        quantity: it.quantity,
+        options_ar: it.options,
+        options: it.options,
+        notes: it.notes ?? null,
+      })),
     });
   };
 

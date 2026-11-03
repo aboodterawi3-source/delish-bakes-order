@@ -562,7 +562,7 @@ export function SocialOrderEntryForm({
     submit.mutate(
       {
         client_request_id: draftRequestIdRef.current,
-        recipient_name: form.is_gift ? (form.recipient_name?.trim() || form.customer_name) : null,
+        recipient_name: form.is_gift ? form.recipient_name?.trim() || form.customer_name : null,
         order_name: orderNameWithChannel,
         sender_phone: effectiveSenderPhone || null,
         recipient_phone: effectiveRecipientPhone || null,
@@ -574,8 +574,8 @@ export function SocialOrderEntryForm({
         card_note: form.card_note,
         confirmation_message: confirmationTemplate,
         method: form.method,
-        area: form.method === "delivery" ? (form.address.trim() || form.area || null) : null,
-        address: form.method === "delivery" ? (form.address.trim() || form.area || null) : null,
+        area: form.method === "delivery" ? form.address.trim() || form.area || null : null,
+        address: form.method === "delivery" ? form.address.trim() || form.area || null : null,
         delivery_fee: form.method === "delivery" ? deliveryFee : 0,
         payment_option: form.payment_option,
         deposit_paid: form.payment_option === "cash" ? 0 : Number(form.deposit_paid) || 0,

@@ -3,7 +3,12 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertRole, type StaffRoleName } from "@/lib/role-guard";
 import { feeForArea } from "@/lib/delivery-zones";
 import { jordanDay } from "@/lib/date-filter";
-import { getStaffCodeForUser, isValidStorageUrl, STORAGE_URL, extraList } from "@/lib/server-shared";
+import {
+  getStaffCodeForUser,
+  isValidStorageUrl,
+  STORAGE_URL,
+  extraList,
+} from "@/lib/server-shared";
 import { roundJod } from "@/lib/currency";
 
 const SOCIAL_ROLES: StaffRoleName[] = ["social", "sales", "admin"];
@@ -52,7 +57,6 @@ export type SocialOrderInput = {
   /** Signed link of the CliQ transfer / payment receipt photo. */
   receipt_image_url?: string | null;
 };
-
 
 /** Confirms the signed-in user may use the social media portal. */
 export const getSocialAccess = createServerFn({ method: "GET" })
@@ -103,14 +107,18 @@ export const createSocialOrder = createServerFn({ method: "POST" })
     // Original price agreed with the customer; the row total is recomputed in the DB.
     const unitPrice = roundJod(Math.min(Math.max(Number(data.unit_price) || 0, 0), 100000));
     const subtotal = roundJod(unitPrice * data.quantity);
-    const address = data.method === "delivery" ? data.address?.trim() || data.area?.trim() || null : null;
-    const area = data.method === "delivery" ? data.area?.trim() || data.address?.trim() || null : null;
+    const address =
+      data.method === "delivery" ? data.address?.trim() || data.area?.trim() || null : null;
+    const area =
+      data.method === "delivery" ? data.area?.trim() || data.address?.trim() || null : null;
     // Use manual delivery fee if provided by staff; otherwise resolve from zone table if available.
     const deliveryFee =
       data.method === "delivery"
         ? data.delivery_fee !== undefined && data.delivery_fee !== null
           ? roundJod(Math.max(0, Number(data.delivery_fee)))
-          : area ? roundJod(feeForArea(area) ?? 0) : 0
+          : area
+            ? roundJod(feeForArea(area) ?? 0)
+            : 0
         : 0;
     // A paid amount is stored for deposits and for CliQ payments alike.
     const deposit =

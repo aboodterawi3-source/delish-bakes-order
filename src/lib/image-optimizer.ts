@@ -27,14 +27,9 @@ export interface OptimizationResult {
  */
 export async function optimizeImage(
   inputBuffer: Buffer,
-  options: OptimizationOptions = {}
+  options: OptimizationOptions = {},
 ): Promise<OptimizationResult> {
-  const {
-    maxWidth = 1200,
-    maxHeight = 1200,
-    quality = 80,
-    format = "webp",
-  } = options;
+  const { maxWidth = 1200, maxHeight = 1200, quality = 80, format = "webp" } = options;
 
   let pipeline = sharp(inputBuffer)
     .rotate() // Auto-orient based on EXIF
@@ -69,10 +64,7 @@ export async function optimizeImage(
 /**
  * Generates an ultra-fast square thumbnail for POS and Kitchen order cards.
  */
-export async function generateThumbnail(
-  inputBuffer: Buffer,
-  size = 200
-): Promise<Buffer> {
+export async function generateThumbnail(inputBuffer: Buffer, size = 200): Promise<Buffer> {
   return sharp(inputBuffer)
     .resize(size, size, {
       fit: "cover",

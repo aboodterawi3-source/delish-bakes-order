@@ -34,7 +34,6 @@ const FLAVOR_OPTIONS = [
   { value: "PISTACHIO", ar: "فستق حلبي · PISTACHIO", en: "PISTACHIO" },
 ];
 
-
 /**
  * Quick Order Modal matching Rawan Cake benchmark structure, updated with DELISH Bakes identity.
  * Split 2-Column layout on desktop, top buttercream showcase + bottom form on mobile.
@@ -288,9 +287,13 @@ export function StorefrontProductModal({
                     {ar ? "نوع الحشوة" : "Cake Filling"} <span className="text-red-500">*</span>
                   </label>
                   {filling.trim() ? (
-                    <span className="text-[11px] font-bold text-emerald-700">✓ {ar ? "تم التحديد" : "Selected"}</span>
+                    <span className="text-[11px] font-bold text-emerald-700">
+                      ✓ {ar ? "تم التحديد" : "Selected"}
+                    </span>
                   ) : (
-                    <span className="text-[11px] font-bold text-red-600">{ar ? "إجباري *" : "Required *"}</span>
+                    <span className="text-[11px] font-bold text-red-600">
+                      {ar ? "إجباري *" : "Required *"}
+                    </span>
                   )}
                 </div>
                 <input
@@ -300,7 +303,9 @@ export function StorefrontProductModal({
                     setFilling(e.target.value);
                     if (fillingError) setFillingError(false);
                   }}
-                  placeholder={ar ? "اكتب نوع الحشوة المطلوبة بالتفصيل…" : "Enter required cake filling…"}
+                  placeholder={
+                    ar ? "اكتب نوع الحشوة المطلوبة بالتفصيل…" : "Enter required cake filling…"
+                  }
                   className={`w-full rounded-xl border px-3.5 py-2.5 text-xs font-semibold text-[#26160F] outline-none transition-all placeholder:font-normal placeholder:text-[#4A3B32]/40 ${
                     fillingError
                       ? "border-red-500 bg-red-50/40 focus:border-red-600 focus:ring-2 focus:ring-red-200"
@@ -309,7 +314,9 @@ export function StorefrontProductModal({
                 />
                 {fillingError && (
                   <p className="text-[11px] font-bold text-red-600">
-                    {ar ? "⚠️ يرجى كتابة نوع الحشوة للكيكة (خانة إجبارية)" : "⚠️ Please enter cake filling (required)"}
+                    {ar
+                      ? "⚠️ يرجى كتابة نوع الحشوة للكيكة (خانة إجبارية)"
+                      : "⚠️ Please enter cake filling (required)"}
                   </p>
                 )}
               </div>

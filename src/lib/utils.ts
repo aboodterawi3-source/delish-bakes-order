@@ -13,7 +13,10 @@ export function formatStaffNotes(notes?: string | null): string {
   if (!notes) return "";
   return notes
     .replace(/\[\s*صورة الحوالة:\s*https?:\/\/[^\]]+\s*\]/gi, "[صورة الحوالة مرفقة 📄]")
-    .replace(/\[\s*(?:رابط التصميم|صورة التصميم):\s*https?:\/\/[^\]]+\s*\]/gi, "[تصميم الكيكة مرفق 🎨]")
+    .replace(
+      /\[\s*(?:رابط التصميم|صورة التصميم):\s*https?:\/\/[^\]]+\s*\]/gi,
+      "[تصميم الكيكة مرفق 🎨]",
+    )
     .replace(/\[\s*صورة مرفقة:\s*https?:\/\/[^\]]+\s*\]/gi, "[صورة مرفقة 🖼️]")
     .replace(/https?:\/\/[^\s"'<>]+\.(?:webp|png|jpg|jpeg|gif)(?:\?[^\s"'<>]*)?/gi, "")
     .replace(/\s{2,}/g, " ")

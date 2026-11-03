@@ -76,7 +76,9 @@ async function runSyntheticUptimeAudit() {
   for (const monitor of MONITORS) {
     const res = await checkEndpoint(monitor);
     const badge = res.up ? "🟢 UP" : "🔴 DOWN";
-    console.log(`${badge} | [HTTP ${res.status}] ${monitor.name.padEnd(35)} | Latency: ${res.duration}ms`);
+    console.log(
+      `${badge} | [HTTP ${res.status}] ${monitor.name.padEnd(35)} | Latency: ${res.duration}ms`,
+    );
     if (!res.up) allUp = false;
   }
 

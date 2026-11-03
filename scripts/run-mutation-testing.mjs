@@ -18,7 +18,9 @@ function originalCalculateFinancials(total, paid) {
   const roundedTotal = Math.round(total * 100) / 100;
   const roundedPaid = Math.round(paid * 100) / 100;
   const isOverpaid = roundedPaid > roundedTotal;
-  const remaining = isOverpaid ? 0 : Math.max(0, Math.round((roundedTotal - roundedPaid) * 100) / 100);
+  const remaining = isOverpaid
+    ? 0
+    : Math.max(0, Math.round((roundedTotal - roundedPaid) * 100) / 100);
   const refundDue = isOverpaid ? Math.round((roundedPaid - roundedTotal) * 100) / 100 : 0;
   const isFullyPaid = !isOverpaid && remaining === 0;
 
@@ -35,7 +37,9 @@ function originalCalculateFinancials(total, paid) {
 // Target 2: assertRole (RBAC role verification)
 function originalAssertRole(userRole, allowedRoles) {
   if (!userRole || !allowedRoles.includes(userRole)) {
-    throw new Error(`Forbidden: required role [${allowedRoles.join(", ")}], got [${userRole || "none"}]`);
+    throw new Error(
+      `Forbidden: required role [${allowedRoles.join(", ")}], got [${userRole || "none"}]`,
+    );
   }
 }
 
@@ -45,16 +49,17 @@ const mutants = [
     id: "MUT-01",
     file: "src/lib/confirmation-message.ts",
     mutator: "ArithmeticOperator",
-    description: "Invert refund arithmetic: (roundedTotal - roundedPaid) instead of (roundedPaid - roundedTotal)",
+    description:
+      "Invert refund arithmetic: (roundedTotal - roundedPaid) instead of (roundedPaid - roundedTotal)",
     mutateFn: (total, paid) => {
       const isOverpaid = paid > total;
-      const refundDue = isOverpaid ? (total - paid) : 0; // Mutant!
+      const refundDue = isOverpaid ? total - paid : 0; // Mutant!
       return { total, paid, remaining: 0, refundDue, isOverpaid, isFullyPaid: false };
     },
     testFn: (fn) => {
       const res = fn(20.0, 25.0);
       assert.equal(res.refundDue, 5.0, "Refund due must be 5.00 JD");
-    }
+    },
   },
   {
     id: "MUT-02",
@@ -70,7 +75,7 @@ const mutants = [
       const res = fn(20.0, 20.0);
       assert.equal(res.isOverpaid, false, "Equal payment must NOT be marked as overpaid");
       assert.equal(res.isFullyPaid, true, "Equal payment must be marked as fully paid");
-    }
+    },
   },
   {
     id: "MUT-03",
@@ -83,7 +88,7 @@ const mutants = [
     testFn: (fn) => {
       const res = fn(35.0, 10.0);
       assert.equal(res.remaining, 25.0, "Underpayment must yield remaining balance 25.00 JD");
-    }
+    },
   },
   {
     id: "MUT-04",
@@ -100,9 +105,9 @@ const mutants = [
       assert.throws(
         () => fn("visitor", ["admin", "sales"]),
         /Forbidden/,
-        "Must throw Forbidden for unauthorized visitor role"
+        "Must throw Forbidden for unauthorized visitor role",
       );
-    }
+    },
   },
   {
     id: "MUT-05",
@@ -118,7 +123,7 @@ const mutants = [
     testFn: (fn) => {
       // Authorized admin should NOT throw
       fn("admin", ["admin"]);
-    }
+    },
   },
   {
     id: "MUT-06",
@@ -129,7 +134,7 @@ const mutants = [
     testFn: (fn) => {
       const result = fn(19.999);
       assert.equal(Math.round(result * 100) / 100, 20.0, "Must round properly to two decimals");
-    }
+    },
   },
   {
     id: "MUT-07",
@@ -142,7 +147,7 @@ const mutants = [
     testFn: (fn) => {
       const res = fn(10.0, 15.0);
       assert.equal(res.refundDue, 5.0, "Refund due must be 5.00 JD for overpayment");
-    }
+    },
   },
   {
     id: "MUT-08",
@@ -156,10 +161,10 @@ const mutants = [
       assert.throws(
         () => fn(null, ["kitchen"]),
         /Forbidden/,
-        "Must strictly reject null user role"
+        "Must strictly reject null user role",
       );
-    }
-  }
+    },
+  },
 ];
 
 let killed = 0;
@@ -197,26 +202,31 @@ console.log("===================================================================
 // Write Stryker results report JSON with honest metadata (J7)
 const report = {
   framework: "custom-unit-mutation-harness",
-  scope: "Targeted assertion sensitivity verification on calculateFinancials, assertRole, and roundJod",
+  scope:
+    "Targeted assertion sensitivity verification on calculateFinancials, assertRole, and roundJod",
   isProjectWideAudit: false,
-  disclaimer: "This report covers a targeted unit test subset and does NOT represent whole-project mutation coverage.",
+  disclaimer:
+    "This report covers a targeted unit test subset and does NOT represent whole-project mutation coverage.",
   timestamp: new Date().toISOString(),
   mutationScore,
   metrics: {
     totalMutants,
     killed,
     survived,
-    mutationScorePercentage: `${mutationScore}% (targeted subset)`
+    mutationScorePercentage: `${mutationScore}% (targeted subset)`,
   },
   thresholds: {
     high: 80,
     low: 60,
-    passed: mutationScore >= 80
+    passed: mutationScore >= 80,
   },
-  mutants: results
+  mutants: results,
 };
 
 fs.writeFileSync("mutation-report.json", JSON.stringify(report, null, 2), "utf-8");
 console.log("  📄 Report written to mutation-report.json (with honest scope metadata)\n");
 
-assert.ok(mutationScore >= 80, `Targeted subset mutation score ${mutationScore}% must meet or exceed high threshold (80%)`);
+assert.ok(
+  mutationScore >= 80,
+  `Targeted subset mutation score ${mutationScore}% must meet or exceed high threshold (80%)`,
+);

@@ -2,6 +2,7 @@
 // DELISH CAKE & BAKE — MULTI-SESSION ORDER LIFECYCLE & INTEGRITY SUITE
 // Simulates real end-to-end multi-role flow (Storefront -> Kitchen -> Sales Editor -> OCC -> Ledger)
 // on exact standalone schema with PGlite in-memory database engine.
+// Directly tests the actual code from src/components/staff/touch-item-editor-utils.ts!
 // ==============================================================================
 
 import { PGlite } from "@electric-sql/pglite";
@@ -11,6 +12,12 @@ import fs from "node:fs";
 import path from "node:path";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
+import {
+  DEFAULT_EXTRAS,
+  parseOptionsAndExtras,
+  calculateBasePriceFromSaved,
+  compileSavePayload,
+} from "../src/components/staff/touch-item-editor-utils.ts";
 
 console.log("================================================================================");
 console.log("🏪 MULTI-SESSION ORDER LIFECYCLE & INTEGRITY TEST SUITE (E2E SIMULATION)");
@@ -51,7 +58,10 @@ for (const [role, id] of Object.entries(ids)) {
   await db.query("INSERT INTO auth.users(id, email) VALUES($1, $2)", [id, `${role}@delish.local`]);
   if (role !== "visitor") {
     const appRole = role === "colleague" ? "sales" : role;
-    await db.query("INSERT INTO public.user_roles(user_id, role) VALUES($1, $2::public.app_role)", [id, appRole]);
+    await db.query("INSERT INTO public.user_roles(user_id, role) VALUES($1, $2::public.app_role)", [
+      id,
+      appRole,
+    ]);
   }
 }
 
@@ -87,9 +97,9 @@ let orderId = null;
 let itemId = null;
 
 // ------------------------------------------------------------------------------
-// PHASE 1: Storefront Order Creation
+// PHASE 1: Storefront Order Creation (Protected RPC via elevated server function)
 // ------------------------------------------------------------------------------
-await test("1. Storefront Order Creation: Customer orders cake with candles (20 JD base + 2 candles = 21 JD)", async () => {
+await test("1. Storefront Order Creation: Public order with historical candles and custom note (21.50 JD)", async () => {
   const orderPayload = {
     customer_name: "سارة خالد",
     customer_phone: "0791234567",
@@ -103,37 +113,64 @@ await test("1. Storefront Order Creation: Customer orders cake with candles (20 
     {
       name_ar: "كيكة شوكولاتة فخمة",
       name_en: "Luxury Chocolate Cake",
-      unit_price: 21.0, // Stored as base (20) + 2 candles (1.0)
+      unit_price: 21.5, // Base 20.00 + 2 candles @ 0.75 = 21.50 JD
       quantity: 1,
       options_ar: [
         "الحجم: وسط (10 أشخاص)",
         "الحشوة: نوتيلا بالبندق",
         "الكتابة: عيد ميلاد سعيد يا سارة 🎂",
-        "🕯️ شموع أرقام (2 × 0.50 د.أ)",
+        "بدون مكسرات", // Custom unparsed note (J2-B)
+        "🕯️ شموع أرقام (2 × 0.75 د.أ)", // Historical price 0.75 (J2-A)
       ],
       options_en: [],
       notes: "يرجى تسليمها في علبة بيضاء",
     },
   ];
 
-  const res = await asUser("authenticated", ids.sales, async () => {
+  // A: Anonymous direct execution must be forbidden by RLS/grants
+  let anonBlocked = false;
+  try {
+    await asUser("anon", ids.visitor, async () => {
+      await db.query("SELECT public.create_storefront_order_atomic($1::jsonb, $2::jsonb) AS res", [
+        JSON.stringify(orderPayload),
+        JSON.stringify(itemsPayload),
+      ]);
+    });
+  } catch (err) {
+    anonBlocked = true;
+    assert.match(err.message, /permission denied|must be executed via trusted/i);
+  }
+  assert.equal(
+    anonBlocked,
+    true,
+    "Anonymous visitor cannot call create_storefront_order_atomic directly",
+  );
+
+  // B: Trusted server function executes checkout under service_role
+  const res = await asUser("service_role", null, async () => {
     return await db.query(
-      "SELECT public.create_staff_order_atomic($1::jsonb, $2::jsonb) AS res",
-      [JSON.stringify(orderPayload), JSON.stringify(itemsPayload)]
+      "SELECT public.create_storefront_order_atomic($1::jsonb, $2::jsonb) AS res",
+      [JSON.stringify(orderPayload), JSON.stringify(itemsPayload)],
     );
   });
 
   const rawRes = res.rows[0].res;
   const parsed = typeof rawRes === "string" ? JSON.parse(rawRes) : rawRes;
   assert.ok(parsed.id, "Order ID must be generated");
-  assert.equal(Number(parsed.total), 21.0, "Total must be 21.00 JD");
-  assert.equal(Number(parsed.version), 1, "Initial version must be 1");
+  assert.equal(Number(parsed.total), 21.5, "Total must be 21.50 JD");
   orderId = parsed.id;
 
-  const itemRows = await db.query("SELECT id, name_ar, unit_price, options_ar FROM public.order_items WHERE order_id = $1", [orderId]);
+  const orderRow = await db.query("SELECT version FROM public.orders WHERE id = $1", [orderId]);
+  assert.equal(Number(orderRow.rows[0].version), 1, "Initial order version in database must be 1");
+
+  const itemRows = await db.query(
+    "SELECT id, name_ar, unit_price, options_ar FROM public.order_items WHERE order_id = $1",
+    [orderId],
+  );
   assert.equal(itemRows.rows.length, 1);
   itemId = itemRows.rows[0].id;
-  assert.equal(Number(itemRows.rows[0].unit_price), 21.0);
+  assert.equal(Number(itemRows.rows[0].unit_price), 21.5);
+  assert.ok(itemRows.rows[0].options_ar.includes("بدون مكسرات"));
 });
 
 // ------------------------------------------------------------------------------
@@ -165,76 +202,127 @@ await test("2. Kitchen Display (KDS): Kitchen reads preparation details; phone a
   const directSelect = await asUser("authenticated", ids.kitchen, async () => {
     return await db.query("SELECT id FROM public.orders WHERE id = $1", [orderId]);
   });
-  assert.equal(directSelect.rows.length, 0, "Kitchen direct SELECT on orders must return 0 rows under RLS");
+  assert.equal(
+    directSelect.rows.length,
+    0,
+    "Kitchen direct SELECT on orders must return 0 rows under RLS",
+  );
 });
 
 // ------------------------------------------------------------------------------
-// PHASE 3: Touch Item Editor Price Preservation (J2) & State Invariance
+// PHASE 3: Touch Item Editor Price Preservation (J2-A) & Unknown Options (J2-B)
 // ------------------------------------------------------------------------------
-await test("3. Touch Item Editor (J2): Opening item at 21 JD and saving twice without changes stays 21 JD", async () => {
-  // Simulate TouchItemEditorSheet opening:
-  // Item stored at 21.00 JD with 2 candles (1.00 JD extras)
-  const currentItem = (await db.query("SELECT * FROM public.order_items WHERE id = $1", [itemId])).rows[0];
-  const unitPriceFromDb = Number(currentItem.unit_price); // 21.00
+await test("3. Touch Item Editor (J2-A & J2-B): Real parsing & compilation preserves price (21.50) & notes, then removes candles to 20.00", async () => {
+  // Fetch stored item from database
+  const currentItem = (await db.query("SELECT * FROM public.order_items WHERE id = $1", [itemId]))
+    .rows[0];
 
-  // Deduct parsed extras: 2 candles * 0.50 = 1.00 JD
-  const parsedExtrasTotal = 1.00;
-  const basePrice = unitPriceFromDb - parsedExtrasTotal; // 20.00 JD
+  // Step A: Parse options using ACTUAL application function
+  const parsed = parseOptionsAndExtras(currentItem.options_ar, DEFAULT_EXTRAS);
+  assert.equal(parsed.savedExtrasTotal, 1.5, "Extracted historical candles @ 0.75 = 1.50 JD");
+  assert.ok(
+    parsed.unparsedOptions.includes("بدون مكسرات"),
+    "Preserved unparsed spec 'بدون مكسرات'",
+  );
 
-  // Save 1: without changing anything -> finalUnitPrice = basePrice (20) + extras (1) = 21.00 JD
-  const newUnitPrice = basePrice + parsedExtrasTotal; // 21.00 JD
+  const basePrice = calculateBasePriceFromSaved(
+    Number(currentItem.unit_price),
+    parsed.savedExtrasTotal,
+  );
+  assert.equal(basePrice, 20.0, "Base price inferred as 20.00 JD");
 
-  // Call update_order_item_atomic(p_order_id, p_item_id, p_unit_price, p_quantity, p_expected_version, p_staff_name, p_reason, p_name_ar, p_name_en, p_options_ar, p_options_en, p_notes)
-  const updateRes = await asUser("authenticated", ids.sales, async () => {
+  // Save 1: without changing anything -> compileSavePayload
+  const save1 = compileSavePayload({
+    tab: "catalog",
+    productName: currentItem.name_ar,
+    unitPrice: basePrice,
+    quantity: currentItem.quantity,
+    selectedSize: parsed.selectedSize,
+    selectedFilling: parsed.selectedFilling,
+    cakeInscription: parsed.cakeInscription,
+    unparsedOptions: parsed.unparsedOptions,
+    extras: parsed.extras,
+    isFillingRequired: true,
+    itemNotes: "ملاحظة موظف المبيعات",
+  });
+
+  assert.equal(save1.success, true);
+  assert.equal(save1.payload.unitPrice, 21.5, "Saving without changes stays 21.50 JD");
+  assert.ok(save1.payload.options.includes("بدون مكسرات"));
+
+  // Persist Save 1 to DB via update_order_item_atomic
+  const updateRes1 = await asUser("authenticated", ids.sales, async () => {
     return await db.query(
       "SELECT public.update_order_item_atomic($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) AS res",
       [
         orderId,
         itemId,
-        newUnitPrice, // 21.00 JD
-        currentItem.quantity,
+        save1.payload.unitPrice,
+        save1.payload.quantity,
         1, // expected version 1
         "سيلز 1",
         "حفظ المحرر دون تغيير",
-        currentItem.name_ar,
-        currentItem.name_en,
-        currentItem.options_ar,
-        currentItem.options_en,
-        "تم حفظ الملاحظات دون تغيير السعر",
-      ]
+        save1.payload.name,
+        null,
+        save1.payload.options,
+        [],
+        save1.payload.notes,
+      ],
     );
   });
 
-  const raw1 = updateRes.rows[0].res;
-  const parsed = typeof raw1 === "string" ? JSON.parse(raw1) : raw1;
-  assert.equal(Number(parsed.total), 21.00, "Order total after first save must remain 21.00 JD");
-  assert.equal(Number(parsed.version), 2, "Order version advanced to 2");
+  const toObj = (raw) => (typeof raw === "string" ? JSON.parse(raw) : raw);
+  const parsedDb1 = toObj(updateRes1.rows[0].res);
+  assert.equal(Number(parsedDb1.total), 21.5, "Order total after save 1 remains 21.50 JD");
+  assert.equal(Number(parsedDb1.version), 2, "Order version advanced to 2");
 
-  // Save 2: simulate opening again and saving again
-  const secondUpdateRes = await asUser("authenticated", ids.sales, async () => {
+  // Save 2: Open again, remove candles (qty: 0), compileSavePayload
+  const removedExtras = parsed.extras.map((e) => (e.name === "شموع أرقام" ? { ...e, qty: 0 } : e));
+  const save2 = compileSavePayload({
+    tab: "catalog",
+    productName: currentItem.name_ar,
+    unitPrice: basePrice,
+    quantity: currentItem.quantity,
+    selectedSize: parsed.selectedSize,
+    selectedFilling: parsed.selectedFilling,
+    cakeInscription: parsed.cakeInscription,
+    unparsedOptions: parsed.unparsedOptions,
+    extras: removedExtras,
+    isFillingRequired: true,
+  });
+
+  assert.equal(save2.success, true);
+  assert.equal(
+    save2.payload.unitPrice,
+    20.0,
+    "Removing candles adjusts price cleanly to 20.00 JD!",
+  );
+  assert.ok(save2.payload.options.includes("بدون مكسرات"), "'بدون مكسرات' STILL preserved!");
+
+  // Persist Save 2 to DB
+  const updateRes2 = await asUser("authenticated", ids.sales, async () => {
     return await db.query(
       "SELECT public.update_order_item_atomic($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) AS res",
       [
         orderId,
         itemId,
-        newUnitPrice, // Still 21.00 JD!
-        currentItem.quantity,
+        save2.payload.unitPrice,
+        save2.payload.quantity,
         2, // expected version 2
         "سيلز 1",
-        "حفظ ثانٍ للتأكيد",
-        currentItem.name_ar,
-        currentItem.name_en,
-        currentItem.options_ar,
-        currentItem.options_en,
-        "حفظ ثانٍ للتأكيد",
-      ]
+        "إلغاء الشموع",
+        save2.payload.name,
+        null,
+        save2.payload.options,
+        [],
+        save2.payload.notes,
+      ],
     );
   });
 
-  const raw2 = secondUpdateRes.rows[0].res;
-  const parsed2 = typeof raw2 === "string" ? JSON.parse(raw2) : raw2;
-  assert.equal(Number(parsed2.total), 21.00, "Order total after second save must stay 21.00 JD!");
-  assert.equal(Number(parsed2.version), 3, "Order version advanced to 3");
+  const parsedDb2 = toObj(updateRes2.rows[0].res);
+  assert.equal(Number(parsedDb2.total), 20.0, "Order total settles cleanly to 20.00 JD!");
+  assert.equal(Number(parsedDb2.version), 3, "Order version advanced to 3");
 });
 
 // ------------------------------------------------------------------------------
@@ -250,8 +338,8 @@ await test("4. OCC Collision Protection: Colleague saving against stale version 
           orderId,
           itemId,
           25.0, // p_unit_price
-          1,    // p_quantity
-          2,    // Stale version! (Current version is 3)
+          1, // p_quantity
+          2, // Stale version! (Current version is 3)
           "سيلز 2",
           "تعديل قديم متزامن",
           "كيكة شوكولاتة",
@@ -259,7 +347,7 @@ await test("4. OCC Collision Protection: Colleague saving against stale version 
           ["الحجم: كبير"],
           [],
           null,
-        ]
+        ],
       );
     });
   } catch (err) {
@@ -272,8 +360,8 @@ await test("4. OCC Collision Protection: Colleague saving against stale version 
 // ------------------------------------------------------------------------------
 // PHASE 5: Payment & Overpayment Refund Flow (Ledger Integrity)
 // ------------------------------------------------------------------------------
-await test("5. Payment & Refund Ledger: Customer tenders 25 JD (4 JD overpayment), refund settles balance to 21 JD", async () => {
-  // Customer tenders 25 JD cash for 21 JD order
+await test("5. Payment & Refund Ledger: Customer tenders 25 JD (5 JD overpayment on 20 JD), refund settles balance to 20 JD", async () => {
+  // Customer tenders 25 JD cash for 20 JD order
   const payRes = await asUser("authenticated", ids.sales, async () => {
     return await db.query(
       "SELECT public.record_order_payment_atomic($1, $2, $3, $4, $5, $6, $7, $8) AS res",
@@ -286,7 +374,7 @@ await test("5. Payment & Refund Ledger: Customer tenders 25 JD (4 JD overpayment
         "Cashier register drawer #1",
         "دفعة كاش عند الاستلام",
         ids.sales,
-      ]
+      ],
     );
   });
 
@@ -294,36 +382,39 @@ await test("5. Payment & Refund Ledger: Customer tenders 25 JD (4 JD overpayment
   const payData = typeof rawPay === "string" ? JSON.parse(rawPay) : rawPay;
   assert.equal(Number(payData.deposit_paid), 25.0, "Deposit paid must record 25.00 JD");
   assert.equal(Number(payData.remaining), 0, "Balance remaining is 0");
-  assert.equal(Number(payData.refund_due), 4.0, "Refund due must be 4.00 JD");
+  assert.equal(Number(payData.refund_due), 5.0, "Refund due must be 5.00 JD");
 
-  // Cashier issues 4.00 JD change / refund to customer
+  // Cashier issues 5.00 JD change / refund to customer
   const refundRes = await asUser("authenticated", ids.sales, async () => {
     return await db.query(
       "SELECT public.record_order_payment_atomic($1, $2, $3, $4, $5, $6, $7, $8) AS res",
       [
         orderId,
-        4.0,
+        5.0,
         "cash",
         "refund",
         "confirmed",
         "Drawer change return",
         "إرجاع باقي المبلغ للعميل (فكة)",
         ids.sales,
-      ]
+      ],
     );
   });
 
   const rawRefund = refundRes.rows[0].res;
   const refundData = typeof rawRefund === "string" ? JSON.parse(rawRefund) : rawRefund;
-  assert.equal(Number(refundData.deposit_paid), 21.0, "Net deposit settled to exactly 21.00 JD");
+  assert.equal(Number(refundData.deposit_paid), 20.0, "Net deposit settled to exactly 20.00 JD");
   assert.equal(Number(refundData.refund_due), 0.0, "Refund due settles to 0.00 JD");
 
   // Verify audit payments ledger rows
-  const ledger = await db.query("SELECT amount, payment_type, status FROM public.order_payments WHERE order_id = $1 ORDER BY created_at ASC", [orderId]);
+  const ledger = await db.query(
+    "SELECT amount, payment_type, status FROM public.order_payments WHERE order_id = $1 ORDER BY created_at ASC",
+    [orderId],
+  );
   assert.equal(ledger.rows.length, 2, "Must contain exactly 2 immutable ledger transactions");
   assert.equal(Number(ledger.rows[0].amount), 25.0);
   assert.equal(ledger.rows[0].payment_type, "full");
-  assert.equal(Number(ledger.rows[1].amount), 4.0);
+  assert.equal(Number(ledger.rows[1].amount), 5.0);
   assert.equal(ledger.rows[1].payment_type, "refund");
 });
 

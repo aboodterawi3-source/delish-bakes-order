@@ -33,15 +33,21 @@ const mockOrders = [
     customerPhone: "0791111111",
     method: "pickup",
     paymentMethod: "cash",
-    subtotal: 25.00,
-    deliveryFee: 0.00,
-    total: 25.00,
-    depositPaid: 30.00,
-    remaining: 0.00,
-    refundDue: 5.00, // Overpayment with refund
+    subtotal: 25.0,
+    deliveryFee: 0.0,
+    total: 25.0,
+    depositPaid: 30.0,
+    remaining: 0.0,
+    refundDue: 5.0, // Overpayment with refund
     status: "ready",
     items: [
-      { orderNumber: "DL-1001", name: "كيكة الشوكولاتة الفاخرة", quantity: 1, unitPrice: 25.00, totalPrice: 25.00 },
+      {
+        orderNumber: "DL-1001",
+        name: "كيكة الشوكولاتة الفاخرة",
+        quantity: 1,
+        unitPrice: 25.0,
+        totalPrice: 25.0,
+      },
     ],
   },
   {
@@ -50,16 +56,28 @@ const mockOrders = [
     customerPhone: "0792222222",
     method: "delivery",
     paymentMethod: "cliq",
-    subtotal: 40.00,
-    deliveryFee: 3.00,
-    total: 43.00,
-    depositPaid: 20.00,
-    remaining: 23.00,
-    refundDue: 0.00,
+    subtotal: 40.0,
+    deliveryFee: 3.0,
+    total: 43.0,
+    depositPaid: 20.0,
+    remaining: 23.0,
+    refundDue: 0.0,
     status: "baking",
     items: [
-      { orderNumber: "DL-1002", name: "كرواسون زبدة فرنسي", quantity: 10, unitPrice: 1.50, totalPrice: 15.00 },
-      { orderNumber: "DL-1002", name: "تشيز كيك لوتس", quantity: 1, unitPrice: 25.00, totalPrice: 25.00 },
+      {
+        orderNumber: "DL-1002",
+        name: "كرواسون زبدة فرنسي",
+        quantity: 10,
+        unitPrice: 1.5,
+        totalPrice: 15.0,
+      },
+      {
+        orderNumber: "DL-1002",
+        name: "تشيز كيك لوتس",
+        quantity: 1,
+        unitPrice: 25.0,
+        totalPrice: 25.0,
+      },
     ],
   },
 ];
@@ -75,7 +93,10 @@ await test("1. generateDailySalesWorkbook(): creates valid binary XLSX buffer", 
   });
 
   assert.ok(xlsxBuffer instanceof Buffer);
-  assert.ok(xlsxBuffer.length > 5000, `Buffer size (${xlsxBuffer.length} bytes) indicates valid XLSX zip container`);
+  assert.ok(
+    xlsxBuffer.length > 5000,
+    `Buffer size (${xlsxBuffer.length} bytes) indicates valid XLSX zip container`,
+  );
 });
 
 // ------------------------------------------------------------------------------

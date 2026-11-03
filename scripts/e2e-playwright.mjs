@@ -18,7 +18,8 @@ try {
 }
 
 const { chromium } = playwright;
-const CHROME_PATH = process.env.CHROME_BIN || "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
+const CHROME_PATH =
+  process.env.CHROME_BIN || "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
 const TARGET_URL = process.env.TEST_URL || "https://delish-bakes-order.aboodterawi3.workers.dev";
 
 if (!fs.existsSync(CHROME_PATH)) {
@@ -75,7 +76,9 @@ async function run() {
         console.log("🎉 0 WCAG AA violations detected on scanned page.");
       }
     } else {
-      console.log("ℹ️  axe-core is not present in node_modules. Skipping in-browser WCAG evaluation.");
+      console.log(
+        "ℹ️  axe-core is not present in node_modules. Skipping in-browser WCAG evaluation.",
+      );
     }
   } finally {
     await browser.close();

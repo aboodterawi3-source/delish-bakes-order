@@ -47,7 +47,8 @@ export const requireSupabaseAuth = createMiddleware({ type: "function" })
     const DEFAULT_SUPABASE_URL = "https://dmvwdkxcltnomigoqtue.supabase.co";
     const DEFAULT_SUPABASE_KEY = "sb_publishable_4o-FrhbFZSg-sCqYdA9s6g_qBDFmxNj";
     const SUPABASE_URL = process.env["SUPABASE_URL"] || DEFAULT_SUPABASE_URL;
-    const SUPABASE_PUBLISHABLE_KEY = process.env["SUPABASE_PUBLISHABLE_KEY"] || DEFAULT_SUPABASE_KEY;
+    const SUPABASE_PUBLISHABLE_KEY =
+      process.env["SUPABASE_PUBLISHABLE_KEY"] || DEFAULT_SUPABASE_KEY;
 
     if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
       const missing = [
@@ -114,5 +115,4 @@ export const requireSupabaseAuth = createMiddleware({ type: "function" })
         claims: data.claims,
       },
     });
-  },
-);
+  });

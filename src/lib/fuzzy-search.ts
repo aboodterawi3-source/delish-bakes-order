@@ -76,7 +76,7 @@ const DEFAULT_ORDER_OPTIONS: IFuseOptions<SearchableOrder> = {
 export function searchBakeryProducts(
   query: string,
   products: SearchableProduct[],
-  options?: Partial<IFuseOptions<SearchableProduct>>
+  options?: Partial<IFuseOptions<SearchableProduct>>,
 ): SearchableProduct[] {
   if (!query || query.trim() === "") return products;
 
@@ -97,7 +97,7 @@ export function searchBakeryProducts(
 export function searchOrders(
   query: string,
   orders: SearchableOrder[],
-  options?: Partial<IFuseOptions<SearchableOrder>>
+  options?: Partial<IFuseOptions<SearchableOrder>>,
 ): SearchableOrder[] {
   if (!query || query.trim() === "") return orders;
 

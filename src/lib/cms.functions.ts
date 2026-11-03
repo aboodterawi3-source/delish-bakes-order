@@ -162,7 +162,10 @@ export const deleteCategory = createServerFn({ method: "POST" })
       .select("*", { count: "exact", head: true })
       .eq("category_id", data.id);
     if (countError) throw new Error(countError.message);
-    if (count && count > 0) throw new Error("لا يمكن حذف القسم لوجود منتجات تابعة له · Cannot delete category because it contains products");
+    if (count && count > 0)
+      throw new Error(
+        "لا يمكن حذف القسم لوجود منتجات تابعة له · Cannot delete category because it contains products",
+      );
 
     const { error } = await context.supabase
       .from("storefront_categories")
@@ -295,7 +298,7 @@ export const deleteStorefrontProduct = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }) => {
     await assertRole(context, CMS_ROLES);
-    
+
     // Fetch product to clean up its orphaned image if one exists
     const { data: product } = await context.supabase
       .from("products")

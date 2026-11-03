@@ -44,8 +44,6 @@ const NO_AUTHORIZATION: StaffAuthorization = {
   max_discount_percent: 0,
 };
 
-
-
 const staffName = (context: Ctx) =>
   emailToUsername(
     typeof context.claims["email"] === "string" ? (context.claims["email"] as string) : "",
@@ -212,22 +210,29 @@ export const getAuditLogs = listAuditLogs;
 
 export const applyOrderDiscount = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .validator((input: { orderId: string; percent: number; reason: string; expectedVersion?: number | null }) => {
-    if (!input?.orderId) throw new Error("orderId is required");
-    const percent = Number(input.percent);
-    if (!Number.isFinite(percent) || percent < 0 || percent > 100) {
-      throw new Error("نسبة الخصم بين 0 و 100 · Discount must be between 0 and 100");
-    }
-    if (percent > 0 && !input.reason?.trim()) {
-      throw new Error("سبب الخصم مطلوب · A reason is required");
-    }
-    return {
-      orderId: input.orderId,
-      percent,
-      reason: (input.reason ?? "").trim(),
-      expectedVersion: input.expectedVersion !== undefined ? input.expectedVersion : null,
-    };
-  })
+  .validator(
+    (input: {
+      orderId: string;
+      percent: number;
+      reason: string;
+      expectedVersion?: number | null;
+    }) => {
+      if (!input?.orderId) throw new Error("orderId is required");
+      const percent = Number(input.percent);
+      if (!Number.isFinite(percent) || percent < 0 || percent > 100) {
+        throw new Error("نسبة الخصم بين 0 و 100 · Discount must be between 0 and 100");
+      }
+      if (percent > 0 && !input.reason?.trim()) {
+        throw new Error("سبب الخصم مطلوب · A reason is required");
+      }
+      return {
+        orderId: input.orderId,
+        percent,
+        reason: (input.reason ?? "").trim(),
+        expectedVersion: input.expectedVersion !== undefined ? input.expectedVersion : null,
+      };
+    },
+  )
   .handler(async ({ data, context }) => {
     const ctx = context as unknown as Ctx;
     await assertRole(ctx, SALES_ROLES);
@@ -251,14 +256,17 @@ export const applyOrderDiscount = createServerFn({ method: "POST" })
     const subtotal = Number(order.subtotal ?? 0);
     const discountAmount = Number(((subtotal * data.percent) / 100).toFixed(2));
 
-    const { data: rpcData, error: rpcError } = await context.supabase.rpc("apply_order_discount_atomic", {
-      p_order_id: data.orderId,
-      p_discount_amount: discountAmount,
-      p_discount_percent: data.percent,
-      p_expected_version: data.expectedVersion,
-      p_staff_name: staffName(ctx),
-      p_reason: data.reason || null,
-    });
+    const { data: rpcData, error: rpcError } = await context.supabase.rpc(
+      "apply_order_discount_atomic",
+      {
+        p_order_id: data.orderId,
+        p_discount_amount: discountAmount,
+        p_discount_percent: data.percent,
+        p_expected_version: data.expectedVersion,
+        p_staff_name: staffName(ctx),
+        p_reason: data.reason || null,
+      },
+    );
 
     if (rpcError) throw new Error(rpcError.message);
 
@@ -276,8 +284,8 @@ export const applyOrderDiscount = createServerFn({ method: "POST" })
         rpcData && typeof (rpcData as any).version === "number"
           ? (rpcData as any).version
           : updated?.version
-          ? Number(updated.version)
-          : null,
+            ? Number(updated.version)
+            : null,
     };
   });
 
@@ -355,9 +363,7 @@ export const createOrderEditLink = createServerFn({ method: "POST" })
  */
 function publicSiteOrigin(): string {
   const configured =
-    process.env["PUBLIC_SITE_URL"] ||
-    process.env["VITE_SITE_URL"] ||
-    process.env["SITE_URL"];
+    process.env["PUBLIC_SITE_URL"] || process.env["VITE_SITE_URL"] || process.env["SITE_URL"];
   if (configured) return configured.replace(/\/+$/, "");
   return "";
 }

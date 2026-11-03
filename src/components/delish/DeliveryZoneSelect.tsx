@@ -1,9 +1,5 @@
 import { useMemo } from "react";
-import {
-  DELIVERY_ZONES,
-  OTHER_GOVERNORATES_AREA,
-  feeForArea,
-} from "@/lib/delivery-zones";
+import { DELIVERY_ZONES, OTHER_GOVERNORATES_AREA, feeForArea } from "@/lib/delivery-zones";
 import { formatJod } from "@/lib/currency";
 
 export interface DeliveryZoneSelectProps {
@@ -41,8 +37,7 @@ export function DeliveryZoneSelect({
     onChange(selectedArea, fee);
   };
 
-  const defaultPlaceholder =
-    placeholder || (lang === "ar" ? "اختر المنطقة" : "Select your area");
+  const defaultPlaceholder = placeholder || (lang === "ar" ? "اختر المنطقة" : "Select your area");
 
   const isOther = value.trim() === OTHER_GOVERNORATES_AREA;
 
@@ -62,10 +57,7 @@ export function DeliveryZoneSelect({
           <option value={value}>{value}</option>
         )}
         {DELIVERY_ZONES.map((zone) => (
-          <optgroup
-            key={zone.labelEn}
-            label={lang === "ar" ? zone.labelAr : zone.labelEn}
-          >
+          <optgroup key={zone.labelEn} label={lang === "ar" ? zone.labelAr : zone.labelEn}>
             {zone.areas.map((area) => (
               <option key={`${zone.labelEn}-${area}`} value={area}>
                 {area === OTHER_GOVERNORATES_AREA
@@ -81,10 +73,7 @@ export function DeliveryZoneSelect({
 
       {showFeeNote && value && (
         <span
-          className={
-            noteClassName ||
-            "-mt-1 block text-xs font-semibold text-muted-foreground"
-          }
+          className={noteClassName || "-mt-1 block text-xs font-semibold text-muted-foreground"}
         >
           {isOther
             ? lang === "ar"

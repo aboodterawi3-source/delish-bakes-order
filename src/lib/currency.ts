@@ -15,10 +15,7 @@ export const CURRENCY_SYMBOL: Record<CurrencyLang, string> = {
  */
 export const roundJod = (val: number): number => Math.round(val * 100) / 100;
 
-export function formatJod(
-  value: number | null | undefined,
-  lang: CurrencyLang = "ar",
-): string {
+export function formatJod(value: number | null | undefined, lang: CurrencyLang = "ar"): string {
   const num = typeof value === "number" ? value : Number(value);
   const amount = Number.isFinite(num) ? roundJod(num) : 0;
   return `${amount.toFixed(2)} ${CURRENCY_SYMBOL[lang]}`;

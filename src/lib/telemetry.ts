@@ -4,7 +4,14 @@
  * https://github.com/open-telemetry/opentelemetry-js
  */
 
-import { trace, metrics, SpanStatusCode, type Span, type Tracer, type Meter } from "@opentelemetry/api";
+import {
+  trace,
+  metrics,
+  SpanStatusCode,
+  type Span,
+  type Tracer,
+  type Meter,
+} from "@opentelemetry/api";
 
 const SERVICE_NAME = "delish-bakes-order";
 const SERVICE_VERSION = "1.0.0";
@@ -41,7 +48,7 @@ export const paymentSettledCounter = meter.createCounter("delish_payments_settle
 export async function withActiveSpan<T>(
   name: string,
   attributes: Record<string, string | number | boolean> = {},
-  fn: (span: Span) => Promise<T> | T
+  fn: (span: Span) => Promise<T> | T,
 ): Promise<T> {
   const span = tracer.startSpan(name, {
     attributes: {
@@ -74,7 +81,7 @@ export async function withActiveSpan<T>(
  */
 export function recordBusinessEvent(
   eventName: "order_created" | "occ_retry" | "refund_detected" | "payment_completed",
-  attributes: Record<string, string | number | boolean>
+  attributes: Record<string, string | number | boolean>,
 ): void {
   switch (eventName) {
     case "order_created":

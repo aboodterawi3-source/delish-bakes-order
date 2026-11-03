@@ -21,10 +21,7 @@ export type OrderModification = {
 /**
  * Retrieves the numeric employee staff code for a given authenticated user ID.
  */
-export async function getStaffCodeForUser(
-  supabase: any,
-  userId: string,
-): Promise<number | null> {
+export async function getStaffCodeForUser(supabase: any, userId: string): Promise<number | null> {
   const { data } = await supabase
     .from("staff_codes")
     .select("staff_code")
@@ -48,8 +45,7 @@ export function getSupabaseStorageBaseUrl(): string {
         process.env?.["VITE_SUPABASE_URL"] ||
         process.env?.["NEXT_PUBLIC_SUPABASE_URL"])) ||
     (typeof import.meta !== "undefined" &&
-      ((import.meta as any)?.env?.VITE_SUPABASE_URL ||
-        (import.meta as any)?.env?.SUPABASE_URL)) ||
+      ((import.meta as any)?.env?.VITE_SUPABASE_URL || (import.meta as any)?.env?.SUPABASE_URL)) ||
     "";
   return envUrl ? String(envUrl).replace(/\/+$/, "") : "";
 }

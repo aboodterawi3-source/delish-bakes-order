@@ -94,7 +94,9 @@ export const isPriorityColor = (value: unknown): value is PriorityColor =>
   typeof value === "string" && (PRIORITY_COLORS as readonly string[]).includes(value);
 
 /** The most urgent priority among an order's lines; base tier when empty or invalid. */
-export const highestPriority = (values: (PriorityColor | string | null | undefined)[]): PriorityColor => {
+export const highestPriority = (
+  values: (PriorityColor | string | null | undefined)[],
+): PriorityColor => {
   let best: PriorityColor = BASE_PRIORITY;
   const bestMeta = PRIORITY_META[best];
   for (const value of values) {

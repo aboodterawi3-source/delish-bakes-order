@@ -274,7 +274,11 @@ export function StorefrontMenuDrawer({ open, onClose }: StorefrontMenuDrawerProp
               className="space-y-3 animate-in fade-in duration-200"
             >
               {/* Honeypot field for anti-bot protection */}
-              <div className="absolute -left-[9999px] h-0 w-0 overflow-hidden" aria-hidden="true" tabIndex={-1}>
+              <div
+                className="absolute -left-[9999px] h-0 w-0 overflow-hidden"
+                aria-hidden="true"
+                tabIndex={-1}
+              >
                 <label htmlFor="drawer_website_hp">Website</label>
                 <input
                   id="drawer_website_hp"

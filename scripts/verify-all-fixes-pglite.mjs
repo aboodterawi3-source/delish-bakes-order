@@ -42,8 +42,8 @@ async function run() {
   console.log("1. Loading and executing standalone_complete_schema.sql...");
   let schemaSql = fs.readFileSync(path.resolve("supabase/standalone_complete_schema.sql"), "utf8");
   schemaSql = schemaSql
-    .replace('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";', '-- uuid-ossp polyfilled')
-    .replace('CREATE EXTENSION IF NOT EXISTS "pgcrypto";', '-- pgcrypto polyfilled');
+    .replace('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";', "-- uuid-ossp polyfilled")
+    .replace('CREATE EXTENSION IF NOT EXISTS "pgcrypto";', "-- pgcrypto polyfilled");
   await pg.exec(schemaSql);
   console.log("   ✅ Schema loaded and executed cleanly with 0 syntax or runtime errors!\n");
 
@@ -54,7 +54,9 @@ async function run() {
   assert.equal(settingsRes.rows[0].store_name, "Delish Cake & Bake");
   assert.equal(settingsRes.rows[0].card_color_palette, "gold");
 
-  const bannerRes = await pg.query("SELECT * FROM public.storefront_banner WHERE id = '00000000-0000-0000-0000-000000000001';");
+  const bannerRes = await pg.query(
+    "SELECT * FROM public.storefront_banner WHERE id = '00000000-0000-0000-0000-000000000001';",
+  );
   assert.equal(bannerRes.rows.length, 1, "storefront_banner row must exist");
   console.log("   ✅ Bootstrap seeds verified!\n");
 
@@ -110,7 +112,9 @@ async function run() {
   console.log("   ✅ B1.1 resolved: Staff order created and idempotent retry verified cleanly!\n");
 
   // Journey 2: Test B1.2 fix in create_storefront_order_atomic
-  console.log("4. Testing Journey 2 (B1.2): Storefront atomic order creation with items payload...");
+  console.log(
+    "4. Testing Journey 2 (B1.2): Storefront atomic order creation with items payload...",
+  );
   const sfOrderRes = await pg.query(`
     SELECT public.create_storefront_order_atomic(
       '{"customer_name": "Lina Storefront", "customer_phone": "0799876543", "method": "delivery", "area": "دابوق", "delivery_fee": 3, "requested_date": "2026-11-02", "requested_time": "16:00", "client_request_id": "req-sf-001"}'::jsonb,
@@ -122,10 +126,14 @@ async function run() {
   assert.equal(Number(sfOrder.subtotal), 22, "Storefront subtotal must be 22");
   assert.equal(Number(sfOrder.delivery_fee), 3, "Delivery fee must be 3");
   assert.equal(Number(sfOrder.total), 25, "Total must be 25");
-  console.log("   ✅ B1.2 resolved: Storefront order atomic created without column reference ambiguity!\n");
+  console.log(
+    "   ✅ B1.2 resolved: Storefront order atomic created without column reference ambiguity!\n",
+  );
 
   // Journey 3: Test B4 - Pending Payment must NOT update orders.deposit_paid
-  console.log("5. Testing Journey 3 (B4): Financial ledger - Pending payment must NOT alter deposit_paid...");
+  console.log(
+    "5. Testing Journey 3 (B4): Financial ledger - Pending payment must NOT alter deposit_paid...",
+  );
   const orderId = staffOrder.id;
   await pg.transaction(async (tx) => {
     await tx.exec(`SET LOCAL request.jwt.claim.sub = '${salesId}';`);
@@ -144,13 +152,27 @@ async function run() {
       );
     `);
   });
-  const checkPendingOrder = await pg.query(`SELECT deposit_paid, version FROM public.orders WHERE id = '${orderId}';`);
-  assert.equal(Number(checkPendingOrder.rows[0].deposit_paid), 0, "deposit_paid MUST remain 0 for pending payment");
-  assert.equal(Number(checkPendingOrder.rows[0].version), 1, "version MUST remain 1 for pending payment");
-  console.log("   ✅ B4 resolved: Pending payments strictly preserved in ledger without altering deposit_paid!\n");
+  const checkPendingOrder = await pg.query(
+    `SELECT deposit_paid, version FROM public.orders WHERE id = '${orderId}';`,
+  );
+  assert.equal(
+    Number(checkPendingOrder.rows[0].deposit_paid),
+    0,
+    "deposit_paid MUST remain 0 for pending payment",
+  );
+  assert.equal(
+    Number(checkPendingOrder.rows[0].version),
+    1,
+    "version MUST remain 1 for pending payment",
+  );
+  console.log(
+    "   ✅ B4 resolved: Pending payments strictly preserved in ledger without altering deposit_paid!\n",
+  );
 
   // Journey 4: Test B3 & Financial Lifecycle (Pay 25 on 20 JD total, refund 5 JD, settlement, duplicate refund rejection)
-  console.log("6. Testing Journey 4 (B3 & Full Lifecycle): Pay 25 JD on 20 JD order, refund 5 JD, settle to 20 JD, reject 2nd refund...");
+  console.log(
+    "6. Testing Journey 4 (B3 & Full Lifecycle): Pay 25 JD on 20 JD order, refund 5 JD, settle to 20 JD, reject 2nd refund...",
+  );
   // Create an order of 20 JD
   const lifeOrderRes = await pg.transaction(async (tx) => {
     await tx.exec(`SET LOCAL request.jwt.claim.sub = '${salesId}';`);
@@ -228,9 +250,16 @@ async function run() {
     });
   } catch (err) {
     secondRefundFailed = true;
-    assert.ok(err.message.includes("يتجاوز المبلغ المسموح باسترجاعه"), "Must reject refund with cap error");
+    assert.ok(
+      err.message.includes("يتجاوز المبلغ المسموح باسترجاعه"),
+      "Must reject refund with cap error",
+    );
   }
-  assert.equal(secondRefundFailed, true, "Second refund beyond allowable cap must be strictly rejected");
+  assert.equal(
+    secondRefundFailed,
+    true,
+    "Second refund beyond allowable cap must be strictly rejected",
+  );
   console.log("   ✅ Financial lifecycle and refund cap verified cleanly!\n");
 
   // Journey 5: Test B5 - Kitchen order status transitions
@@ -245,14 +274,21 @@ async function run() {
     });
   } catch (err) {
     kitchenTransitionFailed = true;
-    assert.ok(err.message.includes("لا يمكن تعديل حالة طلب مكتمل أو ملغى"), "Must reject kitchen transition on cancelled order");
+    assert.ok(
+      err.message.includes("لا يمكن تعديل حالة طلب مكتمل أو ملغى"),
+      "Must reject kitchen transition on cancelled order",
+    );
   }
   assert.equal(kitchenTransitionFailed, true);
   console.log("   ✅ B5 resolved: Kitchen order transitions protected against invalid states!\n");
 
   // Journey 6: Test B7 - update_order_item_atomic
-  console.log("8. Testing Journey 6 (B7): Atomic order item price update with recalculation & OCC...");
-  const itemRow = await pg.query(`SELECT id, order_id, unit_price FROM public.order_items WHERE order_id = '${orderId}' LIMIT 1;`);
+  console.log(
+    "8. Testing Journey 6 (B7): Atomic order item price update with recalculation & OCC...",
+  );
+  const itemRow = await pg.query(
+    `SELECT id, order_id, unit_price FROM public.order_items WHERE order_id = '${orderId}' LIMIT 1;`,
+  );
   const itemId = itemRow.rows[0].id;
   const updateItemRes = await pg.transaction(async (tx) => {
     await tx.exec(`SET LOCAL request.jwt.claim.sub = '${salesId}';`);
@@ -317,7 +353,9 @@ async function run() {
   console.log("   ✅ apply_order_discount_atomic verified cleanly!\n");
 
   // Journey 8: Test get_kitchen_orders() sanitization
-  console.log("10. Testing Journey 8: get_kitchen_orders() hides sensitive monetary/phone fields in modifications...");
+  console.log(
+    "10. Testing Journey 8: get_kitchen_orders() hides sensitive monetary/phone fields in modifications...",
+  );
   const kdsFeedRes = await pg.transaction(async (tx) => {
     await tx.exec(`SET LOCAL request.jwt.claim.sub = '${kitchenId}';`);
     return await tx.query(`SELECT * FROM public.get_kitchen_orders() WHERE id = '${orderId}';`);

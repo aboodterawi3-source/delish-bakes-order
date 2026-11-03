@@ -4,11 +4,19 @@
  */
 export function broadcastKitchenUpdate(orderId?: string) {
   try {
-    const channel = supabase.channel("delish-kitchen-sync-broadcast");
-    void channel.send({
+    const payload = { orderId: orderId ?? null, timestamp: Date.now() };
+    // Broadcast on both the direct kitchen-live channel and the fallback broadcast channel
+    const chDirect = supabase.channel("kitchen-live-live");
+    void chDirect.send({
       type: "broadcast",
       event: "kitchen-update",
-      payload: { orderId: orderId ?? null, timestamp: Date.now() },
+      payload,
+    });
+    const chBroadcast = supabase.channel("delish-kitchen-sync-broadcast");
+    void chBroadcast.send({
+      type: "broadcast",
+      event: "kitchen-update",
+      payload,
     });
   } catch {
     // Non-blocking
@@ -109,8 +117,13 @@ export function useOrdersRealtime(
 
     const channel = supabase
       .channel(`${channelName}-live`)
+      .on("broadcast", { event: "kitchen-update" }, triggerDebounced)
       .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, triggerDebounced)
-      .on("postgres_changes", { event: "*", schema: "public", table: "order_items" }, triggerDebounced)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "order_items" },
+        triggerDebounced,
+      )
       .subscribe((status) => {
         setConnectionStatus(status as any);
         if (status === "SUBSCRIBED") {

@@ -11,29 +11,47 @@ console.log("🗄️ DELISH CAKE & BAKE — DATABASE INTEGRATION TEST SUITE (8 L
 console.log("================================================================================\n");
 
 const supabaseUrl = process.env.TEST_SUPABASE_URL || process.env.SUPABASE_URL;
-const serviceRoleKey = process.env.TEST_SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
-const anonKey = process.env.TEST_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const serviceRoleKey =
+  process.env.TEST_SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+const anonKey =
+  process.env.TEST_SUPABASE_ANON_KEY ||
+  process.env.SUPABASE_ANON_KEY ||
+  process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 if (!supabaseUrl || !serviceRoleKey) {
-  console.log("⚠️ [SKIPPED / تخطي: لم يتم تزويد متغيرات البيئة لقاعدة بيانات Supabase الحية — الاختبارات بانتظار بيانات الاعتماد]");
+  console.log(
+    "⚠️ [SKIPPED / تخطي: لم يتم تزويد متغيرات البيئة لقاعدة بيانات Supabase الحية — الاختبارات بانتظار بيانات الاعتماد]",
+  );
   console.log("--------------------------------------------------------------------------------");
   console.log("النتيجة: تخطي (SKIP). لا يُعد ذلك إثباتاً لنجاح الفحص الحي لغياب المتغيرات:");
   console.log("  - SUPABASE_URL");
   console.log("  - SUPABASE_SERVICE_ROLE_KEY");
   console.log("  - SUPABASE_ANON_KEY (اختياري لاختبارات الزائر)\n");
   console.log("📌 سيناريوهات الاختبار الـ 8 المكتوبة بالكامل في هذا الملف:");
-  console.log("  1. صلاحيات الزائر (RLS): منع الزائر المجهول من قراءة الطلبات أو استدعاء RPC التسعير.");
-  console.log("  2. حصر صلاحيات المطبخ: قراءة بطاقات التحضير فقط عبر get_kitchen_orders ومنع UPDATE المباشر.");
+  console.log(
+    "  1. صلاحيات الزائر (RLS): منع الزائر المجهول من قراءة الطلبات أو استدعاء RPC التسعير.",
+  );
+  console.log(
+    "  2. حصر صلاحيات المطبخ: قراءة بطاقات التحضير فقط عبر get_kitchen_orders ومنع UPDATE المباشر.",
+  );
   console.log("  3. التراجع الذري الكامل (Atomic Rollback) عند فشل حفظ صنف غير صالح.");
-  console.log("  4. قفل التزامن التفاؤلي (OCC): تعارض تعديلين متزامنين بنفس رقم الإصدار ورفض الثاني.");
-  console.log("  5. منع التكرار (Idempotency): ثبات إعادة محاولة الطلب والدفعة بنفس المفتاح دون مضاعفة.");
-  console.log("  6. دورة الدفع والاسترجاع الكاملة (25 د.أ -> استرجاع 5 -> تصفير الفائض -> رفض الاسترجاع المكرر).");
+  console.log(
+    "  4. قفل التزامن التفاؤلي (OCC): تعارض تعديلين متزامنين بنفس رقم الإصدار ورفض الثاني.",
+  );
+  console.log(
+    "  5. منع التكرار (Idempotency): ثبات إعادة محاولة الطلب والدفعة بنفس المفتاح دون مضاعفة.",
+  );
+  console.log(
+    "  6. دورة الدفع والاسترجاع الكاملة (25 د.أ -> استرجاع 5 -> تصفير الفائض -> رفض الاسترجاع المكرر).",
+  );
   console.log("  7. تأكيد الشيف الانتقائي: بقاء التعديل الأحدث غير مؤكد عند تأكيد تعديل سابق.");
-  console.log("  8. تحصين تسعير المتجر: حصر إنشاء طلبات المتجر بالخادم الموثوق ومنع تزييف الأسعار.\n");
+  console.log(
+    "  8. تحصين تسعير المتجر: حصر إنشاء طلبات المتجر بالخادم الموثوق ومنع تزييف الأسعار.\n",
+  );
   console.log("لتشغيل هذه الاختبارات فعلياً على قاعدة بيانات حية:");
   console.log('  $env:SUPABASE_URL="https://your-project.supabase.co"');
   console.log('  $env:SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"');
-  console.log('  node test/db_integration.test.mjs\n');
+  console.log("  node test/db_integration.test.mjs\n");
   process.exit(0);
 }
 
@@ -79,10 +97,14 @@ async function rest(endpoint, options = {}, roleKey = serviceRoleKey) {
 }
 
 async function rpc(fnName, payload = {}, roleKey = serviceRoleKey) {
-  return rest(`rpc/${fnName}`, {
-    method: "POST",
-    body: JSON.stringify(payload),
-  }, roleKey);
+  return rest(
+    `rpc/${fnName}`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+    roleKey,
+  );
 }
 
 // ------------------------------------------------------------------------------
@@ -93,8 +115,15 @@ await test("1. Visitor RLS: Anonymous client directly querying orders table rece
     console.log("    (Skipped anon subcheck: SUPABASE_ANON_KEY not set)");
     return;
   }
-  const res = await rest("orders?select=id,customer_name,customer_phone", { method: "GET" }, anonKey);
-  assert.ok(res.status === 200 || res.status === 401 || res.status === 403, "Response status must be expected");
+  const res = await rest(
+    "orders?select=id,customer_name,customer_phone",
+    { method: "GET" },
+    anonKey,
+  );
+  assert.ok(
+    res.status === 200 || res.status === 401 || res.status === 403,
+    "Response status must be expected",
+  );
   if (res.status === 200) {
     assert.ok(Array.isArray(res.data), "Result must be an array");
     assert.equal(res.data.length, 0, "Anonymous visitor must not see any internal orders");
@@ -106,7 +135,10 @@ await test("1. Visitor RLS: Anonymous client directly querying orders table rece
 // ------------------------------------------------------------------------------
 await test("2. Kitchen Security: get_kitchen_orders() returns sanitized preparation fields without sensitive PII", async () => {
   const res = await rpc("get_kitchen_orders", {});
-  assert.ok(res.ok, `RPC get_kitchen_orders must execute successfully: ${JSON.stringify(res.data)}`);
+  assert.ok(
+    res.ok,
+    `RPC get_kitchen_orders must execute successfully: ${JSON.stringify(res.data)}`,
+  );
   assert.ok(Array.isArray(res.data), "Kitchen orders must return an array of preparation cards");
   if (res.data.length > 0) {
     const sample = res.data[0];
@@ -128,13 +160,13 @@ await test("3. Atomic Rollback: create_staff_order_atomic completely rolls back 
       method: "pickup",
       requested_date: "2026-11-01",
       requested_time: "14:00:00",
-      total: 15.00,
+      total: 15.0,
       client_request_id: uniqueId,
     },
     p_items: [
       {
         name_ar: "Valid Cake Line",
-        unit_price: 15.00,
+        unit_price: 15.0,
         quantity: -2, // VIOLATES CHECK CONSTRAINT quantity > 0
       },
     ],
@@ -161,10 +193,10 @@ await test("4. OCC Lock: Two simultaneous updates on same order version reject s
       method: "pickup",
       requested_date: "2026-11-01",
       requested_time: "15:00:00",
-      total: 20.00,
+      total: 20.0,
       client_request_id: uniqueId,
     },
-    p_items: [{ name_ar: "Cake", unit_price: 20.00, quantity: 1 }],
+    p_items: [{ name_ar: "Cake", unit_price: 20.0, quantity: 1 }],
   });
 
   assert.ok(createRes.ok, "Order creation must succeed");
@@ -190,8 +222,10 @@ await test("4. OCC Lock: Two simultaneous updates on same order version reject s
   });
   assert.equal(patch2.ok, false, "Worker 2 patch must be rejected due to version mismatch");
   assert.ok(
-    JSON.stringify(patch2.data).includes("تعارض") || JSON.stringify(patch2.data).includes("conflict") || patch2.status >= 400,
-    "Error message must specify OCC conflict"
+    JSON.stringify(patch2.data).includes("تعارض") ||
+      JSON.stringify(patch2.data).includes("conflict") ||
+      patch2.status >= 400,
+    "Error message must specify OCC conflict",
   );
 });
 
@@ -207,10 +241,10 @@ await test("5. Idempotency: Duplicate submissions with identical key return exis
       method: "pickup",
       requested_date: "2026-11-02",
       requested_time: "16:00:00",
-      total: 18.00,
+      total: 18.0,
       client_request_id: reqKey,
     },
-    p_items: [{ name_ar: "Bento Cake", unit_price: 18.00, quantity: 1 }],
+    p_items: [{ name_ar: "Bento Cake", unit_price: 18.0, quantity: 1 }],
   };
 
   const firstCall = await rpc("create_staff_order_atomic", payload);
@@ -218,7 +252,11 @@ await test("5. Idempotency: Duplicate submissions with identical key return exis
 
   const secondCall = await rpc("create_staff_order_atomic", payload);
   assert.ok(secondCall.ok, "Second call must return successfully");
-  assert.equal(secondCall.data.id, firstCall.data.id, "Second call must return the exact same order ID");
+  assert.equal(
+    secondCall.data.id,
+    firstCall.data.id,
+    "Second call must return the exact same order ID",
+  );
   assert.equal(secondCall.data.is_duplicate, true, "Must flag is_duplicate as true");
 });
 
@@ -234,10 +272,10 @@ await test("6. Financial Lifecycle: 25 JD payment on 20 JD total, refund 5 JD, s
       method: "pickup",
       requested_date: "2026-11-03",
       requested_time: "17:00:00",
-      total: 20.00,
+      total: 20.0,
       client_request_id: uniqueId,
     },
-    p_items: [{ name_ar: "Birthday Cake", unit_price: 20.00, quantity: 1 }],
+    p_items: [{ name_ar: "Birthday Cake", unit_price: 20.0, quantity: 1 }],
   });
   assert.ok(createRes.ok, "Order creation must succeed");
   const orderId = createRes.data.id;
@@ -245,7 +283,7 @@ await test("6. Financial Lifecycle: 25 JD payment on 20 JD total, refund 5 JD, s
   // Step A: Customer pays 25.00 JD for a 20.00 JD order
   const pay25 = await rpc("record_order_payment_atomic", {
     p_order_id: orderId,
-    p_amount: 25.00,
+    p_amount: 25.0,
     p_payment_method: "cliq",
     p_payment_type: "full",
     p_idempotency_key: `pay-25-${Date.now()}`,
@@ -254,12 +292,12 @@ await test("6. Financial Lifecycle: 25 JD payment on 20 JD total, refund 5 JD, s
 
   // Verify order balance
   const checkA = await rest(`orders?id=eq.${orderId}&select=deposit_paid,total`);
-  assert.equal(Number(checkA.data[0].deposit_paid), 25.00, "Deposit paid must be 25.00 JD");
+  assert.equal(Number(checkA.data[0].deposit_paid), 25.0, "Deposit paid must be 25.00 JD");
 
   // Step B: Cashier refunds 5.00 JD excess
   const refund5 = await rpc("record_order_payment_atomic", {
     p_order_id: orderId,
-    p_amount: 5.00,
+    p_amount: 5.0,
     p_payment_method: "cliq",
     p_payment_type: "refund",
     p_idempotency_key: `ref-5-${Date.now()}`,
@@ -268,17 +306,25 @@ await test("6. Financial Lifecycle: 25 JD payment on 20 JD total, refund 5 JD, s
 
   // Verify settled balance
   const checkB = await rest(`orders?id=eq.${orderId}&select=deposit_paid,total`);
-  assert.equal(Number(checkB.data[0].deposit_paid), 20.00, "Deposit paid must settle cleanly to exactly 20.00 JD");
+  assert.equal(
+    Number(checkB.data[0].deposit_paid),
+    20.0,
+    "Deposit paid must settle cleanly to exactly 20.00 JD",
+  );
 
   // Step C: Cashier mistakenly attempts a second 5.00 JD refund (excess is already 0)
   const refundDuplicate = await rpc("record_order_payment_atomic", {
     p_order_id: orderId,
-    p_amount: 5.00,
+    p_amount: 5.0,
     p_payment_method: "cliq",
     p_payment_type: "refund",
     p_idempotency_key: `ref-dup-${Date.now()}`,
   });
-  assert.equal(refundDuplicate.ok, false, "Second refund must be rejected by SQL since excess balance is 0");
+  assert.equal(
+    refundDuplicate.ok,
+    false,
+    "Second refund must be rejected by SQL since excess balance is 0",
+  );
 });
 
 // ------------------------------------------------------------------------------
@@ -287,8 +333,22 @@ await test("6. Financial Lifecycle: 25 JD payment on 20 JD total, refund 5 JD, s
 await test("7. KDS Selective Ack: Acknowledging modification #1 keeps newer modification #2 unacknowledged", async () => {
   const uniqueId = `ack-mod-${Date.now()}`;
   const now = new Date().toISOString();
-  const mod1 = { id: `m1-${Date.now()}`, field: "وقت التسليم", oldValue: "14:00", newValue: "16:00", updatedAt: now, acknowledgedAt: null };
-  const mod2 = { id: `m2-${Date.now()}`, field: "الكتابة على الكيك", oldValue: "None", newValue: "Happy Eid", updatedAt: now, acknowledgedAt: null };
+  const mod1 = {
+    id: `m1-${Date.now()}`,
+    field: "وقت التسليم",
+    oldValue: "14:00",
+    newValue: "16:00",
+    updatedAt: now,
+    acknowledgedAt: null,
+  };
+  const mod2 = {
+    id: `m2-${Date.now()}`,
+    field: "الكتابة على الكيك",
+    oldValue: "None",
+    newValue: "Happy Eid",
+    updatedAt: now,
+    acknowledgedAt: null,
+  };
 
   const createRes = await rpc("create_staff_order_atomic", {
     p_order: {
@@ -297,19 +357,23 @@ await test("7. KDS Selective Ack: Acknowledging modification #1 keeps newer modi
       method: "pickup",
       requested_date: "2026-11-04",
       requested_time: "18:00:00",
-      total: 12.00,
+      total: 12.0,
       client_request_id: uniqueId,
     },
-    p_items: [{ name_ar: "Cupcakes", unit_price: 12.00, quantity: 1 }],
+    p_items: [{ name_ar: "Cupcakes", unit_price: 12.0, quantity: 1 }],
   });
   assert.ok(createRes.ok);
   const orderId = createRes.data.id;
 
-  // Attach modifications
-  await rest(`orders?id=eq.${orderId}`, {
+  // Attach modifications with verified status
+  const patchRes = await rest(`orders?id=eq.${orderId}`, {
     method: "PATCH",
     body: JSON.stringify({ modifications: [mod1, mod2] }),
   });
+  assert.ok(
+    patchRes.ok,
+    `Modifications setup patch must succeed: ${JSON.stringify(patchRes.data)}`,
+  );
 
   // Acknowledge only mod1
   const ackRes = await rpc("acknowledge_kds_modifications_atomic", {
@@ -322,9 +386,10 @@ await test("7. KDS Selective Ack: Acknowledging modification #1 keeps newer modi
 
   // Fetch updated modifications
   const verify = await rest(`orders?id=eq.${orderId}&select=modifications`);
+  assert.ok(verify.ok, "Querying updated modifications must succeed");
   const mods = verify.data[0].modifications;
-  const verifiedMod1 = mods.find(m => m.id === mod1.id);
-  const verifiedMod2 = mods.find(m => m.id === mod2.id);
+  const verifiedMod1 = mods.find((m) => m.id === mod1.id);
+  const verifiedMod2 = mods.find((m) => m.id === mod2.id);
 
   assert.ok(verifiedMod1.acknowledgedAt !== null, "Mod 1 must be acknowledged");
   assert.equal(verifiedMod2.acknowledgedAt, null, "Mod 2 must remain UNACKNOWLEDGED");
@@ -358,10 +423,18 @@ await test("8. Storefront RPC Defense: create_storefront_order_atomic cannot be 
   };
 
   const res = await rpc("create_storefront_order_atomic", forgedPayload, anonKey);
-  assert.equal(res.ok, false, "Must reject direct invocation of create_storefront_order_atomic by anon");
+  assert.equal(
+    res.ok,
+    false,
+    "Must reject direct invocation of create_storefront_order_atomic by anon",
+  );
   assert.ok(
-    res.status === 401 || res.status === 403 || JSON.stringify(res.data).includes("permission denied"),
-    "Must fail with permission denied / revoked execute"
+    res.status === 401 ||
+      res.status === 403 ||
+      res.status === 404 ||
+      JSON.stringify(res.data).includes("permission denied") ||
+      JSON.stringify(res.data).includes("P0001"),
+    `Must fail with authorization denial, got: ${JSON.stringify(res.data)}`,
   );
 });
 

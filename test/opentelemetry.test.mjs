@@ -54,12 +54,12 @@ await test("2. withActiveSpan() executes workload, captures attributes and compl
     async (span) => {
       assert.ok(span, "Span object must be supplied to callback");
       assert.equal(typeof span.setAttribute, "function");
-      span.setAttribute("pricing.total_jd", 25.50);
-      return { success: true, total: 25.50 };
-    }
+      span.setAttribute("pricing.total_jd", 25.5);
+      return { success: true, total: 25.5 };
+    },
   );
 
-  assert.deepEqual(result, { success: true, total: 25.50 });
+  assert.deepEqual(result, { success: true, total: 25.5 });
 });
 
 // ------------------------------------------------------------------------------

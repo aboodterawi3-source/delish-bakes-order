@@ -29,14 +29,9 @@ export interface ResilienceOptions {
 export async function withNetworkResilience<T>(
   operationName: string,
   fn: (attempt: number) => Promise<T>,
-  options: ResilienceOptions = {}
+  options: ResilienceOptions = {},
 ): Promise<{ result: T; attempts: number; durationMs: number }> {
-  const {
-    maxRetries = 3,
-    initialDelayMs = 50,
-    backoffFactor = 2,
-    timeoutMs = 5000,
-  } = options;
+  const { maxRetries = 3, initialDelayMs = 50, backoffFactor = 2, timeoutMs = 5000 } = options;
 
   const startTime = Date.now();
   let attempt = 0;
@@ -49,7 +44,10 @@ export async function withNetworkResilience<T>(
       const result = await Promise.race([
         fn(attempt),
         new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error(`Timeout: ${operationName} exceeded ${timeoutMs}ms`)), timeoutMs)
+          setTimeout(
+            () => reject(new Error(`Timeout: ${operationName} exceeded ${timeoutMs}ms`)),
+            timeoutMs,
+          ),
         ),
       ]);
 
@@ -64,13 +62,13 @@ export async function withNetworkResilience<T>(
 
       // Compute exponential backoff with jitter
       const delay = Math.round(
-        initialDelayMs * Math.pow(backoffFactor, attempt - 1) + Math.random() * 20
+        initialDelayMs * Math.pow(backoffFactor, attempt - 1) + Math.random() * 20,
       );
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
 
   throw new Error(
-    `[Resilience Failure] ${operationName} failed after ${attempt} attempts: ${lastError?.message}`
+    `[Resilience Failure] ${operationName} failed after ${attempt} attempts: ${lastError?.message}`,
   );
 }

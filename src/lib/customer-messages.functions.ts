@@ -141,11 +141,7 @@ export const deleteCustomerMessage = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }): Promise<{ ok: true }> => {
     await assertRole(context, DESK_ROLES);
-    const { error } = await context.supabase
-      .from("customer_messages")
-      .delete()
-      .eq("id", data.id);
+    const { error } = await context.supabase.from("customer_messages").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
-

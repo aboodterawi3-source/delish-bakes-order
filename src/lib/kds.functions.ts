@@ -31,7 +31,6 @@ import type { OrderModification } from "@/lib/server-shared";
 export type { OrderModification };
 import { isValidStorageUrl } from "@/lib/server-shared";
 
-
 export type KdsItem = {
   id: string;
   name_ar: string;

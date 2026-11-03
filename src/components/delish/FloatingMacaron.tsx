@@ -7,7 +7,12 @@ interface FloatingMacaronProps {
   priority?: boolean;
 }
 
-export function FloatingMacaron({ src, alt, className = "", priority = true }: FloatingMacaronProps) {
+export function FloatingMacaron({
+  src,
+  alt,
+  className = "",
+  priority = true,
+}: FloatingMacaronProps) {
   return (
     <div className={`pointer-events-none absolute select-none drop-shadow-xl ${className}`}>
       <img

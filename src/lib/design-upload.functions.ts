@@ -28,10 +28,12 @@ async function signPath(path: string): Promise<string> {
     new TextEncoder().encode(secret.slice(0, 32)),
     { name: "HMAC", hash: "SHA-256" },
     false,
-    ["sign"]
+    ["sign"],
   );
   const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(path));
-  return Array.from(new Uint8Array(signature)).map(b => b.toString(16).padStart(2, "0")).join("");
+  return Array.from(new Uint8Array(signature))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 /**
@@ -105,7 +107,7 @@ export const uploadDesignImage = createServerFn({ method: "POST" })
 
     // Validated, order-safe cleanup of the replaced photo (was: arbitrary path deletion).
     const oldPath = resolveDesignPath(data.previous_path, data.previous_url);
-    if (oldPath && data.previous_deleteToken === await signPath(oldPath)) {
+    if (oldPath && data.previous_deleteToken === (await signPath(oldPath))) {
       await removeDesignPhoto(oldPath);
     }
 
@@ -141,17 +143,19 @@ export const uploadDesignImage = createServerFn({ method: "POST" })
  * Only paths in our own generated shape that are not linked to an order are deleted.
  */
 export const deleteDesignImage = createServerFn({ method: "POST" })
-  .validator((input: { path?: string | null; url?: string | null; deleteToken?: string | null }) => ({
-    path: typeof input?.path === "string" ? input.path : null,
-    url: typeof input?.url === "string" && input.url.length <= 2500 ? input.url : null,
-    deleteToken: typeof input?.deleteToken === "string" ? input.deleteToken : null,
-  }))
+  .validator(
+    (input: { path?: string | null; url?: string | null; deleteToken?: string | null }) => ({
+      path: typeof input?.path === "string" ? input.path : null,
+      url: typeof input?.url === "string" && input.url.length <= 2500 ? input.url : null,
+      deleteToken: typeof input?.deleteToken === "string" ? input.deleteToken : null,
+    }),
+  )
   .handler(async ({ data }) => {
     const { enforceRateLimit } = await import("@/lib/rate-limit");
     enforceRateLimit("design-delete", 30, 10 * 60_000);
 
     const target = resolveDesignPath(data.path, data.url);
-    if (target && data.deleteToken === await signPath(target)) {
+    if (target && data.deleteToken === (await signPath(target))) {
       await removeDesignPhoto(target);
     }
     // Always the same answer so the endpoint cannot be used to probe which files exist.

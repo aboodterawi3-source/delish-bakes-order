@@ -195,15 +195,9 @@ export function generateKitchenTicketHtml(order: KitchenTicketOrder): string {
       : "طلب جديد";
 
   const methodBadge =
-    order.method === "delivery"
-      ? "توصيل 🛵"
-      : order.is_quick
-        ? "محلي فوري 🏪"
-        : "استلام 🏪";
+    order.method === "delivery" ? "توصيل 🛵" : order.is_quick ? "محلي فوري 🏪" : "استلام 🏪";
 
-  const formattedTime = order.requested_time
-    ? formatTimeSlotArabic(order.requested_time)
-    : "";
+  const formattedTime = order.requested_time ? formatTimeSlotArabic(order.requested_time) : "";
 
   return `<h1 style="text-align:center;font-size:22px;margin-bottom:6px;font-weight:900;">Delish Bakery • تذكرة المطبخ</h1>
 <div style="font-size:17px;font-weight:bold;display:flex;justify-content:space-between;margin-bottom:6px;border-bottom:2px dashed #000;padding-bottom:4px;">

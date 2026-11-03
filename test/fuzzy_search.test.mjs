@@ -32,14 +32,14 @@ const mockProducts = [
     name_ar: "كيكة الشوكولاتة البلجيكية الفاخرة",
     name_en: "Luxury Belgian Chocolate Cake",
     category: "Cakes",
-    price: 28.00,
+    price: 28.0,
   },
   {
     id: "p2",
     name_ar: "تشيز كيك التوت البري",
     name_en: "Wild Berry Cheesecake",
     category: "Cakes",
-    price: 24.00,
+    price: 24.0,
   },
   {
     id: "p3",
@@ -57,7 +57,7 @@ const mockOrders = [
     customer_name: "ريم العبداللات",
     customer_phone: "0798765432",
     status: "ready",
-    total: 35.00,
+    total: 35.0,
   },
   {
     id: "o2",
@@ -65,7 +65,7 @@ const mockOrders = [
     customer_name: "محمد الحنيطي",
     customer_phone: "0771234567",
     status: "baking",
-    total: 50.00,
+    total: 50.0,
   },
 ];
 

@@ -133,7 +133,7 @@ export const getSalesOrders = createServerFn({ method: "GET" })
     await assertRole(context, SALES_ROLES);
     const limit = 300;
     const offset = (data.page - 1) * limit;
-    
+
     const { data: rows, error } = await context.supabase
       .from("orders")
       .select(SELECT)
@@ -192,7 +192,7 @@ export const createSalesOrder = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }): Promise<SalesOrder> => {
     await assertRole(context, SALES_ROLES);
-    
+
     // Check idempotency (IDEM-01)
     if (data.client_request_id) {
       const { data: existing } = await context.supabase
@@ -203,11 +203,14 @@ export const createSalesOrder = createServerFn({ method: "POST" })
       if (existing) return toOrder(existing as Row);
     }
 
-    const subtotal = roundJod(data.items.reduce((sum, item) => sum + item.unit_price * item.quantity, 0));
-    const deliveryFee = data.method === "delivery" && data.area ? roundJod(feeForArea(data.area) ?? 0) : 0;
+    const subtotal = roundJod(
+      data.items.reduce((sum, item) => sum + item.unit_price * item.quantity, 0),
+    );
+    const deliveryFee =
+      data.method === "delivery" && data.area ? roundJod(feeForArea(data.area) ?? 0) : 0;
     const discountAmount = roundJod(data.discount_amount ?? 0);
     const discountPercent = data.discount_percent ?? 0;
-    
+
     // Per-product price edit check
     const { canEditProductPrice } = await import("@/lib/permissions.functions");
     for (const item of data.items) {
@@ -221,7 +224,9 @@ export const createSalesOrder = createServerFn({ method: "POST" })
             .eq("id", pid)
             .maybeSingle();
           if (catProd && Math.abs(Number(item.unit_price) - Number(catProd.price)) > 0.01) {
-            throw new Error("غير مصرّح: لا تملك صلاحية تعديل سعر هذا المنتج · You are not allowed to edit the price for this product");
+            throw new Error(
+              "غير مصرّح: لا تملك صلاحية تعديل سعر هذا المنتج · You are not allowed to edit the price for this product",
+            );
           }
         }
       }
@@ -233,11 +238,18 @@ export const createSalesOrder = createServerFn({ method: "POST" })
     if (!authz.isAdmin) {
       if (discountAmount > 0 || discountPercent > 0) {
         if (!authz.allow_custom_discount) {
-          throw new Error("غير مصرّح: لا تملك صلاحية تطبيق الخصم · You are not allowed to apply discounts");
+          throw new Error(
+            "غير مصرّح: لا تملك صلاحية تطبيق الخصم · You are not allowed to apply discounts",
+          );
         }
         const computedPercent = subtotal > 0 ? (discountAmount / subtotal) * 100 : discountPercent;
-        if (discountPercent > authz.max_discount_percent || computedPercent > authz.max_discount_percent + 0.01) {
-          throw new Error(`الخصم المطلوب يتجاوز الحد الأقصى المسموح لك (${authz.max_discount_percent}%) · Discount exceeds your limit (${authz.max_discount_percent}%)`);
+        if (
+          discountPercent > authz.max_discount_percent ||
+          computedPercent > authz.max_discount_percent + 0.01
+        ) {
+          throw new Error(
+            `الخصم المطلوب يتجاوز الحد الأقصى المسموح لك (${authz.max_discount_percent}%) · Discount exceeds your limit (${authz.max_discount_percent}%)`,
+          );
         }
       }
     }
@@ -302,7 +314,7 @@ export const createSalesOrder = createServerFn({ method: "POST" })
       createdId = (atomicResult as any).id;
     } else {
       throw new Error(
-        atomicErr?.message || "تعذّر حفظ الطلب عبر الإجراء الذري · Could not save order atomically"
+        atomicErr?.message || "تعذّر حفظ الطلب عبر الإجراء الذري · Could not save order atomically",
       );
     }
 
@@ -791,7 +803,8 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
       .select(SELECT)
       .eq("id", data.orderId)
       .single();
-    if (fetchError || !fullOrder) throw new Error(fetchError?.message || "Failed to load updated order");
+    if (fetchError || !fullOrder)
+      throw new Error(fetchError?.message || "Failed to load updated order");
 
     const order = toOrder(fullOrder as Row);
     if (row && typeof (row as any).version === "number") {
@@ -994,24 +1007,28 @@ export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
       });
     }
 
-    const newPrice = data.newUnitPrice !== undefined ? data.newUnitPrice : Number(before.unit_price ?? 0);
+    const newPrice =
+      data.newUnitPrice !== undefined ? data.newUnitPrice : Number(before.unit_price ?? 0);
     const newQty = data.quantity !== undefined ? data.quantity : Number(before.quantity ?? 1);
 
-    const { data: rpcData, error: rpcError } = await context.supabase.rpc("update_order_item_atomic", {
-      p_order_id: data.orderId,
-      p_item_id: data.itemId,
-      p_unit_price: newPrice,
-      p_quantity: newQty,
-      p_expected_version: data.expectedVersion !== undefined ? data.expectedVersion : null,
-      p_staff_name: staffName(context as never),
-      p_reason: `تعديل صنف: ${data.name || before.name_ar}`,
-      p_name_ar: data.name ?? null,
-      p_name_en: data.name ?? null,
-      p_options_ar: data.options ? (data.options as never) : null,
-      p_options_en: data.options ? (data.options as never) : null,
-      p_notes: data.notes ?? null,
-      p_new_mods: newDiffs.length > 0 ? (newDiffs as never) : null,
-    });
+    const { data: rpcData, error: rpcError } = await context.supabase.rpc(
+      "update_order_item_atomic",
+      {
+        p_order_id: data.orderId,
+        p_item_id: data.itemId,
+        p_unit_price: newPrice,
+        p_quantity: newQty,
+        p_expected_version: data.expectedVersion !== undefined ? data.expectedVersion : null,
+        p_staff_name: staffName(context as never),
+        p_reason: `تعديل صنف: ${data.name || before.name_ar}`,
+        p_name_ar: data.name ?? null,
+        p_name_en: data.name ?? null,
+        p_options_ar: data.options ? (data.options as never) : null,
+        p_options_en: data.options ? (data.options as never) : null,
+        p_notes: data.notes ?? null,
+        p_new_mods: newDiffs.length > 0 ? (newDiffs as never) : null,
+      },
+    );
 
     if (rpcError) {
       logServerError("sales.updateSalesOrderItemPrice.rpc", rpcError);
@@ -1192,8 +1209,11 @@ export const replaceSalesOrderItems = createServerFn({ method: "POST" })
       }
     }
 
-    const subtotal = roundJod(data.lines.reduce((acc, line) => acc + line.unitPrice * line.quantity, 0));
-    const deliveryFee = existing.method === "delivery" ? roundJod(Number(existing.delivery_fee ?? 0)) : 0;
+    const subtotal = roundJod(
+      data.lines.reduce((acc, line) => acc + line.unitPrice * line.quantity, 0),
+    );
+    const deliveryFee =
+      existing.method === "delivery" ? roundJod(Number(existing.delivery_fee ?? 0)) : 0;
     const discountPercent = Number(existing.discount_percent ?? 0);
     const discountAmount =
       discountPercent > 0
@@ -1202,26 +1222,29 @@ export const replaceSalesOrderItems = createServerFn({ method: "POST" })
     const total = roundJod(Math.max(subtotal + deliveryFee - discountAmount, 0));
 
     // DB-03: Atomic Rebuild
-    const { data: rpcData, error: rpcError } = await context.supabase.rpc("rebuild_sales_order_atomic", {
-      p_order_id: data.orderId,
-      p_lines: data.lines.map((line) => ({
-        product_id: line.productId,
-        name_ar: line.name,
-        name_en: line.name,
-        unit_price: line.unitPrice,
-        quantity: line.quantity,
-        options_ar: line.options ?? [],
-        options_en: line.options ?? [],
-        notes: line.notes,
-      })),
-      p_subtotal: subtotal,
-      p_delivery_fee: deliveryFee,
-      p_discount_amount: discountAmount,
-      p_total: total,
-      p_user_id: context.userId,
-      p_new_mods: newDiffs,
-      p_expected_version: data.expectedVersion,
-    });
+    const { data: rpcData, error: rpcError } = await context.supabase.rpc(
+      "rebuild_sales_order_atomic",
+      {
+        p_order_id: data.orderId,
+        p_lines: data.lines.map((line) => ({
+          product_id: line.productId,
+          name_ar: line.name,
+          name_en: line.name,
+          unit_price: line.unitPrice,
+          quantity: line.quantity,
+          options_ar: line.options ?? [],
+          options_en: line.options ?? [],
+          notes: line.notes,
+        })),
+        p_subtotal: subtotal,
+        p_delivery_fee: deliveryFee,
+        p_discount_amount: discountAmount,
+        p_total: total,
+        p_user_id: context.userId,
+        p_new_mods: newDiffs,
+        p_expected_version: data.expectedVersion,
+      },
+    );
     if (rpcError) throw new Error(rpcError.message);
 
     const { data: row, error: orderError } = await context.supabase
@@ -1422,7 +1445,9 @@ export const recordOrderPayment = createServerFn({ method: "POST" })
     } as any);
 
     if (error) {
-      throw new Error(error.message || "تعذّر تسجيل الدفعة في الدفتر المالي · Could not record payment");
+      throw new Error(
+        error.message || "تعذّر تسجيل الدفعة في الدفتر المالي · Could not record payment",
+      );
     }
 
     const { data: fullOrder, error: fetchErr } = await context.supabase
@@ -1437,4 +1462,3 @@ export const recordOrderPayment = createServerFn({ method: "POST" })
     }
     return order;
   });
-

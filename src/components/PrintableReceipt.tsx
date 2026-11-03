@@ -70,12 +70,23 @@ export const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
 
           {/* Order Details */}
           <div className="border-b pb-2 mb-2">
-            <p><strong>رقم الطلب:</strong> {receipt.orderNumber}</p>
-            <p><strong>الزبون:</strong> {receipt.customerName}</p>
-            <p><strong>الهاتف:</strong> {receipt.customerPhone}</p>
-            <p><strong>الاستلام:</strong> {receipt.method === "delivery" ? "توصيل" : "استلام من الفرع"}</p>
+            <p>
+              <strong>رقم الطلب:</strong> {receipt.orderNumber}
+            </p>
+            <p>
+              <strong>الزبون:</strong> {receipt.customerName}
+            </p>
+            <p>
+              <strong>الهاتف:</strong> {receipt.customerPhone}
+            </p>
+            <p>
+              <strong>الاستلام:</strong>{" "}
+              {receipt.method === "delivery" ? "توصيل" : "استلام من الفرع"}
+            </p>
             {receipt.deliveryAddress && (
-              <p><strong>العنوان:</strong> {receipt.deliveryAddress}</p>
+              <p>
+                <strong>العنوان:</strong> {receipt.deliveryAddress}
+              </p>
             )}
           </div>
 

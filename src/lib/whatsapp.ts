@@ -42,10 +42,7 @@ export const formatWhatsappPhone = formatJordanianPhone;
  * Generates a direct WhatsApp link.
  * If phone is omitted or empty, defaults to the official bakery WhatsApp number.
  */
-export function getWhatsAppChatUrl(
-  phone?: string | null,
-  text?: string | null,
-): string {
+export function getWhatsAppChatUrl(phone?: string | null, text?: string | null): string {
   const cleanPhone = phone ? formatJordanianPhone(phone) : WHATSAPP_STORE_NUMBER;
   const target = cleanPhone || WHATSAPP_STORE_NUMBER;
   const query = text && text.trim() ? `?text=${encodeURIComponent(text.trim())}` : "";

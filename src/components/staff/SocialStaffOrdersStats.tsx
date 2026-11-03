@@ -258,9 +258,7 @@ export function SocialStaffOrdersStats() {
         ) : (
           <div className="grid gap-2.5">
             {filteredOrders.map((ord) => {
-              const waUrl = ord.customer_phone
-                ? getWhatsAppChatUrl(ord.customer_phone)
-                : null;
+              const waUrl = ord.customer_phone ? getWhatsAppChatUrl(ord.customer_phone) : null;
 
               return (
                 <div

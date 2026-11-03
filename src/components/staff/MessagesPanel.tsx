@@ -1,7 +1,15 @@
 import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { CheckCircle2, Loader2, Phone, RotateCcw, MessageSquare, ExternalLink, Trash2 } from "lucide-react";
+import {
+  CheckCircle2,
+  Loader2,
+  Phone,
+  RotateCcw,
+  MessageSquare,
+  ExternalLink,
+  Trash2,
+} from "lucide-react";
 import {
   deleteCustomerMessage,
   listCustomerMessages,

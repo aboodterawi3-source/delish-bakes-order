@@ -73,7 +73,10 @@ await db.exec(`
 console.log("  ✅ Test Database Schema & Mock Seed Created in PGLite.\n");
 
 const queriesDir = path.resolve("metabase/queries");
-const queryFiles = fs.readdirSync(queriesDir).filter(f => f.endsWith(".sql")).sort();
+const queryFiles = fs
+  .readdirSync(queriesDir)
+  .filter((f) => f.endsWith(".sql"))
+  .sort();
 
 let passCount = 0;
 for (const file of queryFiles) {
@@ -92,5 +95,7 @@ for (const file of queryFiles) {
 }
 
 console.log("\n================================================================================");
-console.log(`🏁 METABASE VERIFICATION SUMMARY: ${passCount} of ${queryFiles.length} queries executed successfully!`);
+console.log(
+  `🏁 METABASE VERIFICATION SUMMARY: ${passCount} of ${queryFiles.length} queries executed successfully!`,
+);
 console.log("================================================================================\n");

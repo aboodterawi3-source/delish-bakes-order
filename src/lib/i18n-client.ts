@@ -18,20 +18,18 @@ const resources = {
   },
 };
 
-i18n
-  .use(initReactI18next)
-  .init({
-    resources,
-    lng: "ar",
-    fallbackLng: "ar",
-    interpolation: {
-      escapeValue: false, // React already escapes values
-    },
-    detection: {
-      order: ["localStorage", "navigator"],
-      caches: ["localStorage"],
-    },
-  });
+i18n.use(initReactI18next).init({
+  resources,
+  lng: "ar",
+  fallbackLng: "ar",
+  interpolation: {
+    escapeValue: false, // React already escapes values
+  },
+  detection: {
+    order: ["localStorage", "navigator"],
+    caches: ["localStorage"],
+  },
+});
 
 export default i18n;
 export { i18n };

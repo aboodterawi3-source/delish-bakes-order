@@ -70,11 +70,7 @@ export function OrderingDialogs({
           </button>
         </header>
         <div className="p-4 sm:p-7">
-          {kind === "cake" ? (
-            <CakeBuilder onDone={handleDone} />
-          ) : (
-            <QuickShop onCart={onCart} />
-          )}
+          {kind === "cake" ? <CakeBuilder onDone={handleDone} /> : <QuickShop onCart={onCart} />}
         </div>
       </section>
     </div>

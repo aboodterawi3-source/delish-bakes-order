@@ -48,7 +48,9 @@ async function runReactScan() {
       fcp: fcp ? Math.round(fcp.startTime) : 0,
       elementsCount: document.querySelectorAll("*").length,
       imagesCount: document.querySelectorAll("img").length,
-      reactFiberPresent: !!document.querySelector("#root")?._reactRootContainer || !!document.querySelector("body")?.innerHTML.includes("$tsr"),
+      reactFiberPresent:
+        !!document.querySelector("#root")?._reactRootContainer ||
+        !!document.querySelector("body")?.innerHTML.includes("$tsr"),
     };
   });
 
@@ -58,7 +60,9 @@ async function runReactScan() {
   console.log(`  - First Contentful Paint: ${renderStats.fcp}ms`);
   console.log(`  - Total DOM Elements: ${renderStats.elementsCount} (Optimal < 1500)`);
   console.log(`  - Total Images: ${renderStats.imagesCount}`);
-  console.log(`  - SSR Stream & Hydration Barrier: ${renderStats.reactFiberPresent ? "Active & Healthy" : "N/A"}`);
+  console.log(
+    `  - SSR Stream & Hydration Barrier: ${renderStats.reactFiberPresent ? "Active & Healthy" : "N/A"}`,
+  );
 
   await browser.close();
   console.log("\n✅ React Scan analysis completed successfully!");

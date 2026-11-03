@@ -1,117 +1,29 @@
+// ==============================================================================
+// DELISH CAKE & BAKE — TOUCH ITEM EDITOR LIFECYCLE & INTEGRITY SUITE
+// Directly imports and executes the actual application code units from
+// src/components/staff/touch-item-editor-utils.ts for J2-A, J2-B, J3, and J5.
+// ==============================================================================
+
 import assert from "node:assert/strict";
+import {
+  DEFAULT_EXTRAS,
+  parseOptionsAndExtras,
+  calculateBasePriceFromSaved,
+  evaluateFillingRequirement,
+  compileSavePayload,
+} from "../src/components/staff/touch-item-editor-utils.ts";
 
 console.log("================================================================================");
-console.log("🍰 TOUCH ITEM EDITOR LIFECYCLE & INTEGRITY SUITE (J2, J3, J5 VERIFICATION)");
+console.log("🍰 TOUCH ITEM EDITOR LIFECYCLE & INTEGRITY SUITE (ACTUAL SOURCE CODE UNIT TESTS)");
 console.log("================================================================================\n");
-
-// Helpers mirroring the exact logic in TouchItemEditorSheet.tsx
-const DEFAULT_EXTRAS = [
-  { id: "candles", name: "شموع أرقام", price: 0.5, icon: "🕯️" },
-  { id: "balloons", name: "بالونات هيليوم", price: 1.0, icon: "🎈" },
-  { id: "topper", name: "توبير أكريليك / مجسم", price: 3.0, icon: "🎂" },
-  { id: "cutlery", name: "طقم صحون وشوك", price: 0.5, icon: "🍽️" },
-  { id: "flowers", name: "ورد طبيعي للتزيين", price: 2.5, icon: "🌸" },
-];
-
-function roundJod(val) {
-  return Math.round(val * 100) / 100;
-}
-
-function parseItemOptionsAndBasePrice(item) {
-  const opts = item.options_ar || [];
-  const sizeOpt = opts.find((o) => o.startsWith("الحجم:"));
-  const selectedSize = sizeOpt ? sizeOpt.replace("الحجم:", "").trim() : "";
-
-  const fillingOpt = opts.find((o) => o.startsWith("الحشوة:"));
-  const selectedFilling = fillingOpt ? fillingOpt.replace("الحشوة:", "").trim() : "";
-
-  const writingOpt = opts.find((o) => o.startsWith("الكتابة:"));
-  const cakeInscription = writingOpt ? writingOpt.replace("الكتابة:", "").trim() : "";
-
-  let savedExtrasTotal = 0;
-  const updatedDefaultExtras = DEFAULT_EXTRAS.map((def) => {
-    const match = opts.find((o) => o.includes(def.name));
-    if (match) {
-      const qtyMatch = match.match(/\((\d+)\s*[×xX*]/) || match.match(/(\d+)/);
-      const qty = qtyMatch?.[1] ? parseInt(qtyMatch[1], 10) : 1;
-      savedExtrasTotal += def.price * qty;
-      return { ...def, qty };
-    }
-    return { ...def, qty: 0 };
-  });
-
-  const parsedCustomExtras = [];
-  opts.forEach((optStr, idx) => {
-    if (optStr.startsWith("الحجم:") || optStr.startsWith("الحشوة:") || optStr.startsWith("الكتابة:")) return;
-    if (DEFAULT_EXTRAS.some((def) => optStr.includes(def.name))) return;
-    const customMatch = optStr.match(/^(?:(?:\p{Extended_Pictographic}|\p{Emoji}|[^\w\s])\s*)?(.+?)\s*\(\s*(\d+)\s*[×xX*]\s*([\d.]+)/u);
-    if (customMatch && customMatch[1]) {
-      const name = customMatch[1].trim();
-      const qty = customMatch[2] ? parseInt(customMatch[2], 10) : 1;
-      const price = customMatch[3] ? parseFloat(customMatch[3]) : 0;
-      const iconMatch = optStr.match(/^(\p{Extended_Pictographic}|\p{Emoji})/u);
-      const icon = iconMatch && iconMatch[1] ? iconMatch[1] : "✨";
-      parsedCustomExtras.push({
-        id: `custom-extra-${idx}`,
-        name,
-        price,
-        icon,
-        qty,
-      });
-      savedExtrasTotal += price * qty;
-    }
-  });
-
-  const allExtras = [...updatedDefaultExtras, ...parsedCustomExtras];
-  const basePrice = Math.max(0, roundJod(item.unit_price - savedExtrasTotal));
-
-  return {
-    selectedSize,
-    selectedFilling,
-    cakeInscription,
-    extras: allExtras,
-    basePrice,
-    savedExtrasTotal,
-  };
-}
-
-function compileSavePayload({ basePrice, extras, selectedSize, selectedFilling, cakeInscription, name, quantity, notes, isFillingRequired }) {
-  if (!name.trim()) throw new Error("Item name required");
-  if (isFillingRequired && !selectedFilling.trim()) {
-    throw new Error("يرجى تحديد نوع الحشوة المطلوبة لهذا الصنف");
-  }
-
-  const compiledOptions = [];
-  if (selectedSize) compiledOptions.push(`الحجم: ${selectedSize}`);
-  if (selectedFilling.trim()) compiledOptions.push(`الحشوة: ${selectedFilling.trim()}`);
-  if (cakeInscription.trim()) compiledOptions.push(`الكتابة: ${cakeInscription.trim()}`);
-
-  let extrasTotal = 0;
-  extras.forEach((e) => {
-    if (e.qty > 0) {
-      extrasTotal += e.price * e.qty;
-      compiledOptions.push(`${e.icon} ${e.name} (${e.qty} × ${e.price.toFixed(2)} د.أ)`);
-    }
-  });
-
-  const finalUnitPrice = roundJod(basePrice + extrasTotal);
-
-  return {
-    name,
-    quantity,
-    unitPrice: finalUnitPrice,
-    options: compiledOptions,
-    notes: notes?.trim() || null,
-  };
-}
 
 let passed = 0;
 let total = 0;
 
-function test(name, fn) {
+async function test(name, fn) {
   total++;
   try {
-    fn();
+    await fn();
     console.log(`  ✅ PASS: ${name}`);
     passed++;
   } catch (err) {
@@ -122,222 +34,223 @@ function test(name, fn) {
 }
 
 // ------------------------------------------------------------------------------
-// TEST 1: J2 Addon Double-Count Prevention Across Consecutive Saves
+// TEST 1 (J2-A): Historical Price Retention & Exact Deduction upon Removal
 // ------------------------------------------------------------------------------
-test("1. J2: Item at 21 JD with 2 candles remains 21 JD after 2 consecutive saves and notes edit", () => {
-  const initialItem = {
-    id: "item-101",
-    product_id: "prod-vanilla-cake",
-    name_ar: "كيكة فانيلا",
-    unit_price: 21.00, // base 20 + 2 candles (0.50 ea = 1.00)
+await test("1. J2-A: Item at 21.50 JD with 2 candles @ 0.75 historical price saves as 20.00 JD when candles removed", () => {
+  const item = {
+    id: "item-hist-1",
+    product_id: "prod-1",
+    name_ar: "كيكة فانيلا فاخرة",
+    unit_price: 21.5,
     quantity: 1,
-    options_ar: ["🕯️ شموع أرقام (2 × 0.50 د.أ)"],
-    notes: null,
+    options_ar: ["الحجم: وسط (10 أشخاص)", "الحشوة: فانيلا", "🕯️ شموع أرقام (2 × 0.75 د.أ)"],
+    notes: "ملاحظات الطلب",
   };
 
-  // Open item in editor
-  const s1 = parseItemOptionsAndBasePrice(initialItem);
-  assert.equal(s1.basePrice, 20.00, "Base price must be deducted to exactly 20.00 JD");
-  assert.equal(s1.savedExtrasTotal, 1.00, "Saved extras total must be 1.00 JD");
+  // Step A: Parse options using actual application function
+  const parsed = parseOptionsAndExtras(item.options_ar, DEFAULT_EXTRAS);
+  assert.equal(parsed.selectedSize, "وسط (10 أشخاص)");
+  assert.equal(parsed.selectedFilling, "فانيلا");
 
-  // Save 1: without any change
-  const save1 = compileSavePayload({
-    basePrice: s1.basePrice,
-    extras: s1.extras,
-    selectedSize: s1.selectedSize,
-    selectedFilling: s1.selectedFilling,
-    cakeInscription: s1.cakeInscription,
-    name: initialItem.name_ar,
-    quantity: initialItem.quantity,
-    notes: initialItem.notes,
-    isFillingRequired: false,
-  });
-  assert.equal(save1.unitPrice, 21.00, "First save unit price must remain exactly 21.00 JD");
+  // Verify historical candle price was extracted (0.75 each, not default 0.50)
+  const candles = parsed.extras.find((e) => e.name === "شموع أرقام");
+  assert.ok(candles, "Candles must be matched");
+  assert.equal(candles.qty, 2, "Quantity must be 2");
+  assert.equal(candles.price, 0.75, "Historical unit price must be preserved as 0.75");
+  assert.equal(parsed.savedExtrasTotal, 1.5, "Saved extras total must be exactly 1.50 JD");
 
-  // Save 2: simulate opening the result of save 1 and saving again
-  const itemAfterSave1 = { ...initialItem, unit_price: save1.unitPrice, options_ar: save1.options };
-  const s2 = parseItemOptionsAndBasePrice(itemAfterSave1);
-  const save2 = compileSavePayload({
-    basePrice: s2.basePrice,
-    extras: s2.extras,
-    selectedSize: s2.selectedSize,
-    selectedFilling: s2.selectedFilling,
-    cakeInscription: s2.cakeInscription,
-    name: itemAfterSave1.name_ar,
-    quantity: itemAfterSave1.quantity,
-    notes: itemAfterSave1.notes,
-    isFillingRequired: false,
-  });
-  assert.equal(save2.unitPrice, 21.00, "Second consecutive save unit price must stay exactly 21.00 JD");
+  // Step B: Calculate base price
+  const basePrice = calculateBasePriceFromSaved(item.unit_price, parsed.savedExtrasTotal);
+  assert.equal(basePrice, 20.0, "Inferred base price must be 20.00 JD");
 
-  // Save 3: edit notes only
-  const save3 = compileSavePayload({
-    basePrice: s2.basePrice,
-    extras: s2.extras,
-    selectedSize: s2.selectedSize,
-    selectedFilling: s2.selectedFilling,
-    cakeInscription: s2.cakeInscription,
-    name: itemAfterSave1.name_ar,
-    quantity: itemAfterSave1.quantity,
-    notes: "كتابة بطاقة إهداء مع الطلب",
-    isFillingRequired: false,
+  // Step C: Save without modification (candles kept) -> must remain 21.50 JD
+  const keptRes = compileSavePayload({
+    tab: "catalog",
+    productName: item.name_ar,
+    unitPrice: basePrice,
+    quantity: 1,
+    selectedSize: parsed.selectedSize,
+    selectedFilling: parsed.selectedFilling,
+    extras: parsed.extras,
+    isFillingRequired: true,
   });
-  assert.equal(save3.unitPrice, 21.00, "Notes-only edit must preserve unit price at 21.00 JD");
-  assert.equal(save3.notes, "كتابة بطاقة إهداء مع الطلب");
+  assert.equal(keptRes.success, true);
+  assert.equal(keptRes.payload.unitPrice, 21.5, "Keeping 0.75 candles preserves 21.50 JD");
+
+  // Step D: Remove candles (qty set to 0) -> must save as exactly 20.00 JD
+  const removedExtras = parsed.extras.map((e) => (e.name === "شموع أرقام" ? { ...e, qty: 0 } : e));
+  const removedRes = compileSavePayload({
+    tab: "catalog",
+    productName: item.name_ar,
+    unitPrice: basePrice,
+    quantity: 1,
+    selectedSize: parsed.selectedSize,
+    selectedFilling: parsed.selectedFilling,
+    extras: removedExtras,
+    isFillingRequired: true,
+  });
+  assert.equal(removedRes.success, true);
+  assert.equal(
+    removedRes.payload.unitPrice,
+    20.0,
+    "Removing candles MUST result in clean 20.00 JD base price",
+  );
+  assert.equal(
+    removedRes.payload.options.some((o) => o.includes("شموع")),
+    false,
+    "Candles must not appear in compiled options when qty is 0",
+  );
 });
 
 // ------------------------------------------------------------------------------
-// TEST 2: J2 Changing Extras and Custom Extras
+// TEST 2 (J2-B): Unknown Options & Distinct Custom Extras Preservation
 // ------------------------------------------------------------------------------
-test("2. J2: Adding or removing extras accurately adjusts price with custom extras preserved", () => {
-  const itemWithCustom = {
-    id: "item-102",
-    product_id: null,
+await test("2. J2-B: Unknown specs ('بدون مكسرات') and custom extra ('شموع أرقام ذهبية' @ 4.00) preserved without corruption", () => {
+  const item = {
+    id: "item-custom-1",
     name_ar: "كيكة مخصصة",
-    unit_price: 24.50, // base 20 + 2 candles (1.00) + custom topper (3.50)
-    quantity: 1,
-    options_ar: [
-      "🕯️ شموع أرقام (2 × 0.50 د.أ)",
-      "✨ مجسم سكر ثلاثي الأبعاد (1 × 3.50 د.أ)",
-    ],
-    notes: null,
-  };
-
-  const state = parseItemOptionsAndBasePrice(itemWithCustom);
-  assert.equal(state.basePrice, 20.00, "Recovered base price must be 20.00 JD");
-  assert.equal(state.savedExtrasTotal, 4.50, "Total saved extras must be 4.50 JD");
-
-  // Increment candles from 2 to 3 (+0.50 JD)
-  const modifiedExtras = state.extras.map((e) =>
-    e.name === "شموع أرقام" ? { ...e, qty: 3 } : e
-  );
-  const savePlus = compileSavePayload({
-    basePrice: state.basePrice,
-    extras: modifiedExtras,
-    selectedSize: "",
-    selectedFilling: "",
-    cakeInscription: "",
-    name: itemWithCustom.name_ar,
-    quantity: 1,
-    notes: null,
-    isFillingRequired: false,
-  });
-  assert.equal(savePlus.unitPrice, 25.00, "20 base + 1.50 candles + 3.50 custom = 25.00 JD");
-
-  // Remove candles completely (0 candles)
-  const zeroCandles = state.extras.map((e) =>
-    e.name === "شموع أرقام" ? { ...e, qty: 0 } : e
-  );
-  const saveZero = compileSavePayload({
-    basePrice: state.basePrice,
-    extras: zeroCandles,
-    selectedSize: "",
-    selectedFilling: "",
-    cakeInscription: "",
-    name: itemWithCustom.name_ar,
-    quantity: 1,
-    notes: null,
-    isFillingRequired: false,
-  });
-  assert.equal(saveZero.unitPrice, 23.50, "20 base + 0 candles + 3.50 custom = 23.50 JD");
-});
-
-// ------------------------------------------------------------------------------
-// TEST 3: J3 State Isolation Between Consecutive Edit Sessions
-// ------------------------------------------------------------------------------
-test("3. J3: Switching from Item A (full options) to Item B (no options) strictly resets all fields", () => {
-  const itemA = {
-    id: "item-A",
-    product_id: "cake-tiered",
-    name_ar: "كيكة طبقات",
-    unit_price: 35.00,
+    unit_price: 24.0, // 20.00 base + 4.00 gold candles
     quantity: 1,
     options_ar: [
       "الحجم: كبير (15 شخص)",
-      "الحشوة: فانيلا فراولة غنية",
-      "الكتابة: مبروك التخرج يا أحمد 🎓",
-      "🕯️ شموع أرقام (4 × 0.50 د.أ)",
+      "الحشوة: كيندر",
+      "بدون مكسرات", // Unparsed / custom specification
+      "✨ شموع أرقام ذهبية (1 × 4.00 د.أ)", // Custom extra sharing partial name with default candles
     ],
-    notes: "رجاء التوصيل مبرد",
   };
 
-  const itemB = {
-    id: "item-B",
-    product_id: null,
-    name_ar: "كرواسان زبدة",
-    unit_price: 1.50,
-    quantity: 2,
-    options_ar: [],
-    notes: null,
-  };
+  // Step A: Parse options
+  const parsed = parseOptionsAndExtras(item.options_ar, DEFAULT_EXTRAS);
 
-  // State after parsing Item A
-  const stateA = parseItemOptionsAndBasePrice(itemA);
-  assert.equal(stateA.selectedSize, "كبير (15 شخص)");
-  assert.equal(stateA.selectedFilling, "فانيلا فراولة غنية");
-  assert.equal(stateA.cakeInscription, "مبروك التخرج يا أحمد 🎓");
+  // Check unknown options preserved
+  assert.deepEqual(
+    parsed.unparsedOptions,
+    ["بدون مكسرات"],
+    "Unknown spec 'بدون مكسرات' must be preserved",
+  );
 
-  // State after switching to Item B
-  const stateB = parseItemOptionsAndBasePrice(itemB);
-  assert.equal(stateB.selectedSize, "", "Item B must have empty size");
-  assert.equal(stateB.selectedFilling, "", "Item B must have empty filling");
-  assert.equal(stateB.cakeInscription, "", "Item B must have empty inscription");
-  assert.equal(stateB.savedExtrasTotal, 0, "Item B must have 0 extras");
-  assert.equal(stateB.basePrice, 1.50, "Item B base price must be 1.50 JD");
+  // Check custom extra did NOT match default candles
+  const defaultCandles = parsed.extras.find((e) => e.name === "شموع أرقام");
+  assert.equal(defaultCandles.qty, 0, "Default candles must NOT match 'شموع أرقام ذهبية'");
+
+  const customCandles = parsed.extras.find((e) => e.name === "شموع أرقام ذهبية");
+  assert.ok(customCandles, "Custom extra 'شموع أرقام ذهبية' must be preserved as distinct extra");
+  assert.equal(customCandles.price, 4.0, "Price must remain 4.00 JD");
+  assert.equal(customCandles.qty, 1);
+  assert.equal(parsed.savedExtrasTotal, 4.0);
+
+  const basePrice = calculateBasePriceFromSaved(item.unit_price, parsed.savedExtrasTotal);
+  assert.equal(basePrice, 20.0);
+
+  // Step B: Save without modifications -> compileSavePayload
+  const res = compileSavePayload({
+    tab: "catalog",
+    productName: item.name_ar,
+    unitPrice: basePrice,
+    quantity: 1,
+    selectedSize: parsed.selectedSize,
+    selectedFilling: parsed.selectedFilling,
+    unparsedOptions: parsed.unparsedOptions,
+    extras: parsed.extras,
+    isFillingRequired: true,
+  });
+
+  assert.equal(res.success, true);
+  assert.equal(res.payload.unitPrice, 24.0, "Total price must remain 24.00 JD");
+  assert.ok(
+    res.payload.options.includes("بدون مكسرات"),
+    "'بدون مكسرات' must be preserved in compiled options",
+  );
+  assert.ok(
+    res.payload.options.some((o) => o.includes("شموع أرقام ذهبية (1 × 4.00 د.أ)")),
+    "Custom gold candles must be preserved with exact 4.00 price",
+  );
 });
 
 // ------------------------------------------------------------------------------
-// TEST 4: J5 Filling Requirement Validation Logic
+// TEST 3 (J3): Switching Product A to B within Same Session Resets Filling
 // ------------------------------------------------------------------------------
-test("4. J5: Filling requirement strictly validated for cakes and optional for non-cakes", () => {
-  const cakeProduct = {
-    category: "Cake",
-    filling_ar: "شوكولاتة نوتيلا",
+await test("3. J3: Switching from Product A (with filling) to Product B (without filling) resets filling to empty", () => {
+  const prodA = {
+    id: "prod-a",
+    name_ar: "كيكة الريد فيلفيت",
+    price: 25.0,
+    category: "Cakes",
+    filling_ar: "تشيز كيك فانيلا",
   };
-  const isCakeFillingRequired = Boolean(cakeProduct.category.toLowerCase().includes("cake") || cakeProduct.filling_ar);
-  assert.equal(isCakeFillingRequired, true, "Cake must require filling");
 
-  // Attempt save cake without filling -> throws validation error
-  assert.throws(
-    () => {
-      compileSavePayload({
-        basePrice: 20,
-        extras: [],
-        selectedSize: "وسط",
-        selectedFilling: "", // empty!
-        cakeInscription: "",
-        name: "كيكة شوكولاتة",
-        quantity: 1,
-        notes: null,
-        isFillingRequired: isCakeFillingRequired,
-      });
-    },
-    /يرجى تحديد نوع الحشوة/,
-    "Must throw error when required cake filling is empty"
+  const prodB = {
+    id: "prod-b",
+    name_ar: "علبة كوكيز ميكس",
+    price: 10.0,
+    category: "Cookies",
+    filling_ar: "", // No filling for cookies!
+  };
+
+  // User chooses Product A
+  let selectedFilling = prodA.filling_ar?.trim() || "";
+  assert.equal(selectedFilling, "تشيز كيك فانيلا");
+
+  // User switches to Product B inside the same session
+  // Logic executed in handleSelectProduct:
+  selectedFilling = prodB.filling_ar?.trim() || "";
+  assert.equal(
+    selectedFilling,
+    "",
+    "Switching to Product B must reset selectedFilling to empty string",
   );
 
-  // Non-cake product (e.g. cookies)
-  const cookieProduct = {
-    category: "Cookies",
-    filling_ar: null,
-  };
-  const isCookieFillingRequired = Boolean(cookieProduct.category.toLowerCase().includes("cake") || cookieProduct.filling_ar);
-  assert.equal(isCookieFillingRequired, false, "Cookies must not require filling");
+  // Attempting to save Product B (Cookies) without filling succeeds because cookies do not require filling
+  const isReqB = evaluateFillingRequirement("catalog", prodB.category, prodB.filling_ar);
+  assert.equal(isReqB, false, "Cookies must not require filling");
 
-  // Save cookie without filling -> succeeds cleanly
-  const cookieSave = compileSavePayload({
-    basePrice: 5.00,
-    extras: [],
-    selectedSize: "",
-    selectedFilling: "",
-    cakeInscription: "",
-    name: "كوكيز كلاسيك",
+  const saveB = compileSavePayload({
+    tab: "catalog",
+    productName: prodB.name_ar,
+    unitPrice: prodB.price,
     quantity: 1,
-    notes: null,
-    isFillingRequired: isCookieFillingRequired,
+    selectedFilling: selectedFilling,
+    extras: DEFAULT_EXTRAS.map((e) => ({ ...e, qty: 0 })),
+    isFillingRequired: isReqB,
   });
-  assert.equal(cookieSave.unitPrice, 5.00);
-  assert.equal(cookieSave.options.length, 0);
+  assert.equal(saveB.success, true);
+  assert.equal(
+    saveB.payload.options.some((o) => o.startsWith("الحشوة:")),
+    false,
+  );
+});
+
+// ------------------------------------------------------------------------------
+// TEST 4 (J5): Filling Requirement Enforcement on handleSave Compiler
+// ------------------------------------------------------------------------------
+await test("4. J5: Cake strictly rejects save when filling is missing, while non-cake saves smoothly", () => {
+  // Cake requiring filling
+  const cakeReq = evaluateFillingRequirement("catalog", "Cakes / كيك المناسبات", null);
+  assert.equal(cakeReq, true, "Cake category must evaluate isFillingRequired to true");
+
+  const cakeAttemptEmpty = compileSavePayload({
+    tab: "catalog",
+    productName: "كيكة شوكولاتة",
+    unitPrice: 20.0,
+    quantity: 1,
+    selectedFilling: "   ", // Empty string
+    extras: DEFAULT_EXTRAS.map((e) => ({ ...e, qty: 0 })),
+    isFillingRequired: cakeReq,
+  });
+  assert.equal(cakeAttemptEmpty.success, false, "Cake with empty filling must fail save");
+  assert.ok(cakeAttemptEmpty.error.includes("الحشوة"), "Error message must mention filling");
+
+  const cakeAttemptFilled = compileSavePayload({
+    tab: "catalog",
+    productName: "كيكة شوكولاتة",
+    unitPrice: 20.0,
+    quantity: 1,
+    selectedFilling: "لوتس مقرمش",
+    extras: DEFAULT_EXTRAS.map((e) => ({ ...e, qty: 0 })),
+    isFillingRequired: cakeReq,
+  });
+  assert.equal(cakeAttemptFilled.success, true, "Cake with filled flavor must succeed save");
+  assert.ok(cakeAttemptFilled.payload.options.includes("الحشوة: لوتس مقرمش"));
 });
 
 console.log("\n================================================================================");

@@ -92,7 +92,6 @@ function formatRelativeTime(dateString: string) {
   }
 }
 
-
 let sharedAudioCtx: AudioContext | null = null;
 function getSharedAudioCtx() {
   if (typeof window === "undefined") return null;
@@ -102,16 +101,15 @@ function getSharedAudioCtx() {
         window.AudioContext ||
         (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
       )();
-      
+
       // KDS-01: Auto-resume audio context on user interaction to bypass autoplay policy
       const unlockAudio = () => {
         if (sharedAudioCtx?.state === "suspended") {
           void sharedAudioCtx.resume();
         }
       };
-      window.addEventListener('click', unlockAudio, { once: true, capture: true });
-      window.addEventListener('touchstart', unlockAudio, { once: true, capture: true });
-      
+      window.addEventListener("click", unlockAudio, { once: true, capture: true });
+      window.addEventListener("touchstart", unlockAudio, { once: true, capture: true });
     } catch {
       return null;
     }
@@ -199,7 +197,6 @@ async function downloadDesignImage(url: string, orderNumber: string) {
     window.open(url, "_blank", "noopener,noreferrer");
   }
 }
-
 
 const ORDERS_KEY = ["kds-orders"] as const;
 
@@ -628,7 +625,9 @@ const KdsCleanCard = memo(function KdsCleanCard({
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  const targetModIds = unackMods.map((m: any) => m.id || m.updatedAt).filter(Boolean);
+                  const targetModIds = unackMods
+                    .map((m: any) => m.id || m.updatedAt)
+                    .filter(Boolean);
                   onAck(order.id, targetModIds);
                 }}
                 className="min-h-[30px] px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black text-[11px] shadow-xs transition-all flex items-center gap-1 cursor-pointer shrink-0"
@@ -1198,7 +1197,10 @@ export function KitchenPanel() {
         .filter(isKitchenRelevantModification)
         .filter((m) => !m.acknowledgedAt);
       if (unack.length > 0) {
-        const latestUnackTime = unack.reduce((latest, m) => (m.updatedAt > latest ? m.updatedAt : latest), "");
+        const latestUnackTime = unack.reduce(
+          (latest, m) => (m.updatedAt > latest ? m.updatedAt : latest),
+          "",
+        );
         const unackKey = `${(r as any).version || 1}_${unack.map((m) => (m as any).id || m.updatedAt).join(",")}_${latestUnackTime}`;
         if (knownModTimestamps.current.get(r.id) !== unackKey) {
           newlyModified.push(r.id);
@@ -1523,14 +1525,20 @@ export function KitchenPanel() {
                   ? "bg-emerald-500/10 text-emerald-800 dark:text-emerald-300 border-emerald-500/30"
                   : "bg-amber-500/10 text-amber-800 dark:text-amber-300 border-amber-500/30 animate-pulse"
               }`}
-              title={realtime.isConnected ? "مزامنة لحظية نشطة مع السيرفر" : "جارِ المزامنة مع السيرفر..."}
+              title={
+                orders.dataUpdatedAt
+                  ? `آخر مزامنة ناجحة: ${new Date(orders.dataUpdatedAt).toLocaleTimeString("ar-JO")}`
+                  : "جلب دوري كل 10 ثوانٍ وبث تحديثات المطبخ"
+              }
             >
               <span
                 className={`h-2 w-2 rounded-full ${
                   realtime.isConnected ? "bg-emerald-500 animate-pulse" : "bg-amber-500"
                 }`}
               />
-              <span>{realtime.isConnected ? "متصل لحظياً" : "جارِ المزامنة..."}</span>
+              <span>
+                {realtime.isConnected ? "تحديث دوري (10ث) + بث مباشر" : "جارِ المزامنة..."}
+              </span>
             </div>
 
             {/* Refresh Button */}
