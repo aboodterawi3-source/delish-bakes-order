@@ -7,25 +7,18 @@ import {
   Loader2,
   Menu,
   Sparkles,
+  Truck,
+  ShieldCheck,
   Cake,
-  Layers,
 } from "lucide-react";
 import { DelishLogo } from "./DelishLogo";
 import { BackgroundCurves } from "./BackgroundCurves";
 import { useStorefrontContent } from "@/hooks/use-storefront-content";
-import { type StorefrontProduct } from "@/lib/storefront-content";
+import { priceForSize, tintFill, type StorefrontProduct } from "@/lib/storefront-content";
 import { LangToggle, useLang, type Lang } from "@/lib/i18n";
 import { formatJod } from "@/lib/currency";
-import { useBrandPalette } from "@/lib/brand-palette";
-
-// Project high-resolution bakery assets for realistic visual showcase
-import cakeChocImg from "@/assets/cake-choc.jpg";
-import cakeBerryImg from "@/assets/cake-berry.jpg";
-import cakeRedImg from "@/assets/cake-red.jpg";
-import cheesecakeImg from "@/assets/cheesecake.jpg";
-import browniesImg from "@/assets/brownies.jpg";
-import cupcakesImg from "@/assets/cupcakes.jpg";
-import luxuryCakeImg from "@/assets/luxury-cake-showcase.jpg";
+import { useBrandPalette, type BrandPalette } from "@/lib/brand-palette";
+import luxuryCakeShowcaseImg from "@/assets/luxury-cake-showcase.jpg";
 
 interface DiscoverViewProps {
   onSelectProduct?: (productId: string) => void;
@@ -33,33 +26,6 @@ interface DiscoverViewProps {
   onOpenMenu?: () => void;
   cartCount?: number;
   isEmbedded?: boolean;
-}
-
-/** Resolves product photography: uses published database image or matches signature project photography */
-function resolveProductPhoto(product: StorefrontProduct): string {
-  if (product.image_url && product.image_url.trim().length > 0) {
-    return product.image_url;
-  }
-  const text = `${product.name_ar} ${product.name_en} ${product.category} ${product.slug}`.toLowerCase();
-  if (text.includes("شوكولاتة") || text.includes("نوتيلا") || text.includes("choc")) {
-    return cakeChocImg;
-  }
-  if (text.includes("ريد فيلفيت") || text.includes("red")) {
-    return cakeRedImg;
-  }
-  if (text.includes("فستق") || text.includes("pistachio") || text.includes("ورد") || text.includes("berry")) {
-    return cakeBerryImg;
-  }
-  if (text.includes("تشيز كيك") || text.includes("cheese")) {
-    return cheesecakeImg;
-  }
-  if (text.includes("براونيز") || text.includes("كوكيز") || text.includes("brownies") || text.includes("cookies")) {
-    return browniesImg;
-  }
-  if (text.includes("فردية") || text.includes("كب كيك") || text.includes("cupcake")) {
-    return cupcakesImg;
-  }
-  return luxuryCakeImg;
 }
 
 export function DiscoverView({
@@ -76,6 +42,7 @@ export function DiscoverView({
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
+  const banner = content.data?.banner ?? null;
   const categories = content.data?.categories ?? [];
   const products = content.data?.products ?? [];
 
@@ -92,6 +59,13 @@ export function DiscoverView({
       );
   }, [products, selectedCategory, searchQuery]);
 
+  const activeCategory = categories.find((category) => category.id === selectedCategory) ?? null;
+  const activeCategoryName = activeCategory
+    ? lang === "ar"
+      ? activeCategory.name_ar
+      : activeCategory.name_en
+    : null;
+
   return (
     <div
       dir={dir}
@@ -104,16 +78,16 @@ export function DiscoverView({
       <BackgroundCurves />
 
       {/* Top Header Bar */}
-      <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-border/80 bg-background/95 px-4 py-3.5 backdrop-blur-md sm:px-8 lg:px-12">
-        <div className="flex items-center gap-2.5">
+      <header className="sticky top-0 z-20 flex items-center justify-between gap-2 border-b border-border bg-background/95 px-4 py-3.5 backdrop-blur-md sm:px-6">
+        <div className="flex items-center gap-2">
           {onOpenMenu && (
             <button
               type="button"
               onClick={onOpenMenu}
               aria-label={lang === "ar" ? "القائمة الرئيسية" : "Main Menu"}
-              className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-2xl border border-border bg-card text-foreground shadow-2xs transition-all hover:bg-secondary/50 active:scale-95"
+              className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-foreground shadow-xs transition hover:bg-secondary/60 active:scale-95"
             >
-              <Menu className="h-5 w-5" />
+              <Menu className="h-4 w-4" />
             </button>
           )}
           <LangToggle variant="peach" className="shrink-0" />
@@ -127,27 +101,22 @@ export function DiscoverView({
           <button
             type="button"
             onClick={() => setSearchOpen(!searchOpen)}
-            aria-label={lang === "ar" ? "بحث عن منتج" : "Search"}
-            className={`flex h-11 w-11 cursor-pointer items-center justify-center rounded-2xl border transition-all active:scale-95 ${
-              searchOpen
-                ? "border-primary bg-primary/10 text-primary"
-                : "border-border bg-card text-foreground shadow-2xs hover:bg-secondary/50"
-            }`}
+            aria-label={lang === "ar" ? "بحث" : "Search"}
+            className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-foreground shadow-xs transition hover:bg-secondary/60 active:scale-95"
           >
             <Search className="h-4 w-4" />
           </button>
-
           <button
             type="button"
             onClick={onOpenCart}
             aria-label={t("cart")}
-            className="relative flex h-11 w-11 cursor-pointer items-center justify-center rounded-2xl border border-border bg-card text-foreground shadow-2xs transition-all hover:bg-secondary/50 active:scale-95"
+            className="relative flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-foreground shadow-xs transition hover:bg-secondary/60 active:scale-95"
           >
             <ShoppingBag className="h-4 w-4" />
             {cartCount > 0 && (
               <span
                 style={{ backgroundColor: palette.badgeBg || palette.main }}
-                className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-extrabold text-white shadow-sm ring-2 ring-background"
+                className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold text-white shadow"
               >
                 {cartCount}
               </span>
@@ -156,113 +125,158 @@ export function DiscoverView({
         </div>
       </header>
 
-      {/* Expandable Search Drawer */}
       {searchOpen && (
-        <div className="relative z-20 border-b border-border/80 bg-card/90 px-4 py-3 backdrop-blur-md sm:px-6 lg:px-12">
-          <div className="mx-auto max-w-xl">
-            <div className="relative flex items-center">
-              <Search className="pointer-events-none absolute right-4 h-4 w-4 text-muted-foreground" />
-              <input
-                type="search"
-                placeholder={lang === "ar" ? "ابحث عن كيك، معجنات، ماكارون..." : t("search")}
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                className="w-full rounded-2xl border border-input bg-background py-3 pr-11 pl-4 text-sm font-medium text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
-                autoFocus
-              />
-            </div>
-          </div>
+        <div className="relative z-20 px-5 pt-3 pb-1">
+          <input
+            type="search"
+            placeholder={t("search")}
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            className="w-full rounded-2xl border border-input bg-card px-4 py-2.5 text-xs font-medium text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
+            autoFocus
+          />
         </div>
       )}
 
-      {/* Main Expansive Catalog Container */}
-      <main className="relative z-10 mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
-        {/* Refined Luxury Heading */}
-        <section className="mb-8 text-center sm:mb-10">
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-4 py-1 text-xs font-bold text-primary shadow-2xs">
-            <Sparkles className="h-3.5 w-3.5" />
-            <span>
-              {lang === "ar" ? "تشكيلة البوتيك الحرفية · عمّان" : "Artisan Boutique Collection · Amman"}
-            </span>
-          </div>
-
-          <h1 className="mt-3 font-sans text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl lg:text-4xl">
-            {lang === "ar" ? "قائمة الكيك والحلويات الفاخرة" : "Luxury Cake & Pastry Collection"}
-          </h1>
-
-          <p className="mx-auto mt-2 max-w-xl text-xs leading-relaxed text-muted-foreground sm:text-sm">
-            {lang === "ar"
-              ? "نخبز كل صنف يومياً بأجود المكونات والشوكولاتة البلجيكية الفاخرة لنقدم لكم مذاقاً استثنائياً في مناسباتكم."
-              : "Handcrafted daily using fine Belgian chocolate and fresh ingredients for your cherished celebrations."}
-          </p>
-        </section>
-
-        {/* Minimalist Horizontal Category Filter Ribbon */}
-        {categories.length > 0 && (
-          <nav
-            aria-label="Categories Filter"
-            className="mb-8 flex items-center justify-start gap-2 overflow-x-auto pb-2 no-scrollbar sm:justify-center sm:pb-0"
+      <main className="relative z-10 w-full max-w-3xl flex-1 space-y-6 self-center overflow-x-hidden px-4 py-5 sm:px-6">
+        {/* Dynamic Hero Banner */}
+        {banner && banner.is_active !== false && (
+          <section
+            aria-label="Promotional Hero Showcase"
+            className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-card via-secondary/20 to-secondary/40 p-5 shadow-xs transition-all hover:shadow-sm sm:p-7"
           >
-            <button
-              type="button"
-              onClick={() => setSelectedCategory(null)}
-              className={`flex shrink-0 cursor-pointer items-center gap-2 rounded-2xl border px-4 py-2.5 text-xs font-bold transition-all duration-200 active:scale-95 ${
-                selectedCategory === null
-                  ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                  : "border-border/80 bg-card text-foreground shadow-2xs hover:border-primary/40 hover:bg-secondary/40"
-              }`}
-            >
-              <Layers className="h-4 w-4" />
-              <span>{lang === "ar" ? "جميع الأصناف" : "All Menu"}</span>
-              <span
-                className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
-                  selectedCategory === null
-                    ? "bg-primary-foreground/20 text-white"
-                    : "bg-secondary text-muted-foreground"
-                }`}
-              >
-                {products.length}
-              </span>
-            </button>
+            <div className="relative z-10 flex flex-col items-center justify-between gap-5 sm:gap-6 md:flex-row">
+              {/* Left Content Side */}
+              <div className="min-w-0 flex-1 space-y-3 text-start">
+                <h2 className="font-display text-xl leading-snug font-extrabold tracking-tight text-foreground sm:text-2xl lg:text-3xl">
+                  {banner.discount_text ||
+                    (lang === "ar"
+                      ? "كيكات مميزة تُصنع بحب لمناسباتكم الخاصة"
+                      : "Signature Celebration Cakes")}
+                </h2>
 
-            {categories.map((category) => {
-              const active = selectedCategory === category.id;
-              const categoryName = lang === "ar" ? category.name_ar : category.name_en;
-              return (
-                <button
-                  key={category.id}
-                  type="button"
-                  onClick={() => setSelectedCategory(active ? null : category.id)}
-                  className={`flex shrink-0 cursor-pointer items-center gap-2 rounded-2xl border px-4 py-2.5 text-xs font-bold transition-all duration-200 active:scale-95 ${
-                    active
-                      ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                      : "border-border/80 bg-card text-foreground shadow-2xs hover:border-primary/40 hover:bg-secondary/40"
-                  }`}
-                >
-                  <span>{categoryName}</span>
-                </button>
-              );
-            })}
-          </nav>
+                <p className="max-w-lg text-xs leading-relaxed font-medium text-muted-foreground sm:text-sm">
+                  {banner.subtitle ||
+                    (lang === "ar"
+                      ? "سواء كان حفل تخرج، عيد ميلاد، أو ذكرى مميزة.. نصمم لك كيكة استثنائية تناسب ذوقك وتليق بلحظاتك السعيدة."
+                      : "We craft exceptional cakes tailored to your special moments.")}
+                </p>
+
+                {/* Refined Value Badges */}
+                <div className="flex flex-wrap items-center gap-2 pt-2">
+                  <span className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card/90 px-3 py-1.5 text-xs font-semibold text-foreground shadow-2xs">
+                    <Cake className="h-3.5 w-3.5 text-primary" />
+                    {lang === "ar" ? "خبيز طازج يومياً بأجود المكونات" : "Baked Fresh Daily"}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card/90 px-3 py-1.5 text-xs font-semibold text-foreground shadow-2xs">
+                    <Truck className="h-3.5 w-3.5 text-primary" />
+                    {lang === "ar" ? "توصيل مبرد وآمن في عمّان" : "Refrigerated Amman Delivery"}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-card/90 px-3 py-1.5 text-xs font-semibold text-foreground shadow-2xs">
+                    <ShieldCheck className="h-3.5 w-3.5 text-primary" />
+                    {lang === "ar"
+                      ? "دفع آمن عبر كليك أو نقد عند الاستلام"
+                      : "Easy CliQ & Cash Payment"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Right Showcase Image */}
+              <div className="relative h-36 w-36 shrink-0 overflow-hidden rounded-2xl border border-border bg-card p-1 shadow-sm sm:h-44 sm:w-44">
+                <img
+                  src={banner.image_url || luxuryCakeShowcaseImg}
+                  alt={banner.discount_text || "Delish Bakery Banner"}
+                  className="h-full w-full rounded-xl object-cover transition-transform duration-500 hover:scale-105"
+                />
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Discover by category */}
+        {categories.length > 0 && (
+          <section aria-label="Discover by category" className="space-y-3">
+            <div className="flex items-center justify-between px-1">
+              <h3 className="text-sm font-bold text-foreground sm:text-base">
+                {t("discoverByCategory")}
+              </h3>
+            </div>
+
+            <div className="no-scrollbar flex w-full max-w-full gap-3 overflow-x-auto overscroll-x-contain px-1 pt-1 pb-2 sm:gap-4">
+              {categories.map((category) => {
+                const active = selectedCategory === category.id;
+                const categoryName = lang === "ar" ? category.name_ar : category.name_en;
+                return (
+                  <button
+                    key={category.id}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => setSelectedCategory(active ? null : category.id)}
+                    className={`group flex w-20 shrink-0 cursor-pointer flex-col items-center gap-2 rounded-2xl p-2 transition-all duration-200 sm:w-24 ${
+                      active
+                        ? "-translate-y-0.5 bg-secondary/40 shadow-xs ring-1 ring-primary/40"
+                        : "hover:-translate-y-0.5 hover:bg-secondary/20"
+                    }`}
+                  >
+                    {/* Category Food Circle */}
+                    <div
+                      className={`relative h-16 w-16 overflow-hidden rounded-full border-2 bg-card p-1 transition-all duration-200 sm:h-20 sm:w-20 ${
+                        active
+                          ? "scale-105 border-primary shadow-sm"
+                          : "border-border group-hover:border-primary/50"
+                      }`}
+                    >
+                      {category.image_url ? (
+                        <img
+                          src={category.image_url}
+                          alt={categoryName}
+                          className="h-full w-full rounded-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        />
+                      ) : (
+                        <span className="grid h-full w-full place-items-center rounded-full text-xs font-bold text-primary sm:text-sm">
+                          {categoryName.slice(0, 1)}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Category Title */}
+                    <span
+                      className={`line-clamp-1 text-center text-xs leading-tight transition-colors ${
+                        active ? "font-bold text-primary" : "font-medium text-foreground"
+                      }`}
+                    >
+                      {categoryName}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
         )}
 
         {/* Product Catalog Grid */}
-        <section aria-label="Products Grid">
+        <section aria-label="Product Catalog" className="space-y-4 pb-10">
+          <div className="flex items-center justify-between px-1">
+            <h3 className="font-display text-base font-bold text-foreground sm:text-lg">
+              {activeCategoryName
+                ? activeCategoryName
+                : lang === "ar"
+                  ? "قائمة المنتجات"
+                  : "Product Catalog"}
+            </h3>
+          </div>
+
           {content.isPending ? (
-            <div className="flex flex-col items-center justify-center gap-3 py-24 text-center text-xs text-muted-foreground">
-              <Loader2 className="h-6 w-6 animate-spin text-primary" aria-hidden />
-              <span>{t("loadingMenu")}</span>
-            </div>
+            <p className="flex items-center justify-center gap-2 py-12 text-xs text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin text-primary" aria-hidden />{" "}
+              {t("loadingMenu")}
+            </p>
           ) : visible.length === 0 ? (
-            <div className="rounded-[2.5rem] border border-border bg-card py-20 text-center shadow-2xs">
-              <Cake className="mx-auto mb-3 h-10 w-10 text-muted-foreground/50" />
-              <p className="text-base font-bold text-foreground">{t("emptyMenu")}</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {lang === "ar" ? "جرّب تغيير التصنيف أو كلمة البحث" : "Try clearing filters"}
-              </p>
-            </div>
+            <p className="rounded-3xl border border-border bg-card py-12 text-center text-xs text-muted-foreground shadow-2xs">
+              {t("emptyMenu")}
+            </p>
           ) : (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 lg:gap-8">
+            <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4">
               {visible.map((product) => (
                 <ProductCard
                   key={product.id}
@@ -288,89 +302,82 @@ const ProductCard = memo(function ProductCard({
   lang: Lang;
   onSelect?: ((productId: string) => void) | undefined;
 }) {
+  const { palette } = useBrandPalette();
   const name = lang === "ar" ? product.name_ar : product.name_en;
   const description =
     lang === "ar"
-      ? product.description_ar || "كيك وحلويات فاخرة تُخبز طازجة يومياً بأجود المكونات الطبيعية"
-      : product.description_en || "Handcrafted artisan treats baked daily with fresh ingredients";
+      ? product.description_ar || "كيك وحلويات فاخرة تُخبز طازجة يومياً"
+      : product.description_en || "Handcrafted artisan treats baked daily";
   const unitPrice = product.price;
-  const photoSrc = resolveProductPhoto(product);
 
   return (
-    <article
+    <div
       onClick={() => onSelect?.(product.id)}
-      className="group relative flex cursor-pointer flex-col justify-between overflow-hidden rounded-[2rem] border border-border/80 bg-card p-4 shadow-2xs transition-all duration-300 hover:-translate-y-2 hover:border-primary/50 hover:shadow-xl sm:p-5"
+      className="group relative flex cursor-pointer flex-col justify-between overflow-hidden rounded-2xl border border-border bg-card p-3 shadow-2xs transition-all duration-200 hover:-translate-y-1 hover:shadow-md"
     >
-      {/* Top Image Showcase: Large 4:3 Aspect Ratio with Soft Ambient Background */}
-      <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl bg-secondary/20 transition-colors">
-        <img
-          src={photoSrc}
-          alt={name}
-          loading="lazy"
-          className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-        />
-
-        {/* Category micro-tag over image */}
-        <div className="absolute top-3.5 right-3.5 rounded-full border border-white/20 bg-black/60 px-3 py-1 text-[11px] font-bold text-white shadow-xs backdrop-blur-md">
-          {product.category || (lang === "ar" ? "ديليش" : "Delish")}
-        </div>
-
-        {/* Popular Tag if applicable */}
-        {product.is_popular && (
-          <div className="absolute top-3.5 left-3.5 flex items-center gap-1 rounded-full border border-amber-300/30 bg-amber-500/90 px-2.5 py-1 text-[10px] font-extrabold text-white shadow-xs backdrop-blur-xs">
-            <Sparkles className="h-3 w-3" />
-            <span>{lang === "ar" ? "الأكثر طلباً" : "Popular"}</span>
-          </div>
-        )}
-
-        {/* Hover Quick Action Pill on Desktop */}
-        <div className="pointer-events-none absolute inset-0 z-10 hidden items-center justify-center bg-black/20 opacity-0 transition-opacity duration-200 group-hover:opacity-100 sm:flex">
-          <span className="flex items-center gap-1.5 rounded-full border border-white/40 bg-card/95 px-4 py-2 text-xs font-bold text-foreground shadow-lg backdrop-blur-md transition-transform duration-200 hover:scale-105">
-            <Sparkles className="h-3.5 w-3.5 text-primary" />
-            <span>{lang === "ar" ? "تفاصيل وتخصيص الكيك" : "Customize Cake"}</span>
-          </span>
-        </div>
-      </div>
-
-      {/* Card Body: Typography & Information Hierarchy */}
-      <div className="mt-4 flex flex-1 flex-col justify-between space-y-3 px-1">
-        <div>
-          <span className="text-[11px] font-bold text-primary tracking-wide">
-            {product.category || (lang === "ar" ? "كيك فاخر" : "Artisan Cake")}
-          </span>
-          <h2 className="mt-0.5 font-sans text-lg font-bold leading-snug text-foreground transition-colors group-hover:text-primary sm:text-xl">
-            {name}
-          </h2>
-          <p className="mt-1.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
-            {description}
-          </p>
-        </div>
-
-        {/* Card Footer: Clear Price in JOD & Tactile Action Button */}
-        <div className="mt-2 flex items-center justify-between border-t border-border/70 pt-3.5">
-          <div className="flex flex-col">
-            <span className="text-[10px] font-medium text-muted-foreground uppercase">
-              {lang === "ar" ? "السعر يبدأ من" : "Starting from"}
-            </span>
-            <span className="font-sans text-lg font-extrabold text-foreground sm:text-xl">
-              {formatJod(unitPrice, lang)}
-            </span>
-          </div>
-
+      {/* Top Square Image Showcase Container */}
+      <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl bg-secondary/15 p-2 transition-colors">
+        {/* Center Hover Action Pill */}
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-foreground/10 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
               onSelect?.(product.id);
             }}
-            aria-label={lang === "ar" ? `اختيار ${name}` : `Select ${name}`}
-            className="inline-flex min-h-[42px] cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow-2xs transition-all duration-200 hover:bg-primary/90 hover:shadow-xs active:scale-95"
+            className="pointer-events-auto flex cursor-pointer items-center gap-1.5 rounded-full border border-border bg-card/95 px-3.5 py-1.5 text-xs font-bold text-foreground shadow-sm backdrop-blur-xs transition-transform duration-200 hover:scale-105 active:scale-95"
           >
-            <Plus className="h-4 w-4 stroke-[2.5]" />
-            <span>{lang === "ar" ? "اختيار" : "Select"}</span>
+            <Sparkles className="h-3.5 w-3.5 text-primary" />
+            <span>{lang === "ar" ? "نظرة سريعة" : "Quick Look"}</span>
           </button>
         </div>
+
+        {/* Product Photo */}
+        {product.image_url ? (
+          <img
+            src={product.image_url}
+            alt={name}
+            loading="lazy"
+            className="h-full w-full object-contain drop-shadow-xs transition-transform duration-300 group-hover:scale-105"
+          />
+        ) : (
+          <span className="grid h-full w-full place-items-center text-xs font-bold text-primary">
+            {name}
+          </span>
+        )}
       </div>
-    </article>
+
+      {/* Card Body Content */}
+      <div className="mt-3 flex-1 space-y-1 px-0.5">
+        <span className="block text-[11px] font-semibold text-primary/90">
+          {product.category || (lang === "ar" ? "حلويات ديليش" : "Delish Bakes")}
+        </span>
+        <h4 className="line-clamp-1 text-sm leading-snug font-bold text-foreground sm:text-base">
+          {name}
+        </h4>
+        <p className="line-clamp-1 text-xs text-muted-foreground">{description}</p>
+      </div>
+
+      {/* Card Footer Row: Price & Tactile Button */}
+      <div className="mt-3 flex items-center justify-between border-t border-border px-0.5 pt-2.5">
+        <div className="min-w-0">
+          <span className="text-sm font-bold text-foreground sm:text-base">
+            {formatJod(unitPrice, lang)}
+          </span>
+        </div>
+
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelect?.(product.id);
+          }}
+          aria-label={lang === "ar" ? "إضافة إلى السلة" : "Add to cart"}
+          className="grid h-9 w-9 cursor-pointer place-items-center rounded-xl bg-primary text-primary-foreground shadow-xs transition-all hover:bg-primary/90 active:scale-90"
+        >
+          <Plus className="h-4 w-4 stroke-[2.5]" />
+        </button>
+      </div>
+    </div>
   );
 });

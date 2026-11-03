@@ -74,15 +74,14 @@
   --color-tint-lilac: var(--tint-lilac);
   --color-tint-cream: var(--tint-cream);
 
-  --font-display: "Playfair Display", "Alexandria", Georgia, serif;
+  --font-display: "Playfair Display", Georgia, serif;
   --font-script: "Great Vibes", "Playfair Display", cursive, serif;
   --font-sans:
-    "Alexandria", "Tajawal", "Plus Jakarta Sans", "Inter", -apple-system, BlinkMacSystemFont,
-    "Segoe UI", Roboto, sans-serif;
+    "Plus Jakarta Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 :root {
-  --radius: 1rem;
+  --radius: 0.875rem;
 
   /* tweakcn Light Mode: Warm Vanilla Cream & Rich Cocoa */
   --background: oklch(0.985 0.006 85);

@@ -99,7 +99,7 @@ export function StorefrontProductModal({
   )}`;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-3 backdrop-blur-xs transition-opacity duration-300 sm:p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs transition-opacity duration-300">
       {/* Background overlay click */}
       <button
         type="button"
@@ -116,12 +116,12 @@ export function StorefrontProductModal({
         aria-labelledby={titleId}
         dir={ar ? "rtl" : "ltr"}
         style={{ borderColor: palette.border }}
-        className="relative z-10 flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl border bg-white shadow-2xl md:flex-row"
+        className="relative max-h-[92vh] w-full max-w-4xl overflow-hidden rounded-3xl bg-white shadow-2xl flex flex-col md:flex-row z-10 border"
       >
         {/* LEFT COLUMN: Visual Showcase */}
         <div
           style={{ backgroundColor: palette.cardBg }}
-          className="relative flex min-h-[260px] w-full shrink-0 flex-col items-center justify-center p-6 transition-colors duration-300 md:min-h-[460px] md:w-1/2"
+          className="relative w-full md:w-1/2 p-6 flex flex-col justify-center items-center min-h-[260px] md:min-h-[460px] shrink-0 transition-colors duration-300"
         >
           {/* Large Cake Showcase Image */}
           <div className="relative my-auto flex h-full w-full items-center justify-center p-4">
@@ -129,7 +129,7 @@ export function StorefrontProductModal({
               <img
                 src={product.image_url}
                 alt={name}
-                className="max-h-56 max-w-full object-contain drop-shadow-xl transition-transform duration-300 hover:scale-105 md:max-h-80"
+                className="max-h-56 md:max-h-80 max-w-full object-contain drop-shadow-xl transition-transform duration-300 hover:scale-105"
               />
             ) : (
               <div
@@ -143,12 +143,12 @@ export function StorefrontProductModal({
         </div>
 
         {/* RIGHT COLUMN: Streamlined Selection Form */}
-        <div className="flex max-h-[65vh] w-full flex-col justify-between space-y-4 overflow-y-auto p-5 sm:p-7 md:max-h-[90vh] md:w-1/2">
+        <div className="w-full md:w-1/2 p-5 sm:p-7 flex flex-col justify-between overflow-y-auto space-y-4 max-h-[65vh] md:max-h-[90vh]">
           {/* Header row: Badge & Close Button */}
-          <div className="flex items-center justify-between border-b border-border pb-3">
+          <div className="flex items-center justify-between border-b border-[#EFE8DC] pb-3">
             <span
               style={{ color: palette.main }}
-              className="text-[11px] font-black tracking-wider uppercase"
+              className="text-[11px] font-black uppercase tracking-wider"
             >
               TRENDING · الأكثر طلباً
             </span>
@@ -156,7 +156,7 @@ export function StorefrontProductModal({
               type="button"
               onClick={onClose}
               aria-label={ar ? "إغلاق" : "Close"}
-              className="grid h-8 w-8 cursor-pointer place-items-center rounded-full border border-border bg-white text-foreground shadow-xs transition hover:bg-secondary/40 active:scale-95"
+              className="grid h-8 w-8 place-items-center rounded-full border border-[#EFE8DC] bg-white text-[#4A3B32] shadow-xs transition hover:bg-[#FEF7EB] active:scale-95 cursor-pointer"
             >
               <X className="h-4 w-4" aria-hidden />
             </button>
@@ -164,15 +164,10 @@ export function StorefrontProductModal({
 
           {/* Title & Description */}
           <div className="space-y-1">
-            <h2
-              id={titleId}
-              className="font-sans text-2xl leading-tight font-black text-foreground"
-            >
+            <h2 id={titleId} className="font-sans text-2xl font-black text-[#26160F] leading-tight">
               {name}
             </h2>
-            <p className="text-xs leading-relaxed font-medium text-muted-foreground">
-              {description}
-            </p>
+            <p className="text-xs font-medium text-[#4A3B32]/70 leading-relaxed">{description}</p>
           </div>
 
           {product.price_on_request ? (
@@ -195,17 +190,17 @@ export function StorefrontProductModal({
             <div className="space-y-4">
               {/* Unit Price Display */}
               <div className="space-y-0.5">
-                <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#4A3B32]/60">
                   {ar ? "سعر القطعة" : "Unit Price"}
                 </span>
-                <div className="text-2xl font-black text-foreground">
+                <div className="text-2xl font-black text-[#26160F]">
                   {formatJod(unitPrice, lang)}
                 </div>
               </div>
 
               {/* Servings Selector ("Serves up to" / "يكفي لـ") */}
               <div className="space-y-2">
-                <label className="block text-xs font-bold text-foreground">
+                <label className="text-xs font-bold text-[#26160F] block">
                   {ar ? "يكفي لـ" : "Serves up to"}
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -223,10 +218,10 @@ export function StorefrontProductModal({
                               color: active ? "#ffffff" : undefined,
                               borderColor: active ? palette.btnBg : palette.border,
                             }}
-                            className={`cursor-pointer rounded-xl px-3.5 py-2 text-xs font-bold transition-all ${
+                            className={`rounded-xl px-3.5 py-2 text-xs font-bold transition-all cursor-pointer ${
                               active
-                                ? "scale-[1.02] shadow-xs"
-                                : "border bg-white text-foreground hover:bg-secondary/40"
+                                ? "shadow-xs scale-[1.02]"
+                                : "border bg-white text-[#4A3B32] hover:bg-[#FEF7EB]"
                             }`}
                           >
                             {option.label} ({formatJod(option.price, lang)})
@@ -247,10 +242,10 @@ export function StorefrontProductModal({
                               color: active ? "#ffffff" : undefined,
                               borderColor: active ? palette.btnBg : palette.border,
                             }}
-                            className={`cursor-pointer rounded-xl px-3.5 py-2 text-xs font-bold transition-all ${
+                            className={`rounded-xl px-3.5 py-2 text-xs font-bold transition-all cursor-pointer ${
                               active
-                                ? "scale-[1.02] shadow-xs"
-                                : "border bg-white text-foreground hover:bg-secondary/40"
+                                ? "shadow-xs scale-[1.02]"
+                                : "border bg-white text-[#4A3B32] hover:bg-[#FEF7EB]"
                             }`}
                           >
                             {ar ? option.ar : option.label} (
@@ -266,14 +261,14 @@ export function StorefrontProductModal({
 
               {/* Cake Flavor Dropdown (نكهة الكيكة) */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-foreground">
+                <label className="text-xs font-bold text-[#26160F] block">
                   {ar ? "نكهة الكيكة" : "Cake Flavor"}
                 </label>
                 <div className="relative">
                   <select
                     value={flavor}
                     onChange={(e) => setFlavor(e.target.value)}
-                    className="w-full appearance-none rounded-xl border border-border bg-white px-3.5 py-2.5 text-xs font-bold text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    className="w-full appearance-none rounded-xl border border-[#EFE8DC] bg-white px-3.5 py-2.5 text-xs font-bold text-[#26160F] outline-none focus:border-[#B8801C] focus:ring-2 focus:ring-[#B8801C]/20"
                   >
                     {FLAVOR_OPTIONS.map((opt) => (
                       <option key={opt.value} value={opt.value}>
@@ -281,14 +276,14 @@ export function StorefrontProductModal({
                       </option>
                     ))}
                   </select>
-                  <ChevronDown className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <ChevronDown className="pointer-events-none absolute top-1/2 end-3 h-4 w-4 -translate-y-1/2 text-[#4A3B32]/60" />
                 </div>
               </div>
 
               {/* Filling Input (الحشوة) */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <label className="block text-xs font-bold text-foreground">
+                  <label className="text-xs font-bold text-[#26160F] block">
                     {ar ? "نوع الحشوة" : "Cake Filling"} <span className="text-red-500">*</span>
                   </label>
                   {filling.trim() ? (
@@ -311,10 +306,10 @@ export function StorefrontProductModal({
                   placeholder={
                     ar ? "اكتب نوع الحشوة المطلوبة بالتفصيل…" : "Enter required cake filling…"
                   }
-                  className={`w-full rounded-xl border px-3.5 py-2.5 text-xs font-semibold text-foreground transition-all outline-none placeholder:font-normal placeholder:text-muted-foreground ${
+                  className={`w-full rounded-xl border px-3.5 py-2.5 text-xs font-semibold text-[#26160F] outline-none transition-all placeholder:font-normal placeholder:text-[#4A3B32]/40 ${
                     fillingError
                       ? "border-red-500 bg-red-50/40 focus:border-red-600 focus:ring-2 focus:ring-red-200"
-                      : "border-border bg-white focus:border-primary focus:ring-2 focus:ring-primary/20"
+                      : "border-[#EFE8DC] bg-white focus:border-[#B8801C] focus:ring-2 focus:ring-[#B8801C]/20"
                   }`}
                 />
                 {fillingError && (
@@ -328,7 +323,7 @@ export function StorefrontProductModal({
 
               {/* Cake Writing Input (الكتابة على الكيك) */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-foreground">
+                <label className="text-xs font-bold text-[#26160F] block">
                   {ar ? "الكتابة على الكيك" : "Cake Writing"}
                 </label>
                 <input
@@ -336,7 +331,7 @@ export function StorefrontProductModal({
                   value={inscription}
                   onChange={(e) => setInscription(e.target.value)}
                   placeholder={ar ? "مثال: عيد ميلاد سعيد لانا 🎉" : "Happy Birthday Lana"}
-                  className="w-full rounded-xl border border-border bg-white px-3.5 py-2.5 text-xs font-semibold text-foreground outline-none placeholder:font-normal placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  className="w-full rounded-xl border border-[#EFE8DC] bg-white px-3.5 py-2.5 text-xs font-semibold text-[#26160F] outline-none focus:border-[#B8801C] focus:ring-2 focus:ring-[#B8801C]/20 placeholder:font-normal placeholder:text-[#4A3B32]/40"
                 />
               </div>
 
@@ -350,7 +345,7 @@ export function StorefrontProductModal({
                     backgroundColor: palette.cardBg,
                     borderColor: palette.border,
                   }}
-                  className="flex w-full cursor-pointer items-center justify-between rounded-xl border px-3.5 py-2.5 text-xs font-bold transition-colors hover:opacity-90"
+                  className="flex w-full items-center justify-between rounded-xl border px-3.5 py-2.5 text-xs font-bold transition-colors hover:opacity-90 cursor-pointer"
                 >
                   <span>
                     {ar
@@ -362,32 +357,32 @@ export function StorefrontProductModal({
                   />
                 </button>
                 {showExtras && (
-                  <div className="mt-3 border-t border-border pt-2">
+                  <div className="mt-3 pt-2 border-t border-[#EFE8DC]">
                     <CakeCustomizationPanel value={customization} onChange={setCustomization} />
                   </div>
                 )}
               </div>
 
               {/* Sticky Modal Bottom Action Row */}
-              <div className="flex items-center gap-3 border-t border-border pt-3">
+              <div className="pt-3 border-t border-[#EFE8DC] flex items-center gap-3">
                 {/* Stepper [- 1 +] */}
-                <div className="flex items-center gap-1 rounded-xl border border-border bg-white px-1">
+                <div className="flex items-center gap-1 rounded-xl border border-[#EFE8DC] bg-white px-1">
                   <button
                     type="button"
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
                     aria-label={ar ? "تقليل الكمية" : "Decrease quantity"}
-                    className="grid h-10 w-9 cursor-pointer place-items-center rounded-lg text-primary hover:bg-secondary/40 active:scale-95"
+                    className="grid h-10 w-9 place-items-center rounded-lg text-[#6E3917] hover:bg-[#FEF7EB] active:scale-95 cursor-pointer"
                   >
                     <Minus className="h-3.5 w-3.5" aria-hidden />
                   </button>
-                  <span className="min-w-6 text-center text-xs font-bold text-foreground">
+                  <span className="min-w-6 text-center text-xs font-bold text-[#26160F]">
                     {quantity}
                   </span>
                   <button
                     type="button"
                     onClick={() => setQuantity(quantity + 1)}
                     aria-label={ar ? "زيادة الكمية" : "Increase quantity"}
-                    className="grid h-10 w-9 cursor-pointer place-items-center rounded-lg text-primary hover:bg-secondary/40 active:scale-95"
+                    className="grid h-10 w-9 place-items-center rounded-lg text-[#6E3917] hover:bg-[#FEF7EB] active:scale-95 cursor-pointer"
                   >
                     <Plus className="h-3.5 w-3.5" aria-hidden />
                   </button>
@@ -414,7 +409,7 @@ export function StorefrontProductModal({
                     });
                   }}
                   style={{ backgroundColor: palette.btnBg }}
-                  className="inline-flex min-h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl text-xs font-bold text-white shadow-md transition-all hover:opacity-90 active:scale-[0.98]"
+                  className="flex-1 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl text-white text-xs font-bold shadow-md transition-all hover:opacity-90 active:scale-[0.98] cursor-pointer"
                 >
                   <ShoppingBag className="h-4 w-4" />
                   <span>{t("addToCart")}</span>

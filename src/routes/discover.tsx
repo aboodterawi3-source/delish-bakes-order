@@ -42,7 +42,7 @@ function DiscoverPage() {
   }, [content.data, selectedProductId]);
 
   return (
-    <main className="min-h-dvh w-full bg-background text-foreground">
+    <main className="min-h-dvh w-full bg-[#FDFBF7]">
       <DiscoverView
         cartCount={count}
         onOpenCart={() => setCartOpen(true)}
