@@ -84,7 +84,7 @@ export type BannerInput = {
 
 export const saveBanner = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: BannerInput) => ({
+  .validator((input: BannerInput) => ({
     discount_text: clean(input?.discount_text, 40, "نص الخصم", true)!,
     subtitle: clean(input?.subtitle, 80, "العنوان الفرعي", true)!,
     button_text: clean(input?.button_text, 30, "نص الزر", true)!,
@@ -125,7 +125,7 @@ export type CategoryInput = {
 
 export const saveCategory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: CategoryInput) => ({
+  .validator((input: CategoryInput) => ({
     id: clean(input?.id, 40, "المعرّف"),
     row: {
       name_en: clean(input?.name_en, 40, "الاسم بالإنجليزية", true)!,
@@ -151,7 +151,7 @@ export const saveCategory = createServerFn({ method: "POST" })
 
 export const deleteCategory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { id: string }) => {
+  .validator((input: { id: string }) => {
     if (!input?.id) throw new Error("id is required");
     return input;
   })
@@ -175,7 +175,7 @@ export const deleteCategory = createServerFn({ method: "POST" })
 /** Persists the new ribbon order after a move up / move down. */
 export const reorderCategories = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { ids: string[] }) => {
+  .validator((input: { ids: string[] }) => {
     const ids = Array.isArray(input?.ids)
       ? input.ids.filter((id) => typeof id === "string" && id)
       : [];
@@ -220,7 +220,7 @@ export type ProductInput = {
 
 export const saveStorefrontProduct = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: ProductInput) => {
+  .validator((input: ProductInput) => {
     const price = Number(input?.price);
     if (!Number.isFinite(price) || price < 0) throw new Error("السعر غير صحيح · Invalid price");
     const sizes = parseSizes(input?.sizes).slice(0, 12);
@@ -266,7 +266,7 @@ export const saveStorefrontProduct = createServerFn({ method: "POST" })
 /** The Active / Out of stock switch on each product card. */
 export const setProductVisibility = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { id: string; is_available?: boolean; is_popular?: boolean }) => {
+  .validator((input: { id: string; is_available?: boolean; is_popular?: boolean }) => {
     if (!input?.id) throw new Error("id is required");
     return input;
   })
@@ -289,7 +289,7 @@ export const setProductVisibility = createServerFn({ method: "POST" })
 
 export const deleteStorefrontProduct = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { id: string }) => {
+  .validator((input: { id: string }) => {
     if (!input?.id) throw new Error("id is required");
     return input;
   })
@@ -334,7 +334,7 @@ export const deleteStorefrontProduct = createServerFn({ method: "POST" })
  */
 export const uploadSiteImage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { data_url: string; folder?: string }) => {
+  .validator((input: { data_url: string; folder?: string }) => {
     const image = decodeValidatedImage(input?.data_url, MAX_IMAGE_BYTES);
     const folder =
       input?.folder === "banner" || input?.folder === "categories" ? input.folder : "products";

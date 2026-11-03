@@ -3,7 +3,7 @@
 Mobile-first bilingual (Arabic default RTL, English LTR) luxury bakery ordering web app for Delish Cake & Bake in Amman, Jordan.
 
 ## Architecture & Technology Stack
-- **Frontend & Routing:** React 18, TanStack Router, TanStack Start (SSR), Tailwind CSS.
+- **Frontend & Routing:** React 19, TanStack Router, TanStack Start (SSR), Tailwind CSS.
 - **Backend & Database:** Supabase (PostgreSQL 15+), Row-Level Security (RLS), Optimistic Concurrency Control, Atomic SECURITY DEFINER RPCs.
 - **Build & Server Engine:** Vite, Nitro (supporting Cloudflare Pages/Workers & standalone Node.js server targets).
 

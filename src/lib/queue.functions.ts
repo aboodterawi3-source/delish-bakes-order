@@ -13,7 +13,7 @@ export type QueueRank = { orderId: string; queue_rank: number };
  */
 export const setQueueRanks = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { items: QueueRank[] }) => {
+  .validator((input: { items: QueueRank[] }) => {
     const items = Array.isArray(input?.items) ? input.items : [];
     if (items.length === 0) throw new Error("لا يوجد ترتيب · Nothing to reorder");
     if (items.length > 200) throw new Error("عدد كبير جداً · Too many rows");

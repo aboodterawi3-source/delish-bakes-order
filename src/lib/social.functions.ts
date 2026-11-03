@@ -77,7 +77,7 @@ export const getSocialAccess = createServerFn({ method: "GET" })
  */
 export const createSocialOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: SocialOrderInput) => {
+  .validator((input: SocialOrderInput) => {
     if (!input?.customer_name?.trim()) throw new Error("اسم العميل مطلوب");
     if (!input?.customer_phone?.trim()) throw new Error("رقم الهاتف مطلوب");
     if (!input?.order_details?.trim()) {

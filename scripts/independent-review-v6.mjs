@@ -1,3 +1,4 @@
+const dynamicToday = new Date().toISOString().slice(0, 10);
 import { PGlite } from '@electric-sql/pglite';
 import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto';
 import { uuid_ossp } from '@electric-sql/pglite/contrib/uuid_ossp';
@@ -103,7 +104,7 @@ async function create(extra = {}, items = [line], uid = ids.sales) {
     customer_name: 'Synthetic customer',
     customer_phone: '0790000000',
     method: 'pickup',
-    requested_date: '2026-11-01',
+    requested_date: dynamicToday,
     requested_time: '14:00:00',
     client_request_id: randomUUID(),
     ...extra
@@ -392,7 +393,7 @@ function loadApp(file) {
             middleware() {
               return d;
             },
-            inputValidator(v) {
+            validator(v) { d.validate = v; return d; }, inputValidator(v) {
               d.validate = v;
               return d;
             },
@@ -443,7 +444,7 @@ const baseInput = () => ({
   customer_name: 'Boundary synthetic',
   customer_phone: '0790000000',
   method: 'pickup',
-  requested_date: '2026-11-01',
+  requested_date: dynamicToday,
   requested_time: '14:00',
   client_request_id: randomUUID(),
   items: [{ name_ar: 'Synthetic cake', quantity: 1, unit_price: 20 }]

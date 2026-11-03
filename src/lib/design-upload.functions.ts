@@ -87,7 +87,7 @@ async function removeDesignPhoto(path: string): Promise<void> {
  * and is not attached to any order.
  */
 export const uploadDesignImage = createServerFn({ method: "POST" })
-  .inputValidator((input: DesignUploadRequest) => {
+  .validator((input: DesignUploadRequest) => {
     const decoded = decodeValidatedImage(input?.data_url, 400 * 1024);
     return {
       ...decoded,
@@ -141,7 +141,7 @@ export const uploadDesignImage = createServerFn({ method: "POST" })
  * Only paths in our own generated shape that are not linked to an order are deleted.
  */
 export const deleteDesignImage = createServerFn({ method: "POST" })
-  .inputValidator((input: { path?: string | null; url?: string | null; deleteToken?: string | null }) => ({
+  .validator((input: { path?: string | null; url?: string | null; deleteToken?: string | null }) => ({
     path: typeof input?.path === "string" ? input.path : null,
     url: typeof input?.url === "string" && input.url.length <= 2500 ? input.url : null,
     deleteToken: typeof input?.deleteToken === "string" ? input.deleteToken : null,

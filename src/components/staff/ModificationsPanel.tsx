@@ -43,7 +43,7 @@ import {
 } from "@/lib/confirmation-message";
 
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { useOrdersRealtime } from "@/hooks/use-orders-realtime";
+import { useOrdersRealtime, broadcastKitchenUpdate } from "@/hooks/use-orders-realtime";
 import { orderLabel } from "@/lib/order-label";
 import {
   ORDERS_KEY,
@@ -307,6 +307,7 @@ export function ModificationsPanel({
       );
       void queryClient.invalidateQueries({ queryKey: ORDERS_KEY });
       void queryClient.invalidateQueries({ queryKey: ["kds-orders"] });
+      broadcastKitchenUpdate();
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -319,6 +320,7 @@ export function ModificationsPanel({
       );
       void queryClient.invalidateQueries({ queryKey: ORDERS_KEY });
       void queryClient.invalidateQueries({ queryKey: ["kds-orders"] });
+      broadcastKitchenUpdate();
       toast.success("تم حفظ تعديل الصنف ✅");
     },
     onError: (error: Error) => toast.error(error.message),
@@ -333,6 +335,7 @@ export function ModificationsPanel({
       );
       void queryClient.invalidateQueries({ queryKey: ORDERS_KEY });
       void queryClient.invalidateQueries({ queryKey: ["kds-orders"] });
+      broadcastKitchenUpdate();
       toast.success("تم استبدال أصناف الطلب ✅ — تم إشعار المطبخ");
     },
     onError: (error: Error) => toast.error(error.message),

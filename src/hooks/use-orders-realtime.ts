@@ -1,3 +1,20 @@
+/**
+ * Broadcast an ephemeral kitchen update alert across staff sessions.
+ * Never carries customer PII or financial details; triggers an invalidation of getKitchenOrders RPC.
+ */
+export function broadcastKitchenUpdate(orderId?: string) {
+  try {
+    const channel = supabase.channel("delish-kitchen-sync-broadcast");
+    void channel.send({
+      type: "broadcast",
+      event: "kitchen-update",
+      payload: { orderId: orderId ?? null, timestamp: Date.now() },
+    });
+  } catch {
+    // Non-blocking
+  }
+}
+
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient, type QueryKey } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";

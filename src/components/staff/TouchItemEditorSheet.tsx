@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import {
   Cake,
   Check,
@@ -15,7 +15,7 @@ import { toast } from "sonner";
 
 import type { StorefrontProduct } from "@/lib/storefront-content";
 import type { SalesItem } from "@/lib/sales.functions";
-import { jd } from "@/lib/currency";
+import { jd, roundJod } from "@/lib/currency";
 
 // Predefined Bakery Attributes & Extras
 const PREDEFINED_SIZES = [
@@ -93,55 +93,105 @@ export function TouchItemEditorSheet({
   const [customName, setCustomName] = useState("");
   const [itemNotes, setItemNotes] = useState("");
 
+  const lastInitializedKeyRef = useRef<string | null>(null);
+
+  // J3: Session key uniquely identifies this item edit session
+  const sessionKey = isOpen
+    ? item
+      ? (item.id || `${item.product_id || "custom"}-${item.name_ar}`)
+      : "new-item"
+    : null;
+
   // Initialize state when item changes or opens
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      lastInitializedKeyRef.current = null;
+      return;
+    }
+
+    // J3: Preserve ongoing draft when catalog refetches in background
+    if (lastInitializedKeyRef.current === sessionKey) {
+      if (item?.product_id && !selectedProduct) {
+        const prod = products.find((p) => p.id === item.product_id);
+        if (prod) setSelectedProduct(prod);
+      }
+      return;
+    }
+
+    lastInitializedKeyRef.current = sessionKey;
+
+    // J3: Always reset temporary fields
+    setCatalogSearch("");
+    setCustomExtraName("");
+    setCustomExtraPrice("");
 
     if (item) {
       // Editing existing item
-      if (item.product_id) {
-        const prod = products.find((p) => p.id === item.product_id);
-        if (prod) {
-          setSelectedProduct(prod);
-          setTab("catalog");
-        } else {
-          setTab("custom");
-        }
-      } else {
-        setTab("custom");
-      }
+      const prod = item.product_id ? products.find((p) => p.id === item.product_id) || null : null;
+      setSelectedProduct(prod);
+      setTab(prod ? "catalog" : "custom");
 
-      setCustomName(item.name_ar);
-      setQuantity(item.quantity);
-      setUnitPrice(item.unit_price);
+      setCustomName(item.name_ar || "");
+      setQuantity(item.quantity || 1);
       setItemNotes(item.notes || "");
 
       // Parse options array (size, filling, inscription, extras)
       const opts = item.options_ar || [];
+
+      // J3: Reset fields explicitly to prevent leaking from previous items
       const sizeOpt = opts.find((o) => o.startsWith("الحجم:"));
-      if (sizeOpt) setSelectedSize(sizeOpt.replace("الحجم:", "").trim());
+      setSelectedSize(sizeOpt ? sizeOpt.replace("الحجم:", "").trim() : "");
 
       const fillingOpt = opts.find((o) => o.startsWith("الحشوة:"));
-      if (fillingOpt) setSelectedFilling(fillingOpt.replace("الحشوة:", "").trim());
+      setSelectedFilling(fillingOpt ? fillingOpt.replace("الحشوة:", "").trim() : "");
 
       const writingOpt = opts.find((o) => o.startsWith("الكتابة:"));
-      if (writingOpt) setCakeInscription(writingOpt.replace("الكتابة:", "").trim());
+      setCakeInscription(writingOpt ? writingOpt.replace("الكتابة:", "").trim() : "");
 
-      // Parse extras quantities from options string
-      const updatedExtras = DEFAULT_EXTRAS.map((def) => {
+      // J2: Parse extras quantities and custom extras from options
+      let savedExtrasTotal = 0;
+      const updatedDefaultExtras = DEFAULT_EXTRAS.map((def) => {
         const match = opts.find((o) => o.includes(def.name));
         if (match) {
-          const qtyMatch = match.match(/(\d+)/);
-          return { ...def, qty: qtyMatch?.[1] ? parseInt(qtyMatch[1], 10) : 1 };
+          const qtyMatch = match.match(/\((\d+)\s*[×xX*]/) || match.match(/(\d+)/);
+          const qty = qtyMatch?.[1] ? parseInt(qtyMatch[1], 10) : 1;
+          savedExtrasTotal += def.price * qty;
+          return { ...def, qty };
         }
         return { ...def, qty: 0 };
       });
-      setExtras(updatedExtras);
+
+      const parsedCustomExtras: BakeryExtraItem[] = [];
+      opts.forEach((optStr, idx) => {
+        if (optStr.startsWith("الحجم:") || optStr.startsWith("الحشوة:") || optStr.startsWith("الكتابة:")) return;
+        if (DEFAULT_EXTRAS.some((def) => optStr.includes(def.name))) return;
+        const customMatch = optStr.match(/^(?:(?:\p{Extended_Pictographic}|\p{Emoji}|[^\w\s])\s*)?(.+?)\s*\(\s*(\d+)\s*[×xX*]\s*([\d.]+)/u);
+        if (customMatch && customMatch[1]) {
+          const name = customMatch[1].trim();
+          const qty = customMatch[2] ? parseInt(customMatch[2], 10) : 1;
+          const price = customMatch[3] ? parseFloat(customMatch[3]) : 0;
+          const iconMatch = optStr.match(/^(\p{Extended_Pictographic}|\p{Emoji})/u);
+          const icon: string = (iconMatch && iconMatch[1]) ? iconMatch[1] : "✨";
+          parsedCustomExtras.push({
+            id: `custom-extra-${idx}-${Date.now()}`,
+            name,
+            price,
+            icon,
+            qty,
+          });
+          savedExtrasTotal += price * qty;
+        }
+      });
+
+      setExtras([...updatedDefaultExtras, ...parsedCustomExtras]);
+
+      // J2: Deduct saved extras total so we don't charge them twice upon save!
+      const basePrice = Math.max(0, roundJod(item.unit_price - savedExtrasTotal));
+      setUnitPrice(basePrice);
     } else {
-      // Adding new item - reset defaults
+      // Adding new item - reset all defaults completely (J3)
       setTab("catalog");
       setSelectedProduct(null);
-      setCatalogSearch("");
       setSelectedSize("");
       setSelectedFilling("");
       setCakeInscription("");
@@ -151,7 +201,7 @@ export function TouchItemEditorSheet({
       setItemNotes("");
       setExtras(DEFAULT_EXTRAS.map((e) => ({ ...e, qty: 0 })));
     }
-  }, [isOpen, item, products]);
+  }, [isOpen, sessionKey, item, products, selectedProduct]);
 
   // Catalog filtered products
   const filteredProducts = useMemo(() => {
@@ -215,6 +265,16 @@ export function TouchItemEditorSheet({
     [unitPrice, extrasTotal, quantity],
   );
 
+  // J5: Unify filling requirement between catalog product and validation
+  const isFillingRequired = useMemo(() => {
+    if (tab === "catalog" && selectedProduct) {
+      const cat = (selectedProduct.category || "").toLowerCase();
+      const isCake = cat.includes("cake") || cat.includes("كيك");
+      return Boolean(selectedProduct.filling_ar?.trim() || isCake);
+    }
+    return false;
+  }, [tab, selectedProduct]);
+
   const handleSave = () => {
     const name = tab === "catalog" ? selectedProduct?.name_ar || customName : customName;
     if (!name.trim()) {
@@ -234,7 +294,7 @@ export function TouchItemEditorSheet({
       }
     });
 
-    const finalUnitPrice = unitPrice + extrasTotal;
+    const finalUnitPrice = roundJod(unitPrice + extrasTotal);
 
     onSave({
       productId: tab === "catalog" ? selectedProduct?.id : null,
@@ -404,7 +464,7 @@ export function TouchItemEditorSheet({
                     type="text"
                     value={selectedFilling}
                     onChange={(e) => setSelectedFilling(e.target.value)}
-                    placeholder="اكتب نوع الحشوة المطلوبة بالتفصيل…"
+                    placeholder={isFillingRequired ? "اكتب نوع الحشوة المطلوبة بالتفصيل (إجباري)…" : "اكتب نوع الحشوة إن وجدت (اختياري)…"}
                     className="min-h-11 w-full rounded-xl border border-input bg-background px-3 text-xs font-bold text-foreground focus:border-primary focus:outline-none"
                   />
                 </div>

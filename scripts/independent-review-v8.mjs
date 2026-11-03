@@ -1,3 +1,4 @@
+const dynamicToday = new Date().toISOString().slice(0, 10);
 import { PGlite } from '@electric-sql/pglite';
 import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto';
 import { uuid_ossp } from '@electric-sql/pglite/contrib/uuid_ossp';
@@ -119,7 +120,7 @@ function loadApp(file) {
  let source=fs.readFileSync(full,'utf8').replaceAll('import.meta','({env:{}})');
  const compiled=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;
  const req=spec=>{
-  if(spec==='@tanstack/react-start')return{createServerFn:()=>{const d={middleware(){return d;},inputValidator(v){d.validate=v;return d;},handler(h){d.run=async(input,context)=>h({data:d.validate?d.validate(input):input,context});return d;}};return d;}};
+  if(spec==='@tanstack/react-start')return{createServerFn:()=>{const d={middleware(){return d;},validator(v) { d.validate = v; return d; }, inputValidator(v) {d.validate=v;return d;},handler(h){d.run=async(input,context)=>h({data:d.validate?d.validate(input):input,context});return d;}};return d;}};
   if(spec==='@tanstack/react-start/server')return{getRequestHeader:()=>undefined};
   if(spec==='@/integrations/supabase/auth-middleware')return{requireSupabaseAuth:{}};
   if(spec==='@/integrations/supabase/client.server')return{supabaseAdmin:adapter(null,'service_role')};

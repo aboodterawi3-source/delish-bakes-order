@@ -1157,7 +1157,7 @@ export function KitchenPanel() {
     queryKey: ORDERS_KEY,
     queryFn: () => fetchOrders({}),
     staleTime: 15_000,
-    refetchInterval: 60_000,
+    refetchInterval: 10_000,
   });
 
   // Keep kitchen screen active during operational hours

@@ -119,7 +119,7 @@ export const getStaffPermissionMatrix = createServerFn({ method: "GET" })
 /** Admin-only: grant or revoke price editing for one employee and one product. */
 export const updateStaffProductPermission = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { userId: string; productId: string; canEditPrice: boolean }) => {
+  .validator((input: { userId: string; productId: string; canEditPrice: boolean }) => {
     if (!input?.userId) throw new Error("userId is required");
     if (!input?.productId) throw new Error("productId is required");
     return {

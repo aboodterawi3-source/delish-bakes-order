@@ -153,7 +153,7 @@ export const listStaffAuthorizations = createServerFn({ method: "GET" })
 
 export const setStaffAuthorization = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { userId: string } & Partial<StaffAuthorization>) => {
+  .validator((input: { userId: string } & Partial<StaffAuthorization>) => {
     if (!input?.userId) throw new Error("userId is required");
     const cap = input.max_discount_percent;
     if (cap !== undefined && (!Number.isFinite(cap) || cap < 0 || cap > 100)) {
@@ -212,7 +212,7 @@ export const getAuditLogs = listAuditLogs;
 
 export const applyOrderDiscount = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { orderId: string; percent: number; reason: string; expectedVersion?: number | null }) => {
+  .validator((input: { orderId: string; percent: number; reason: string; expectedVersion?: number | null }) => {
     if (!input?.orderId) throw new Error("orderId is required");
     const percent = Number(input.percent);
     if (!Number.isFinite(percent) || percent < 0 || percent > 100) {
@@ -295,7 +295,7 @@ async function hashToken(token: string): Promise<string> {
 
 export const createOrderEditLink = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { orderId: string }) => {
+  .validator((input: { orderId: string }) => {
     if (!input?.orderId) throw new Error("orderId is required");
     return input;
   })
@@ -382,7 +382,7 @@ async function loadToken(token: string): Promise<TokenRow> {
 }
 
 export const getOrderByEditToken = createServerFn({ method: "POST" })
-  .inputValidator((input: { token: string }) => ({ token: String(input?.token ?? "") }))
+  .validator((input: { token: string }) => ({ token: String(input?.token ?? "") }))
   .handler(async ({ data }) => {
     const row = await loadToken(data.token);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -401,7 +401,7 @@ const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_PATTERN = /^\d{2}:\d{2}(:\d{2})?$/;
 
 export const submitOrderEdit = createServerFn({ method: "POST" })
-  .inputValidator(
+  .validator(
     (input: {
       token: string;
       notes?: string;

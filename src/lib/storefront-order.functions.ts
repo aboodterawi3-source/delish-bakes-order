@@ -163,7 +163,7 @@ function validate(input: StorefrontOrderRequest) {
  * delivery fee and the total are recomputed here from the trusted catalogue.
  */
 export const submitStorefrontOrder = createServerFn({ method: "POST" })
-  .inputValidator((input: StorefrontOrderRequest) => validate(input))
+  .validator((input: StorefrontOrderRequest) => validate(input))
   .handler(async ({ data }) => {
     // 10 orders / 10 min / client: blocks scripted floods of fake orders reaching the kitchen.
     const { enforceRateLimit } = await import("@/lib/rate-limit");

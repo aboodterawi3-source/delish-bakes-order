@@ -15,9 +15,9 @@ const serviceRoleKey = process.env.TEST_SUPABASE_SERVICE_ROLE_KEY || process.env
 const anonKey = process.env.TEST_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 if (!supabaseUrl || !serviceRoleKey) {
-  console.log("⚠️ [مكتوبة وجاهزة للتنفيذ — بانتظار تزويد بيانات اعتماد قاعدة بيانات Supabase المستقلة الجديدة]");
+  console.log("⚠️ [SKIPPED / تخطي: لم يتم تزويد متغيرات البيئة لقاعدة بيانات Supabase الحية — الاختبارات بانتظار بيانات الاعتماد]");
   console.log("--------------------------------------------------------------------------------");
-  console.log("السبب: لم يتم تزويد متغيرات البيئة الخاصة بمشروع Supabase المستقل الجديد:");
+  console.log("النتيجة: تخطي (SKIP). لا يُعد ذلك إثباتاً لنجاح الفحص الحي لغياب المتغيرات:");
   console.log("  - SUPABASE_URL");
   console.log("  - SUPABASE_SERVICE_ROLE_KEY");
   console.log("  - SUPABASE_ANON_KEY (اختياري لاختبارات الزائر)\n");

@@ -19,7 +19,7 @@ export type ReceiptUploadRequest = {
  */
 export const uploadPaymentReceipt = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: ReceiptUploadRequest) => {
+  .validator((input: ReceiptUploadRequest) => {
     if (!input?.data_url) {
       throw new Error("بيانات الصورة مطلوبة · Receipt image data is required");
     }

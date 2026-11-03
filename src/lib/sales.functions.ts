@@ -126,7 +126,7 @@ export const getSalesAccess = createServerFn({ method: "GET" })
 
 export const getSalesOrders = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { page?: number }) => ({
+  .validator((input: { page?: number }) => ({
     page: Math.max(Number(input?.page) || 1, 1),
   }))
   .handler(async ({ data, context }): Promise<SalesOrder[]> => {
@@ -178,7 +178,7 @@ export type CreateSalesOrderInput = {
 
 export const createSalesOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: CreateSalesOrderInput) => {
+  .validator((input: CreateSalesOrderInput) => {
     if (!input?.customer_name?.trim())
       throw new Error("اسم العميل مطلوب · Customer name is required");
     if (!input?.customer_phone?.trim())
@@ -493,7 +493,7 @@ export function buildOriginalOrderBaseline(order: any, items: any[]): string {
 
 export const updateSalesOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: OrderPatch) => {
+  .validator((input: OrderPatch) => {
     if (!input?.orderId) throw new Error("orderId is required");
     if (input.status === "cancelled" && !input.cancel_reason?.trim()) {
       throw new Error("سبب الإلغاء مطلوب · Cancellation reason is required");
@@ -815,7 +815,7 @@ export type OrderItemPatch = {
 /** Order-desk staff may correct any line: price, quantity, description, notes. */
 export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: OrderItemPatch) => {
+  .validator((input: OrderItemPatch) => {
     if (!input?.itemId) throw new Error("itemId is required");
     if (!input?.orderId) throw new Error("orderId is required");
     const out: OrderItemPatch = { itemId: String(input.itemId), orderId: String(input.orderId) };
@@ -1048,7 +1048,7 @@ export type RebuildLine = {
  */
 export const replaceSalesOrderItems = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(
+  .validator(
     (input: { orderId: string; lines: RebuildLine[]; expectedVersion?: number | null }) => {
       if (!input?.orderId) throw new Error("orderId is required");
       if (!Array.isArray(input.lines) || input.lines.length === 0) {
@@ -1260,7 +1260,7 @@ export type ShiftReport = {
 
 export const getShiftReport = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { date: string }) => {
+  .validator((input: { date: string }) => {
     if (!input?.date) throw new Error("date is required");
     return input;
   })
@@ -1335,7 +1335,7 @@ export const getShiftReport = createServerFn({ method: "POST" })
  */
 export const deleteSalesOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { orderId: string }) => {
+  .validator((input: { orderId: string }) => {
     if (!input?.orderId) throw new Error("رقم معرّف الطلب مطلوب · orderId is required");
     return { orderId: String(input.orderId) };
   })
@@ -1388,7 +1388,7 @@ export type RecordPaymentInput = {
  */
 export const recordOrderPayment = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: RecordPaymentInput) => {
+  .validator((input: RecordPaymentInput) => {
     if (!input?.orderId) throw new Error("رقم الطلب مطلوب · Order ID is required");
     const amount = Number(input.amount);
     if (!Number.isFinite(amount) || amount <= 0) {

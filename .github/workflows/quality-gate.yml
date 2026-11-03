@@ -1,4 +1,4 @@
-name: Zero-Tolerance Quality Gate
+name: Delish Production Quality Gate
 
 on:
   push:
@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   audit-and-build:
-    name: Security, Types & Build Verification
+    name: Types, Lifecycle Tests & Production Build
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -36,11 +36,11 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      - name: 🔍 Strict Type Checking
+      - name: 🔍 Strict TypeScript Checking
         run: npx tsc --noEmit
 
-      - name: 🧪 Acceptance Test Suite
-        run: node --experimental-strip-types test/acceptance_hardening.test.mjs
+      - name: 🧪 Quality Gate & Lifecycle Test Suites (J2, J3, J5, Acceptance, V6 Engine)
+        run: npm test
 
       - name: 🏗️ Production Build Integrity
         run: npm run build

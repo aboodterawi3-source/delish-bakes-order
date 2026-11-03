@@ -1,12 +1,15 @@
 {
-  "framework": "stryker-mutator/stryker-js",
-  "timestamp": "2026-11-02T18:28:44.213Z",
-  "mutationScore": 100,
+  "framework": "custom-unit-mutation-harness",
+  "scope": "Targeted assertion sensitivity verification on calculateFinancials, assertRole, and roundJod",
+  "isProjectWideAudit": false,
+  "disclaimer": "This report covers a targeted unit test subset and does NOT represent whole-project mutation coverage.",
+  "timestamp": "2026-11-03T13:16:57.066Z",
+  "mutationScore": 88,
   "metrics": {
     "totalMutants": 8,
-    "killed": 8,
-    "survived": 0,
-    "mutationScorePercentage": "100%"
+    "killed": 7,
+    "survived": 1,
+    "mutationScorePercentage": "88% (targeted subset)"
   },
   "thresholds": {
     "high": 80,
@@ -16,51 +19,59 @@
   "mutants": [
     {
       "id": "MUT-01",
-      "status": "Killed",
+      "file": "src/lib/confirmation-message.ts",
       "mutator": "ArithmeticOperator",
-      "description": "Invert refund arithmetic: (roundedTotal - roundedPaid) instead of (roundedPaid - roundedTotal)"
+      "description": "Invert refund arithmetic: (roundedTotal - roundedPaid) instead of (roundedPaid - roundedTotal)",
+      "status": "Killed"
     },
     {
       "id": "MUT-02",
-      "status": "Killed",
+      "file": "src/lib/confirmation-message.ts",
       "mutator": "EqualityOperator",
-      "description": "Mutate boundary check: (paid >= total) instead of (paid > total)"
+      "description": "Mutate isOverpaid condition: '>=' instead of '>'",
+      "status": "Killed"
     },
     {
       "id": "MUT-03",
-      "status": "Killed",
-      "mutator": "ConditionalExpression",
-      "description": "Mutate isFullyPaid flag: ignore overpayment state (remaining === 0)"
+      "file": "src/lib/confirmation-message.ts",
+      "mutator": "BlockStatement",
+      "description": "Mutate remaining balance calculation: hardcode 0 regardless of underpayment",
+      "status": "Killed"
     },
     {
       "id": "MUT-04",
-      "status": "Killed",
-      "mutator": "MathBoundaryOperator",
-      "description": "Remove Math.max(0, ...), allowing negative remaining balance"
+      "file": "src/lib/role-guard.ts",
+      "mutator": "LogicalOperator",
+      "description": "Mutate role assertion: invert condition to allow unauthorized roles",
+      "status": "Killed"
     },
     {
       "id": "MUT-05",
-      "status": "Killed",
-      "mutator": "LogicalOperator",
-      "description": "Invert role check condition: allowedRoles.includes(userRole) inverted"
+      "file": "src/lib/role-guard.ts",
+      "mutator": "EmptyArrayMutator",
+      "description": "Mutate role assertion: treat allowedRoles as empty array",
+      "status": "Killed"
     },
     {
       "id": "MUT-06",
-      "status": "Killed",
-      "mutator": "SecurityBypassOperator",
-      "description": "Allow undefined role access bypass (missing !userRole check)"
+      "file": "src/lib/currency.ts",
+      "mutator": "RoundingMutator",
+      "description": "Mutate roundJod: remove cents rounding causing floating point drift",
+      "status": "Survived"
     },
     {
       "id": "MUT-07",
-      "status": "Killed",
-      "mutator": "PartialPaymentOperator",
-      "description": "Partial deposit calculation mutation (leaves 0 remaining)"
+      "file": "src/lib/confirmation-message.ts",
+      "mutator": "ConditionalExpression",
+      "description": "Mutate refundDue: always return 0 even when customer overpaid",
+      "status": "Killed"
     },
     {
       "id": "MUT-08",
-      "status": "Killed",
-      "mutator": "UnauthorizedRoleAcceptance",
-      "description": "Kitchen role allowed to access admin actions"
+      "file": "src/lib/role-guard.ts",
+      "mutator": "NullCheckMutator",
+      "description": "Mutate assertRole: allow null or undefined user role",
+      "status": "Killed"
     }
   ]
 }

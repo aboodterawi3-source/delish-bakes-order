@@ -271,7 +271,7 @@ export const getKitchenOrders = createServerFn({ method: "GET" })
 /** Marks an order ready; sales sees the same row instantly. */
 export const markOrderReady = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { orderId: string }) => {
+  .validator((input: { orderId: string }) => {
     if (!input?.orderId) throw new Error("orderId is required");
     return input;
   })
@@ -288,7 +288,7 @@ export const markOrderReady = createServerFn({ method: "POST" })
 /** Kitchen staff acknowledges modifications on an order */
 export const acknowledgeOrderModification = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { orderId: string; modIds?: string[] | undefined }) => {
+  .validator((input: { orderId: string; modIds?: string[] | undefined }) => {
     if (!input?.orderId) throw new Error("orderId is required");
     return {
       orderId: String(input.orderId),
@@ -398,7 +398,7 @@ const KITCHEN_STAGES: KitchenStage[] = ["new", "baking", "ready"];
 
 export const setKitchenStage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { orderId: string; stage: KitchenStage }) => {
+  .validator((input: { orderId: string; stage: KitchenStage }) => {
     if (!input?.orderId) throw new Error("orderId is required");
     if (!KITCHEN_STAGES.includes(input.stage)) throw new Error("مرحلة غير صالحة · Invalid stage");
     return { orderId: String(input.orderId), stage: input.stage };

@@ -107,7 +107,7 @@ export const getAdminSetupState = createServerFn({ method: "GET" }).handler(asyn
  * Creates the very first admin account. Refuses once any admin exists.
  */
 export const bootstrapAdmin = createServerFn({ method: "POST" })
-  .inputValidator((input: { username: string; password: string; setupToken: string }) => {
+  .validator((input: { username: string; password: string; setupToken: string }) => {
     const setupToken = String(input?.setupToken ?? "").trim();
     if (!setupToken || setupToken.length > 500)
       throw new Error("رمز التهيئة مطلوب · Setup token is required");
@@ -231,7 +231,7 @@ export const listStaff = createServerFn({ method: "GET" })
 
 export const createStaff = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(
+  .validator(
     (input: { username: string; password: string; role: StaffRole; staffCode?: number | null }) => {
       if (!normalizeUsername(input?.username ?? ""))
         throw new Error("اسم المستخدم مطلوب · Name is required");
@@ -303,7 +303,7 @@ export const createStaff = createServerFn({ method: "POST" })
 
 export const resetStaffPassword = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { userId: string; password: string }) => {
+  .validator((input: { userId: string; password: string }) => {
     if (!input?.userId) throw new Error("userId is required");
     if (!input?.password || input.password.length < 8) {
       throw new Error("كلمة المرور 8 أحرف على الأقل · Password must be at least 8 characters");
@@ -322,7 +322,7 @@ export const resetStaffPassword = createServerFn({ method: "POST" })
 
 export const setStaffRole = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { userId: string; role: StaffRole }) => {
+  .validator((input: { userId: string; role: StaffRole }) => {
     if (!input?.userId) throw new Error("userId is required");
     if (!["admin", "sales", "kitchen", "social"].includes(input.role))
       throw new Error("Invalid role");
@@ -342,7 +342,7 @@ export const setStaffRole = createServerFn({ method: "POST" })
 /** Manager assigns (or clears) the numeric staff ID shown beside order numbers. */
 export const setStaffCode = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { userId: string; staffCode: number | null }) => {
+  .validator((input: { userId: string; staffCode: number | null }) => {
     if (!input?.userId) throw new Error("userId is required");
     if (input.staffCode === null || (input.staffCode as unknown) === "") {
       return { userId: String(input.userId), staffCode: null };
@@ -382,7 +382,7 @@ export const setStaffCode = createServerFn({ method: "POST" })
 
 export const removeStaff = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { userId: string }) => {
+  .validator((input: { userId: string }) => {
     if (!input?.userId) throw new Error("userId is required");
     return input;
   })

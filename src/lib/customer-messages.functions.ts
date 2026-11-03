@@ -57,7 +57,7 @@ function checkRateLimit(phone: string): boolean {
 }
 
 export const submitCustomerMessage = createServerFn({ method: "POST" })
-  .inputValidator((input: { name: string; phone: string; message: string; honeypot?: string }) => {
+  .validator((input: { name: string; phone: string; message: string; honeypot?: string }) => {
     const isBot = Boolean(input?.honeypot && input.honeypot.trim().length > 0);
     const phone = clean(input?.phone, 25, "رقم الهاتف");
     if (!/^[0-9+\s-]{7,25}$/.test(phone))
@@ -113,7 +113,7 @@ export const listCustomerMessages = createServerFn({ method: "GET" })
 
 export const setCustomerMessageStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { id: string; status: "new" | "handled" }) => {
+  .validator((input: { id: string; status: "new" | "handled" }) => {
     if (!input?.id) throw new Error("id is required");
     return { id: input.id, status: input.status === "handled" ? "handled" : "new" };
   })
@@ -135,7 +135,7 @@ export const setCustomerMessageStatus = createServerFn({ method: "POST" })
 
 export const deleteCustomerMessage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { id: string }) => {
+  .validator((input: { id: string }) => {
     if (!input?.id) throw new Error("id is required");
     return { id: input.id };
   })

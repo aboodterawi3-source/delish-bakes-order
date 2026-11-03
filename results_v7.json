@@ -38,7 +38,7 @@
       "evidence": {
         "rejected": true,
         "code": "42501",
-        "product_id": "e36ad2d8-a5fd-4c3d-97a6-693b9f372cb5"
+        "product_id": "bc435af0-8977-45c3-8fc2-e4914b9b287c"
       }
     },
     {
@@ -57,8 +57,8 @@
       "verified": true,
       "evidence": {
         "request": {
-          "orderId": "fd918dc8-c91e-4daf-a44c-de143292099f",
-          "itemId": "0cfedc08-d756-4916-a63e-a5928e3323b7",
+          "orderId": "394f6937-4f13-4802-af23-f0f2bebcc281",
+          "itemId": "86a6e700-0945-4142-8606-b7e97082857b",
           "newUnitPrice": 30,
           "options": [
             "الحجم: Large"
@@ -138,7 +138,7 @@
       "name": "Kitchen feed masks price included in free-form item description",
       "verified": true,
       "evidence": {
-        "id": "1d8b9a6a-2bb0-4518-93e1-a4bf88aee053",
+        "id": "baa7cbd9-65a3-4b6b-96f7-0c6d7d688826",
         "name_ar": "Chocolate cake ***",
         "name_en": "Cake ***",
         "quantity": 1,
