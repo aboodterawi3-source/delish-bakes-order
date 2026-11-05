@@ -27,10 +27,10 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Setup Node.js (LTS v22)
+      - name: Setup Node.js (v24)
         uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.2.0
         with:
-          node-version: 22
+          node-version: 24
           cache: 'npm'
 
       - name: Install Dependencies
@@ -41,6 +41,8 @@ jobs:
 
       - name: 🧪 Quality Gate & Lifecycle Test Suites (J2, J3, J5, Acceptance, V6 Engine)
         run: npm test
+        env:
+          NODE_OPTIONS: "--experimental-strip-types"
 
       - name: 🏗️ Production Build Integrity
         run: npm run build
