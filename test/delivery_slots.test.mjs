@@ -155,7 +155,7 @@ await test("5. Slot capacity limit marks slot as unavailable when bookedCount >=
 // TEST 6: KDS Urgency Indicator (Green > 2h, Yellow 1-2h, Red < 1h / Overdue)
 // ------------------------------------------------------------------------------
 await test("6. KDS urgency accurately evaluates deadline proximity for kitchen tickets", () => {
-  const now = new Date("2026-11-06T14:00:00");
+  const now = "2026-11-06T14:00:00";
 
   // Order due at 17:00 (3 hours away) -> normal / green
   const farOrder = getKdsUrgency("2026-11-06", "17:00:00", now);

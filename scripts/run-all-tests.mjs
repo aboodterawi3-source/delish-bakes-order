@@ -30,13 +30,14 @@ const suites = [
 let failed = false;
 
 // Enable strip-types on Node 22+ to allow direct execution of TypeScript units
-const stripTypesFlag = process.version.startsWith("v22") ? ["--experimental-strip-types"] : [];
+const nodeMajor = parseInt(process.versions.node.split(".")[0] || "22", 10);
+const stripTypesFlag = nodeMajor >= 22 ? ["--experimental-strip-types"] : [];
 
 for (const suite of suites) {
   console.log(`\n▶ Running Suite: ${suite.name}...`);
   const res = spawnSync(process.execPath, [...stripTypesFlag, ...suite.args], {
     stdio: "inherit",
-    env: { ...process.env, NODE_OPTIONS: process.env.NODE_OPTIONS || "--experimental-strip-types" },
+    env: process.env,
   });
   if (res.status !== 0) {
     console.error(`❌ Suite ${suite.name} failed with exit code ${res.status}`);

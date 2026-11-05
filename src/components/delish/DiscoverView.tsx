@@ -1,4 +1,4 @@
-import React, { memo, useMemo, useState } from "react";
+import React, { memo, useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   Search,
@@ -334,9 +334,17 @@ const ProductCard = memo(function ProductCard({
       : product.description_en || "Handcrafted artisan treats baked daily";
   const unitPrice = product.price;
 
+  const fallback = useMemo(
+    () => getProductFallbackImage(product.slug, product.category, name),
+    [product.slug, product.category, name]
+  );
+  const [currentSrc, setCurrentSrc] = useState(product.image_url || fallback);
   const [imgFailed, setImgFailed] = useState(false);
-  const fallback = getProductFallbackImage(product.slug, product.category, name);
-  const currentSrc = product.image_url || fallback;
+
+  useEffect(() => {
+    setCurrentSrc(product.image_url || fallback);
+    setImgFailed(false);
+  }, [product.image_url, fallback]);
 
   return (
     <div
@@ -368,7 +376,7 @@ const ProductCard = memo(function ProductCard({
             loading="lazy"
             onError={() => {
               if (currentSrc !== fallback && fallback) {
-                // Let fallback take over
+                setCurrentSrc(fallback);
               } else {
                 setImgFailed(true);
               }

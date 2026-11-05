@@ -65,6 +65,11 @@ export function StorefrontProductModal({
   const [showExtras, setShowExtras] = useState(false);
   const [customization, setCustomization] = useState<Customization>(emptyCustomization);
   const [imgFailed, setImgFailed] = useState(false);
+  const fallbackImg = useMemo(
+    () => (product ? getProductFallbackImage(product.slug, product.category, ar ? product.name_ar : product.name_en) : ""),
+    [product, ar]
+  );
+  const [modalImgSrc, setModalImgSrc] = useState<string>("");
 
   useDismissable(Boolean(product), onClose);
 
@@ -78,9 +83,10 @@ export function StorefrontProductModal({
       setNotes("");
       setShowExtras(false);
       setCustomization(emptyCustomization);
+      setModalImgSrc(product.image_url || fallbackImg);
       setImgFailed(false);
     }
-  }, [product, ar]);
+  }, [product, ar, fallbackImg]);
 
   const baseUnitPrice = useMemo(() => (product ? priceForSize(product, size) : 0), [product, size]);
   const activeOffset = useMemo(() => getServingSizeOffset(size), [size]);
@@ -129,12 +135,11 @@ export function StorefrontProductModal({
           <div className="relative my-auto flex h-full w-full items-center justify-center p-4">
             {!imgFailed ? (
               <img
-                src={resolvedImage}
+                src={modalImgSrc || fallbackImg}
                 alt={name}
                 onError={() => {
-                  const fallback = getProductFallbackImage(product.slug, product.category, name);
-                  if (resolvedImage !== fallback) {
-                    // Try the fallback
+                  if (modalImgSrc !== fallbackImg && fallbackImg) {
+                    setModalImgSrc(fallbackImg);
                   } else {
                     setImgFailed(true);
                   }
