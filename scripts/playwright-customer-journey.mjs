@@ -64,6 +64,11 @@ async function main() {
     );
     console.log(`   🍰 Products listed (${productTitles.length}):`, productTitles);
 
+    const cardImages = await page.$$eval("section[aria-label='Product Catalog'] img", (imgs) =>
+      imgs.map((i) => ({ src: i.src, naturalWidth: i.naturalWidth, complete: i.complete }))
+    );
+    console.log(`   🖼️ Card Images loaded (${cardImages.length}):`, cardImages);
+
     if (productTitles.length === 0) {
       throw new Error("No products rendered in catalog!");
     }
