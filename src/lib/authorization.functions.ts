@@ -359,7 +359,7 @@ export const createOrderEditLink = createServerFn({ method: "POST" })
 
 /**
  * Customer links must point at the public site, never at the editor preview
- * host (which sits behind the Lovable interface and would ask for a login).
+ * origin.
  */
 function publicSiteOrigin(): string {
   const configured =

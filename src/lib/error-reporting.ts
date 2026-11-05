@@ -35,6 +35,3 @@ export function reportError(error: unknown, context: ErrorReportContext = {}): v
     ...context,
   });
 }
-
-// Backwards-compatible export for any legacy callers
-export const reportLovableError = reportError;

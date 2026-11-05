@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useState } from "react";
-import { Minus, Plus, X, ImageOff, ShoppingBag, Eye, ChevronDown } from "lucide-react";
+import { Minus, Plus, X, ShoppingBag, ChevronDown, Sparkles } from "lucide-react";
 import { useLang } from "@/lib/i18n";
 import { useDismissable } from "@/lib/a11y";
 import { formatJod } from "@/lib/currency";
@@ -26,18 +26,22 @@ export type ModalAddPayload = {
 };
 
 const FLAVOR_OPTIONS = [
-  { value: "VANILLA", ar: "فانيلا فاخرة · VANILLA", en: "VANILLA" },
-  { value: "CHOCOLATE", ar: "شوكولاتة بلجيكية · CHOCOLATE", en: "CHOCOLATE" },
-  { value: "RED_VELVET", ar: "ريد فيلفيت · RED VELVET", en: "RED VELVET" },
-  { value: "CARAMEL", ar: "كراميل دافئ · CARAMEL", en: "CARAMEL" },
-  { value: "LOTUS", ar: "لوتس كرنش · LOTUS", en: "LOTUS" },
-  { value: "PISTACHIO", ar: "فستق حلبي · PISTACHIO", en: "PISTACHIO" },
+  { value: "VANILLA", ar: "فانيلا مدغشقر الطبيعية", en: "Madagascar Vanilla" },
+  { value: "CHOCOLATE", ar: "شوكولاتة بلجيكية فاخرة", en: "Belgian Chocolate" },
+  { value: "RED_VELVET", ar: "ريد فيلفيت كلاسيكي", en: "Classic Red Velvet" },
+  { value: "CARAMEL", ar: "كراميل مملح غني", en: "Salted Caramel" },
+  { value: "LOTUS", ar: "لوتس مقرمش", en: "Lotus Crunch" },
+  { value: "PISTACHIO", ar: "فستق حلبي ملكي", en: "Royal Pistachio" },
 ];
 
-/**
- * Quick Order Modal matching Rawan Cake benchmark structure, updated with DELISH Bakes identity.
- * Split 2-Column layout on desktop, top buttercream showcase + bottom form on mobile.
- */
+const QUICK_FILLINGS = [
+  { ar: "وصفة الشيف الأصلية", en: "Chef's Original Recipe" },
+  { ar: "فستق حلبي طبيعي", en: "Natural Pistachio" },
+  { ar: "نوتيلا بلجيكية", en: "Belgian Nutella" },
+  { ar: "لوتس مقرمش", en: "Crunchy Lotus" },
+  { ar: "كراميل مملح", en: "Salted Caramel" },
+];
+
 export function StorefrontProductModal({
   product,
   onClose,
@@ -56,11 +60,11 @@ export function StorefrontProductModal({
   const [quantity, setQuantity] = useState(1);
   const [flavor, setFlavor] = useState("VANILLA");
   const [filling, setFilling] = useState("");
-  const [fillingError, setFillingError] = useState(false);
   const [inscription, setInscription] = useState("");
   const [notes, setNotes] = useState("");
   const [showExtras, setShowExtras] = useState(false);
   const [customization, setCustomization] = useState<Customization>(emptyCustomization);
+  const [imgFailed, setImgFailed] = useState(false);
 
   useDismissable(Boolean(product), onClose);
 
@@ -69,34 +73,33 @@ export function StorefrontProductModal({
       setSize(product.sizes[0]?.label ?? SERVING_SIZE_OFFSETS[0]!.label);
       setQuantity(1);
       setFlavor("VANILLA");
-      setFilling(product?.filling_ar?.trim() || "");
-      setFillingError(false);
+      setFilling(product?.filling_ar?.trim() || (ar ? "وصفة الشيف الأصلية" : "Chef's Original Recipe"));
       setInscription("");
       setNotes("");
       setShowExtras(false);
       setCustomization(emptyCustomization);
+      setImgFailed(false);
     }
-  }, [product]);
+  }, [product, ar]);
 
   const baseUnitPrice = useMemo(() => (product ? priceForSize(product, size) : 0), [product, size]);
-
-  // Calculate price including size offsets if present
   const activeOffset = useMemo(() => getServingSizeOffset(size), [size]);
-
   const unitPrice = baseUnitPrice + (product?.sizes.length ? 0 : activeOffset);
 
   if (!product) return null;
 
   const name = ar ? product.name_ar : product.name_en;
   const description = ar
-    ? product.description_ar
-    : (product.description_en ??
-      (ar ? "كيك فاخر مغطى بالكريمة والسكر" : "Cake covered with sugar"));
+    ? product.description_ar || "كيك احتفالي فاخر مُحضر يدوياً طازجاً بأجود المكونات الطبيعية"
+    : product.description_en || "Handcrafted celebration cake baked fresh daily with finest ingredients";
+
   const askUrl = `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(
     ar
-      ? `مرحباً، أريد معرفة سعر: ${product.name_ar}`
-      : `Hello, I would like the price for: ${product.name_en}`,
+      ? `مرحباً، أريد الاستفسار عن كيكة: ${product.name_ar}`
+      : `Hello, I'd like to inquire about: ${product.name_en}`,
   )}`;
+
+  const resolvedImage = product.image_url || getProductFallbackImage(product.slug, product.category, name);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs transition-opacity duration-300">
@@ -118,36 +121,45 @@ export function StorefrontProductModal({
         style={{ borderColor: palette.border }}
         className="relative max-h-[92vh] w-full max-w-4xl overflow-hidden rounded-3xl bg-white shadow-2xl flex flex-col md:flex-row z-10 border"
       >
-        {/* LEFT COLUMN: Visual Showcase */}
+        {/* VISUAL SHOWCASE COLUMN */}
         <div
           style={{ backgroundColor: palette.cardBg }}
           className="relative w-full md:w-1/2 p-6 flex flex-col justify-center items-center min-h-[260px] md:min-h-[460px] shrink-0 transition-colors duration-300"
         >
-          {/* Large Cake Showcase Image */}
           <div className="relative my-auto flex h-full w-full items-center justify-center p-4">
-            <img
-                src={product.image_url || getProductFallbackImage(product.slug, product.category, name)}
+            {!imgFailed ? (
+              <img
+                src={resolvedImage}
                 alt={name}
-                onError={(e) => {
+                onError={() => {
                   const fallback = getProductFallbackImage(product.slug, product.category, name);
-                  if (e.currentTarget.src !== fallback) {
-                    e.currentTarget.src = fallback;
+                  if (resolvedImage !== fallback) {
+                    // Try the fallback
+                  } else {
+                    setImgFailed(true);
                   }
                 }}
                 className="max-h-56 md:max-h-80 max-w-full object-contain drop-shadow-xl transition-transform duration-300 hover:scale-105"
               />
+            ) : (
+              <div className="flex flex-col items-center justify-center rounded-3xl border border-amber-200 bg-white/90 p-8 text-center shadow-inner">
+                <span className="text-4xl">🎂</span>
+                <span className="mt-2 text-xs font-bold text-amber-900">DELISH Bakes</span>
+                <span className="mt-1 text-[11px] text-muted-foreground">{name}</span>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* RIGHT COLUMN: Streamlined Selection Form */}
+        {/* SELECTION FORM COLUMN */}
         <div className="w-full md:w-1/2 p-5 sm:p-7 flex flex-col justify-between overflow-y-auto space-y-4 max-h-[65vh] md:max-h-[90vh]">
           {/* Header row: Badge & Close Button */}
           <div className="flex items-center justify-between border-b border-[#EFE8DC] pb-3">
             <span
               style={{ color: palette.main }}
-              className="text-[11px] font-black uppercase tracking-wider"
+              className="text-[11px] font-bold uppercase tracking-wider"
             >
-              TRENDING · الأكثر طلباً
+              {ar ? "كيك احتفالي فاخر" : "Artisan Celebration Cake"}
             </span>
             <button
               type="button"
@@ -171,7 +183,7 @@ export function StorefrontProductModal({
             <div className="space-y-3 py-2">
               <p style={{ color: palette.main }} className="text-sm font-bold">
                 {ar
-                  ? "هذا التصميم يُسعّر حسب الطلب — تواصل معنا لمعرفة السعر."
+                  ? "هذا التصميم يُسعّر حسب الطلب والمواصفات — تواصل معنا لتأكيد السعر."
                   : "This design is priced per request — contact us for a quote."}
               </p>
               <a
@@ -180,7 +192,7 @@ export function StorefrontProductModal({
                 rel="noopener noreferrer"
                 className="grid min-h-12 w-full place-items-center rounded-2xl bg-whatsapp text-sm font-bold text-white shadow-md hover:bg-whatsapp/90"
               >
-                {ar ? "اطلب السعر عبر واتساب" : "On request via WhatsApp"}
+                {ar ? "اطلب السعر عبر واتساب" : "Inquire via WhatsApp"}
               </a>
             </div>
           ) : (
@@ -198,7 +210,7 @@ export function StorefrontProductModal({
               {/* Servings Selector ("Serves up to" / "يكفي لـ") */}
               <div className="space-y-2">
                 <label className="text-xs font-bold text-[#26160F] block">
-                  {ar ? "يكفي لـ" : "Serves up to"}
+                  {ar ? "الحجم وعدد الأشخاص:" : "Size & Servings:"}
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {product.sizes.length > 0
@@ -259,7 +271,7 @@ export function StorefrontProductModal({
               {/* Cake Flavor Dropdown (نكهة الكيكة) */}
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-[#26160F] block">
-                  {ar ? "نكهة الكيكة" : "Cake Flavor"}
+                  {ar ? "نكهة الكيكة الأساسية" : "Cake Flavor"}
                 </label>
                 <div className="relative">
                   <select
@@ -277,57 +289,56 @@ export function StorefrontProductModal({
                 </div>
               </div>
 
-              {/* Filling Input (الحشوة) */}
+              {/* Filling Input with Quick Chips */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold text-[#26160F] block">
-                    {ar ? "نوع الحشوة" : "Cake Filling"} <span className="text-red-500">*</span>
+                    {ar ? "نوع الحشوة المفضلة" : "Cake Filling"}
                   </label>
-                  {filling.trim() ? (
-                    <span className="text-[11px] font-bold text-emerald-700">
-                      ✓ {ar ? "تم التحديد" : "Selected"}
-                    </span>
-                  ) : (
-                    <span className="text-[11px] font-bold text-red-600">
-                      {ar ? "إجباري *" : "Required *"}
-                    </span>
-                  )}
+                  <span className="text-[11px] text-muted-foreground">{ar ? "اختياري" : "Optional"}</span>
                 </div>
+
+                {/* Quick filling chips */}
+                <div className="flex flex-wrap gap-1.5 pb-1">
+                  {QUICK_FILLINGS.map((chip) => {
+                    const label = ar ? chip.ar : chip.en;
+                    const isSelected = filling === label;
+                    return (
+                      <button
+                        key={chip.en}
+                        type="button"
+                        onClick={() => setFilling(label)}
+                        className={`rounded-lg px-2 py-0.5 text-[11px] font-semibold transition cursor-pointer ${
+                          isSelected
+                            ? "bg-[#8B4513] text-white"
+                            : "border border-slate-200 bg-[#F9FBFC] text-[#5A4A42] hover:bg-amber-50"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+
                 <input
                   type="text"
                   value={filling}
-                  onChange={(e) => {
-                    setFilling(e.target.value);
-                    if (fillingError) setFillingError(false);
-                  }}
-                  placeholder={
-                    ar ? "اكتب نوع الحشوة المطلوبة بالتفصيل…" : "Enter required cake filling…"
-                  }
-                  className={`w-full rounded-xl border px-3.5 py-2.5 text-xs font-semibold text-[#26160F] outline-none transition-all placeholder:font-normal placeholder:text-[#4A3B32]/40 ${
-                    fillingError
-                      ? "border-red-500 bg-red-50/40 focus:border-red-600 focus:ring-2 focus:ring-red-200"
-                      : "border-[#EFE8DC] bg-white focus:border-[#B8801C] focus:ring-2 focus:ring-[#B8801C]/20"
-                  }`}
+                  onChange={(e) => setFilling(e.target.value)}
+                  placeholder={ar ? "أو اكتب نوع الحشوة المفضلة بالتفصيل..." : "Or type custom filling..."}
+                  className="w-full rounded-xl border border-[#EFE8DC] bg-white px-3.5 py-2 text-xs font-semibold text-[#26160F] outline-none focus:border-[#B8801C] focus:ring-2 focus:ring-[#B8801C]/20 placeholder:font-normal placeholder:text-[#4A3B32]/40"
                 />
-                {fillingError && (
-                  <p className="text-[11px] font-bold text-red-600">
-                    {ar
-                      ? "⚠️ يرجى كتابة نوع الحشوة للكيكة (خانة إجبارية)"
-                      : "⚠️ Please enter cake filling (required)"}
-                  </p>
-                )}
               </div>
 
               {/* Cake Writing Input (الكتابة على الكيك) */}
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-[#26160F] block">
-                  {ar ? "الكتابة على الكيك" : "Cake Writing"}
+                  {ar ? "الكتابة على الكيك (إن وُجدت)" : "Cake Writing (Optional)"}
                 </label>
                 <input
                   type="text"
                   value={inscription}
                   onChange={(e) => setInscription(e.target.value)}
-                  placeholder={ar ? "مثال: عيد ميلاد سعيد لانا 🎉" : "Happy Birthday Lana"}
+                  placeholder={ar ? "مثال: مبروك التخرج يا سارة 🎉" : "Happy Birthday Sarah 🎉"}
                   className="w-full rounded-xl border border-[#EFE8DC] bg-white px-3.5 py-2.5 text-xs font-semibold text-[#26160F] outline-none focus:border-[#B8801C] focus:ring-2 focus:ring-[#B8801C]/20 placeholder:font-normal placeholder:text-[#4A3B32]/40"
                 />
               </div>
@@ -344,10 +355,13 @@ export function StorefrontProductModal({
                   }}
                   className="flex w-full items-center justify-between rounded-xl border px-3.5 py-2.5 text-xs font-bold transition-colors hover:opacity-90 cursor-pointer"
                 >
-                  <span>
-                    {ar
-                      ? "✨ إضافات خاصة (شموع، بالونات، توبر، هدية)"
-                      : "✨ Extra Options (Candles, Balloons, Gift)"}
+                  <span className="flex items-center gap-1.5">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    <span>
+                      {ar
+                        ? "إضافات مميزة (شموع، بالونات، توبر، إرسال كهدية)"
+                        : "Special Add-ons (Candles, Balloons, Topper, Gift)"}
+                    </span>
                   </span>
                   <ChevronDown
                     className={`h-4 w-4 transition-transform ${showExtras ? "rotate-180" : ""}`}
@@ -355,7 +369,10 @@ export function StorefrontProductModal({
                 </button>
                 {showExtras && (
                   <div className="mt-3 pt-2 border-t border-[#EFE8DC]">
-                    <CakeCustomizationPanel value={customization} onChange={setCustomization} />
+                    <CakeCustomizationPanel
+                      value={customization}
+                      onChange={setCustomization}
+                    />
                   </div>
                 )}
               </div>
@@ -389,17 +406,14 @@ export function StorefrontProductModal({
                 <button
                   type="button"
                   onClick={() => {
-                    if (!filling.trim()) {
-                      setFillingError(true);
-                      return;
-                    }
+                    const finalFilling = filling.trim() || (ar ? "وصفة الشيف الأصلية" : "Chef's Original Recipe");
                     onAdd({
                       product,
                       size,
                       quantity,
                       price: unitPrice,
                       flavor,
-                      filling: filling.trim(),
+                      filling: finalFilling,
                       inscription,
                       notes,
                       customization,

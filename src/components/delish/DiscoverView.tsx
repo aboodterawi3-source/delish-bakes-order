@@ -17,7 +17,7 @@ import { useStorefrontContent } from "@/hooks/use-storefront-content";
 import { priceForSize, tintFill, getProductFallbackImage, type StorefrontProduct } from "@/lib/storefront-content";
 import { LangToggle, useLang, type Lang } from "@/lib/i18n";
 import { formatJod } from "@/lib/currency";
-import { useBrandPalette, type BrandPalette } from "@/lib/brand-palette";
+import { useBrandPalette } from "@/lib/brand-palette";
 import luxuryCakeShowcaseImg from "@/assets/luxury-cake-showcase.jpg";
 
 interface DiscoverViewProps {
@@ -218,26 +218,12 @@ export function DiscoverView({
                         : "hover:-translate-y-0.5 hover:bg-secondary/20"
                     }`}
                   >
-                    {/* Category Food Circle */}
-                    <div
-                      className={`relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border-2 bg-card p-1 transition-all duration-200 sm:h-20 sm:w-20 ${
-                        active
-                          ? "scale-105 border-primary shadow-sm ring-2 ring-primary/20"
-                          : "border-border group-hover:border-primary/50"
-                      }`}
-                    >
-                      {category.image_url ? (
-                        <img
-                          src={category.image_url}
-                          alt={categoryName}
-                          className="h-full w-full rounded-full object-cover transition-transform duration-300 group-hover:scale-105"
-                        />
-                      ) : (
-                        <span className="grid h-full w-full place-items-center rounded-full bg-secondary/30 text-2xl sm:text-3xl shadow-inner select-none">
-                          {category.icon || "🎂"}
-                        </span>
-                      )}
-                    </div>
+                    <CategoryCircle
+                      imageUrl={category.image_url}
+                      icon={category.icon}
+                      name={categoryName}
+                      active={active}
+                    />
 
                     {/* Category Title */}
                     <span
@@ -293,6 +279,44 @@ export function DiscoverView({
   );
 }
 
+function CategoryCircle({
+  imageUrl,
+  icon,
+  name,
+  active,
+}: {
+  imageUrl?: string | null | undefined;
+  icon?: string | null | undefined;
+  name: string;
+  active: boolean;
+}) {
+  const [imgFailed, setImgFailed] = useState(false);
+  const showImg = Boolean(imageUrl && !imgFailed);
+
+  return (
+    <div
+      className={`relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border-2 bg-card p-1 transition-all duration-200 sm:h-20 sm:w-20 ${
+        active
+          ? "scale-105 border-primary shadow-sm ring-2 ring-primary/20"
+          : "border-border group-hover:border-primary/50"
+      }`}
+    >
+      {showImg ? (
+        <img
+          src={imageUrl!}
+          alt={name}
+          onError={() => setImgFailed(true)}
+          className="h-full w-full rounded-full object-cover transition-transform duration-300 group-hover:scale-105"
+        />
+      ) : (
+        <span className="grid h-full w-full place-items-center rounded-full bg-secondary/30 text-2xl sm:text-3xl shadow-inner select-none">
+          {icon || "🎂"}
+        </span>
+      )}
+    </div>
+  );
+}
+
 const ProductCard = memo(function ProductCard({
   product,
   lang,
@@ -309,6 +333,10 @@ const ProductCard = memo(function ProductCard({
       ? product.description_ar || "كيك وحلويات فاخرة تُخبز طازجة يومياً"
       : product.description_en || "Handcrafted artisan treats baked daily";
   const unitPrice = product.price;
+
+  const [imgFailed, setImgFailed] = useState(false);
+  const fallback = getProductFallbackImage(product.slug, product.category, name);
+  const currentSrc = product.image_url || fallback;
 
   return (
     <div
@@ -332,19 +360,27 @@ const ProductCard = memo(function ProductCard({
           </button>
         </div>
 
-        {/* Product Photo */}
-        <img
-          src={product.image_url || getProductFallbackImage(product.slug, product.category, name)}
-          alt={name}
-          loading="lazy"
-          onError={(e) => {
-            const fallback = getProductFallbackImage(product.slug, product.category, name);
-            if (e.currentTarget.src !== fallback) {
-              e.currentTarget.src = fallback;
-            }
-          }}
-          className="h-full w-full object-contain drop-shadow-xs transition-transform duration-300 group-hover:scale-105"
-        />
+        {/* Product Photo or Fallback Badge */}
+        {!imgFailed ? (
+          <img
+            src={currentSrc}
+            alt={name}
+            loading="lazy"
+            onError={() => {
+              if (currentSrc !== fallback && fallback) {
+                // Let fallback take over
+              } else {
+                setImgFailed(true);
+              }
+            }}
+            className="h-full w-full object-contain drop-shadow-xs transition-transform duration-300 group-hover:scale-105"
+          />
+        ) : (
+          <div className="flex flex-col items-center justify-center text-center p-2 select-none">
+            <span className="text-3xl sm:text-4xl">🎂</span>
+            <span className="mt-1 text-[10px] font-bold text-primary">DELISH Bakes</span>
+          </div>
+        )}
       </div>
 
       {/* Card Body Content */}
@@ -372,10 +408,10 @@ const ProductCard = memo(function ProductCard({
             e.stopPropagation();
             onSelect?.(product.id);
           }}
-          aria-label={lang === "ar" ? "إضافة إلى السلة" : "Add to cart"}
-          className="grid h-9 w-9 cursor-pointer place-items-center rounded-xl bg-primary text-primary-foreground shadow-xs transition-all hover:bg-primary/90 active:scale-90"
+          aria-label={lang === "ar" ? `طلب ${name}` : `Order ${name}`}
+          className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xs transition hover:scale-110 active:scale-95"
         >
-          <Plus className="h-4 w-4 stroke-[2.5]" />
+          <Plus className="h-4 w-4" />
         </button>
       </div>
     </div>
