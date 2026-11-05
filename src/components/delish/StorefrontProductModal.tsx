@@ -4,7 +4,7 @@ import { useLang } from "@/lib/i18n";
 import { useDismissable } from "@/lib/a11y";
 import { formatJod } from "@/lib/currency";
 import { WHATSAPP } from "@/lib/menu";
-import { priceForSize, type StorefrontProduct } from "@/lib/storefront-content";
+import { priceForSize, getProductFallbackImage, type StorefrontProduct } from "@/lib/storefront-content";
 import { useBrandPalette } from "@/lib/brand-palette";
 import { SERVING_SIZE_OFFSETS, getServingSizeOffset } from "@/lib/order-pricing";
 import {
@@ -125,20 +125,17 @@ export function StorefrontProductModal({
         >
           {/* Large Cake Showcase Image */}
           <div className="relative my-auto flex h-full w-full items-center justify-center p-4">
-            {product.image_url ? (
-              <img
-                src={product.image_url}
+            <img
+                src={product.image_url || getProductFallbackImage(product.slug, product.category, name)}
                 alt={name}
+                onError={(e) => {
+                  const fallback = getProductFallbackImage(product.slug, product.category, name);
+                  if (e.currentTarget.src !== fallback) {
+                    e.currentTarget.src = fallback;
+                  }
+                }}
                 className="max-h-56 md:max-h-80 max-w-full object-contain drop-shadow-xl transition-transform duration-300 hover:scale-105"
               />
-            ) : (
-              <div
-                style={{ color: palette.main }}
-                className="grid h-48 w-48 place-items-center rounded-3xl bg-white/70 shadow-inner"
-              >
-                <ImageOff className="h-10 w-10" aria-hidden />
-              </div>
-            )}
           </div>
         </div>
 

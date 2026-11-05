@@ -16,17 +16,17 @@ type Dict = Record<string, { ar: string; en: string }>;
 const STORAGE_KEY = "delish-lang";
 
 export const t_: Dict = {
-  brandTag: { ar: "حلويات فاخرة · عمّان، الأردن", en: "Luxury Patisserie · Amman, Jordan" },
+  brandTag: { ar: "مخبز وحلويات بوتيك · يُخبز بحب في عمّان", en: "Artisan Boutique Patisserie · Baked with Love in Amman" },
   navMenu: { ar: "القائمة", en: "Menu" },
   navBuilder: { ar: "صمّم كيكتك", en: "Cake Builder" },
   navAbout: { ar: "من نحن", en: "About" },
   navContact: { ar: "تواصل", en: "Contact" },
-  heroTitle: { ar: "كل قطعة… لحظة فرح", en: "Every bite, a little celebration" },
+  heroTitle: { ar: "كل قطمة، لحظة فرح", en: "Every bite, a little celebration" },
   heroSub: {
-    ar: "كيك وحلويات تُخبز طازجة يومياً بمكوّنات فاخرة، وتوصيل داخل عمّان.",
-    en: "Cakes and desserts baked fresh daily with premium ingredients, delivered across Amman.",
+    ar: "نخبز دفعات صغيرة طازجة كل صباح بالزبدة الطبيعية والشوكولاتة الفاخرة، مع توصيل سريع ومتقن لجميع مناطق عمّان.",
+    en: "Small batches crafted every morning using pure dairy butter and Belgian chocolate, delivered with care across Amman.",
   },
-  heroCta: { ar: "اطلب الآن", en: "Order now" },
+  heroCta: { ar: "تصفّح كيك اليوم", en: "Explore Today's Bakes" },
   heroCta2: { ar: "صمّم كيكتك", en: "Build your cake" },
   categories: { ar: "تصفّح الأقسام", en: "Browse categories" },
   all: { ar: "الكل", en: "All" },

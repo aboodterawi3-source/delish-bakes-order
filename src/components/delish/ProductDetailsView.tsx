@@ -20,7 +20,7 @@ import {
 import { LangToggle, useLang } from "@/lib/i18n";
 import { formatJod } from "@/lib/currency";
 import { WHATSAPP } from "@/lib/menu";
-import { priceForSize, type StorefrontProduct } from "@/lib/storefront-content";
+import { priceForSize, getProductFallbackImage, type StorefrontProduct } from "@/lib/storefront-content";
 import { useBrandPalette } from "@/lib/brand-palette";
 
 export interface ProductDetailsAddPayload {
@@ -167,20 +167,20 @@ export function ProductDetailsView({
           <>
             {/* Single product photo, exactly as the sales desk uploaded it */}
             <div className="flex h-64 min-w-0 items-center justify-center sm:h-80">
-              {product.image_url ? (
-                <img
-                  src={product.image_url}
-                  alt={name}
-                  className="max-h-full max-w-full rounded-3xl object-contain transition-all duration-500"
-                />
-              ) : (
-                <div className="grid h-full w-full place-items-center gap-2 rounded-3xl border border-border bg-card/70 text-muted-foreground">
-                  <ImageOff className="h-6 w-6" aria-hidden />
-                  <span className="text-[11px] font-semibold">
-                    {ar ? "لا توجد صورة لهذا المنتج" : "No photo for this product yet"}
-                  </span>
-                </div>
-              )}
+              <img
+                src={
+                  product.image_url ||
+                  getProductFallbackImage(product.slug, product.category, name)
+                }
+                alt={name}
+                onError={(e) => {
+                  const fallback = getProductFallbackImage(product.slug, product.category, name);
+                  if (e.currentTarget.src !== fallback) {
+                    e.currentTarget.src = fallback;
+                  }
+                }}
+                className="h-full w-full object-contain drop-shadow-md"
+              />
             </div>
 
             <div className="space-y-4 pt-1">

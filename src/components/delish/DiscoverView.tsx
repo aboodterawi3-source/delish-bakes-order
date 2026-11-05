@@ -14,7 +14,7 @@ import {
 import { DelishLogo } from "./DelishLogo";
 import { BackgroundCurves } from "./BackgroundCurves";
 import { useStorefrontContent } from "@/hooks/use-storefront-content";
-import { priceForSize, tintFill, type StorefrontProduct } from "@/lib/storefront-content";
+import { priceForSize, tintFill, getProductFallbackImage, type StorefrontProduct } from "@/lib/storefront-content";
 import { LangToggle, useLang, type Lang } from "@/lib/i18n";
 import { formatJod } from "@/lib/currency";
 import { useBrandPalette, type BrandPalette } from "@/lib/brand-palette";
@@ -212,7 +212,7 @@ export function DiscoverView({
                     type="button"
                     aria-pressed={active}
                     onClick={() => setSelectedCategory(active ? null : category.id)}
-                    className={`group flex w-20 shrink-0 cursor-pointer flex-col items-center gap-2 rounded-2xl p-2 transition-all duration-200 sm:w-24 ${
+                    className={`group flex min-w-[5.5rem] max-w-[6.5rem] shrink-0 cursor-pointer flex-col items-center gap-2 rounded-2xl p-2 transition-all duration-200 sm:min-w-[6rem] sm:max-w-[7rem] ${
                       active
                         ? "-translate-y-0.5 bg-secondary/40 shadow-xs ring-1 ring-primary/40"
                         : "hover:-translate-y-0.5 hover:bg-secondary/20"
@@ -220,9 +220,9 @@ export function DiscoverView({
                   >
                     {/* Category Food Circle */}
                     <div
-                      className={`relative h-16 w-16 overflow-hidden rounded-full border-2 bg-card p-1 transition-all duration-200 sm:h-20 sm:w-20 ${
+                      className={`relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border-2 bg-card p-1 transition-all duration-200 sm:h-20 sm:w-20 ${
                         active
-                          ? "scale-105 border-primary shadow-sm"
+                          ? "scale-105 border-primary shadow-sm ring-2 ring-primary/20"
                           : "border-border group-hover:border-primary/50"
                       }`}
                     >
@@ -233,15 +233,15 @@ export function DiscoverView({
                           className="h-full w-full rounded-full object-cover transition-transform duration-300 group-hover:scale-105"
                         />
                       ) : (
-                        <span className="grid h-full w-full place-items-center rounded-full text-xs font-bold text-primary sm:text-sm">
-                          {categoryName.slice(0, 1)}
+                        <span className="grid h-full w-full place-items-center rounded-full bg-secondary/30 text-2xl sm:text-3xl shadow-inner select-none">
+                          {category.icon || "🎂"}
                         </span>
                       )}
                     </div>
 
                     {/* Category Title */}
                     <span
-                      className={`line-clamp-1 text-center text-xs leading-tight transition-colors ${
+                      className={`line-clamp-2 text-center text-xs leading-tight transition-colors ${
                         active ? "font-bold text-primary" : "font-medium text-foreground"
                       }`}
                     >
@@ -333,18 +333,18 @@ const ProductCard = memo(function ProductCard({
         </div>
 
         {/* Product Photo */}
-        {product.image_url ? (
-          <img
-            src={product.image_url}
-            alt={name}
-            loading="lazy"
-            className="h-full w-full object-contain drop-shadow-xs transition-transform duration-300 group-hover:scale-105"
-          />
-        ) : (
-          <span className="grid h-full w-full place-items-center text-xs font-bold text-primary">
-            {name}
-          </span>
-        )}
+        <img
+          src={product.image_url || getProductFallbackImage(product.slug, product.category, name)}
+          alt={name}
+          loading="lazy"
+          onError={(e) => {
+            const fallback = getProductFallbackImage(product.slug, product.category, name);
+            if (e.currentTarget.src !== fallback) {
+              e.currentTarget.src = fallback;
+            }
+          }}
+          className="h-full w-full object-contain drop-shadow-xs transition-transform duration-300 group-hover:scale-105"
+        />
       </div>
 
       {/* Card Body Content */}

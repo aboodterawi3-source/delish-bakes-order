@@ -4,6 +4,8 @@ import { getWhatsAppChatUrl } from "@/lib/whatsapp";
 import { formatJod, roundJod } from "@/lib/currency";
 import { DELIVERY_ZONES, OTHER_GOVERNORATES_AREA, feeForArea } from "@/lib/delivery-zones";
 import { DeliveryZoneSelect } from "@/components/delish/DeliveryZoneSelect";
+import { TimeSlotPicker } from "@/components/delish/TimeSlotPicker";
+import { todayIso } from "@/lib/date-filter";
 import { useCart } from "@/lib/cart";
 import { useLang } from "@/lib/i18n";
 import { useDismissable } from "@/lib/a11y";
@@ -31,7 +33,7 @@ const empty: Form = {
   method: "delivery",
   area: "",
   address: "",
-  date: "",
+  date: todayIso(),
   time: "",
   notes: "",
   pay: "cash",
@@ -521,30 +523,23 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                 </>
               )}
 
-              <div className="grid gap-3 min-[360px]:grid-cols-2">
-                <Field label={t("date")} error={errors["date"]} errText={t("required")}>
-                  {(p) => (
-                    <input
-                      type="date"
-                      className={inputCls}
-                      value={form.date}
-                      onChange={(e) => set("date", e.target.value)}
-                      {...p}
-                    />
-                  )}
-                </Field>
-                <Field label={t("time")} error={errors["time"]} errText={t("required")}>
-                  {(p) => (
-                    <input
-                      type="time"
-                      className={inputCls}
-                      value={form.time}
-                      onChange={(e) => set("time", e.target.value)}
-                      {...p}
-                    />
-                  )}
-                </Field>
-              </div>
+              <TimeSlotPicker
+                date={form.date || todayIso()}
+                time={form.time}
+                method={form.method}
+                cartItems={lines.map((l) => ({
+                  name_ar: l.ar,
+                  name_en: l.en,
+                  options_ar: l.detailsAr,
+                }))}
+                onDateChange={(d) => set("date", d)}
+                onTimeChange={(t) => {
+                  set("time", t);
+                  if (!form.date) set("date", todayIso());
+                }}
+                lang={lang}
+                error={Boolean(errors["time"] || errors["date"])}
+              />
 
               <Field label={t("orderNotes")}>
                 {(p) => (

@@ -42,3 +42,18 @@ Before writing any function, helper, or UI block, ALWAYS check and reuse the exi
 2. **Component Reuse:** If a UI pattern exists (like `Chip`, `OrderStatusBadge`, `DeliveryZoneSelect`), consume it via props.
 3. **Type Safety:** Always maintain strict TypeScript checking. No `any` types for domain entities.
 4. **Verification:** Always ensure `npm run build` succeeds with zero errors before confirming code completion.
+
+---
+
+### 3. Agent Skills & Quality Gate Lifecycle (Mandatory Protocol)
+All automated agents and engineers must observe the mandatory skill execution phases:
+
+1. **Pre-Code Interrogation (`grill-me`):**
+   - Must be invoked before implementing features or modifying Supabase schemas.
+   - Interrogate edge cases: OCC concurrency, network partitions (`docker-compose.toxiproxy.yml`), and payment/refund ledger invariants.
+2. **Development Constitution (`superpowers`):**
+   - Plan tasks in small slices before writing code.
+   - Enforce TDD: Never write production code without a failing test first.
+   - Comply with all repository quality gates: `tsc --noEmit`, `npm test`, `.dependency-cruiser.cjs`, `.squawk.toml`, and `stryker.config.json`.
+3. **Post-Code Browser Validation (`playwright-cli`):**
+   - After storefront, checkout, or kitchen logic changes, run `playwright-cli` to verify the customer journey (catalog -> cart -> checkout) and confirm real-time order reflection on `/kitchen` (KDS) with zero console errors.

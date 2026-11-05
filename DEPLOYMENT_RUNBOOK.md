@@ -98,3 +98,82 @@ npm test
   ```cmd
   npm run build
   ```
+
+
+---
+
+## 5. المخطط المعماري للنظام وتدفق البيانات (System Architecture & Data Flow)
+
+> **توثيق معماري معتمد** تم إنشاؤه استناداً لأدوات الهندسة المعمارية (`archify` و `diagram-design`).
+
+يوضح المخطط التالي تدفق دورة حياة الطلب والبيانات من واجهة الزبون في المتجر وسلة الشراء إلى خادم Nitro وقاعدة بيانات Supabase، وانعكاسها اللحظي على شاشة المطبخ ودفتر الحسابات المالي:
+
+```mermaid
+flowchart TD
+    subgraph ClientLayer["1. واجهة العميل والمبيعات (Client Tier)"]
+        Storefront["واجهة المتجر / Kiosk\n(React 19 + TanStack Start)"]
+        SlotPicker["محدد الفترات الزمنية الذكي\nTimeSlotPicker"]
+        Cart["سلة الطلبات الموحدة\nCartDrawer"]
+        KDS["شاشة المطبخ KDS\n/kitchen (حسب الأسبقية وتعليمات القوالب)"]
+        AdminUI["لوحة الإدارة والتحليلات\n/staff?tab=analytics"]
+    end
+
+    subgraph ServerLayer["2. خادم التطبيق والدوال الآمنة (Nitro and Server Functions)"]
+        NitroSSR["خادم Nitro SSR\n(Node.js / Cloudflare Workers)"]
+        StorefrontRPC["دالة إنشاء الطلب الآمنة\nsubmitStorefrontOrder()"]
+        KDSRPC["دالة إدارة مراحل التحضير\nupdateKitchenStage()"]
+        AdminRPC["دالة التقارير المالية\ngetAdminAnalytics()"]
+        AuthMiddleware["وسيط التحقق الصارم\nrequireSupabaseAuth"]
+    end
+
+    subgraph DataLayer["3. محرك البيانات والعمليات الذرية (Supabase PostgreSQL)"]
+        PG[("قاعدة بيانات PostgreSQL 15\n(RLS مُفعّل بالكامل)")]
+        AtomicRPC["الدوال الذرية المتزامنة (OCC)\ncreate_storefront_order_atomic()"]
+        OrdersTable[("جدول الطلبات\npublic.orders")]
+        ItemsTable[("جدول الأصناف والتخصيص\npublic.order_items")]
+        LedgerTable[("دفتر الحسابات والتدقيق المالي\npublic.ledger_entries")]
+        RealtimePub["Supabase Realtime\n(Postgres CDC WebSockets)"]
+    end
+
+    subgraph ResilienceLayer["4. بيئة المحاكاة وفحص الصلابة (QA and Resilience Tier)"]
+        PGlite["محرك PGlite المحلي\n(اختبارات بدون خادم خارجي)"]
+        Toxiproxy["محاكي مشاكل الشبكة\ndocker-compose.toxiproxy.yml"]
+        PlaywrightCLI["أتمتة الفحص الشامل\nplaywright-cli customer journey"]
+    end
+
+    %% تدفق واجهة المتجر والطلب
+    Storefront -->|"1. اختيار الأصناف وتخصيصها"| Cart
+    Cart -->|"2. حجز نافذة الاستلام/التوصيل وحساب Lead Time"| SlotPicker
+    Cart -->|"3. إرسال الطلب مشفراً"| NitroSSR
+    NitroSSR -->|"4. استدعاء RPC مع رمز التعديل"| StorefrontRPC
+    StorefrontRPC -->|"5. تنفيذ المعاملة الذرية"| AtomicRPC
+    AtomicRPC -->|"6. حجز المخزون ومنع التعارض (OCC)"| OrdersTable
+    AtomicRPC -->|"6. إدراج بنود الطلب"| ItemsTable
+    AtomicRPC -->|"6. تسجيل القيد المالي المحمي"| LedgerTable
+
+    %% البث اللحظي للمطبخ
+    OrdersTable -.->|"7. بث حدث طلب جديد (INSERT)"| RealtimePub
+    RealtimePub -.->|"8. استلام فوري للطلب مع شارة الاستعجال"| KDS
+    KDS -->|"9. تحديث حالة الصنف (preparing -> ready)"| KDSRPC
+    KDSRPC -->|"10. توثيق بواسطة رمز الموظف الصارم"| PG
+
+    %% تدفق لوحة الإدارة
+    AdminUI -->|"استعلام التقارير المحمية"| AuthMiddleware
+    AuthMiddleware -->|"التحقق من جلسة المدير"| AdminRPC
+    AdminRPC -->|"قراءة الإيرادات والمبيعات المجمعة"| PG
+
+    %% طبقة الاختبارات
+    ResilienceLayer -.->|"محاكاة ضغط وانقطاع شبكة"| StorefrontRPC
+    PlaywrightCLI -.->|"اختبار رحلة العميل نحو KDS"| Storefront
+```
+
+### معايير الأمان والمعمارية المطبقة في هذا المخطط:
+1. **عزل الصلاحيات ومبدأ الامتياز الأدنى (Zero Trust / Least Privilege):**
+   - العميل غير مسجل الدخول (`anon`) لا يستطيع القراءة المباشرة أو الكتابة المباشرة على جداول الطلبات أو الدفتر المالي عبر PostgREST.
+   - عمليات إنشاء الطلبات تتم حصرياً عبر دالة `create_storefront_order_atomic()` التي تتحقق من سلامة الأسعار وحسابات المجموع الرياضي.
+2. **التحكم بالتزامن المتفائل (Optimistic Concurrency Control - OCC):**
+   - حماية تعديل الطلبات وحالات المطبخ من الكتابة المتزامنة المتضاربة عبر عمود `version` ورموز التعديل السرية (`edit_token`).
+3. **التحديثات اللحظية الخفيفة (Realtime Event-Driven):**
+   - شاشة المطبخ تتصل بقناة Realtime مخصصة وتستمع فقط لتغييرات الطلبات النشطة اليومية دون إعادة جلب كل البيانات (`Re-fetch`).
+4. **حماية التواريخ ونوافذ الاستلام (Delivery Slots & Lead Time Engine):**
+   - التحقق من زمن التحضير المطلوب (4 ساعات لقوالب الكيك الاحتفالية، ساعة للمخبوزات الجاهزة) داخل محرك `delivery-slots.ts`.

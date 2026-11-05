@@ -4,6 +4,7 @@ import {
   BANNER_SELECT,
   CATEGORY_SELECT,
   PRODUCT_SELECT,
+  normaliseCategory,
   normaliseProduct,
   type StorefrontBanner,
   type StorefrontCategory,
@@ -36,7 +37,9 @@ async function fetchStorefrontContent(): Promise<StorefrontContent> {
 
   return {
     banner: (banner.data as StorefrontBanner | null) ?? null,
-    categories: (categories.data ?? []) as StorefrontCategory[],
+    categories: ((categories.data ?? []) as unknown as Record<string, unknown>[]).map(
+      normaliseCategory,
+    ),
     products: ((products.data ?? []) as Record<string, unknown>[]).map(normaliseProduct),
   };
 }

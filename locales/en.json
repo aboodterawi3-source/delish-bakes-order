@@ -1,12 +1,12 @@
 {
-  "brandTag": "Luxury Patisserie · Amman, Jordan",
+  "brandTag": "Artisan Boutique Patisserie · Baked with Love in Amman",
   "navMenu": "Menu",
   "navBuilder": "Cake Builder",
-  "navAbout": "About",
-  "navContact": "Contact",
+  "navAbout": "Our Story",
+  "navContact": "Contact Us",
   "heroTitle": "Every bite, a little celebration",
-  "heroSub": "Cakes and desserts baked fresh daily with premium ingredients, delivered across Amman.",
-  "heroCta": "Order now",
+  "heroSub": "Small batches crafted every morning using pure dairy butter and Belgian chocolate, delivered with care across Amman.",
+  "heroCta": "Explore Today's Bakes",
   "heroCta2": "Build your cake",
   "categories": "Browse categories",
   "all": "All",
@@ -18,5 +18,5 @@
   "notes": "Notes",
   "cartTitle": "Shopping Cart",
   "checkout": "Checkout",
-  "orderSuccess": "Your order was received successfully!"
+  "orderSuccess": "Your order is received and baking begins!"
 }
