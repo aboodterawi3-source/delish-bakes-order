@@ -194,7 +194,7 @@ export type StorefrontContent = {
 
 export const BANNER_SELECT = "id, is_active, discount_text, subtitle, button_text, image_url";
 export const CATEGORY_SELECT =
-  "id, name_en, name_ar, image_url, tint, sort_order, is_active, priority_color";
+  "id, name_en, name_ar, icon, image_url, tint, sort_order, is_active, priority_color";
 export const PRODUCT_SELECT =
   "id, slug, name_ar, name_en, description_ar, description_en, category, category_id, price, image_url, is_available, is_popular, filling_ar, filling_en, price_on_request, sizes, tint, sort_order, priority_color";
 

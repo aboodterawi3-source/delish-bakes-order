@@ -167,6 +167,91 @@ flowchart TD
     PlaywrightCLI -.->|"اختبار رحلة العميل نحو KDS"| Storefront
 ```
 
+### مخطط الكيانات والعلاقات لبيانات المتجر والمطبخ (Database ERD):
+
+```mermaid
+erDiagram
+    storefront_categories ||--o{ products : "تصنيف المنتجات"
+    orders ||--|{ order_items : "يحتوي بنوداً"
+    orders ||--o{ order_payments : "سجل الدفعات والاسترجاع"
+    orders ||--o{ audit_logs : "سجل التعديلات والتدقيق"
+
+    storefront_categories {
+        uuid id PK
+        string name_ar
+        string name_en
+        string icon
+        string image_url
+        int sort_order
+        boolean is_active
+    }
+
+    products {
+        uuid id PK
+        uuid category_id FK
+        string slug
+        string name_ar
+        string name_en
+        numeric price
+        jsonb sizes
+        boolean is_available
+    }
+
+    orders {
+        uuid id PK
+        string order_number UK
+        string customer_name
+        string customer_phone
+        order_method method
+        string area
+        string address
+        date requested_date
+        time requested_time
+        numeric subtotal
+        numeric delivery_fee
+        numeric total
+        numeric deposit_paid
+        order_status status
+        int version
+        string client_request_id UK
+    }
+
+    order_items {
+        uuid id PK
+        uuid order_id FK
+        uuid product_id FK
+        string name_ar
+        string name_en
+        numeric unit_price
+        int quantity
+        string[] options_ar
+        string notes
+    }
+
+    order_payments {
+        uuid id PK
+        uuid order_id FK
+        numeric amount
+        payment_method payment_method
+        string payment_type
+        string status
+        string idempotency_key UK
+        timestamp created_at
+    }
+
+    audit_logs {
+        uuid id PK
+        uuid order_id FK
+        string order_number
+        uuid staff_user_id FK
+        string action
+        numeric original_amount
+        numeric modified_amount
+        string reason
+        timestamp created_at
+    }
+```
+
 ### معايير الأمان والمعمارية المطبقة في هذا المخطط:
 1. **عزل الصلاحيات ومبدأ الامتياز الأدنى (Zero Trust / Least Privilege):**
    - العميل غير مسجل الدخول (`anon`) لا يستطيع القراءة المباشرة أو الكتابة المباشرة على جداول الطلبات أو الدفتر المالي عبر PostgREST.
@@ -177,3 +262,5 @@ flowchart TD
    - شاشة المطبخ تتصل بقناة Realtime مخصصة وتستمع فقط لتغييرات الطلبات النشطة اليومية دون إعادة جلب كل البيانات (`Re-fetch`).
 4. **حماية التواريخ ونوافذ الاستلام (Delivery Slots & Lead Time Engine):**
    - التحقق من زمن التحضير المطلوب (4 ساعات لقوالب الكيك الاحتفالية، ساعة للمخبوزات الجاهزة) داخل محرك `delivery-slots.ts`.
+5. **سلامة دفتر الدفعات المحمي (Append-Only Financial Ledger):**
+   - جدول `order_payments` لا يقبل التعديل المباشر أو الحذف إطلاقاً؛ عمليات الدفع والاسترجاع تسجل كقيود ذرية غير قابلة للإلغاء عبر `record_order_payment_atomic()`.

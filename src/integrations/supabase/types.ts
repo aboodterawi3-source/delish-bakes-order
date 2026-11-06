@@ -636,7 +636,7 @@ export type Database = {
           created_at: string;
           discount_text: string;
           id: string;
-          image_url: string | null;
+                    image_url: string | null;
           is_active: boolean;
           singleton: boolean;
           subtitle: string;
@@ -668,6 +668,7 @@ export type Database = {
       };
       storefront_categories: {
         Row: {
+          icon: string | null;
           created_at: string;
           id: string;
           image_url: string | null;
@@ -680,6 +681,7 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          icon?: string | null;
           created_at?: string;
           id?: string;
           image_url?: string | null;
@@ -692,6 +694,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          icon?: string | null;
           created_at?: string;
           id?: string;
           image_url?: string | null;

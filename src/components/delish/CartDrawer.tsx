@@ -245,7 +245,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex max-w-full justify-end overflow-x-hidden bg-primary/75">
+    <div className="fixed inset-0 z-50 flex max-w-full justify-end overflow-x-hidden bg-slate-900/60 backdrop-blur-xs transition-opacity duration-300 ease-out">
       <button
         type="button"
         aria-label={lang === "ar" ? "إغلاق السلة" : "Close cart"}
@@ -257,7 +257,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative flex h-full w-full max-w-md min-w-0 flex-col overflow-x-hidden bg-background shadow-[var(--shadow-soft)]"
+        className="relative flex h-full w-full max-w-md min-w-0 flex-col overflow-x-hidden bg-background shadow-2xl transition-transform duration-300 ease-out will-change-transform"
       >
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-b border-border px-4 py-4 sm:px-5">
           <h2 id={titleId} className="min-w-0 break-words font-display text-lg font-semibold">

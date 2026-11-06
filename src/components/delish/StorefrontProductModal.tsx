@@ -384,30 +384,30 @@ export function StorefrontProductModal({
 
               {/* Sticky Modal Bottom Action Row */}
               <div className="pt-3 border-t border-[#EFE8DC] flex items-center gap-3">
-                {/* Stepper [- 1 +] */}
-                <div className="flex items-center gap-1 rounded-xl border border-[#EFE8DC] bg-white px-1">
+                {/* Stepper [- 1 +] with guaranteed 44x44px touch targets */}
+                <div className="flex items-center gap-1 rounded-2xl border border-[#EFE8DC] bg-white p-0.5 shadow-2xs">
                   <button
                     type="button"
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
                     aria-label={ar ? "تقليل الكمية" : "Decrease quantity"}
-                    className="grid h-10 w-9 place-items-center rounded-lg text-[#6E3917] hover:bg-[#FEF7EB] active:scale-95 cursor-pointer"
+                    className="grid h-11 w-11 place-items-center rounded-xl text-[#6E3917] hover:bg-[#FEF7EB] active:scale-95 cursor-pointer transition-all"
                   >
-                    <Minus className="h-3.5 w-3.5" aria-hidden />
+                    <Minus className="h-4 w-4" aria-hidden />
                   </button>
-                  <span className="min-w-6 text-center text-xs font-bold text-[#26160F]">
+                  <span className="min-w-7 text-center text-sm font-bold text-[#26160F]">
                     {quantity}
                   </span>
                   <button
                     type="button"
                     onClick={() => setQuantity(quantity + 1)}
                     aria-label={ar ? "زيادة الكمية" : "Increase quantity"}
-                    className="grid h-10 w-9 place-items-center rounded-lg text-[#6E3917] hover:bg-[#FEF7EB] active:scale-95 cursor-pointer"
+                    className="grid h-11 w-11 place-items-center rounded-xl text-[#6E3917] hover:bg-[#FEF7EB] active:scale-95 cursor-pointer transition-all"
                   >
-                    <Plus className="h-3.5 w-3.5" aria-hidden />
+                    <Plus className="h-4 w-4" aria-hidden />
                   </button>
                 </div>
 
-                {/* Add to Cart CTA Button */}
+                {/* Add to Cart CTA Button (min-h-12 / 48px) */}
                 <button
                   type="button"
                   onClick={() => {
@@ -425,7 +425,7 @@ export function StorefrontProductModal({
                     });
                   }}
                   style={{ backgroundColor: palette.btnBg }}
-                  className="flex-1 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl text-white text-xs font-bold shadow-md transition-all hover:opacity-90 active:scale-[0.98] cursor-pointer"
+                  className="flex-1 inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl text-white text-sm font-bold shadow-md transition-all hover:opacity-90 active:scale-[0.98] cursor-pointer"
                 >
                   <ShoppingBag className="h-4 w-4" />
                   <span>{t("addToCart")}</span>
