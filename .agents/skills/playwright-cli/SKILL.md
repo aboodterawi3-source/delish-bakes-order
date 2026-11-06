@@ -6,34 +6,6 @@ allowed-tools: Bash(playwright-cli:*) Bash(npx playwright:*) Bash(npx --no-insta
 
 # Browser Automation with playwright-cli
 
-## Delish E2E Storefront & Kitchen (KDS) Verification Protocol
-
-**Mandatory Post-Implementation Check:**
-Whenever UI components, order workflows, cart calculations, checkout forms, or kitchen order processing are modified, execute an automated browser verification using `playwright-cli` integrated with the project test environment (`testcontainers.config.json` / PGlite fallback and `vite.config.ts`).
-
-### Verification Steps:
-1. **Server Verification:** Ensure local dev/test server is active (`http://localhost:3000` or configured Vite dev port).
-2. **Launch Browser & Storefront:**
-   ```bash
-   playwright-cli open http://localhost:3000/
-   playwright-cli snapshot
-   ```
-3. **Customer Journey Simulation:**
-   - **Browse Catalog:** Navigate to `/discover` or click catalog link.
-   - **Add Products:** Locate bakery products (e.g., Croissant, Macaron, Cake) and trigger "Add to Cart".
-   - **Cart Validation:** Open Cart modal/drawer, verify unit prices (JOD via `@/lib/currency`), quantities, and order subtotal.
-   - **Checkout Submission:** Fill required delivery details (valid Jordanian phone via `@/lib/whatsapp`, delivery zone via `<DeliveryZoneSelect />`) and place order.
-   - **Console Check:** Verify zero unhandled exceptions or console errors (`playwright-cli eval "window.__errors || []"`).
-4. **Kitchen Display System (KDS) Synchronization:**
-   - Open `/kitchen` (`playwright-cli goto http://localhost:3000/kitchen`).
-   - Confirm that the newly created order immediately displays on the kitchen board with:
-     - Exact line items and quantities.
-     - Accurate status badge (`<OrderStatusBadge />`).
-     - Delivery zone and customer notes.
-   - Confirm no inventory double-allocation or OCC concurrency exceptions occurred.
-
----
-
 ## Quick start
 
 ```bash

@@ -69,7 +69,7 @@
       "evidence": {
         "ui_callback": "(lines, expectedVersion) =>\r\n                (rebuild.mutateAsync || rebuild.mutate)({\r\n                  orderId: selected.id,\r\n                  lines,\r\n                  expectedVersion:\r\n                    expectedVersion !== undefined && expectedVersion !== null\r\n                      ? expectedVersion\r\n                      : ((lines as any)?.version ??\r\n                        (lines as any)?.[0]?.draftVersion ??\r\n                        selected.version ??\r\n                        null),\r\n                })",
         "sent_to_rebuild": {
-          "orderId": "b0c015a7-37cf-4d84-a5a1-9f918b30192f",
+          "orderId": "604a1a33-e2c5-4e41-a8c6-6a59faa0cfdb",
           "lines": [
             {
               "name": "Synthetic cake",
@@ -109,8 +109,8 @@
       "evidence": {
         "emitted_requests": [
           {
-            "orderId": "04a90a20-0eeb-4824-a6c0-1d9632464763",
-            "itemId": "c7b6ede5-1623-4bbd-9b34-c71ffd110d9c",
+            "orderId": "2c811351-089e-4e73-81fa-cea5be75b614",
+            "itemId": "c078df60-b6d6-4b42-8c62-f20ed70f57b1",
             "newUnitPrice": 30,
             "options": [
               "الحجم: Large"
@@ -134,56 +134,56 @@
         ],
         "stored_modifications": [
           {
-            "id": "39b6557f-81ae-4a3f-af59-e3db5f4e7695",
+            "id": "d217cbd5-04f1-4bf9-a25d-04b1223e5625",
             "field": "الطلب الأساسي (النسخة الأصلية عند الإنشاء)",
             "newValue": "تم إجراء أول تعديل على هذا الطلب",
             "oldValue": "1× Synthetic cake (Original filling)",
-            "timestamp": "2026-11-05T20:05:40Z",
-            "updatedAt": "2026-11-05T20:05:40.908Z",
+            "timestamp": "2026-11-06T13:31:36Z",
+            "updatedAt": "2026-11-06T13:31:36.660Z",
             "staff_name": "sales@synthetic.invalid",
             "acknowledged": false,
             "acknowledgedAt": null
           },
           {
-            "id": "d7bcd13b-de3f-427b-8d56-ee2906e78dbc",
+            "id": "6b0b712e-72a8-40d0-b189-0c15183a3415",
             "field": "اسم الصنف",
             "newValue": "Changed cake",
             "oldValue": "Synthetic cake",
-            "timestamp": "2026-11-05T20:05:40Z",
-            "updatedAt": "2026-11-05T20:05:40.908Z",
+            "timestamp": "2026-11-06T13:31:36Z",
+            "updatedAt": "2026-11-06T13:31:36.660Z",
             "staff_name": "sales@synthetic.invalid",
             "acknowledged": false,
             "acknowledgedAt": null
           },
           {
-            "id": "c8b45ea0-c011-4740-bf0b-e220659393f1",
+            "id": "b8a0e746-477a-40e5-a7de-60555d7564a2",
             "field": "خيار حُذف",
             "newValue": "— (تم حذفه)",
             "oldValue": "Original filling",
-            "timestamp": "2026-11-05T20:05:40Z",
-            "updatedAt": "2026-11-05T20:05:40.908Z",
+            "timestamp": "2026-11-06T13:31:36Z",
+            "updatedAt": "2026-11-06T13:31:36.660Z",
             "staff_name": "sales@synthetic.invalid",
             "acknowledged": false,
             "acknowledgedAt": null
           },
           {
-            "id": "c889206d-9a0d-445b-a8fe-8b18d07c45a9",
+            "id": "5b6d2181-cacf-4ee6-8cd1-df7a795aaa28",
             "field": "خيار جديد ✨",
             "newValue": "New filling",
             "oldValue": "— (لم يكن موجودًا)",
-            "timestamp": "2026-11-05T20:05:40Z",
-            "updatedAt": "2026-11-05T20:05:40.908Z",
+            "timestamp": "2026-11-06T13:31:36Z",
+            "updatedAt": "2026-11-06T13:31:36.660Z",
             "staff_name": "sales@synthetic.invalid",
             "acknowledged": false,
             "acknowledgedAt": null
           },
           {
-            "id": "b826bce1-c85f-4b52-bb0b-c679481060e1",
+            "id": "fba344b4-6631-4b2a-a4f7-dde51ebe47d6",
             "field": "ملاحظة الصنف",
             "newValue": "Changed item note",
             "oldValue": "Original item note",
-            "timestamp": "2026-11-05T20:05:40Z",
-            "updatedAt": "2026-11-05T20:05:40.908Z",
+            "timestamp": "2026-11-06T13:31:36Z",
+            "updatedAt": "2026-11-06T13:31:36.660Z",
             "staff_name": "sales@synthetic.invalid",
             "acknowledged": false,
             "acknowledgedAt": null
@@ -191,12 +191,12 @@
         ],
         "kitchen_modifications": [
           {
-            "id": "39b6557f-81ae-4a3f-af59-e3db5f4e7695",
+            "id": "d217cbd5-04f1-4bf9-a25d-04b1223e5625",
             "field": "الطلب الأساسي (النسخة الأصلية عند الإنشاء)",
             "newValue": "***",
             "oldValue": "***",
-            "timestamp": "2026-11-05T20:05:40Z",
-            "updatedAt": "2026-11-05T20:05:40.908Z",
+            "timestamp": "2026-11-06T13:31:36Z",
+            "updatedAt": "2026-11-06T13:31:36.660Z",
             "staff_name": "sales@synthetic.invalid",
             "acknowledged": false,
             "acknowledgedAt": null,
@@ -204,12 +204,12 @@
             "acknowledgedByName": null
           },
           {
-            "id": "d7bcd13b-de3f-427b-8d56-ee2906e78dbc",
+            "id": "6b0b712e-72a8-40d0-b189-0c15183a3415",
             "field": "اسم الصنف",
             "newValue": "Changed cake",
             "oldValue": "Synthetic cake",
-            "timestamp": "2026-11-05T20:05:40Z",
-            "updatedAt": "2026-11-05T20:05:40.908Z",
+            "timestamp": "2026-11-06T13:31:36Z",
+            "updatedAt": "2026-11-06T13:31:36.660Z",
             "staff_name": "sales@synthetic.invalid",
             "acknowledged": false,
             "acknowledgedAt": null,
@@ -217,12 +217,12 @@
             "acknowledgedByName": null
           },
           {
-            "id": "c8b45ea0-c011-4740-bf0b-e220659393f1",
+            "id": "b8a0e746-477a-40e5-a7de-60555d7564a2",
             "field": "خيار حُذف",
             "newValue": "— (تم حذفه)",
             "oldValue": "Original filling",
-            "timestamp": "2026-11-05T20:05:40Z",
-            "updatedAt": "2026-11-05T20:05:40.908Z",
+            "timestamp": "2026-11-06T13:31:36Z",
+            "updatedAt": "2026-11-06T13:31:36.660Z",
             "staff_name": "sales@synthetic.invalid",
             "acknowledged": false,
             "acknowledgedAt": null,
@@ -230,12 +230,12 @@
             "acknowledgedByName": null
           },
           {
-            "id": "c889206d-9a0d-445b-a8fe-8b18d07c45a9",
+            "id": "5b6d2181-cacf-4ee6-8cd1-df7a795aaa28",
             "field": "خيار جديد ✨",
             "newValue": "New filling",
             "oldValue": "— (لم يكن موجودًا)",
-            "timestamp": "2026-11-05T20:05:40Z",
-            "updatedAt": "2026-11-05T20:05:40.908Z",
+            "timestamp": "2026-11-06T13:31:36Z",
+            "updatedAt": "2026-11-06T13:31:36.660Z",
             "staff_name": "sales@synthetic.invalid",
             "acknowledged": false,
             "acknowledgedAt": null,
@@ -243,12 +243,12 @@
             "acknowledgedByName": null
           },
           {
-            "id": "b826bce1-c85f-4b52-bb0b-c679481060e1",
+            "id": "fba344b4-6631-4b2a-a4f7-dde51ebe47d6",
             "field": "ملاحظة الصنف",
             "newValue": "Changed item note",
             "oldValue": "Original item note",
-            "timestamp": "2026-11-05T20:05:40Z",
-            "updatedAt": "2026-11-05T20:05:40.908Z",
+            "timestamp": "2026-11-06T13:31:36Z",
+            "updatedAt": "2026-11-06T13:31:36.660Z",
             "staff_name": "sales@synthetic.invalid",
             "acknowledged": false,
             "acknowledgedAt": null,
@@ -308,8 +308,8 @@
       "name": "Kitchen item RPC masks phones and prices in notes and options",
       "verified": true,
       "evidence": {
-        "id": "73ee752c-a4b3-4ec4-8a12-46af1af21613",
-        "order_id": "b30d50e2-534f-4acb-b7ce-737918879a69",
+        "id": "077f5de3-c2a5-4782-9d0a-597de355f9aa",
+        "order_id": "32f777e1-e1f1-4c58-a385-709695075b4e",
         "product_id": null,
         "name_ar": "Cake",
         "name_en": "Synthetic cake",
@@ -380,7 +380,7 @@
       "name": "Order items trigger permits deleting catalog product via ON DELETE SET NULL cascade",
       "verified": true,
       "evidence": {
-        "deleted_product_id": "d2b98c96-5503-4877-8a1c-5bbaf8e32530"
+        "deleted_product_id": "3c57f657-92a4-4ea5-b0df-2d49a5a1baf3"
       }
     },
     {
