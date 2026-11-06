@@ -152,23 +152,23 @@ function Counter({
   label: string;
 }) {
   return (
-    <div className="inline-flex items-center rounded-full bg-[#8B4513] px-2.5 py-1 text-white shadow-xs">
+    <div className="inline-flex items-center rounded-full bg-[#8B4513] p-0.5 text-white shadow-xs">
       <button
         type="button"
         aria-label={`${label} −`}
         onClick={() => onChange(Math.max(1, value - 1))}
-        className="p-1 transition hover:text-amber-200 active:scale-90"
+        className="grid h-11 w-11 min-h-[44px] min-w-[44px] place-items-center rounded-full transition hover:text-amber-200 active:scale-90 cursor-pointer"
       >
-        <Minus className="h-3.5 w-3.5" />
+        <Minus className="h-4 w-4" />
       </button>
-      <span className="px-2 text-xs font-bold">{value}</span>
+      <span className="min-w-6 text-center text-xs font-bold px-1">{value}</span>
       <button
         type="button"
         aria-label={`${label} +`}
         onClick={() => onChange(Math.min(99, value + 1))}
-        className="p-1 transition hover:text-amber-200 active:scale-90"
+        className="grid h-11 w-11 min-h-[44px] min-w-[44px] place-items-center rounded-full transition hover:text-amber-200 active:scale-90 cursor-pointer"
       >
-        <Plus className="h-3.5 w-3.5" />
+        <Plus className="h-4 w-4" />
       </button>
     </div>
   );

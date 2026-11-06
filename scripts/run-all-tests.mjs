@@ -22,8 +22,8 @@ const suites = [
     args: ["test/multisession_lifecycle_e2e.test.mjs"],
   },
   {
-    name: "PGlite In-Memory Engine Audit (V6)",
-    args: ["scripts/independent-review-v6.mjs"],
+    name: "PGlite In-Memory Engine Audit",
+    args: ["scripts/verify-all-fixes-pglite.mjs"],
   },
 ];
 
