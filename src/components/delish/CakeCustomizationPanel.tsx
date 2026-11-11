@@ -22,16 +22,22 @@ export type BalloonPick = { id: string; label: string; qty: number };
 export type Customization = {
   /** Chosen cake filling (e.g. Nutella, Lotus, Pistachio). */
   filling: string;
+  /** Explicit staff/customer choice for candles (null when not chosen yet). */
+  candleChoice?: "none" | "standard" | "number" | "both" | null;
   /** Both candle kinds may be chosen at the same time, each with its own input. */
   standardCandles: boolean;
   candleQty: number;
   numberCandles: boolean;
   candleDigits: string;
   numberCandleQty: number;
+  /** Explicit choice for balloons (null when not chosen yet). */
+  balloonChoice?: "none" | "yes" | null;
   balloons: boolean;
   /** Multi-colour selection: any number of colours, each with a count. */
   balloonPicks: BalloonPick[];
   balloonNotes: string;
+  /** Explicit choice for acrylic topper (null when not chosen yet). */
+  topperChoice?: "none" | "yes" | null;
   topper: boolean;
   topperText: string;
   gift: boolean;
@@ -43,14 +49,17 @@ export type Customization = {
 
 export const emptyCustomization: Customization = {
   filling: "",
+  candleChoice: null,
   standardCandles: false,
   candleQty: 1,
   numberCandles: false,
   candleDigits: "",
   numberCandleQty: 1,
+  balloonChoice: null,
   balloons: false,
   balloonPicks: [],
   balloonNotes: "",
+  topperChoice: null,
   topper: false,
   topperText: "",
   gift: false,
@@ -210,26 +219,33 @@ export function CakeCustomizationPanel({
     if (onClearError) onClearError(key);
   };
 
-  // Derive active candle mode
+  // Derive active candle mode (null if not chosen yet)
   const candleMode =
-    value.standardCandles && value.numberCandles
-      ? "both"
-      : value.standardCandles
-        ? "standard"
-        : value.numberCandles
-          ? "number"
-          : "none";
+    value.candleChoice !== undefined
+      ? value.candleChoice
+      : value.standardCandles && value.numberCandles
+        ? "both"
+        : value.standardCandles
+          ? "standard"
+          : value.numberCandles
+            ? "number"
+            : null;
 
-  const [balloonMode, setBalloonMode] = useState<"none" | "yes">(value.balloons ? "yes" : "none");
-  const [topperMode, setTopperMode] = useState<"none" | "yes">(value.topper ? "yes" : "none");
+  // Derive active balloon mode (null if not chosen yet)
+  const balloonMode =
+    value.balloonChoice !== undefined
+      ? value.balloonChoice
+      : value.balloons
+        ? "yes"
+        : null;
 
-  useEffect(() => {
-    setBalloonMode(value.balloons ? "yes" : "none");
-  }, [value.balloons]);
-
-  useEffect(() => {
-    setTopperMode(value.topper ? "yes" : "none");
-  }, [value.topper]);
+  // Derive active topper mode (null if not chosen yet)
+  const topperMode =
+    value.topperChoice !== undefined
+      ? value.topperChoice
+      : value.topper
+        ? "yes"
+        : null;
 
   return (
     <div className="space-y-4 pt-1">
@@ -348,6 +364,7 @@ export function CakeCustomizationPanel({
                   if (opt.id === "none") {
                     onChange({
                       ...value,
+                      candleChoice: "none",
                       standardCandles: false,
                       numberCandles: false,
                       candleDigits: "",
@@ -355,6 +372,7 @@ export function CakeCustomizationPanel({
                   } else if (opt.id === "standard") {
                     onChange({
                       ...value,
+                      candleChoice: "standard",
                       standardCandles: true,
                       numberCandles: false,
                       candleQty: value.candleQty || 1,
@@ -362,6 +380,7 @@ export function CakeCustomizationPanel({
                   } else if (opt.id === "number") {
                     onChange({
                       ...value,
+                      candleChoice: "number",
                       standardCandles: false,
                       numberCandles: true,
                       numberCandleQty: value.numberCandleQty || 1,
@@ -369,6 +388,7 @@ export function CakeCustomizationPanel({
                   } else {
                     onChange({
                       ...value,
+                      candleChoice: "both",
                       standardCandles: true,
                       numberCandles: true,
                       candleQty: value.candleQty || 1,
@@ -464,8 +484,13 @@ export function CakeCustomizationPanel({
           <button
             type="button"
             onClick={() => {
-              setBalloonMode("none");
-              onChange({ ...value, balloons: false, balloonPicks: [], balloonNotes: "" });
+              onChange({
+                ...value,
+                balloonChoice: "none",
+                balloons: false,
+                balloonPicks: [],
+                balloonNotes: "",
+              });
               clear("balloons");
             }}
             className={`min-h-11 cursor-pointer rounded-xl px-3 py-1.5 text-xs font-bold transition ${
@@ -479,8 +504,7 @@ export function CakeCustomizationPanel({
           <button
             type="button"
             onClick={() => {
-              setBalloonMode("yes");
-              onChange({ ...value, balloons: true });
+              onChange({ ...value, balloonChoice: "yes", balloons: true });
             }}
             className={`min-h-11 cursor-pointer rounded-xl px-3 py-1.5 text-xs font-bold transition ${
               balloonMode === "yes"
@@ -615,8 +639,7 @@ export function CakeCustomizationPanel({
           <button
             type="button"
             onClick={() => {
-              setTopperMode("none");
-              onChange({ ...value, topper: false, topperText: "" });
+              onChange({ ...value, topperChoice: "none", topper: false, topperText: "" });
               clear("topper");
             }}
             className={`min-h-11 cursor-pointer rounded-xl px-3 py-1.5 text-xs font-bold transition ${
@@ -630,8 +653,7 @@ export function CakeCustomizationPanel({
           <button
             type="button"
             onClick={() => {
-              setTopperMode("yes");
-              onChange({ ...value, topper: true });
+              onChange({ ...value, topperChoice: "yes", topper: true });
             }}
             className={`min-h-11 cursor-pointer rounded-xl px-3 py-1.5 text-xs font-bold transition ${
               topperMode === "yes"
