@@ -1,4 +1,5 @@
 # دليل مرجعي شامل لمشروع: مخبز ديليش كيك (Delish Cake & Bake)
+
 # Complete AI / ChatGPT Master Knowledge Base & Context Dossier
 
 > **تنبيه لـ ChatGPT / أي نموذج ذكاء اصطناعي:**
@@ -45,6 +46,7 @@
 النظام مقسم إلى 5 شاشات ومحطات عمل رئيسية لكل دور وظيفي:
 
 ### 1) شاشة نقطة البيع في المحل (POS - Point of Sale)
+
 - **الملفات الرئيسية:** `src/components/staff/PosOrderEntry.tsx` و `src/components/staff/SalesPanel.tsx`
 - **المسار:** `/_authenticated/sales`
 - **الوظيفة:**
@@ -53,6 +55,7 @@
   - إدخال فوري للطلب، تحديد الدفع (كاش / CliQ)، وطباعة الفاتورة الحرارية (80mm Thermal Receipt Slip).
 
 ### 2) شاشة السوشيال ميديا والواتساب (Social Commerce Desk)
+
 - **الملف الرئيسي:** `src/components/staff/SocialPanel.tsx`
 - **المسارات:** `/social-portal` و `src/routes/social-login.tsx`
 - **الوظيفة والميزات الحصرية:**
@@ -67,6 +70,7 @@
   - **معاينة حية ومباشرة لرسالة تأكيد الواتساب الرسمية** مطابقة تماماً للمطلوب، مع زر نسخ وزر إرسال مباشر يفتح محادثة الواتساب عبر الرابط: `https://wa.me/{phone}?text={message}`.
 
 ### 3) لوحة التحكم بالطلبات المركزية (Master Orders Workspace)
+
 - **الملف الرئيسي:** `src/components/staff/OrdersWorkspace.tsx`
 - **المسار:** `/_authenticated/staff`
 - **الوظيفة:**
@@ -80,6 +84,7 @@
     - عرض صندوق سجل التعديلات والطلب الأصلي (`ModificationsHistoryBox`).
 
 ### 4) شاشة عرض المطبخ والشيف (Kitchen Display System - KDS)
+
 - **الملف الرئيسي:** `src/components/staff/KitchenPanel.tsx`
 - **المسار:** `/kitchen` و `/_authenticated/kds`
 - **الوظيفة:**
@@ -92,6 +97,7 @@
   - تصنيف البطاقات حسب الوقت والاستعجال.
 
 ### 5) استوديو تعديل الطلبات الشامل (Order Modifications Studio)
+
 - **الملف الرئيسي:** `src/components/staff/ModificationsPanel.tsx`
 - **المسار:** مدمج داخل شاشات المبيعات والسوشيال، ويفتح بالضغط على زر "تعديل" لأي طلب.
 - **الوظيفة:**
@@ -101,6 +107,7 @@
     - يُعرض تحته مباشرة **"سجل التعديلات التي طرأت على الطلب"** يوضح كل حقل، قيمته السابقة مشطوبة باللون الأحمر، والقيمة الجديدة باللون الأخضر مع التوقيت.
 
 ### 6) المتجر الإلكتروني ومخصص الكيك للزبائن (Storefront & Cake Builder)
+
 - **الملفات الرئيسية:** `src/components/delish/CakeBuilder.tsx`, `CakeCustomizationPanel.tsx`, `WelcomeView.tsx`, `CartDrawer.tsx`
 - **المسار:** `/` و `/welcome` و `/discover`
 - **الوظيفة:**
@@ -111,61 +118,64 @@
 ## 4. مخطط قاعدة البيانات وموديل البيانات (Database Schema & Models)
 
 ### جدول الطلبات الرئيسي `orders`:
-| الحقل (Column) | النوع (Type) | الوصف |
-|---|---|---|
-| `id` | `uuid (PK)` | المعرف الفريد للطلب |
-| `order_number` | `bigint / string` | رقم الطلب التسلسلي في النظام (يظهر كـ `DL-XXXX`) |
-| `customer_name` | `text` | اسم العميل (أو اسم المشتري في طلبات الهدية) |
-| `customer_phone` | `text` | رقم هاتف العميل للتواصل والواتساب |
-| `order_name` | `text (nullable)` | اسم المستلم أو التسمية التعريفية للطلب |
-| `sender_phone` | `text (nullable)` | رقم هاتف المرسل (في طلبات الهدية) |
-| `recipient_phone` | `text (nullable)` | رقم هاتف المستلم (في طلبات الهدية) |
-| `method` | `enum ('pickup', 'delivery')` | طريقة الاستلام (محلي من المحل أو توصيل دليفري) |
-| `area` | `text (nullable)` | منطقة التوصيل (مثل: عبدون، الجبيهة، خلدا، محافظات أخرى) |
-| `address` | `text (nullable)` | العنوان التفصيلي للتوصيل |
-| `status` | `enum` | حالة الطلب: `'new'`, `'in_kitchen'`, `'ready'`, `'delivered'`, `'cancelled'` |
-| `payment_method`| `enum` | طريقة الدفع: `'cash'`, `'cliq'` |
-| `subtotal` | `numeric` | مجموع أسعار المنتجات قبل أجور التوصيل |
-| `delivery_fee` | `numeric` | رسوم التوصيل المحسوبة تلقائياً من جدول المناطق |
-| `total` | `numeric` | الإجمالي النهائي للطلب (`subtotal + delivery_fee - discount`) |
-| `deposit_paid` | `numeric` | المبلغ المدفوع مسبقاً (عربون أو دفع كامل عبر CliQ) |
-| `requested_date`| `date` | تاريخ التسليم المطلوب (`YYYY-MM-DD`) |
-| `requested_time`| `time` | وقت التسليم المطلوب (`HH:mm`) |
-| `event_date` | `date (nullable)` | تاريخ المناسبة إن وجد |
-| `inscription` | `text (nullable)` | العبارة المطلوب كتابتها على الكيك |
-| `notes` | `text (nullable)` | ملاحظات العميل وتفاصيل التصميم |
-| `staff_notes` | `text (nullable)` | ملاحظات الموظفين الداخلية |
-| `card_note` | `text (nullable)` | العبارة المكتوبة على كرت الإهداء |
-| `design_image_url`| `text (nullable)` | رابط صورة التصميم المرجعية من التخزين السحابي |
-| `is_urgent` | `boolean` | هل الطلب مستعجل (`true`/`false`) |
-| `driver_name` | `text (nullable)` | اسم سائق التوصيل المعين |
-| `driver_phone`| `text (nullable)` | رقم هاتف سائق التوصيل |
-| `modifications` | `jsonb` | مصفوفة سجل التعديلات والطلب الأصلي `OrderModification[]` |
-| `last_edited_at`| `timestamptz (nullable)`| وقت آخر تعديل |
-| `last_edited_by`| `uuid (nullable)` | هوية الموظف الذي قام بالتعديل |
-| `created_at` | `timestamptz` | تاريخ إنشاء الطلب |
+
+| الحقل (Column)     | النوع (Type)                  | الوصف                                                                        |
+| ------------------ | ----------------------------- | ---------------------------------------------------------------------------- |
+| `id`               | `uuid (PK)`                   | المعرف الفريد للطلب                                                          |
+| `order_number`     | `bigint / string`             | رقم الطلب التسلسلي في النظام (يظهر كـ `DL-XXXX`)                             |
+| `customer_name`    | `text`                        | اسم العميل (أو اسم المشتري في طلبات الهدية)                                  |
+| `customer_phone`   | `text`                        | رقم هاتف العميل للتواصل والواتساب                                            |
+| `order_name`       | `text (nullable)`             | اسم المستلم أو التسمية التعريفية للطلب                                       |
+| `sender_phone`     | `text (nullable)`             | رقم هاتف المرسل (في طلبات الهدية)                                            |
+| `recipient_phone`  | `text (nullable)`             | رقم هاتف المستلم (في طلبات الهدية)                                           |
+| `method`           | `enum ('pickup', 'delivery')` | طريقة الاستلام (محلي من المحل أو توصيل دليفري)                               |
+| `area`             | `text (nullable)`             | منطقة التوصيل (مثل: عبدون، الجبيهة، خلدا، محافظات أخرى)                      |
+| `address`          | `text (nullable)`             | العنوان التفصيلي للتوصيل                                                     |
+| `status`           | `enum`                        | حالة الطلب: `'new'`, `'in_kitchen'`, `'ready'`, `'delivered'`, `'cancelled'` |
+| `payment_method`   | `enum`                        | طريقة الدفع: `'cash'`, `'cliq'`                                              |
+| `subtotal`         | `numeric`                     | مجموع أسعار المنتجات قبل أجور التوصيل                                        |
+| `delivery_fee`     | `numeric`                     | رسوم التوصيل المحسوبة تلقائياً من جدول المناطق                               |
+| `total`            | `numeric`                     | الإجمالي النهائي للطلب (`subtotal + delivery_fee - discount`)                |
+| `deposit_paid`     | `numeric`                     | المبلغ المدفوع مسبقاً (عربون أو دفع كامل عبر CliQ)                           |
+| `requested_date`   | `date`                        | تاريخ التسليم المطلوب (`YYYY-MM-DD`)                                         |
+| `requested_time`   | `time`                        | وقت التسليم المطلوب (`HH:mm`)                                                |
+| `event_date`       | `date (nullable)`             | تاريخ المناسبة إن وجد                                                        |
+| `inscription`      | `text (nullable)`             | العبارة المطلوب كتابتها على الكيك                                            |
+| `notes`            | `text (nullable)`             | ملاحظات العميل وتفاصيل التصميم                                               |
+| `staff_notes`      | `text (nullable)`             | ملاحظات الموظفين الداخلية                                                    |
+| `card_note`        | `text (nullable)`             | العبارة المكتوبة على كرت الإهداء                                             |
+| `design_image_url` | `text (nullable)`             | رابط صورة التصميم المرجعية من التخزين السحابي                                |
+| `is_urgent`        | `boolean`                     | هل الطلب مستعجل (`true`/`false`)                                             |
+| `driver_name`      | `text (nullable)`             | اسم سائق التوصيل المعين                                                      |
+| `driver_phone`     | `text (nullable)`             | رقم هاتف سائق التوصيل                                                        |
+| `modifications`    | `jsonb`                       | مصفوفة سجل التعديلات والطلب الأصلي `OrderModification[]`                     |
+| `last_edited_at`   | `timestamptz (nullable)`      | وقت آخر تعديل                                                                |
+| `last_edited_by`   | `uuid (nullable)`             | هوية الموظف الذي قام بالتعديل                                                |
+| `created_at`       | `timestamptz`                 | تاريخ إنشاء الطلب                                                            |
 
 ### هيكلية مصفوفة `modifications` داخل `orders`:
+
 ```typescript
 export type OrderModification = {
-  field: string;           // اسم الحقل، مثل "الطلب الأساسي (النسخة الأصلية عند الإنشاء)"، "وقت التسليم"، "أصناف الطلب"
-  oldValue: string;        // القيمة السابقة
-  newValue: string;        // القيمة المعدلة الجديدة
-  updatedAt: string;       // توقيت التعديل بصيغة ISO
+  field: string; // اسم الحقل، مثل "الطلب الأساسي (النسخة الأصلية عند الإنشاء)"، "وقت التسليم"، "أصناف الطلب"
+  oldValue: string; // القيمة السابقة
+  newValue: string; // القيمة المعدلة الجديدة
+  updatedAt: string; // توقيت التعديل بصيغة ISO
   acknowledgedAt?: string | null; // توقيت تأكيد الشيف في المطبخ
 };
 ```
 
 ### جدول عناصر الطلب `order_items`:
-| الحقل (Column) | النوع (Type) | الوصف |
-|---|---|---|
-| `id` | `uuid (PK)` | المعرف الفريد للصنف |
-| `order_id` | `uuid (FK)` | ربط بالطلب في جدول `orders` |
-| `name_ar` | `text` | اسم الصنف بالعربية أو تفاصيل الكيك |
-| `quantity` | `integer` | الكمية |
-| `unit_price` | `numeric` | سعر الوحدة بالدينار الأردني |
-| `options_ar` | `text[]` | مصفوفة الخيارات (الحشوة، الحجم، الشموع، البالونات، مستعجل) |
-| `notes` | `text (nullable)` | ملاحظات الصنف |
+
+| الحقل (Column) | النوع (Type)      | الوصف                                                      |
+| -------------- | ----------------- | ---------------------------------------------------------- |
+| `id`           | `uuid (PK)`       | المعرف الفريد للصنف                                        |
+| `order_id`     | `uuid (FK)`       | ربط بالطلب في جدول `orders`                                |
+| `name_ar`      | `text`            | اسم الصنف بالعربية أو تفاصيل الكيك                         |
+| `quantity`     | `integer`         | الكمية                                                     |
+| `unit_price`   | `numeric`         | سعر الوحدة بالدينار الأردني                                |
+| `options_ar`   | `text[]`          | مصفوفة الخيارات (الحشوة، الحجم، الشموع، البالونات، مستعجل) |
+| `notes`        | `text (nullable)` | ملاحظات الصنف                                              |
 
 ---
 

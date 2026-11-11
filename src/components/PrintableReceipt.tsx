@@ -56,20 +56,20 @@ export const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
       <div className="hidden">
         <div
           ref={contentRef}
-          className="p-4 bg-white text-black font-mono text-xs w-[80mm] leading-tight"
+          className="w-[80mm] bg-white p-4 font-mono text-xs leading-tight text-black"
           style={{ width: "80mm" }}
           dir="rtl"
         >
           {/* Header */}
-          <div className="text-center border-b pb-2 mb-2">
+          <div className="mb-2 border-b pb-2 text-center">
             <h1 className="text-base font-bold">ديليش آند بيك</h1>
             <p className="text-[10px] text-gray-600">Delish Cake & Bake — Amman</p>
             <p className="text-[10px]">هاتف: 0790000000</p>
-            <p className="text-[10px] text-gray-500 mt-1">{receipt.createdAt}</p>
+            <p className="mt-1 text-[10px] text-gray-500">{receipt.createdAt}</p>
           </div>
 
           {/* Order Details */}
-          <div className="border-b pb-2 mb-2">
+          <div className="mb-2 border-b pb-2">
             <p>
               <strong>رقم الطلب:</strong> {receipt.orderNumber}
             </p>
@@ -91,7 +91,7 @@ export const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
           </div>
 
           {/* Items */}
-          <table className="w-full text-right border-b pb-2 mb-2">
+          <table className="mb-2 w-full border-b pb-2 text-right">
             <thead>
               <tr className="border-b">
                 <th className="py-1">الصنف</th>
@@ -111,7 +111,7 @@ export const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
           </table>
 
           {/* Financial Breakdown */}
-          <div className="space-y-1 border-b pb-2 mb-2 text-[11px]">
+          <div className="mb-2 space-y-1 border-b pb-2 text-[11px]">
             <div className="flex justify-between">
               <span>المجموع الفرعي:</span>
               <span>{receipt.subtotal.toFixed(2)} د.أ</span>
@@ -122,7 +122,7 @@ export const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
                 <span>{(receipt.deliveryFee || 0).toFixed(2)} د.أ</span>
               </div>
             )}
-            <div className="flex justify-between font-bold text-sm pt-1 border-t">
+            <div className="flex justify-between border-t pt-1 text-sm font-bold">
               <span>الإجمالي الكلي:</span>
               <span>{receipt.total.toFixed(2)} د.أ</span>
             </div>
@@ -131,7 +131,7 @@ export const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
               <span>{receipt.depositPaid.toFixed(2)} د.أ</span>
             </div>
             {Boolean(receipt.refundDue && receipt.refundDue > 0) ? (
-              <div className="flex justify-between font-bold text-red-600 bg-red-50 p-1 rounded">
+              <div className="flex justify-between rounded bg-red-50 p-1 font-bold text-red-600">
                 <span>مسترجع للزبون (زيادة):</span>
                 <span>{receipt.refundDue?.toFixed(2)} د.أ</span>
               </div>
@@ -145,14 +145,14 @@ export const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
 
           {/* Notes & Inscriptions */}
           {receipt.inscription && (
-            <div className="border-b pb-2 mb-2">
+            <div className="mb-2 border-b pb-2">
               <p className="font-bold">الكتابة على الكيكة:</p>
-              <p className="italic bg-gray-50 p-1">"{receipt.inscription}"</p>
+              <p className="bg-gray-50 p-1 italic">"{receipt.inscription}"</p>
             </div>
           )}
 
           {/* Footer */}
-          <div className="text-center pt-2 text-[10px] text-gray-500">
+          <div className="pt-2 text-center text-[10px] text-gray-500">
             <p>شكراً لطلبكم من ديليش آند بيك! 🎂</p>
             <p>نتمنى لكم مناسبة سعيدة</p>
           </div>
@@ -162,9 +162,9 @@ export const PrintableReceipt: React.FC<PrintableReceiptProps> = ({
       {/* Trigger Button */}
       <button
         onClick={() => handlePrint()}
-        className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-lg shadow-sm transition-all text-sm"
+        className="flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:bg-emerald-700"
       >
-        <Printer className="w-4 h-4" />
+        <Printer className="h-4 w-4" />
         {buttonLabel}
       </button>
     </div>

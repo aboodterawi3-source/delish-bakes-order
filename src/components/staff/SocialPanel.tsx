@@ -84,9 +84,9 @@ export function SocialPanel() {
   return (
     <main
       dir="rtl"
-      className="min-h-dvh w-full max-w-full overflow-x-hidden bg-[#F9FBFC] text-[#3E2723] bg-delish-pattern pb-16"
+      className="min-h-dvh w-full max-w-full overflow-x-hidden bg-delish-pattern bg-[#F9FBFC] pb-16 text-[#3E2723]"
     >
-      <header className="border-b border-[#F1F5F9] bg-white/95 backdrop-blur-md shadow-xs">
+      <header className="border-b border-[#F1F5F9] bg-white/95 shadow-xs backdrop-blur-md">
         <div className="mx-auto grid max-w-3xl grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-4">
           <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#FDE2CF] text-[#7B3F00] shadow-sm">
             <Sparkles className="h-6 w-6" aria-hidden="true" />
@@ -96,7 +96,7 @@ export function SocialPanel() {
               <h1 className="truncate font-serif text-lg font-bold text-[#3E2723] sm:text-xl">
                 بوابة السوشال ميديا
               </h1>
-              <span className="-mt-1 hidden font-script text-2xl italic text-[#8B4513] sm:inline">
+              <span className="-mt-1 hidden font-script text-2xl text-[#8B4513] italic sm:inline">
                 Delish
               </span>
             </div>
@@ -108,10 +108,10 @@ export function SocialPanel() {
             <button
               type="button"
               onClick={() => setView("stats")}
-              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-black transition border cursor-pointer ${
+              className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-black transition ${
                 view === "stats"
-                  ? "bg-[#8B4513] text-white border-[#8B4513] shadow-xs"
-                  : "bg-[#FDE2CF]/60 text-[#8B4513] border-[#FDE2CF] hover:bg-[#FDE2CF]"
+                  ? "border-[#8B4513] bg-[#8B4513] text-white shadow-xs"
+                  : "border-[#FDE2CF] bg-[#FDE2CF]/60 text-[#8B4513] hover:bg-[#FDE2CF]"
               }`}
               title="عرض إحصائيات وعدد الطلبات التي قمتِ بإدخالها"
             >
@@ -123,7 +123,7 @@ export function SocialPanel() {
               type="button"
               onClick={signOut}
               aria-label="تسجيل الخروج"
-              className="grid h-11 w-11 place-items-center rounded-full border border-slate-200 bg-white text-[#5D2E17] hover:bg-slate-50 shadow-xs cursor-pointer"
+              className="grid h-11 w-11 cursor-pointer place-items-center rounded-full border border-slate-200 bg-white text-[#5D2E17] shadow-xs hover:bg-slate-50"
             >
               <LogOut className="h-4 w-4" aria-hidden="true" />
             </button>
@@ -133,7 +133,7 @@ export function SocialPanel() {
 
       <div className="mx-auto max-w-3xl px-4 py-6">
         <nav
-          className="no-scrollbar mb-5 flex max-w-full gap-2 overflow-x-auto"
+          className="mb-5 no-scrollbar flex max-w-full gap-2 overflow-x-auto"
           aria-label="أقسام بوابة السوشال"
         >
           {[
@@ -147,7 +147,7 @@ export function SocialPanel() {
               type="button"
               aria-current={view === item.value}
               onClick={() => setView(item.value)}
-              className={`min-h-12 shrink-0 whitespace-nowrap rounded-full px-6 text-sm font-bold transition ${
+              className={`min-h-12 shrink-0 rounded-full px-6 text-sm font-bold whitespace-nowrap transition ${
                 view === item.value
                   ? "bg-[#8B4513] text-white shadow-sm"
                   : "border border-slate-200 bg-white text-[#5D2E17] hover:bg-slate-50"

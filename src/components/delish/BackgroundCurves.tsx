@@ -1,13 +1,17 @@
-import React from "react";
+import React, { memo } from "react";
 
-export function BackgroundCurves({ className = "" }: { className?: string }) {
+export const BackgroundCurves = memo(function BackgroundCurves({
+  className = "",
+}: {
+  className?: string;
+}) {
   return (
     <div
-      className={`pointer-events-none absolute inset-0 overflow-hidden ${className}`}
+      className={`pointer-events-none fixed inset-0 -z-10 overflow-hidden [contain:strict] ${className}`}
       aria-hidden="true"
     >
       <svg
-        className="absolute inset-0 h-full w-full opacity-45"
+        className="absolute inset-0 h-full w-full opacity-45 will-change-transform"
         viewBox="0 0 1000 1200"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
@@ -48,4 +52,4 @@ export function BackgroundCurves({ className = "" }: { className?: string }) {
       </svg>
     </div>
   );
-}
+});

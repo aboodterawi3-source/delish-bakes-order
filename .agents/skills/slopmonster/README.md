@@ -92,13 +92,13 @@ For Claude Code, copy this folder to `~/.claude/skills/slopmonster/` and invoke
 
 The current score has five categories:
 
-| Category | What it checks |
-|---|---|
-| Vocabulary | Listed words such as `delve` and `seamless`, including selected word forms. |
-| Sentence patterns | Listed constructions such as `not just X, but Y`, stacked hedges and certain self-answering questions. |
-| Punctuation | Repeated em dashes or stacked hyphenated compounds within a 220-character window in a sentence, plus semicolon density. |
-| Three-item lists | Two specific list patterns that often occur in promotional copy. |
-| Possible unsupported proof | Numbers near nouns such as `users` or `customers`. The checker cannot verify the claim. |
+| Category                   | What it checks                                                                                                          |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Vocabulary                 | Listed words such as `delve` and `seamless`, including selected word forms.                                             |
+| Sentence patterns          | Listed constructions such as `not just X, but Y`, stacked hedges and certain self-answering questions.                  |
+| Punctuation                | Repeated em dashes or stacked hyphenated compounds within a 220-character window in a sentence, plus semicolon density. |
+| Three-item lists           | Two specific list patterns that often occur in promotional copy.                                                        |
+| Possible unsupported proof | Numbers near nouns such as `users` or `customers`. The checker cannot verify the claim.                                 |
 
 The patterns are in [tools/deslop.py](tools/deslop.py). The broader editing
 catalogue is in [references/signs-of-ai-writing.md](references/signs-of-ai-writing.md).
@@ -167,7 +167,7 @@ python3 tools/deslop.py README.md
   with the commands and output from that run. Scores can change as rules change.
 - [Ridgeline Roofing](examples/ridgeline-roofing.md): a longer worked example with
   before-and-after copy. Check any business facts before reusing a line.
-- [Source list](references/sources.md): Wikipedia's *Signs of AI writing* and the
+- [Source list](references/sources.md): Wikipedia's _Signs of AI writing_ and the
   open-source humanizer projects used to assemble the catalogue. The marketing
   guidance also draws on Steve Krug, Daniel Priestley and Alex Hormozi.
 

@@ -1,11 +1,7 @@
-import { useMemo } from "react";
-import {
-  generateAvailableSlots,
-  calculateRequiredLeadTime,
-  type SlotMethod,
-} from "@/lib/delivery-slots";
-import { todayIso, isoDay } from "@/lib/date-filter";
-import { Clock, AlertCircle } from "lucide-react";
+import { useMemo, useRef } from "react";
+import { type SlotMethod } from "@/lib/delivery-slots";
+import { todayIso } from "@/lib/date-filter";
+import { Calendar as CalendarIcon, Clock, AlertCircle } from "lucide-react";
 
 export interface TimeSlotPickerProps {
   date: string;
@@ -19,11 +15,25 @@ export interface TimeSlotPickerProps {
   error?: boolean;
 }
 
+const ARABIC_MONTH_NAMES_MAP: Record<number, string> = {
+  0: "كانون الثاني (يناير)",
+  1: "شباط (فبراير)",
+  2: "آذار (مارس)",
+  3: "نيسان (أبريل)",
+  4: "أيار (مايو)",
+  5: "حزيران (يونيو)",
+  6: "تموز (يوليو)",
+  7: "آب (أغسطس)",
+  8: "أيلول (سبتمبر)",
+  9: "تشرين الأول (أكتوبر)",
+  10: "تشرين الثاني (نوفمبر)",
+  11: "كانون الأول (ديسمبر)",
+};
+
 export function TimeSlotPicker({
   date,
   time,
   method,
-  cartItems = [],
   onDateChange,
   onTimeChange,
   lang = "ar",
@@ -32,133 +42,165 @@ export function TimeSlotPicker({
 }: TimeSlotPickerProps) {
   const isAr = lang === "ar";
   const today = todayIso();
-
-  // 1. Calculate required lead time for items in cart
-  const leadTimeHours = useMemo(() => calculateRequiredLeadTime(cartItems), [cartItems]);
-
-  // 2. Generate next 5 calendar days
-  const availableDays = useMemo(() => {
-    return Array.from({ length: 5 }, (_, i) => {
-      const d = isoDay(i);
-      const dateObj = new Date(d);
-      let label = "";
-      if (i === 0) label = isAr ? "اليوم" : "Today";
-      else if (i === 1) label = isAr ? "غداً" : "Tomorrow";
-      else {
-        label = new Intl.DateTimeFormat(isAr ? "ar-JO" : "en-US", {
-          weekday: "short",
-          month: "numeric",
-          day: "numeric",
-        }).format(dateObj);
-      }
-      return { iso: d, label };
-    });
-  }, [isAr]);
-
-  // 3. Ensure a valid active date is set
   const activeDate = date || today;
 
-  // 4. Generate available slots for active date and method
-  const slots = useMemo(() => {
-    return generateAvailableSlots({
-      date: activeDate,
-      method,
-      leadTimeHours,
-    });
-  }, [activeDate, method, leadTimeHours]);
+  const dateInputRef = useRef<HTMLInputElement>(null);
+  const timeInputRef = useRef<HTMLInputElement>(null);
+
+  // Parse and format selected date
+  const { displayDateHeading, displayDateSub } = useMemo(() => {
+    try {
+      const parts = activeDate.split("-");
+      const year = parseInt(parts[0] || "2026", 10);
+      const month = parseInt(parts[1] || "1", 10) - 1;
+      const day = parseInt(parts[2] || "1", 10);
+      const dateObj = new Date(year, month, day, 12, 0, 0);
+
+      const weekday = new Intl.DateTimeFormat(isAr ? "ar-JO" : "en-US", {
+        weekday: "long",
+      }).format(dateObj);
+
+      const monthNameAr = new Intl.DateTimeFormat("ar-JO", {
+        month: "long",
+      }).format(dateObj);
+      const monthNameEn = new Intl.DateTimeFormat("en-US", {
+        month: "short",
+      }).format(dateObj);
+
+      const heading = `${weekday} ${day}`;
+      const sub = isAr ? ARABIC_MONTH_NAMES_MAP[month] || monthNameAr : `${monthNameEn} ${year}`;
+
+      return { displayDateHeading: heading, displayDateSub: sub };
+    } catch {
+      return {
+        displayDateHeading: activeDate,
+        displayDateSub: isAr ? "تاريخ التوصيل" : "Delivery Date",
+      };
+    }
+  }, [activeDate, isAr]);
+
+  // Format selected time
+  const displayTimeHeading = useMemo(() => {
+    if (!time) {
+      return isAr ? "اختر الساعة" : "Select Time";
+    }
+    const clean = time.trim();
+    const parts = clean.split(":");
+    if (parts.length >= 2 && parts[0] !== undefined && parts[1] !== undefined) {
+      let hours = parseInt(parts[0], 10);
+      const minutes = parts[1].padStart(2, "0");
+      if (!isNaN(hours)) {
+        const period = isAr ? (hours >= 12 ? "م" : "ص") : hours >= 12 ? "PM" : "AM";
+        const h12 = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+        return `${String(h12).padStart(2, "0")}:${minutes} ${period}`;
+      }
+    }
+    return clean;
+  }, [time, isAr]);
+
+  const dateLabel = isAr
+    ? method === "delivery"
+      ? "تاريخ التوصيل"
+      : "تاريخ الاستلام"
+    : method === "delivery"
+      ? "Delivery Date"
+      : "Pickup Date";
+
+  const timeLabel = isAr
+    ? method === "delivery"
+      ? "ساعة التوصيل"
+      : "ساعة الاستلام"
+    : method === "delivery"
+      ? "Delivery Time"
+      : "Pickup Time";
 
   return (
-    <div className={`space-y-3 ${className}`}>
-      {/* Lead Time Assurance Note for Cakes */}
-      {leadTimeHours > 1 && (
-        <div className="flex items-center gap-2 rounded-xl bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-800 dark:text-amber-200">
-          <Clock className="h-4 w-4 shrink-0 text-amber-600" />
-          <span>
-            {isAr
-              ? `يتطلب طلبك ${leadTimeHours} ساعات تحضير وتزيين مسبقة لضمان أعلى جودة وطزاجة.`
-              : `Your bakes require a ${leadTimeHours}-hour preparation lead time for supreme freshness.`}
-          </span>
+    <div className={`space-y-2 ${className}`}>
+      {/* Dual Luxury Pods */}
+      <div className="grid grid-cols-2 gap-2.5">
+        {/* Pod 1: Date */}
+        <div
+          onClick={() => {
+            if (dateInputRef.current && "showPicker" in dateInputRef.current) {
+              try {
+                dateInputRef.current.showPicker();
+              } catch {
+                dateInputRef.current.focus();
+              }
+            }
+          }}
+          className={`group relative flex cursor-pointer flex-col justify-between rounded-2xl border bg-card p-3.5 text-start transition-all hover:border-primary/60 hover:shadow-2xs active:scale-[0.99] ${
+            error && !date ? "border-destructive" : "border-border"
+          }`}
+        >
+          <input
+            ref={dateInputRef}
+            type="date"
+            min={today}
+            value={activeDate}
+            onChange={(e) => onDateChange(e.target.value)}
+            className="pointer-events-auto absolute inset-0 h-full w-full cursor-pointer opacity-0"
+            aria-label={dateLabel}
+          />
+          <div>
+            <span className="flex items-center gap-1.5 text-[11px] font-bold text-primary">
+              <CalendarIcon className="h-3.5 w-3.5 shrink-0" />
+              {dateLabel}
+            </span>
+            <div className="mt-1.5 font-display text-base font-bold tracking-tight text-foreground sm:text-lg">
+              {displayDateHeading}
+            </div>
+          </div>
+          <div className="mt-1 text-xs font-medium text-muted-foreground">{displayDateSub}</div>
         </div>
-      )}
 
-      {/* Day Selector Pills */}
-      <div>
-        <label className="mb-1.5 block text-xs font-bold text-foreground/80">
-          {isAr ? "موعد الاستلام / التوصيل" : "Preferred Date"}
-        </label>
-        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-          {availableDays.map((day) => {
-            const isSelected = activeDate === day.iso;
-            return (
-              <button
-                key={day.iso}
-                type="button"
-                onClick={() => onDateChange(day.iso)}
-                className={`flex-1 shrink-0 rounded-xl px-3 py-2 text-xs font-semibold transition-all ${
-                  isSelected
-                    ? "bg-[#2C1A11] text-[#FAF6F0] shadow-sm dark:bg-[#FAF6F0] dark:text-[#2C1A11]"
-                    : "border border-border bg-card/60 text-foreground hover:bg-muted"
-                }`}
-              >
-                {day.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Time Slot Grid */}
-      <div>
-        <label className="mb-1.5 block text-xs font-bold text-foreground/80">
-          {isAr
-            ? method === "delivery"
-              ? "فترة التوصيل (عمّان)"
-              : "فترة الاستلام من الفرع"
-            : method === "delivery"
-              ? "Delivery Window"
-              : "Pickup Window"}
-        </label>
-
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {slots.map((slot) => {
-            const isSelected = time === slot.startTime;
-            const disabled = !slot.isAvailable;
-
-            let badgeText = "";
-            if (slot.reasonUnavailable === "capacity") badgeText = isAr ? "مكتملة" : "Full";
-            else if (slot.reasonUnavailable === "lead_time") badgeText = isAr ? "تحضير" : "Baking";
-            else if (slot.reasonUnavailable === "past") badgeText = isAr ? "مضت" : "Past";
-
-            return (
-              <button
-                key={slot.id}
-                type="button"
-                disabled={disabled}
-                onClick={() => onTimeChange(slot.startTime, slot.id)}
-                className={`relative flex min-h-[46px] flex-col items-center justify-center rounded-xl border p-2 text-center text-xs font-semibold transition-all ${
-                  isSelected
-                    ? "border-[#2C1A11] bg-[#2C1A11] text-[#FAF6F0] shadow-sm dark:border-white dark:bg-white dark:text-black"
-                    : disabled
-                      ? "cursor-not-allowed border-dashed border-border/50 bg-muted/40 text-muted-foreground/60"
-                      : "border-border bg-card hover:border-[#C59B27] hover:bg-accent/40"
-                }`}
-              >
-                <span>{isAr ? slot.labelAr : slot.labelEn}</span>
-                {badgeText && (
-                  <span className="mt-0.5 text-[10px] font-normal text-muted-foreground">
-                    ({badgeText})
-                  </span>
-                )}
-              </button>
-            );
-          })}
+        {/* Pod 2: Time */}
+        <div
+          onClick={() => {
+            if (timeInputRef.current && "showPicker" in timeInputRef.current) {
+              try {
+                timeInputRef.current.showPicker();
+              } catch {
+                timeInputRef.current.focus();
+              }
+            }
+          }}
+          className={`group relative flex cursor-pointer flex-col justify-between rounded-2xl border bg-card p-3.5 text-start transition-all hover:border-primary/60 hover:shadow-2xs active:scale-[0.99] ${
+            error && !time ? "border-destructive" : "border-border"
+          }`}
+        >
+          <input
+            ref={timeInputRef}
+            type="time"
+            min="10:00"
+            max="23:00"
+            value={time}
+            onChange={(e) => {
+              const val = e.target.value;
+              onTimeChange(val, `time-${val}`);
+            }}
+            className="pointer-events-auto absolute inset-0 h-full w-full cursor-pointer opacity-0"
+            aria-label={timeLabel}
+          />
+          <div className="flex h-full flex-col justify-between">
+            <span className="flex items-center gap-1.5 text-[11px] font-bold text-primary">
+              <Clock className="h-3.5 w-3.5 shrink-0" />
+              {timeLabel}
+            </span>
+            <div className="mt-1.5 font-display text-base font-bold tracking-tight text-foreground sm:text-lg">
+              {displayTimeHeading}
+            </div>
+          </div>
         </div>
       </div>
 
+      {/* Error Feedback */}
       {error && !time && (
-        <p className="flex items-center gap-1 text-xs text-destructive">
-          <AlertCircle className="h-3.5 w-3.5" />
-          {isAr ? "يرجى تحديد فترة زمنية للاستلام أو التوصيل" : "Please select an available time window"}
+        <p className="flex items-center gap-1.5 pt-0.5 text-start text-xs font-semibold text-destructive">
+          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+          <span>
+            {isAr ? "يرجى تحديد وقت التسليم بالساعة" : "Please select your preferred time"}
+          </span>
         </p>
       )}
     </div>

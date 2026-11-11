@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Facebook, Instagram, MessageCircle } from "lucide-react";
 import { WHATSAPP } from "@/lib/menu";
 import { useLang } from "@/lib/i18n";
@@ -9,7 +10,7 @@ export const SOCIAL_LINKS = {
 };
 
 /** Shared storefront footer: social icons plus the Delish Bakes copyright. */
-export function SiteFooter() {
+export const SiteFooter = memo(function SiteFooter() {
   const { lang } = useLang();
   const ar = lang === "ar";
   const year = new Date().getFullYear();
@@ -44,4 +45,4 @@ export function SiteFooter() {
       </p>
     </footer>
   );
-}
+});

@@ -88,7 +88,7 @@ export function SalesPanel() {
     <main dir="rtl" className="min-h-dvh w-full max-w-full overflow-x-hidden bg-background pb-16">
       <header className="sticky top-0 z-20 border-b border-border bg-card/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-2 px-4 py-3 sm:gap-3">
-          <div className="min-w-0 me-auto">
+          <div className="me-auto min-w-0">
             <h1 className="truncate font-display text-lg font-bold text-foreground sm:text-xl">
               واجهة المبيعات <span className="delish-wordmark">Delish</span>
             </h1>
@@ -109,7 +109,7 @@ export function SalesPanel() {
 
       <div className="mx-auto w-full max-w-7xl min-w-0 px-4 py-5">
         <nav
-          className="no-scrollbar mb-5 flex max-w-full gap-2 overflow-x-auto"
+          className="mb-5 no-scrollbar flex max-w-full gap-2 overflow-x-auto"
           aria-label="أقسام واجهة المبيعات"
         >
           {[
@@ -124,7 +124,7 @@ export function SalesPanel() {
               type="button"
               aria-current={view === item.value}
               onClick={() => setView(item.value)}
-              className={`min-h-12 shrink-0 whitespace-nowrap rounded-full px-6 text-sm font-bold transition ${
+              className={`min-h-12 shrink-0 rounded-full px-6 text-sm font-bold whitespace-nowrap transition ${
                 view === item.value
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "border border-border bg-card text-foreground hover:bg-secondary/40"

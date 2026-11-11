@@ -5,19 +5,19 @@ against one of the schemas in this folder before any layout work happens.
 
 ## Files
 
-| Schema | Governs | Structural arrays |
-|--------|---------|-------------------|
-| `workflow.schema.json` | `diagram_type: "workflow"` | `lanes`, `phases`, `groups`, `mainPath`, `nodes`, `edges` |
-| `sequence.schema.json` | `diagram_type: "sequence"` | `participants`, `segments`, `messages`, `activations` |
-| `dataflow.schema.json` | `diagram_type: "dataflow"` | `stages`, `nodes`, `flows` |
-| `lifecycle.schema.json` | `diagram_type: "lifecycle"` | `mainPath`, `states`, `transitions` |
-| `architecture.schema.json` | `diagram_type: "architecture"` | `components`, `boundaries`, `connections` |
-| `erd.schema.json` | `diagram_type: "erd"` | `entities`, `relationships` |
-| `tree.schema.json` | `diagram_type: "tree"` | `nodes` (each with one `parent`) |
-| `class.schema.json` | `diagram_type: "class"` | `types`, `relationships` |
-| `timeline.schema.json` | `diagram_type: "timeline"` | `events` (`lanes` optional) |
-| `waterfall.schema.json` | `diagram_type: "waterfall"` | `spans` (each with optional `parent`) |
-| `common.schema.json` | shared `$defs` only (no top-level document) | — |
+| Schema                     | Governs                                     | Structural arrays                                         |
+| -------------------------- | ------------------------------------------- | --------------------------------------------------------- |
+| `workflow.schema.json`     | `diagram_type: "workflow"`                  | `lanes`, `phases`, `groups`, `mainPath`, `nodes`, `edges` |
+| `sequence.schema.json`     | `diagram_type: "sequence"`                  | `participants`, `segments`, `messages`, `activations`     |
+| `dataflow.schema.json`     | `diagram_type: "dataflow"`                  | `stages`, `nodes`, `flows`                                |
+| `lifecycle.schema.json`    | `diagram_type: "lifecycle"`                 | `mainPath`, `states`, `transitions`                       |
+| `architecture.schema.json` | `diagram_type: "architecture"`              | `components`, `boundaries`, `connections`                 |
+| `erd.schema.json`          | `diagram_type: "erd"`                       | `entities`, `relationships`                               |
+| `tree.schema.json`         | `diagram_type: "tree"`                      | `nodes` (each with one `parent`)                          |
+| `class.schema.json`        | `diagram_type: "class"`                     | `types`, `relationships`                                  |
+| `timeline.schema.json`     | `diagram_type: "timeline"`                  | `events` (`lanes` optional)                               |
+| `waterfall.schema.json`    | `diagram_type: "waterfall"`                 | `spans` (each with optional `parent`)                     |
+| `common.schema.json`       | shared `$defs` only (no top-level document) | —                                                         |
 
 Every diagram schema requires `schema_version`, `diagram_type`, `meta` (with
 `title` and a durable portable `output`), and its structural arrays — except `segments`, `activations`, ERD and class
@@ -92,15 +92,15 @@ strict validation.
 
 Supported keys are renderer-owned:
 
-| Renderer | `meta.legend.entries` keys |
-|---|---|
-| Architecture | `frontend`, `backend`, `database`, `cloud`, `security`, `messagebus`, `external` |
-| Workflow | `frontend`, `backend`, `security`, `messagebus`, `database`, `cloud`, `external` |
-| Sequence | `emphasis`, `return`, `security`, `dashed`, `default` |
-| Dataflow | `emphasis`, `security`, `dashed`, `database`, `default` |
-| Lifecycle | `start`, `active`, `waiting`, `decision`, `success`, `failure`, `neutral`, `external` |
-| ERD | `pk`, `fk`, `uk`, `one`, `many`, `optional` |
-| Class | `dependency`, `association`, `inheritance`, `realization`, `composition`, `aggregation` |
+| Renderer     | `meta.legend.entries` keys                                                              |
+| ------------ | --------------------------------------------------------------------------------------- |
+| Architecture | `frontend`, `backend`, `database`, `cloud`, `security`, `messagebus`, `external`        |
+| Workflow     | `frontend`, `backend`, `security`, `messagebus`, `database`, `cloud`, `external`        |
+| Sequence     | `emphasis`, `return`, `security`, `dashed`, `default`                                   |
+| Dataflow     | `emphasis`, `security`, `dashed`, `database`, `default`                                 |
+| Lifecycle    | `start`, `active`, `waiting`, `decision`, `success`, `failure`, `neutral`, `external`   |
+| ERD          | `pk`, `fk`, `uk`, `one`, `many`, `optional`                                             |
+| Class        | `dependency`, `association`, `inheritance`, `realization`, `composition`, `aggregation` |
 
 Labels are presentation only: they do not rename the stable kind, change
 nodes/relationships, or create Semantic Lens edge facts. Sequence message and

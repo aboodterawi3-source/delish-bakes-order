@@ -152,23 +152,23 @@ function Counter({
   label: string;
 }) {
   return (
-    <div className="inline-flex items-center rounded-full bg-[#8B4513] p-0.5 text-white shadow-xs">
+    <div className="inline-flex items-center rounded-full bg-[#8B4513] px-1 py-0.5 text-white shadow-xs">
       <button
         type="button"
         aria-label={`${label} −`}
         onClick={() => onChange(Math.max(1, value - 1))}
-        className="grid h-11 w-11 min-h-[44px] min-w-[44px] place-items-center rounded-full transition hover:text-amber-200 active:scale-90 cursor-pointer"
+        className="grid h-11 w-11 cursor-pointer place-items-center rounded-full transition hover:text-amber-200 active:scale-90"
       >
-        <Minus className="h-4 w-4" />
+        <Minus className="h-3.5 w-3.5" />
       </button>
-      <span className="min-w-6 text-center text-xs font-bold px-1">{value}</span>
+      <span className="px-2 text-xs font-bold">{value}</span>
       <button
         type="button"
         aria-label={`${label} +`}
         onClick={() => onChange(Math.min(99, value + 1))}
-        className="grid h-11 w-11 min-h-[44px] min-w-[44px] place-items-center rounded-full transition hover:text-amber-200 active:scale-90 cursor-pointer"
+        className="grid h-11 w-11 cursor-pointer place-items-center rounded-full transition hover:text-amber-200 active:scale-90"
       >
-        <Plus className="h-4 w-4" />
+        <Plus className="h-3.5 w-3.5" />
       </button>
     </div>
   );
@@ -239,7 +239,7 @@ export function CakeCustomizationPanel({
           <Sparkles className="h-4 w-4 text-[#B8860B]" />
           <span>{ar ? "تخصيص الكيكة والإضافات" : "Customization & Add-ons"}</span>
         </h3>
-        <span className="rounded-full bg-[#FEF7EB] border border-[#FDE2CF] px-2.5 py-0.5 text-[11px] font-semibold text-[#8B4513]">
+        <span className="rounded-full border border-[#FDE2CF] bg-[#FEF7EB] px-2.5 py-0.5 text-[11px] font-semibold text-[#8B4513]">
           {ar ? "اختياري" : "Optional"}
         </span>
       </div>
@@ -248,10 +248,12 @@ export function CakeCustomizationPanel({
       <div
         id="custom-field-filling"
         className={`rounded-2xl border p-3.5 transition-all ${
-          errors?.filling ? "border-red-400 bg-red-50/30" : "border-slate-200/90 bg-white shadow-2xs"
+          errors?.filling
+            ? "border-red-400 bg-red-50/30"
+            : "border-slate-200/90 bg-white shadow-2xs"
         }`}
       >
-        <div className="flex items-center justify-between mb-1.5">
+        <div className="mb-1.5 flex items-center justify-between">
           <label htmlFor="field-input-filling" className="block text-xs font-bold text-[#3E2723]">
             {ar ? "نوع الحشوة المفضلة" : "Preferred Filling"}
           </label>
@@ -265,7 +267,7 @@ export function CakeCustomizationPanel({
         </div>
 
         {/* Quick Suggestion Chips */}
-        <div className="flex flex-wrap gap-1.5 mb-2">
+        <div className="mb-2 flex flex-wrap gap-1.5">
           {FILLING_SUGGESTIONS.map((sug) => {
             const label = ar ? sug.ar : sug.en;
             const isSelected = value.filling === label;
@@ -277,10 +279,10 @@ export function CakeCustomizationPanel({
                   set("filling", label);
                   clear("filling");
                 }}
-                className={`rounded-lg px-2.5 py-1 text-xs font-medium transition cursor-pointer ${
+                className={`cursor-pointer rounded-lg px-2.5 py-1 text-xs font-medium transition ${
                   isSelected
                     ? "border border-[#8B4513] bg-[#8B4513] text-white"
-                    : "border border-slate-200 bg-[#F9FBFC] text-[#5A4A42] hover:bg-amber-50 hover:border-amber-200"
+                    : "border border-slate-200 bg-[#F9FBFC] text-[#5A4A42] hover:border-amber-200 hover:bg-amber-50"
                 }`}
               >
                 {label}
@@ -298,12 +300,14 @@ export function CakeCustomizationPanel({
             set("filling", e.target.value);
             if (e.target.value.trim()) clear("filling");
           }}
-          placeholder={ar ? "أو اكتب نوع الحشوة المطلوبة بالتفصيل..." : "Or type your custom filling..."}
+          placeholder={
+            ar ? "أو اكتب نوع الحشوة المطلوبة بالتفصيل..." : "Or type your custom filling..."
+          }
           className={errors?.filling ? errorInputClass : normalInputClass}
         />
 
         {errors?.filling ? (
-          <p className="mt-1.5 flex items-center gap-1 text-xs font-bold text-red-600 animate-pulse">
+          <p className="mt-1.5 flex animate-pulse items-center gap-1 text-xs font-bold text-red-600">
             <AlertCircle className="h-4 w-4 shrink-0" />
             {errors.filling}
           </p>
@@ -314,10 +318,12 @@ export function CakeCustomizationPanel({
       <div
         id="custom-field-candles"
         className={`rounded-2xl border p-3.5 transition-all ${
-          errors?.candles ? "border-red-400 bg-red-50/30" : "border-slate-200/90 bg-white shadow-2xs"
+          errors?.candles
+            ? "border-red-400 bg-red-50/30"
+            : "border-slate-200/90 bg-white shadow-2xs"
         }`}
       >
-        <div className="flex items-center justify-between mb-2">
+        <div className="mb-2 flex items-center justify-between">
           <label className="block text-xs font-bold text-[#3E2723]">
             {ar ? "شموع الاحتفال" : "Celebration Candles"}
           </label>
@@ -325,7 +331,7 @@ export function CakeCustomizationPanel({
         </div>
 
         {/* Choice buttons */}
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 mb-2">
+        <div className="mb-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
           {[
             { id: "none", labelAr: "بدون شموع", labelEn: "No Candles" },
             { id: "standard", labelAr: "🕯️ شموع عادية", labelEn: "🕯️ Standard" },
@@ -371,7 +377,7 @@ export function CakeCustomizationPanel({
                   }
                   clear("candles");
                 }}
-                className={`min-h-10 rounded-xl px-2.5 py-1.5 text-xs font-bold transition cursor-pointer ${
+                className={`min-h-11 cursor-pointer rounded-xl px-2.5 py-1.5 text-xs font-bold transition ${
                   active
                     ? "border-2 border-[#8B4513] bg-[#8B4513] text-white shadow-xs"
                     : "border border-slate-200 bg-[#F9FBFC] text-[#5D2E17] hover:bg-amber-50"
@@ -384,7 +390,7 @@ export function CakeCustomizationPanel({
         </div>
 
         {value.standardCandles && (
-          <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-[#F9FBFC] p-2.5 my-2">
+          <div className="my-2 flex items-center justify-between rounded-xl border border-slate-200 bg-[#F9FBFC] p-2.5">
             <span className="text-xs font-bold text-[#3E2723]">
               {ar ? "عدد الشموع العادية:" : "Standard Candles Count:"}
             </span>
@@ -397,9 +403,9 @@ export function CakeCustomizationPanel({
         )}
 
         {value.numberCandles && (
-          <div className="grid gap-2.5 sm:grid-cols-2 rounded-xl border border-slate-200 bg-[#F9FBFC] p-2.5 my-2">
+          <div className="my-2 grid gap-2.5 rounded-xl border border-slate-200 bg-[#F9FBFC] p-2.5 sm:grid-cols-2">
             <div>
-              <label className="block text-xs font-bold text-[#3E2723] mb-1">
+              <label className="mb-1 block text-xs font-bold text-[#3E2723]">
                 {ar ? "أرقام الشموع (العمر أو السنة):" : "Candle Numbers:"}
               </label>
               <input
@@ -416,7 +422,7 @@ export function CakeCustomizationPanel({
               />
             </div>
             <div>
-              <label className="block text-xs font-bold text-[#3E2723] mb-1">
+              <label className="mb-1 block text-xs font-bold text-[#3E2723]">
                 {ar ? "عدد الأطقم:" : "Sets Count:"}
               </label>
               <div className="pt-1">
@@ -431,7 +437,7 @@ export function CakeCustomizationPanel({
         )}
 
         {errors?.candles ? (
-          <p className="mt-1.5 flex items-center gap-1 text-xs font-bold text-red-600 animate-pulse">
+          <p className="mt-1.5 flex animate-pulse items-center gap-1 text-xs font-bold text-red-600">
             <AlertCircle className="h-4 w-4 shrink-0" />
             {errors.candles}
           </p>
@@ -442,17 +448,19 @@ export function CakeCustomizationPanel({
       <div
         id="custom-field-balloons"
         className={`rounded-2xl border p-3.5 transition-all ${
-          errors?.balloons ? "border-red-400 bg-red-50/30" : "border-slate-200/90 bg-white shadow-2xs"
+          errors?.balloons
+            ? "border-red-400 bg-red-50/30"
+            : "border-slate-200/90 bg-white shadow-2xs"
         }`}
       >
-        <div className="flex items-center justify-between mb-2">
+        <div className="mb-2 flex items-center justify-between">
           <label className="block text-xs font-bold text-[#3E2723]">
             {ar ? "بالونات هيليوم" : "Helium Balloons"}
           </label>
           <span className="text-[11px] text-muted-foreground">{ar ? "اختياري" : "Optional"}</span>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 mb-2">
+        <div className="mb-2 grid grid-cols-2 gap-2">
           <button
             type="button"
             onClick={() => {
@@ -460,7 +468,7 @@ export function CakeCustomizationPanel({
               onChange({ ...value, balloons: false, balloonPicks: [], balloonNotes: "" });
               clear("balloons");
             }}
-            className={`min-h-10 rounded-xl px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
+            className={`min-h-11 cursor-pointer rounded-xl px-3 py-1.5 text-xs font-bold transition ${
               balloonMode === "none"
                 ? "border-2 border-[#8B4513] bg-[#8B4513] text-white shadow-xs"
                 : "border border-slate-200 bg-[#F9FBFC] text-[#5D2E17] hover:bg-amber-50"
@@ -474,7 +482,7 @@ export function CakeCustomizationPanel({
               setBalloonMode("yes");
               onChange({ ...value, balloons: true });
             }}
-            className={`min-h-10 rounded-xl px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
+            className={`min-h-11 cursor-pointer rounded-xl px-3 py-1.5 text-xs font-bold transition ${
               balloonMode === "yes"
                 ? "border-2 border-[#8B4513] bg-[#8B4513] text-white shadow-xs"
                 : "border border-slate-200 bg-[#F9FBFC] text-[#5D2E17] hover:bg-amber-50"
@@ -504,7 +512,7 @@ export function CakeCustomizationPanel({
                       set("balloonPicks", nextPicks);
                       if (nextPicks.length > 0 || value.balloonNotes.trim()) clear("balloons");
                     }}
-                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold transition cursor-pointer ${
+                    className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold transition ${
                       selected
                         ? "border-[#8B4513] bg-[#8B4513] text-white"
                         : "border-slate-200 bg-white text-[#5A4A42] hover:bg-amber-50"
@@ -512,7 +520,7 @@ export function CakeCustomizationPanel({
                   >
                     <span
                       aria-hidden="true"
-                      className="h-3 w-3 rounded-full border border-black/10 shrink-0"
+                      className="h-3 w-3 shrink-0 rounded-full border border-black/10"
                       style={{ backgroundColor: color.swatch }}
                     />
                     {label}
@@ -526,7 +534,7 @@ export function CakeCustomizationPanel({
                 {value.balloonPicks.map((pick) => (
                   <li
                     key={pick.id}
-                    className="flex items-center justify-between bg-white px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-[#3E2723]"
+                    className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-[#3E2723]"
                   >
                     <span>{pick.label}</span>
                     <div className="flex items-center gap-2">
@@ -551,7 +559,7 @@ export function CakeCustomizationPanel({
                             value.balloonPicks.filter((p) => p.id !== pick.id),
                           )
                         }
-                        className="rounded p-1 text-red-600 hover:bg-red-50 cursor-pointer"
+                        className="cursor-pointer rounded p-1 text-red-600 hover:bg-red-50"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -562,7 +570,7 @@ export function CakeCustomizationPanel({
             )}
 
             <div>
-              <label className="block text-xs font-bold text-[#3E2723] mb-1">
+              <label className="mb-1 block text-xs font-bold text-[#3E2723]">
                 {ar ? "ملاحظات إضافية على البالونات:" : "Extra balloon notes:"}
               </label>
               <input
@@ -572,7 +580,9 @@ export function CakeCustomizationPanel({
                   set("balloonNotes", e.target.value);
                   if (e.target.value.trim() || value.balloonPicks.length > 0) clear("balloons");
                 }}
-                placeholder={ar ? "مثال: 5 بالونات هيليوم كروم..." : "e.g. 5 chrome helium balloons..."}
+                placeholder={
+                  ar ? "مثال: 5 بالونات هيليوم كروم..." : "e.g. 5 chrome helium balloons..."
+                }
                 className={normalInputClass}
               />
             </div>
@@ -580,7 +590,7 @@ export function CakeCustomizationPanel({
         )}
 
         {errors?.balloons ? (
-          <p className="mt-1.5 flex items-center gap-1 text-xs font-bold text-red-600 animate-pulse">
+          <p className="mt-1.5 flex animate-pulse items-center gap-1 text-xs font-bold text-red-600">
             <AlertCircle className="h-4 w-4 shrink-0" />
             {errors.balloons}
           </p>
@@ -594,14 +604,14 @@ export function CakeCustomizationPanel({
           errors?.topper ? "border-red-400 bg-red-50/30" : "border-slate-200/90 bg-white shadow-2xs"
         }`}
       >
-        <div className="flex items-center justify-between mb-2">
+        <div className="mb-2 flex items-center justify-between">
           <label htmlFor="field-input-topper" className="block text-xs font-bold text-[#3E2723]">
             {ar ? "توبر أكريليك احتفالي" : "Acrylic Cake Topper"}
           </label>
           <span className="text-[11px] text-muted-foreground">{ar ? "اختياري" : "Optional"}</span>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 mb-2">
+        <div className="mb-2 grid grid-cols-2 gap-2">
           <button
             type="button"
             onClick={() => {
@@ -609,7 +619,7 @@ export function CakeCustomizationPanel({
               onChange({ ...value, topper: false, topperText: "" });
               clear("topper");
             }}
-            className={`min-h-10 rounded-xl px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
+            className={`min-h-11 cursor-pointer rounded-xl px-3 py-1.5 text-xs font-bold transition ${
               topperMode === "none"
                 ? "border-2 border-[#8B4513] bg-[#8B4513] text-white shadow-xs"
                 : "border border-slate-200 bg-[#F9FBFC] text-[#5D2E17] hover:bg-amber-50"
@@ -623,7 +633,7 @@ export function CakeCustomizationPanel({
               setTopperMode("yes");
               onChange({ ...value, topper: true });
             }}
-            className={`min-h-10 rounded-xl px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
+            className={`min-h-11 cursor-pointer rounded-xl px-3 py-1.5 text-xs font-bold transition ${
               topperMode === "yes"
                 ? "border-2 border-[#8B4513] bg-[#8B4513] text-white shadow-xs"
                 : "border border-slate-200 bg-[#F9FBFC] text-[#5D2E17] hover:bg-amber-50"
@@ -634,7 +644,7 @@ export function CakeCustomizationPanel({
         </div>
 
         {topperMode === "yes" && (
-          <div className="space-y-1 mt-2">
+          <div className="mt-2 space-y-1">
             <input
               id="field-input-topper"
               type="text"
@@ -644,14 +654,18 @@ export function CakeCustomizationPanel({
                 if (e.target.value.trim()) clear("topper");
               }}
               maxLength={60}
-              placeholder={ar ? "اكتب العبارة المطلوبة (مثال: مبروك التخرج، Happy Birthday Sarah)…" : "Type topper text (e.g. Happy Birthday)…"}
+              placeholder={
+                ar
+                  ? "اكتب العبارة المطلوبة (مثال: مبروك التخرج، Happy Birthday Sarah)…"
+                  : "Type topper text (e.g. Happy Birthday)…"
+              }
               className={errors?.topper ? errorInputClass : normalInputClass}
             />
           </div>
         )}
 
         {errors?.topper ? (
-          <p className="mt-1.5 flex items-center gap-1 text-xs font-bold text-red-600 animate-pulse">
+          <p className="mt-1.5 flex animate-pulse items-center gap-1 text-xs font-bold text-red-600">
             <AlertCircle className="h-4 w-4 shrink-0" />
             {errors.topper}
           </p>
@@ -675,7 +689,7 @@ export function CakeCustomizationPanel({
           errors?.notes ? "border-red-400 bg-red-50/30" : "border-slate-200/90 bg-white shadow-2xs"
         }`}
       >
-        <div className="flex items-center justify-between mb-1.5">
+        <div className="mb-1.5 flex items-center justify-between">
           <label htmlFor="field-input-notes" className="block text-xs font-bold text-[#3E2723]">
             {ar ? "ملاحظات إضافية للمطبخ" : "Special Kitchen Notes"}
           </label>
@@ -691,18 +705,26 @@ export function CakeCustomizationPanel({
             if (e.target.value.trim()) clear("notes");
           }}
           maxLength={400}
-          placeholder={ar ? "أي ملاحظات خاصة بطلبكم (مثال: سكر خفيف، حساسية مكسرات، التوصيل وقت محدد)..." : "Any special preparation notes (e.g. less sugar, nut allergy)..."}
+          placeholder={
+            ar
+              ? "أي ملاحظات خاصة بطلبكم (مثال: سكر خفيف، حساسية مكسرات، التوصيل وقت محدد)..."
+              : "Any special preparation notes (e.g. less sugar, nut allergy)..."
+          }
           className={errors?.notes ? errorTextareaClass : normalTextareaClass}
         />
 
         <div className="mt-1 flex items-center justify-between text-[11px]">
           {errors?.notes ? (
-            <p className="flex items-center gap-1 font-bold text-red-600 animate-pulse">
+            <p className="flex animate-pulse items-center gap-1 font-bold text-red-600">
               <AlertCircle className="h-4 w-4 shrink-0" />
               {errors.notes}
             </p>
           ) : (
-            <span className={value.notes.trim() ? "font-semibold text-emerald-700" : "text-muted-foreground"}>
+            <span
+              className={
+                value.notes.trim() ? "font-semibold text-emerald-700" : "text-muted-foreground"
+              }
+            >
               {value.notes.trim() ? (ar ? "✓ تم حفظ الملاحظات" : "✓ Notes recorded") : ""}
             </span>
           )}
@@ -713,20 +735,20 @@ export function CakeCustomizationPanel({
       {/* 7. GIFT (IF NOT HIDDEN) */}
       {!hideGift && (
         <div className="rounded-2xl border border-slate-200/90 bg-white p-3.5 shadow-2xs">
-          <div className="flex items-center justify-between mb-2">
+          <div className="mb-2 flex items-center justify-between">
             <span className="block text-xs font-bold text-[#3E2723]">
               {ar ? "إرسال كهدية لشخص عزيز" : "Send as a Gift"}
             </span>
             <span className="text-[11px] text-muted-foreground">{ar ? "اختياري" : "Optional"}</span>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 mb-2">
+          <div className="mb-2 grid grid-cols-2 gap-2">
             <button
               type="button"
               onClick={() =>
                 onChange({ ...value, gift: false, senderPhone: "", recipientPhone: "" })
               }
-              className={`min-h-10 rounded-xl px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
+              className={`min-h-11 cursor-pointer rounded-xl px-3 py-1.5 text-xs font-bold transition ${
                 !value.gift
                   ? "border-2 border-[#8B4513] bg-[#8B4513] text-white shadow-xs"
                   : "border border-slate-200 bg-[#F9FBFC] text-[#5D2E17] hover:bg-amber-50"
@@ -737,7 +759,7 @@ export function CakeCustomizationPanel({
             <button
               type="button"
               onClick={() => onChange({ ...value, gift: true })}
-              className={`min-h-10 rounded-xl px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
+              className={`min-h-11 cursor-pointer rounded-xl px-3 py-1.5 text-xs font-bold transition ${
                 value.gift
                   ? "border-2 border-[#8B4513] bg-[#8B4513] text-white shadow-xs"
                   : "border border-slate-200 bg-[#F9FBFC] text-[#5D2E17] hover:bg-amber-50"
@@ -748,7 +770,7 @@ export function CakeCustomizationPanel({
           </div>
 
           {value.gift && (
-            <div className="grid gap-2.5 sm:grid-cols-2 rounded-xl border border-slate-200 bg-[#F9FBFC] p-2.5 mt-2">
+            <div className="mt-2 grid gap-2.5 rounded-xl border border-slate-200 bg-[#F9FBFC] p-2.5 sm:grid-cols-2">
               <label className="block space-y-1">
                 <span className="text-xs font-bold text-[#3E2723]">
                   {ar ? "هاتف المُرسل:" : "Sender Phone:"}
@@ -861,7 +883,9 @@ export function DesignPhotoSection({
       setSavedSize({ before: converted.originalBytes, after: converted.bytes });
       clear("photo");
     } catch (error) {
-      setUploadError(error instanceof Error ? error.message : (ar ? "تعذّر رفع الصورة" : "Upload failed"));
+      setUploadError(
+        error instanceof Error ? error.message : ar ? "تعذّر رفع الصورة" : "Upload failed",
+      );
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
@@ -875,21 +899,21 @@ export function DesignPhotoSection({
         errors?.photo ? "border-red-400 bg-red-50/30" : "border-slate-200/90 bg-white shadow-2xs"
       }`}
     >
-      <div className="flex items-center justify-between mb-2">
+      <div className="mb-2 flex items-center justify-between">
         <label className="block text-xs font-bold text-[#3E2723]">
           {ar ? "صورة مرجعية للتصميم" : "Reference Design Photo"}
         </label>
         <span className="text-[11px] text-muted-foreground">{ar ? "اختياري" : "Optional"}</span>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 mb-2">
+      <div className="mb-2 grid grid-cols-2 gap-2">
         <button
           type="button"
           onClick={() => {
             setPhotoMode("none");
             removePhoto();
           }}
-          className={`min-h-10 rounded-xl px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
+          className={`min-h-11 cursor-pointer rounded-xl px-3 py-1.5 text-xs font-bold transition ${
             photoMode === "none"
               ? "border-2 border-[#8B4513] bg-[#8B4513] text-white shadow-xs"
               : "border border-slate-200 bg-[#F9FBFC] text-[#5D2E17] hover:bg-amber-50"
@@ -902,7 +926,7 @@ export function DesignPhotoSection({
           onClick={() => {
             setPhotoMode("yes");
           }}
-          className={`min-h-10 rounded-xl px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
+          className={`min-h-11 cursor-pointer rounded-xl px-3 py-1.5 text-xs font-bold transition ${
             photoMode === "yes"
               ? "border-2 border-[#8B4513] bg-[#8B4513] text-white shadow-xs"
               : "border border-slate-200 bg-[#F9FBFC] text-[#5D2E17] hover:bg-amber-50"
@@ -914,7 +938,7 @@ export function DesignPhotoSection({
 
       {photoMode === "yes" && (
         <div
-          className={`rounded-xl border p-3.5 bg-[#F9FBFC] ${
+          className={`rounded-xl border bg-[#F9FBFC] p-3.5 ${
             errors?.photo ? "border-red-400 bg-red-50/20" : "border-slate-200"
           }`}
         >
@@ -930,7 +954,7 @@ export function DesignPhotoSection({
               <img
                 src={value.designImageUrl}
                 alt={ar ? "التصميم المرجعي" : "Reference design"}
-                className="max-h-52 w-full rounded-xl object-cover border border-amber-200"
+                className="max-h-52 w-full rounded-xl border border-amber-200 object-cover"
               />
               {savedSize && (
                 <p className="text-[11px] text-[#5A4A42]">
@@ -942,7 +966,7 @@ export function DesignPhotoSection({
               <button
                 type="button"
                 onClick={removePhoto}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-50 cursor-pointer"
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-50"
               >
                 <Trash2 className="h-3.5 w-3.5" />
                 {ar ? "إزالة الصورة" : "Remove Photo"}
@@ -953,7 +977,7 @@ export function DesignPhotoSection({
               type="button"
               onClick={() => fileRef.current?.click()}
               disabled={uploading}
-              className="flex w-full flex-col items-center gap-2 rounded-xl border border-dashed border-[#B8860B] bg-white p-5 text-[#7B3F00] transition hover:bg-amber-50/50 disabled:opacity-60 cursor-pointer"
+              className="flex w-full cursor-pointer flex-col items-center gap-2 rounded-xl border border-dashed border-[#B8860B] bg-white p-5 text-[#7B3F00] transition hover:bg-amber-50/50 disabled:opacity-60"
             >
               {uploading ? (
                 <Loader2 className="h-6 w-6 animate-spin" />
@@ -962,20 +986,22 @@ export function DesignPhotoSection({
               )}
               <span className="text-xs font-bold">
                 {uploading
-                  ? (ar ? "جاري تحسين ورفع الصورة..." : "Optimizing & uploading...")
-                  : (ar ? "اضغط هنا لاختيار صورة الكيكة المطلوبة (JPG, PNG, WebP)" : "Click to select cake design photo")}
+                  ? ar
+                    ? "جاري تحسين ورفع الصورة..."
+                    : "Optimizing & uploading..."
+                  : ar
+                    ? "اضغط هنا لاختيار صورة الكيكة المطلوبة (JPG, PNG, WebP)"
+                    : "Click to select cake design photo"}
               </span>
             </button>
           )}
 
-          {uploadError && (
-            <p className="mt-2 text-xs font-semibold text-red-600">{uploadError}</p>
-          )}
+          {uploadError && <p className="mt-2 text-xs font-semibold text-red-600">{uploadError}</p>}
         </div>
       )}
 
       {errors?.photo ? (
-        <p className="mt-1.5 flex items-center gap-1 text-xs font-bold text-red-600 animate-pulse">
+        <p className="mt-1.5 flex animate-pulse items-center gap-1 text-xs font-bold text-red-600">
           <AlertCircle className="h-4 w-4 shrink-0" />
           {errors.photo}
         </p>

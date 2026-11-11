@@ -16,12 +16,15 @@
 ## طريقة التشغيل والربط
 
 ### 1. تشغيل الحاوية محلياً:
+
 ```bash
 docker compose -f metabase/docker-compose.metabase.yml up -d
 ```
+
 ثم فتح المتصفح على: `http://localhost:3000`
 
 ### 2. الربط بقاعدة بيانات Supabase:
+
 - **Host**: `aws-0-eu-central-1.pooler.supabase.com`
 - **Port**: `6543`
 - **Database name**: `postgres`

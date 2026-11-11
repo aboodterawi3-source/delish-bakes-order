@@ -127,20 +127,20 @@ backed by rendered nodes receive Semantic Legend controls.
 
 ### Fixed v1
 
-| Constant | Value |
-|----------|-------|
-| viewBox | default `[720, auto]` — auto height = 52 + lanes×104 + (lanes−1)×20 + 124 |
-| Lane frame | x 40, width 640, height 104, gap 20; first lane top at y 52 |
-| Lane title strip | top 30px of each lane; node boxes must stay below it |
-| Column centers (`col` 0–5) | x = 88, 220, 300, 430, 500, 625 |
-| Phase headers | Optional `phases[]` render above the first lane, spanning `fromCol..toCol` |
-| Lane groups | Optional `groups[]` frame parallel work or branch work inside one lane |
-| Exception lanes | Set `lane.variant: "exception"` for retry, denial, fallback, or failure paths |
-| Main path lint | Optional `mainPath[]` checks that happy-path steps have matching edges and do not move backward |
-| Default node | 92×52 (height 68 when `tag` is set) |
-| Node spacing | ≥8px between nodes in the same lane |
-| Edge length | straight segments must span ≥28px |
-| Legend row | y = lane bottom + 44; viewBox height must be ≥ legend y + 18 |
+| Constant                   | Value                                                                                           |
+| -------------------------- | ----------------------------------------------------------------------------------------------- |
+| viewBox                    | default `[720, auto]` — auto height = 52 + lanes×104 + (lanes−1)×20 + 124                       |
+| Lane frame                 | x 40, width 640, height 104, gap 20; first lane top at y 52                                     |
+| Lane title strip           | top 30px of each lane; node boxes must stay below it                                            |
+| Column centers (`col` 0–5) | x = 88, 220, 300, 430, 500, 625                                                                 |
+| Phase headers              | Optional `phases[]` render above the first lane, spanning `fromCol..toCol`                      |
+| Lane groups                | Optional `groups[]` frame parallel work or branch work inside one lane                          |
+| Exception lanes            | Set `lane.variant: "exception"` for retry, denial, fallback, or failure paths                   |
+| Main path lint             | Optional `mainPath[]` checks that happy-path steps have matching edges and do not move backward |
+| Default node               | 92×52 (height 68 when `tag` is set)                                                             |
+| Node spacing               | ≥8px between nodes in the same lane                                                             |
+| Edge length                | straight segments must span ≥28px                                                               |
+| Legend row                 | y = lane bottom + 44; viewBox height must be ≥ legend y + 18                                    |
 
 Column-center gaps are 132 / 80 / 130 / 70 / 125 px: columns 1↔2 (80px) and
 3↔4 (70px) cannot both hold default-width 92px nodes in the same lane. Such an
@@ -149,16 +149,16 @@ a verified migration-to-v2 repair; v1 never falls through to adaptive layout.
 
 ### Readable v2
 
-| Invariant | Contract |
-|----------|----------|
-| Logical columns | `col` is an integer in `0..5`; pixel centers are measured output |
-| Adjacent-rank baseline | 120px center distance before document-specific constraints |
-| Same-lane node clearance | ≥8px when vertical node intervals overlap |
-| Facing direct edge | clear gap ≥`max(28px, measured label mask width + 8px)` |
-| Automatic route rhythm | direct segment ≥28px; endpoint stub ≥8px; interior turn segment ≥16px |
-| Implicit viewBox | intrinsic content bounds plus contract padding |
-| Explicit viewBox | containment capacity; too-small input reports exact `requiredViewBox` and contributors |
-| Lane measurement | A same-column vertical stack (two or more distinct `yOffset` values) opts an implicit, unpinned workflow into per-lane measurement. Explicit `meta.viewBox`, `via`, `labelAt`, `channelX`, or `channelY`, and workflows without a stack retain shared-height v2 geometry for compatibility. |
+| Invariant                | Contract                                                                                                                                                                                                                                                                                    |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Logical columns          | `col` is an integer in `0..5`; pixel centers are measured output                                                                                                                                                                                                                            |
+| Adjacent-rank baseline   | 120px center distance before document-specific constraints                                                                                                                                                                                                                                  |
+| Same-lane node clearance | ≥8px when vertical node intervals overlap                                                                                                                                                                                                                                                   |
+| Facing direct edge       | clear gap ≥`max(28px, measured label mask width + 8px)`                                                                                                                                                                                                                                     |
+| Automatic route rhythm   | direct segment ≥28px; endpoint stub ≥8px; interior turn segment ≥16px                                                                                                                                                                                                                       |
+| Implicit viewBox         | intrinsic content bounds plus contract padding                                                                                                                                                                                                                                              |
+| Explicit viewBox         | containment capacity; too-small input reports exact `requiredViewBox` and contributors                                                                                                                                                                                                      |
+| Lane measurement         | A same-column vertical stack (two or more distinct `yOffset` values) opts an implicit, unpinned workflow into per-lane measurement. Explicit `meta.viewBox`, `via`, `labelAt`, `channelX`, or `channelY`, and workflows without a stack retain shared-height v2 geometry for compatibility. |
 
 Unpinned v2 drafts reserve 32px between overlapping same-lane nodes for routes,
 and omitted node widths may grow from 92px to 200px to fit their text. Documents

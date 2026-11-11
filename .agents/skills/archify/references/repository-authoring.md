@@ -8,7 +8,7 @@ fact has supporting source evidence.
 ## Explore on demand
 
 1. **Freeze identity.** From the target repository, record `git rev-parse
-   HEAD`, `git remote get-url origin`, and `git status --short`. Remove HTTP(S)
+HEAD`, `git remote get-url origin`, and `git status --short`. Remove HTTP(S)
    userinfo (including usernames, passwords, and tokens) before recording the
    origin or placing it in the candidate. Preserve its transport, port, path and
    `.git` suffix; do not rewrite an internal SSH origin as HTTPS. Pin the credential-free URL and

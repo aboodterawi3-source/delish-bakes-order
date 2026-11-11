@@ -8,7 +8,7 @@ interface EditOrderHeaderProps {
 
 export function EditOrderHeader({ order }: EditOrderHeaderProps) {
   return (
-    <div className="flex flex-col items-center mb-6">
+    <div className="mb-6 flex flex-col items-center">
       <DelishLogo size="lg" showSubtitle />
       {order && (
         <h1 className="mt-4 text-xl font-bold text-[#3E2723]">

@@ -173,12 +173,12 @@ Explicit `via` routes do not receive automatic Port Spread.
 For the first waypoint `F = via[0]` and last waypoint `L = via[via.length - 1]`,
 use these alignments and directions (SVG y increases downward):
 
-| Side | Departure (`fromSide`): `S` → `F` | Arrival (`toSide`): `L` → `T` |
-| --- | --- | --- |
-| `top` | `F[0] === sx`, `F[1] < sy` | `L[0] === tx`, `L[1] < ty` |
-| `bottom` | `F[0] === sx`, `F[1] > sy` | `L[0] === tx`, `L[1] > ty` |
-| `left` | `F[1] === sy`, `F[0] < sx` | `L[1] === ty`, `L[0] < tx` |
-| `right` | `F[1] === sy`, `F[0] > sx` | `L[1] === ty`, `L[0] > tx` |
+| Side     | Departure (`fromSide`): `S` → `F` | Arrival (`toSide`): `L` → `T` |
+| -------- | --------------------------------- | ----------------------------- |
+| `top`    | `F[0] === sx`, `F[1] < sy`        | `L[0] === tx`, `L[1] < ty`    |
+| `bottom` | `F[0] === sx`, `F[1] > sy`        | `L[0] === tx`, `L[1] > ty`    |
+| `left`   | `F[1] === sy`, `F[0] < sx`        | `L[1] === ty`, `L[0] < tx`    |
+| `right`  | `F[1] === sy`, `F[0] > sx`        | `L[1] === ty`, `L[0] > tx`    |
 
 For example, given a bottom departure anchor `S = [180, 160]` and a left
 arrival anchor `T = [360, 260]`, this relationship fragment leaves downward
@@ -190,7 +190,11 @@ and enters the target rightward:
   "to": "target",
   "fromSide": "bottom",
   "toSide": "left",
-  "via": [[180, 200], [300, 200], [300, 260]]
+  "via": [
+    [180, 200],
+    [300, 200],
+    [300, 260]
+  ]
 }
 ```
 

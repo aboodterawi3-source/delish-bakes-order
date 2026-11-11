@@ -1,16 +1,25 @@
 export const DESKTOP_READABILITY_VIEWPORT = Object.freeze({ width: 1440, height: 900 });
 export const DESKTOP_READER_MIN_WIDTH = 960;
 export const DESKTOP_READER_HORIZONTAL_CHROME = 30;
-export const DESKTOP_READER_DIAGRAM_WIDTH = DESKTOP_READER_MIN_WIDTH - DESKTOP_READER_HORIZONTAL_CHROME;
+export const DESKTOP_READER_DIAGRAM_WIDTH =
+  DESKTOP_READER_MIN_WIDTH - DESKTOP_READER_HORIZONTAL_CHROME;
 export const MIN_PROJECTED_NODE_TEXT_PX = 6;
-export const DECLARED_WIDE_READER_CONTRACT = 'declared-wide-v1';
+export const DECLARED_WIDE_READER_CONTRACT = "declared-wide-v1";
 export const DECLARED_WIDE_READER_RATIO = 1.55;
 export const DECLARED_WIDE_READER_MAX_WIDTH = 1920;
 export const DECLARED_WIDE_REFERENCE_BODY_HORIZONTAL_PX = 64;
 export const DECLARED_WIDE_REFERENCE_DIAGRAM_HORIZONTAL_PX = 30;
 
-export function projectedNodeTextPx(sourceFontPx, viewBoxWidth, diagramWidth = DESKTOP_READER_DIAGRAM_WIDTH) {
-  if (![sourceFontPx, viewBoxWidth, diagramWidth].every(Number.isFinite) || viewBoxWidth <= 0 || diagramWidth <= 0) {
+export function projectedNodeTextPx(
+  sourceFontPx,
+  viewBoxWidth,
+  diagramWidth = DESKTOP_READER_DIAGRAM_WIDTH,
+) {
+  if (
+    ![sourceFontPx, viewBoxWidth, diagramWidth].every(Number.isFinite) ||
+    viewBoxWidth <= 0 ||
+    diagramWidth <= 0
+  ) {
     return Number.NaN;
   }
   return sourceFontPx * Math.min(1, diagramWidth / viewBoxWidth);
@@ -21,10 +30,12 @@ export function minimumReadableSourceTextPx(
   diagramWidth = DESKTOP_READER_DIAGRAM_WIDTH,
   minimumProjectedPx = MIN_PROJECTED_NODE_TEXT_PX,
 ) {
-  if (![viewBoxWidth, diagramWidth, minimumProjectedPx].every(Number.isFinite)
-    || viewBoxWidth <= 0
-    || diagramWidth <= 0
-    || minimumProjectedPx <= 0) {
+  if (
+    ![viewBoxWidth, diagramWidth, minimumProjectedPx].every(Number.isFinite) ||
+    viewBoxWidth <= 0 ||
+    diagramWidth <= 0 ||
+    minimumProjectedPx <= 0
+  ) {
     return Number.NaN;
   }
   return minimumProjectedPx / Math.min(1, diagramWidth / viewBoxWidth);
@@ -45,26 +56,52 @@ export function declaredWideReadabilityBudget({
   maximumReaderWidth = DECLARED_WIDE_READER_MAX_WIDTH,
 } = {}) {
   const values = [
-    viewBoxWidth, viewBoxHeight, minimumSourceTextPx, requestedMinimumTextPx,
-    viewportWidth, bodyHorizontalPx, diagramHorizontalPx, minimumReaderWidth, maximumReaderWidth,
+    viewBoxWidth,
+    viewBoxHeight,
+    minimumSourceTextPx,
+    requestedMinimumTextPx,
+    viewportWidth,
+    bodyHorizontalPx,
+    diagramHorizontalPx,
+    minimumReaderWidth,
+    maximumReaderWidth,
   ];
-  if (!values.every(Number.isFinite) || viewBoxWidth <= 0 || viewBoxHeight <= 0
-    || minimumSourceTextPx <= 0 || requestedMinimumTextPx <= 0 || viewportWidth <= 0
-    || bodyHorizontalPx < 0 || diagramHorizontalPx < 0 || minimumReaderWidth <= 0
-    || maximumReaderWidth < minimumReaderWidth || viewBoxWidth / viewBoxHeight < DECLARED_WIDE_READER_RATIO) {
+  if (
+    !values.every(Number.isFinite) ||
+    viewBoxWidth <= 0 ||
+    viewBoxHeight <= 0 ||
+    minimumSourceTextPx <= 0 ||
+    requestedMinimumTextPx <= 0 ||
+    viewportWidth <= 0 ||
+    bodyHorizontalPx < 0 ||
+    diagramHorizontalPx < 0 ||
+    minimumReaderWidth <= 0 ||
+    maximumReaderWidth < minimumReaderWidth ||
+    viewBoxWidth / viewBoxHeight < DECLARED_WIDE_READER_RATIO
+  ) {
     return null;
   }
   const requestedTargetPx = Math.max(MIN_PROJECTED_NODE_TEXT_PX, requestedMinimumTextPx);
   const requestedScale = Math.min(1, requestedTargetPx / minimumSourceTextPx);
-  const desiredReaderWidth = Math.max(minimumReaderWidth, viewBoxWidth * requestedScale + diagramHorizontalPx);
+  const desiredReaderWidth = Math.max(
+    minimumReaderWidth,
+    viewBoxWidth * requestedScale + diagramHorizontalPx,
+  );
   const viewportCap = Math.max(0, viewportWidth - bodyHorizontalPx);
   const cap = Math.min(maximumReaderWidth, viewportCap);
   const actualReaderWidth = Math.min(desiredReaderWidth, cap);
   const guaranteedSvgWidth = Math.max(0, actualReaderWidth - diagramHorizontalPx);
-  const projectedMinimumTextPx = projectedNodeTextPx(minimumSourceTextPx, viewBoxWidth, guaranteedSvgWidth);
-  const limit = actualReaderWidth < desiredReaderWidth
-    ? (viewportCap <= maximumReaderWidth ? 'viewport-cap' : 'reader-cap')
-    : 'source-size';
+  const projectedMinimumTextPx = projectedNodeTextPx(
+    minimumSourceTextPx,
+    viewBoxWidth,
+    guaranteedSvgWidth,
+  );
+  const limit =
+    actualReaderWidth < desiredReaderWidth
+      ? viewportCap <= maximumReaderWidth
+        ? "viewport-cap"
+        : "reader-cap"
+      : "source-size";
   return {
     requestedTargetPx,
     requestedScale,
@@ -85,7 +122,11 @@ export function declaredWideReadabilityBudget({
 // viewport, measured from the delivered Viewer with the shortest one-line
 // header and no cards: body padding 12, header 39, diagram padding/border 75.
 // Cards are excluded so the prediction stays a lower bound.
-export const DESKTOP_FIXED_VERTICAL_CHROME_PX = Object.freeze({ body: 12, header: 39, diagram: 75 });
+export const DESKTOP_FIXED_VERTICAL_CHROME_PX = Object.freeze({
+  body: 12,
+  header: 39,
+  diagram: 75,
+});
 
 // A canvas the Reader can neither narrow (viewBox ratio below the wide
 // threshold) nor scroll readably (no automatic Reader fit) renders at the full
@@ -102,13 +143,22 @@ export function predictedFixedWidthOverflow({
   diagramHorizontalPx = DECLARED_WIDE_REFERENCE_DIAGRAM_HORIZONTAL_PX,
   chrome = DESKTOP_FIXED_VERTICAL_CHROME_PX,
 } = {}) {
-  if (![viewBoxWidth, viewBoxHeight].every(Number.isFinite) || viewBoxWidth <= 0 || viewBoxHeight <= 0) return null;
+  if (
+    ![viewBoxWidth, viewBoxHeight].every(Number.isFinite) ||
+    viewBoxWidth <= 0 ||
+    viewBoxHeight <= 0
+  )
+    return null;
   const ratio = viewBoxWidth / viewBoxHeight;
-  if (readerFit === 'intrinsic-height' || readerFit === 'width-first'
-      || (readerFit === 'authored-height' && diagramType === 'architecture')
-      || ratio >= DECLARED_WIDE_READER_RATIO) return null;
+  if (
+    readerFit === "intrinsic-height" ||
+    readerFit === "width-first" ||
+    (readerFit === "authored-height" && diagramType === "architecture") ||
+    ratio >= DECLARED_WIDE_READER_RATIO
+  )
+    return null;
   const svgWidthPx = viewport.width - bodyHorizontalPx - diagramHorizontalPx;
-  const svgHeightPx = Math.round(svgWidthPx * viewBoxHeight / viewBoxWidth);
+  const svgHeightPx = Math.round((svgWidthPx * viewBoxHeight) / viewBoxWidth);
   const fixedChromePx = chrome.body + chrome.header + chrome.diagram;
   const pageHeightPx = svgHeightPx + fixedChromePx;
   if (pageHeightPx <= viewport.height) return null;

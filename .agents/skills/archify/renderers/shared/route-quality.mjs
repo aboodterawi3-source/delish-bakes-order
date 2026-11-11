@@ -1,11 +1,11 @@
-import { recordDiagnostic } from './diagnostics.mjs';
+import { recordDiagnostic } from "./diagnostics.mjs";
 import {
   asArray,
   isFinitePoint,
   normalizeRoutePoints,
   properSegmentIntersection,
   segmentIntersectsRect,
-} from './geometry.mjs';
+} from "./geometry.mjs";
 
 const DEFAULTS = Object.freeze({
   clearance: 2,
@@ -59,8 +59,10 @@ class MinHeap {
       const left = index * 2 + 1;
       const right = left + 1;
       if (left >= this.entries.length) break;
-      const child = right < this.entries.length
-        && this.entries[right].distance < this.entries[left].distance ? right : left;
+      const child =
+        right < this.entries.length && this.entries[right].distance < this.entries[left].distance
+          ? right
+          : left;
       if (this.entries[child].distance >= last.distance) break;
       this.entries[index] = this.entries[child];
       index = child;
@@ -83,20 +85,20 @@ function orthogonalLength(points) {
 
 function inferredSide(points, endpoint) {
   if (points.length < 2) return null;
-  const start = endpoint === 'source' ? points[0] : points.at(-2);
-  const end = endpoint === 'source' ? points[1] : points.at(-1);
+  const start = endpoint === "source" ? points[0] : points.at(-2);
+  const end = endpoint === "source" ? points[1] : points.at(-1);
   const dx = end[0] - start[0];
   const dy = end[1] - start[1];
-  if (endpoint === 'source') {
-    if (dx > 0 && dy === 0) return 'right';
-    if (dx < 0 && dy === 0) return 'left';
-    if (dy > 0 && dx === 0) return 'bottom';
-    if (dy < 0 && dx === 0) return 'top';
+  if (endpoint === "source") {
+    if (dx > 0 && dy === 0) return "right";
+    if (dx < 0 && dy === 0) return "left";
+    if (dy > 0 && dx === 0) return "bottom";
+    if (dy < 0 && dx === 0) return "top";
   } else {
-    if (dx > 0 && dy === 0) return 'left';
-    if (dx < 0 && dy === 0) return 'right';
-    if (dy > 0 && dx === 0) return 'top';
-    if (dy < 0 && dx === 0) return 'bottom';
+    if (dx > 0 && dy === 0) return "left";
+    if (dx < 0 && dy === 0) return "right";
+    if (dy > 0 && dx === 0) return "top";
+    if (dy < 0 && dx === 0) return "bottom";
   }
   return null;
 }
@@ -117,10 +119,13 @@ function expandedRect(rect, clearance) {
 }
 
 function boundsForRects(rects) {
-  const usable = [...rects].filter((rect) => (
-    rect && isFinitePoint(rect.x, rect.y, rect.width, rect.height)
-      && rect.width >= 0 && rect.height >= 0
-  ));
+  const usable = [...rects].filter(
+    (rect) =>
+      rect &&
+      isFinitePoint(rect.x, rect.y, rect.width, rect.height) &&
+      rect.width >= 0 &&
+      rect.height >= 0,
+  );
   if (!usable.length) return null;
   const left = Math.min(...usable.map((rect) => rect.x));
   const top = Math.min(...usable.map((rect) => rect.y));
@@ -159,23 +164,29 @@ function pointDistanceFromRect(point, rect) {
 
 function emptyControlPointClearance(points, contentRects) {
   const controls = points.slice(1, -1);
-  const rects = [...contentRects].filter((rect) => (
-    rect && isFinitePoint(rect.x, rect.y, rect.width, rect.height)
-      && rect.width >= 0 && rect.height >= 0
-  ));
+  const rects = [...contentRects].filter(
+    (rect) =>
+      rect &&
+      isFinitePoint(rect.x, rect.y, rect.width, rect.height) &&
+      rect.width >= 0 &&
+      rect.height >= 0,
+  );
   if (!controls.length || !rects.length) return null;
-  const distances = controls.map((point) => Math.min(
-    ...rects.map((rect) => pointDistanceFromRect(point, rect)),
-  ));
+  const distances = controls.map((point) =>
+    Math.min(...rects.map((rect) => pointDistanceFromRect(point, rect))),
+  );
   const maximum = Math.max(...distances);
   return { maximum, point: controls[distances.indexOf(maximum)] };
 }
 
 function pointBlocked(point, obstacles) {
-  return obstacles.some((rect) => (
-    point[0] >= rect.x && point[0] <= rect.x + rect.width
-      && point[1] >= rect.y && point[1] <= rect.y + rect.height
-  ));
+  return obstacles.some(
+    (rect) =>
+      point[0] >= rect.x &&
+      point[0] <= rect.x + rect.width &&
+      point[1] >= rect.y &&
+      point[1] <= rect.y + rect.height,
+  );
 }
 
 // Prune only against the candidate segment, never the route's initial bounds:
@@ -187,28 +198,44 @@ function segmentBlocked(start, end, obstacles) {
   const minY = Math.min(start[1], end[1]);
   const maxY = Math.max(start[1], end[1]);
   return obstacles.some((rect) => {
-    if (maxX < Math.min(rect.x, rect.x + rect.width) - 0.0001
-      || minX > Math.max(rect.x, rect.x + rect.width) + 0.0001
-      || maxY < Math.min(rect.y, rect.y + rect.height) - 0.0001
-      || minY > Math.max(rect.y, rect.y + rect.height) + 0.0001) return false;
+    if (
+      maxX < Math.min(rect.x, rect.x + rect.width) - 0.0001 ||
+      minX > Math.max(rect.x, rect.x + rect.width) + 0.0001 ||
+      maxY < Math.min(rect.y, rect.y + rect.height) - 0.0001 ||
+      minY > Math.max(rect.y, rect.y + rect.height) + 0.0001
+    )
+      return false;
     return segmentIntersectsRect({ start, end }, rect);
   });
 }
 
-function segmentConflictsWithAvoided(start, end, avoidedSegments, minimumOverlapPx, allowCrossings) {
+function segmentConflictsWithAvoided(
+  start,
+  end,
+  avoidedSegments,
+  minimumOverlapPx,
+  allowCrossings,
+) {
   const minX = Math.min(start[0], end[0]);
   const maxX = Math.max(start[0], end[0]);
   const minY = Math.min(start[1], end[1]);
   const maxY = Math.max(start[1], end[1]);
   return avoidedSegments.some((segment) => {
     // A zero overlap threshold also rejects disjoint segments (0 >= 0).
-    if (minimumOverlapPx > 0 && (maxX < Math.min(segment.start[0], segment.end[0]) - 0.0001
-      || minX > Math.max(segment.start[0], segment.end[0]) + 0.0001
-      || maxY < Math.min(segment.start[1], segment.end[1]) - 0.0001
-      || minY > Math.max(segment.start[1], segment.end[1]) + 0.0001)) return false;
-    return (!allowCrossings && (properSegmentIntersection(start, end, segment.start, segment.end)
-      || orthogonalTouchOnAvoidedInterior(start, end, segment.start, segment.end)))
-      || collinearOverlap(start, end, segment.start, segment.end) >= minimumOverlapPx;
+    if (
+      minimumOverlapPx > 0 &&
+      (maxX < Math.min(segment.start[0], segment.end[0]) - 0.0001 ||
+        minX > Math.max(segment.start[0], segment.end[0]) + 0.0001 ||
+        maxY < Math.min(segment.start[1], segment.end[1]) - 0.0001 ||
+        minY > Math.max(segment.start[1], segment.end[1]) + 0.0001)
+    )
+      return false;
+    return (
+      (!allowCrossings &&
+        (properSegmentIntersection(start, end, segment.start, segment.end) ||
+          orthogonalTouchOnAvoidedInterior(start, end, segment.start, segment.end))) ||
+      collinearOverlap(start, end, segment.start, segment.end) >= minimumOverlapPx
+    );
   });
 }
 
@@ -221,40 +248,44 @@ function orthogonalTouchOnAvoidedInterior(start, end, avoidedStart, avoidedEnd) 
   if (candidateHorizontal && avoidedVertical) {
     const x = avoidedStart[0];
     const y = start[1];
-    return x >= Math.min(start[0], end[0]) - epsilon
-      && x <= Math.max(start[0], end[0]) + epsilon
-      && y > Math.min(avoidedStart[1], avoidedEnd[1]) + epsilon
-      && y < Math.max(avoidedStart[1], avoidedEnd[1]) - epsilon;
+    return (
+      x >= Math.min(start[0], end[0]) - epsilon &&
+      x <= Math.max(start[0], end[0]) + epsilon &&
+      y > Math.min(avoidedStart[1], avoidedEnd[1]) + epsilon &&
+      y < Math.max(avoidedStart[1], avoidedEnd[1]) - epsilon
+    );
   }
   if (candidateVertical && avoidedHorizontal) {
     const x = start[0];
     const y = avoidedStart[1];
-    return y >= Math.min(start[1], end[1]) - epsilon
-      && y <= Math.max(start[1], end[1]) + epsilon
-      && x > Math.min(avoidedStart[0], avoidedEnd[0]) + epsilon
-      && x < Math.max(avoidedStart[0], avoidedEnd[0]) - epsilon;
+    return (
+      y >= Math.min(start[1], end[1]) - epsilon &&
+      y <= Math.max(start[1], end[1]) + epsilon &&
+      x > Math.min(avoidedStart[0], avoidedEnd[0]) + epsilon &&
+      x < Math.max(avoidedStart[0], avoidedEnd[0]) - epsilon
+    );
   }
   return false;
 }
 
 function pointOnSegmentInterior(point, start, end) {
   const epsilon = 0.0001;
-  const cross = (end[0] - start[0]) * (point[1] - start[1])
-    - (end[1] - start[1]) * (point[0] - start[0]);
+  const cross =
+    (end[0] - start[0]) * (point[1] - start[1]) - (end[1] - start[1]) * (point[0] - start[0]);
   if (Math.abs(cross) > epsilon) return false;
-  const dot = (point[0] - start[0]) * (point[0] - end[0])
-    + (point[1] - start[1]) * (point[1] - end[1]);
+  const dot =
+    (point[0] - start[0]) * (point[0] - end[0]) + (point[1] - start[1]) * (point[1] - end[1]);
   return dot < -epsilon;
 }
 
 function pointOnAvoidedInterior(point, avoidedSegments) {
-  return avoidedSegments.some((segment) => (
-    pointOnSegmentInterior(point, segment.start, segment.end)
-  ));
+  return avoidedSegments.some((segment) =>
+    pointOnSegmentInterior(point, segment.start, segment.end),
+  );
 }
 
 function writeGridMetrics(metrics, patch) {
-  if (!metrics || typeof metrics !== 'object') return;
+  if (!metrics || typeof metrics !== "object") return;
   Object.assign(metrics, patch);
 }
 
@@ -280,7 +311,7 @@ export function shortestOrthogonalGridRoute({
   metrics,
 }) {
   writeGridMetrics(metrics, {
-    status: 'initializing',
+    status: "initializing",
     maximumGridNodes,
     obstacleCount: 0,
     avoidedSegmentCount: 0,
@@ -292,7 +323,7 @@ export function shortestOrthogonalGridRoute({
     attemptCount: 0,
   });
   if (!OUTWARD[fromSide] || !OUTWARD[toSide]) {
-    writeGridMetrics(metrics, { status: 'unsupported-endpoint-side' });
+    writeGridMetrics(metrics, { status: "unsupported-endpoint-side" });
     return null;
   }
   const startStub = moveOutward(start, fromSide, endpointStubPx);
@@ -305,18 +336,20 @@ export function shortestOrthogonalGridRoute({
   const expanded = [...obstacles]
     .filter((rect) => rect && isFinitePoint(rect.x, rect.y, rect.width, rect.height))
     .map((rect) => expandedRect(rect, clearance));
-  const relevantAvoidedSegments = [...avoidedSegments]
-    .filter((segment) => segment?.start && segment?.end);
+  const relevantAvoidedSegments = [...avoidedSegments].filter(
+    (segment) => segment?.start && segment?.end,
+  );
   // Frame borders may be crossed perpendicularly but never borrowed as a
   // corridor: the composition gate rejects any collinear run along them.
-  const relevantBorderSegments = [...borderSegments]
-    .filter((segment) => segment?.start && segment?.end);
+  const relevantBorderSegments = [...borderSegments].filter(
+    (segment) => segment?.start && segment?.end,
+  );
   writeGridMetrics(metrics, {
     obstacleCount: expanded.length,
     avoidedSegmentCount: relevantAvoidedSegments.length,
   });
   if (expanded.length > maximumObstacleCount) {
-    writeGridMetrics(metrics, { status: 'obstacle-budget-exceeded' });
+    writeGridMetrics(metrics, { status: "obstacle-budget-exceeded" });
     return null;
   }
 
@@ -361,15 +394,21 @@ export function shortestOrthogonalGridRoute({
   // the rest so every turn the route can take is at least one segment long.
   const coalesce = (values, keep, fillGaps) => {
     const sorted = values.sort((a, b) => a - b);
-    if (!fillGaps) return sorted.filter((value, index) => (
-      index === 0 || keep.has(value) || value - sorted[index - 1] >= minimumSegmentPx
-    ));
+    if (!fillGaps)
+      return sorted.filter(
+        (value, index) =>
+          index === 0 || keep.has(value) || value - sorted[index - 1] >= minimumSegmentPx,
+      );
     // A dense chain of discarded coordinates can erase a usable corridor.
     // Compare with the last retained line while reserving readable spacing
     // around the endpoint lines that must be kept.
     return sorted.reduce((retained, value) => {
-      if (keep.has(value) || ((!retained.length || value - retained.at(-1) >= minimumSegmentPx)
-        && [...keep].every(endpoint => Math.abs(value - endpoint) >= minimumSegmentPx))) retained.push(value);
+      if (
+        keep.has(value) ||
+        ((!retained.length || value - retained.at(-1) >= minimumSegmentPx) &&
+          [...keep].every((endpoint) => Math.abs(value - endpoint) >= minimumSegmentPx))
+      )
+        retained.push(value);
       return retained;
     }, []);
   };
@@ -390,7 +429,7 @@ export function shortestOrthogonalGridRoute({
       attemptCount: attempt + 1,
     });
     if (candidateNodeCount > remainingGridNodes) {
-      writeGridMetrics(metrics, { status: 'node-budget-exceeded' });
+      writeGridMetrics(metrics, { status: "node-budget-exceeded" });
       return null;
     }
     remainingGridNodes -= candidateNodeCount;
@@ -398,15 +437,17 @@ export function shortestOrthogonalGridRoute({
     for (const x of orderedX) {
       for (const y of orderedY) {
         const point = [x, y];
-        if (!pointBlocked(point, expanded)
-            && (allowAvoidedCrossings || !pointOnAvoidedInterior(point, relevantAvoidedSegments))) {
+        if (
+          !pointBlocked(point, expanded) &&
+          (allowAvoidedCrossings || !pointOnAvoidedInterior(point, relevantAvoidedSegments))
+        ) {
           nodes.set(pointKey(point), point);
         }
       }
     }
     writeGridMetrics(metrics, { usableNodeCount: (metrics?.usableNodeCount || 0) + nodes.size });
     if (!nodes.has(pointKey(startStub)) || !nodes.has(pointKey(endStub))) {
-      writeGridMetrics(metrics, { status: 'endpoint-blocked' });
+      writeGridMetrics(metrics, { status: "endpoint-blocked" });
       return null;
     }
 
@@ -417,29 +458,35 @@ export function shortestOrthogonalGridRoute({
         const left = line[index];
         const right = line[index + 1];
         if (segmentBlocked(left, right, expanded)) continue;
-        if (segmentConflictsWithAvoided(
-          left,
-          right,
-          relevantAvoidedSegments,
-          minimumAvoidedOverlapPx,
-          allowAvoidedCrossings,
-        )) continue;
-        if (relevantBorderSegments.some((segment) => (
-          collinearOverlap(left, right, segment.start, segment.end) > 0.0001
-        ))) continue;
+        if (
+          segmentConflictsWithAvoided(
+            left,
+            right,
+            relevantAvoidedSegments,
+            minimumAvoidedOverlapPx,
+            allowAvoidedCrossings,
+          )
+        )
+          continue;
+        if (
+          relevantBorderSegments.some(
+            (segment) => collinearOverlap(left, right, segment.start, segment.end) > 0.0001,
+          )
+        )
+          continue;
         const distance = Math.abs(right[0] - left[0]) + Math.abs(right[1] - left[1]);
         const leftKey = pointKey(left);
         const rightKey = pointKey(right);
-        adjacency.get(leftKey).push([rightKey, distance, axis === 'h' ? 'R' : 'D']);
-        adjacency.get(rightKey).push([leftKey, distance, axis === 'h' ? 'L' : 'U']);
+        adjacency.get(leftKey).push([rightKey, distance, axis === "h" ? "R" : "D"]);
+        adjacency.get(rightKey).push([leftKey, distance, axis === "h" ? "L" : "U"]);
         graphEdgeCount += 1;
       }
     };
     for (const y of orderedY) {
-      connectLine(orderedX.map((x) => nodes.get(pointKey([x, y]))).filter(Boolean), 'h');
+      connectLine(orderedX.map((x) => nodes.get(pointKey([x, y]))).filter(Boolean), "h");
     }
     for (const x of orderedX) {
-      connectLine(orderedY.map((y) => nodes.get(pointKey([x, y]))).filter(Boolean), 'v');
+      connectLine(orderedY.map((y) => nodes.get(pointKey([x, y]))).filter(Boolean), "v");
     }
     writeGridMetrics(metrics, { graphEdgeCount: (metrics?.graphEdgeCount || 0) + graphEdgeCount });
 
@@ -448,8 +495,8 @@ export function shortestOrthogonalGridRoute({
     // corner with a staircase of short jogs, while a bend-penalised one takes
     // the same corridor in a few long strokes. The first stub already leaves
     // the endpoint along its side and the last one arrives along the end side.
-    const directionOf = ([dx, dy]) => (dx > 0 ? 'R' : dx < 0 ? 'L' : dy > 0 ? 'D' : 'U');
-    const opposite = { R: 'L', L: 'R', D: 'U', U: 'D' };
+    const directionOf = ([dx, dy]) => (dx > 0 ? "R" : dx < 0 ? "L" : dy > 0 ? "D" : "U");
+    const opposite = { R: "L", L: "R", D: "U", U: "D" };
     const stateKey = (key, direction) => `${key}|${direction}`;
     const sourceAxis = directionOf(OUTWARD[fromSide]);
     const targetAxis = opposite[directionOf(OUTWARD[toSide])];
@@ -468,7 +515,7 @@ export function shortestOrthogonalGridRoute({
       const currentDistance = next.distance;
       if (currentDistance !== distances.get(current)) continue;
       visitedNodeCount += 1;
-      const [currentNode, currentAxis] = current.split('|');
+      const [currentNode, currentAxis] = current.split("|");
       if (currentNode === target) {
         // The end stub is outside the graph: never reverse back onto it.
         if (currentAxis === opposite[targetAxis]) continue;
@@ -491,26 +538,28 @@ export function shortestOrthogonalGridRoute({
         queue.push(neighborState, candidate);
       }
     }
-    writeGridMetrics(metrics, { visitedNodeCount: (metrics?.visitedNodeCount || 0) + visitedNodeCount });
+    writeGridMetrics(metrics, {
+      visitedNodeCount: (metrics?.visitedNodeCount || 0) + visitedNodeCount,
+    });
     if (!targetState) {
-      writeGridMetrics(metrics, { status: 'no-route' });
+      writeGridMetrics(metrics, { status: "no-route" });
       continue;
     }
     const reversed = [];
     for (let key = targetState.key; key; key = previous.get(key)) {
-      reversed.push(nodes.get(key.split('|')[0]));
+      reversed.push(nodes.get(key.split("|")[0]));
       if (key === sourceState) break;
     }
     if (pointKey(reversed.at(-1)) !== source) {
-      writeGridMetrics(metrics, { status: 'broken-predecessor-chain' });
+      writeGridMetrics(metrics, { status: "broken-predecessor-chain" });
       return null;
     }
     const shortestPoints = normalizeRoutePoints([start, ...reversed.reverse(), end]);
     if (!accept(shortestPoints)) {
-      writeGridMetrics(metrics, { status: 'rejected' });
+      writeGridMetrics(metrics, { status: "rejected" });
       continue;
     }
-    writeGridMetrics(metrics, { status: 'routed' });
+    writeGridMetrics(metrics, { status: "routed" });
     return {
       points: shortestPoints,
       length: orthogonalLength(shortestPoints),
@@ -521,15 +570,27 @@ export function shortestOrthogonalGridRoute({
 }
 
 function collinearOverlap(leftStart, leftEnd, rightStart, rightEnd) {
-  if (leftStart[0] === leftEnd[0] && rightStart[0] === rightEnd[0]
-      && leftStart[0] === rightStart[0]) {
-    return Math.max(0, Math.min(Math.max(leftStart[1], leftEnd[1]), Math.max(rightStart[1], rightEnd[1]))
-      - Math.max(Math.min(leftStart[1], leftEnd[1]), Math.min(rightStart[1], rightEnd[1])));
+  if (
+    leftStart[0] === leftEnd[0] &&
+    rightStart[0] === rightEnd[0] &&
+    leftStart[0] === rightStart[0]
+  ) {
+    return Math.max(
+      0,
+      Math.min(Math.max(leftStart[1], leftEnd[1]), Math.max(rightStart[1], rightEnd[1])) -
+        Math.max(Math.min(leftStart[1], leftEnd[1]), Math.min(rightStart[1], rightEnd[1])),
+    );
   }
-  if (leftStart[1] === leftEnd[1] && rightStart[1] === rightEnd[1]
-      && leftStart[1] === rightStart[1]) {
-    return Math.max(0, Math.min(Math.max(leftStart[0], leftEnd[0]), Math.max(rightStart[0], rightEnd[0]))
-      - Math.max(Math.min(leftStart[0], leftEnd[0]), Math.min(rightStart[0], rightEnd[0])));
+  if (
+    leftStart[1] === leftEnd[1] &&
+    rightStart[1] === rightEnd[1] &&
+    leftStart[1] === rightStart[1]
+  ) {
+    return Math.max(
+      0,
+      Math.min(Math.max(leftStart[0], leftEnd[0]), Math.max(rightStart[0], rightEnd[0])) -
+        Math.max(Math.min(leftStart[0], leftEnd[0]), Math.min(rightStart[0], rightEnd[0])),
+    );
   }
   return 0;
 }
@@ -537,21 +598,42 @@ function collinearOverlap(leftStart, leftEnd, rightStart, rightEnd) {
 function segmentOutsideContent(start, end, contentBounds) {
   if (!contentBounds) return false;
   const midpoint = [(start[0] + end[0]) / 2, (start[1] + end[1]) / 2];
-  return midpoint[0] < contentBounds.left || midpoint[0] > contentBounds.right
-    || midpoint[1] < contentBounds.top || midpoint[1] > contentBounds.bottom;
+  return (
+    midpoint[0] < contentBounds.left ||
+    midpoint[0] > contentBounds.right ||
+    midpoint[1] < contentBounds.top ||
+    midpoint[1] > contentBounds.bottom
+  );
 }
 
-function sharesOuterCorridor({ relation, relations, pathFor, points, contentBounds, minimumOverlap }) {
+function sharesOuterCorridor({
+  relation,
+  relations,
+  pathFor,
+  points,
+  contentBounds,
+  minimumOverlap,
+}) {
   for (const other of asArray(relations)) {
     if (!other || other === relation) continue;
-    const related = relation.from === other.from || relation.from === other.to
-      || relation.to === other.from || relation.to === other.to;
+    const related =
+      relation.from === other.from ||
+      relation.from === other.to ||
+      relation.to === other.from ||
+      relation.to === other.to;
     if (!related) continue;
     const otherPoints = normalizeRoutePoints(pathFor(other)?.points || []);
     for (let left = 0; left < points.length - 1; left += 1) {
       if (!segmentOutsideContent(points[left], points[left + 1], contentBounds)) continue;
       for (let right = 0; right < otherPoints.length - 1; right += 1) {
-        if (collinearOverlap(points[left], points[left + 1], otherPoints[right], otherPoints[right + 1]) >= minimumOverlap) {
+        if (
+          collinearOverlap(
+            points[left],
+            points[left + 1],
+            otherPoints[right],
+            otherPoints[right + 1],
+          ) >= minimumOverlap
+        ) {
           return true;
         }
       }
@@ -588,7 +670,7 @@ export function cleanRouteDetourProblems({
   profile,
   thresholds = {},
 }) {
-  if (profile !== 'showcase') return [];
+  if (profile !== "showcase") return [];
   const policy = { ...DEFAULTS, ...thresholds };
   const obstacleList = [...obstacles];
   const contentBounds = boundsForRects(contentRects);
@@ -597,30 +679,43 @@ export function cleanRouteDetourProblems({
     if (!relation || !endpointIds?.has(relation.from) || !endpointIds?.has(relation.to)) continue;
     if (!Array.isArray(relation.via) || relation.via.length === 0) continue;
     const points = normalizeRoutePoints(pathFor(relation)?.points || []);
-    if (points.length < 3 || !points.every((point) => Array.isArray(point) && isFinitePoint(...point))) continue;
+    if (
+      points.length < 3 ||
+      !points.every((point) => Array.isArray(point) && isFinitePoint(...point))
+    )
+      continue;
     const actualLength = orthogonalLength(points);
     if (!Number.isFinite(actualLength)) continue;
     const start = points[0];
     const end = points.at(-1);
     const manhattan = Math.abs(end[0] - start[0]) + Math.abs(end[1] - start[1]);
-    if (actualLength < manhattan * policy.minimumDetourRatio
-        || actualLength - manhattan < policy.minimumExcessLengthPx) continue;
+    if (
+      actualLength < manhattan * policy.minimumDetourRatio ||
+      actualLength - manhattan < policy.minimumExcessLengthPx
+    )
+      continue;
     const routeBounds = boundsForPoints(points);
     const excursion = outsideExcursion(routeBounds, contentBounds);
     const emptyClearance = emptyControlPointClearance(points, obstacleList);
-    if (Math.max(excursion?.maximum || 0, emptyClearance?.maximum || 0)
-        < policy.minimumEmptyExcursionPx) continue;
-    if (sharesOuterCorridor({
-      relation,
-      relations,
-      pathFor,
-      points,
-      contentBounds,
-      minimumOverlap: policy.sharedCorridorMinimumPx,
-    })) continue;
+    if (
+      Math.max(excursion?.maximum || 0, emptyClearance?.maximum || 0) <
+      policy.minimumEmptyExcursionPx
+    )
+      continue;
+    if (
+      sharesOuterCorridor({
+        relation,
+        relations,
+        pathFor,
+        points,
+        contentBounds,
+        minimumOverlap: policy.sharedCorridorMinimumPx,
+      })
+    )
+      continue;
 
-    const fromSide = fromSideFor?.(relation) || inferredSide(points, 'source');
-    const toSide = toSideFor?.(relation) || inferredSide(points, 'target');
+    const fromSide = fromSideFor?.(relation) || inferredSide(points, "source");
+    const toSide = toSideFor?.(relation) || inferredSide(points, "target");
     const shortest = shortestOrthogonalGridRoute({
       start,
       end,
@@ -634,14 +729,16 @@ export function cleanRouteDetourProblems({
     if (!shortest || !Number.isFinite(shortest.length) || shortest.length <= 0) continue;
     const detourRatio = actualLength / shortest.length;
     const excessLength = actualLength - shortest.length;
-    if (detourRatio < policy.minimumDetourRatio || excessLength < policy.minimumExcessLengthPx) continue;
+    if (detourRatio < policy.minimumDetourRatio || excessLength < policy.minimumExcessLengthPx)
+      continue;
 
-    const relationId = relation.id ? ` id "${relation.id}"` : '';
+    const relationId = relation.id ? ` id "${relation.id}"` : "";
     const message = `[composition/excessive-route-detour] ${diagramType} ${relationCollection}[${relationIndex}]${relationId} "${relation.from}" -> "${relation.to}" travels ${Math.round(actualLength)}px, ${rounded(detourRatio)}x the ${Math.round(shortest.length)}px shortest obstacle-clearing orthogonal route, and reaches ${Math.round(excursion.maximum)}px beyond the content bounds — remove the distant via corridor or move it close to the connected content.`;
-    const supportedFix = 'remove the distant via points and retry automatic routing, or keep the endpoint sides and move the via corridor near the connected nodes while preserving labels and direction';
+    const supportedFix =
+      "remove the distant via points and retry automatic routing, or keep the endpoint sides and move the via corridor near the connected nodes while preserving labels and direction";
     recordDiagnostic({
-      code: 'composition/excessive-route-detour',
-      severity: 'error',
+      code: "composition/excessive-route-detour",
+      severity: "error",
       message,
       subject: relationshipSubject(diagramType, relationCollection, relationIndex, relation),
       evidence: {

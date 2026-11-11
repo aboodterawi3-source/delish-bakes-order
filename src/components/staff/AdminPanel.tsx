@@ -219,21 +219,21 @@ export function AdminPanel() {
   return (
     <main
       dir="rtl"
-      className="min-h-dvh w-full overflow-x-hidden bg-[#FDFBF7] text-[#4A3B32] pb-16"
+      className="min-h-dvh w-full overflow-x-hidden bg-[#FDFBF7] pb-16 text-[#4A3B32]"
     >
       {/* Top Main Navigation Header */}
-      <header className="sticky top-0 z-20 border-b border-[#EFE8DC] bg-white/95 backdrop-blur-md shadow-xs">
+      <header className="sticky top-0 z-20 border-b border-[#EFE8DC] bg-white/95 shadow-xs backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6">
           <div className="flex items-center gap-3">
             <div className="flex flex-col">
               <span className="font-serif text-2xl font-bold tracking-wider text-[#B8801C] uppercase">
                 DELISH
               </span>
-              <span className="-mt-1.5 font-script text-xl italic text-[#6E3917]">
+              <span className="-mt-1.5 font-script text-xl text-[#6E3917] italic">
                 Bakes Admin Center
               </span>
             </div>
-            <span className="hidden sm:inline-block rounded-full bg-[#FEF7EB] px-3 py-1 text-xs font-extrabold text-[#B8801C] border border-[#EFE8DC]">
+            <span className="hidden rounded-full border border-[#EFE8DC] bg-[#FEF7EB] px-3 py-1 text-xs font-extrabold text-[#B8801C] sm:inline-block">
               مركز الإدارة والتحكم الشامل
             </span>
           </div>
@@ -241,14 +241,14 @@ export function AdminPanel() {
           <div className="flex items-center gap-2">
             <Link
               to="/"
-              className="inline-flex h-9 items-center rounded-full border border-[#EFE8DC] bg-[#FAF5EB] px-4 text-xs font-bold text-[#6E3917] hover:bg-[#FEF7EB] shadow-xs"
+              className="inline-flex h-9 items-center rounded-full border border-[#EFE8DC] bg-[#FAF5EB] px-4 text-xs font-bold text-[#6E3917] shadow-xs hover:bg-[#FEF7EB]"
             >
               المتجر الرئيسية 🛒
             </Link>
             <button
               type="button"
               onClick={() => void analytics.refetch()}
-              className="inline-flex h-9 items-center gap-1.5 rounded-full border border-[#EFE8DC] bg-white px-3.5 text-xs font-bold text-[#26160F] hover:bg-[#FEF7EB] shadow-xs"
+              className="inline-flex h-9 items-center gap-1.5 rounded-full border border-[#EFE8DC] bg-white px-3.5 text-xs font-bold text-[#26160F] shadow-xs hover:bg-[#FEF7EB]"
             >
               <RefreshCw className="h-3.5 w-3.5 text-[#B8801C]" aria-hidden />
               <span>تحديث البيانات</span>
@@ -267,7 +267,7 @@ export function AdminPanel() {
         {/* Unified 4-Tab Admin Navigation Bar */}
         <nav
           aria-label="أقسام اللوحة"
-          className="no-scrollbar mx-auto flex w-full max-w-7xl gap-2 overflow-x-auto overscroll-x-contain px-4 sm:px-6 pb-3 pt-1"
+          className="mx-auto no-scrollbar flex w-full max-w-7xl gap-2 overflow-x-auto overscroll-x-contain px-4 pt-1 pb-3 sm:px-6"
         >
           {[
             {
@@ -294,10 +294,10 @@ export function AdminPanel() {
                 type="button"
                 aria-current={active ? "page" : undefined}
                 onClick={() => setActiveTab(tab.id as MainTab)}
-                className={`flex shrink-0 items-center gap-2 rounded-2xl px-4 py-2.5 text-xs sm:text-sm font-bold transition-all ${
+                className={`flex shrink-0 items-center gap-2 rounded-2xl px-4 py-2.5 text-xs font-bold transition-all sm:text-sm ${
                   active
-                    ? "bg-[#B8801C] text-white shadow-md scale-[1.01]"
-                    : "border border-[#EFE8DC] bg-white text-[#26160F] hover:bg-[#FEF7EB] hover:border-[#B8801C]/40"
+                    ? "scale-[1.01] bg-[#B8801C] text-white shadow-md"
+                    : "border border-[#EFE8DC] bg-white text-[#26160F] hover:border-[#B8801C]/40 hover:bg-[#FEF7EB]"
                 }`}
               >
                 <span>{tab.label}</span>
@@ -308,7 +308,7 @@ export function AdminPanel() {
       </header>
 
       {/* Main Wide Container */}
-      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 pt-6 space-y-8">
+      <div className="mx-auto w-full max-w-7xl space-y-8 px-4 pt-6 sm:px-6">
         {/* TAB 1: DASHBOARD & ANALYTICS */}
         {activeTab === "analytics" && (
           <div className="space-y-6">
@@ -321,12 +321,12 @@ export function AdminPanel() {
               </div>
             )}
             {analytics.isError && (
-              <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-900 space-y-3 shadow-xs">
-                <p className="font-bold text-base flex items-center gap-2">
+              <div className="space-y-3 rounded-2xl border border-red-200 bg-red-50 p-6 text-red-900 shadow-xs">
+                <p className="flex items-center gap-2 text-base font-bold">
                   <Ban className="h-5 w-5 text-red-600" />
                   حدث خطأ أثناء جلب تحليلات الإيرادات والطلبات
                 </p>
-                <p className="text-xs text-red-700 bg-white/80 p-3 rounded-xl border border-red-200">
+                <p className="rounded-xl border border-red-200 bg-white/80 p-3 text-xs text-red-700">
                   {analytics.error instanceof Error
                     ? analytics.error.message
                     : "خطأ غير معروف أثناء الاتصال بالسيرفر"}
@@ -334,7 +334,7 @@ export function AdminPanel() {
                 <button
                   type="button"
                   onClick={() => void analytics.refetch()}
-                  className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-red-700 active:scale-95 transition-all"
+                  className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition-all hover:bg-red-700 active:scale-95"
                 >
                   <RefreshCw className="h-4 w-4" /> إعادة المحاولة الآن
                 </button>
@@ -448,8 +448,8 @@ export function AdminPanel() {
                     <h2 id="export-heading" className="font-sans text-lg font-black text-[#26160F]">
                       📥 مركز تصدير التقارير (CSV Reports)
                     </h2>
-                    <div className="rounded-2xl border border-[#EFE8DC] bg-white p-5 space-y-4 shadow-xs">
-                      <p className="text-xs text-[#4A3B32]/80 leading-relaxed">
+                    <div className="space-y-4 rounded-2xl border border-[#EFE8DC] bg-white p-5 shadow-xs">
+                      <p className="text-xs leading-relaxed text-[#4A3B32]/80">
                         قم بتنزيل تقارير المبيعات ودليل العملاء مباشرة بصيغة Excel CSV مع ترميز
                         UTF-8 باللغة العربية.
                       </p>
@@ -562,7 +562,7 @@ function KpiCard({
   subText?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-[#EFE8DC] bg-white p-4 shadow-xs space-y-1">
+    <div className="space-y-1 rounded-2xl border border-[#EFE8DC] bg-white p-4 shadow-xs">
       <div className="flex items-center justify-between">
         <p className="flex items-center gap-1.5 text-xs font-bold text-[#6E3917]">
           <Icon className="h-4 w-4 text-[#B8801C]" aria-hidden /> {label}
@@ -871,7 +871,7 @@ function StaffPanel() {
       {error && (
         <p
           role="alert"
-          className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-xs font-bold text-rose-700"
+          className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-bold text-rose-700"
         >
           {error}
         </p>
@@ -879,7 +879,7 @@ function StaffPanel() {
       {notice && (
         <p
           role="status"
-          className="rounded-xl bg-[#FEF7EB] border border-[#EFE8DC] p-3 text-xs font-bold text-[#B8801C]"
+          className="rounded-xl border border-[#EFE8DC] bg-[#FEF7EB] p-3 text-xs font-bold text-[#B8801C]"
         >
           {notice}
         </p>
@@ -901,7 +901,7 @@ function StaffPanel() {
           setError(null);
           createMutation.mutate();
         }}
-        className="grid gap-3 rounded-2xl border border-[#EFE8DC] bg-white p-5 sm:grid-cols-2 lg:grid-cols-4 shadow-xs"
+        className="grid gap-3 rounded-2xl border border-[#EFE8DC] bg-white p-5 shadow-xs sm:grid-cols-2 lg:grid-cols-4"
       >
         <Text
           label="اسم الموظف / المستخدم *"
@@ -937,7 +937,7 @@ function StaffPanel() {
             ))}
           </select>
         </label>
-        <div className="flex items-end lg:col-span-4 pt-1">
+        <div className="flex items-end pt-1 lg:col-span-4">
           <button
             type="button"
             onClick={(e) => {
@@ -1001,17 +1001,17 @@ function StaffRow({
   const [staffCode, setStaffCode] = useState(member.staff_code ? String(member.staff_code) : "");
 
   return (
-    <article className="grid gap-3 rounded-2xl border border-[#EFE8DC] bg-white p-4 lg:grid-cols-[1fr_auto_auto] items-center shadow-xs">
+    <article className="grid items-center gap-3 rounded-2xl border border-[#EFE8DC] bg-white p-4 shadow-xs lg:grid-cols-[1fr_auto_auto]">
       <div>
         <div className="flex items-center gap-2">
-          <span className="font-bold text-[#26160F] text-sm sm:text-base">{member.username}</span>
+          <span className="text-sm font-bold text-[#26160F] sm:text-base">{member.username}</span>
           {member.staff_code && (
-            <span className="rounded-full bg-[#FEF7EB] px-2.5 py-0.5 text-[10px] font-extrabold text-[#B8801C] border border-[#EFE8DC]">
+            <span className="rounded-full border border-[#EFE8DC] bg-[#FEF7EB] px-2.5 py-0.5 text-[10px] font-extrabold text-[#B8801C]">
               موظف #{member.staff_code}
             </span>
           )}
         </div>
-        <p className="text-xs font-medium text-[#4A3B32]/70 mt-0.5">
+        <p className="mt-0.5 text-xs font-medium text-[#4A3B32]/70">
           الدور الحالي:{" "}
           <span className="font-bold text-[#6E3917]">
             {member.roles.map((r) => ROLE_LABEL[r]).join(" · ") || "بدون دور"}
@@ -1049,7 +1049,7 @@ function StaffRow({
             onReset(password);
             setPassword("");
           }}
-          className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-[#EFE8DC] bg-white px-3 text-xs font-bold text-[#26160F] disabled:opacity-50 hover:bg-[#FEF7EB]"
+          className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-[#EFE8DC] bg-white px-3 text-xs font-bold text-[#26160F] hover:bg-[#FEF7EB] disabled:opacity-50"
         >
           <KeyRound className="h-3.5 w-3.5 text-[#B8801C]" aria-hidden /> تحديث
         </button>
@@ -1137,18 +1137,18 @@ function AuthorizationPanel() {
   return (
     <section className="space-y-6">
       {/* Staff Authorizations Matrix */}
-      <div className="rounded-3xl border border-[#EFE8DC] bg-white p-5 sm:p-6 shadow-xs space-y-4">
+      <div className="space-y-4 rounded-3xl border border-[#EFE8DC] bg-white p-5 shadow-xs sm:p-6">
         <h2 className="flex items-center gap-2 text-base font-black text-[#26160F]">
           <SlidersHorizontal className="h-5 w-5 text-[#B8801C]" aria-hidden="true" />
           مصفوفة صلاحيات تعديل الأسعار والخصومات المباشرة
         </h2>
-        <p className="text-xs text-[#4A3B32]/80 leading-relaxed">
+        <p className="text-xs leading-relaxed text-[#4A3B32]/80">
           قم بتفعيل أو إلغاء صلاحية تعديل الأسعار والخصومات لكل موظف مبيعات وسوشال ميديا، وحدّد أقصى
           نسبة خصم مسموحة.
         </p>
 
         {error ? (
-          <p className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-xs font-bold text-rose-700">
+          <p className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-bold text-rose-700">
             {error}
           </p>
         ) : null}
@@ -1163,15 +1163,15 @@ function AuthorizationPanel() {
             {(rows.data ?? []).map((row) => (
               <div
                 key={row.user_id}
-                className="rounded-2xl border border-[#EFE8DC] bg-[#FDFBF7] p-4 space-y-3"
+                className="space-y-3 rounded-2xl border border-[#EFE8DC] bg-[#FDFBF7] p-4"
               >
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#EFE8DC] pb-2">
-                  <span className="font-bold text-[#26160F] text-sm">{row.username}</span>
+                  <span className="text-sm font-bold text-[#26160F]">{row.username}</span>
                   <div className="flex items-center gap-1">
                     {row.roles.map((role) => (
                       <span
                         key={role}
-                        className="rounded-full bg-[#FEF7EB] px-2.5 py-0.5 text-[10px] font-bold text-[#B8801C] border border-[#EFE8DC]"
+                        className="rounded-full border border-[#EFE8DC] bg-[#FEF7EB] px-2.5 py-0.5 text-[10px] font-bold text-[#B8801C]"
                       >
                         {ROLE_LABEL[role as keyof typeof ROLE_LABEL] ?? role}
                       </span>
@@ -1260,7 +1260,7 @@ function AuthorizationPanel() {
       </div>
 
       {/* Refactored Arabic Audit Log */}
-      <div className="rounded-3xl border border-[#EFE8DC] bg-white p-5 sm:p-6 shadow-xs space-y-4">
+      <div className="space-y-4 rounded-3xl border border-[#EFE8DC] bg-white p-5 shadow-xs sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EFE8DC] pb-3">
           <div>
             <h3 className="text-base font-black text-[#26160F]">
@@ -1271,7 +1271,7 @@ function AuthorizationPanel() {
               يوماً).
             </p>
           </div>
-          <div className="relative max-w-xs w-full sm:w-auto">
+          <div className="relative w-full max-w-xs sm:w-auto">
             <Search className="pointer-events-none absolute inset-y-0 start-3 my-auto h-4 w-4 text-[#4A3B32]/50" />
             <input
               type="search"
@@ -1402,17 +1402,17 @@ function StoreCmsPanel() {
   return (
     <section aria-labelledby="cms-heading" className="space-y-6">
       {/* Hero Banner Management */}
-      <div className="rounded-3xl border border-[#EFE8DC] bg-white p-5 sm:p-6 shadow-xs space-y-4">
+      <div className="space-y-4 rounded-3xl border border-[#EFE8DC] bg-white p-5 shadow-xs sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#EFE8DC] pb-3">
           <div>
             <h2
               id="cms-heading"
-              className="text-base font-black text-[#26160F] flex items-center gap-2"
+              className="flex items-center gap-2 text-base font-black text-[#26160F]"
             >
               <Sparkles className="h-5 w-5 text-[#B8801C]" />
               إدارة البانر العلوي للمتجر (Hero Banner Management)
             </h2>
-            <p className="text-xs text-[#4A3B32]/70 mt-0.5">
+            <p className="mt-0.5 text-xs text-[#4A3B32]/70">
               تعديل ونشر البانر البارز في أعلى الصفحة الرئيسية للمتجر.
             </p>
           </div>
@@ -1420,7 +1420,7 @@ function StoreCmsPanel() {
             type="button"
             onClick={() => saveMutation.mutate()}
             disabled={saveMutation.isPending}
-            className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-[#B8801C] px-4 text-xs font-bold text-white shadow-xs hover:bg-[#9E6C14] cursor-pointer"
+            className="inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-xl bg-[#B8801C] px-4 text-xs font-bold text-white shadow-xs hover:bg-[#9E6C14]"
           >
             {saveMutation.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -1468,14 +1468,14 @@ function StoreCmsPanel() {
       </div>
 
       {/* Card Color Palette Selector */}
-      <div className="rounded-3xl border border-[#EFE8DC] bg-white p-5 sm:p-6 shadow-xs space-y-4">
+      <div className="space-y-4 rounded-3xl border border-[#EFE8DC] bg-white p-5 shadow-xs sm:p-6">
         <div className="flex items-center justify-between border-b border-[#EFE8DC] pb-3">
           <div>
-            <h3 className="text-base font-black text-[#26160F] flex items-center gap-2">
+            <h3 className="flex items-center gap-2 text-base font-black text-[#26160F]">
               <Palette className="h-5 w-5 text-[#B8801C]" />
               مُحدّد الهوية البصرية لكروت المتجر (Brand Palette Selector)
             </h3>
-            <p className="text-xs text-[#4A3B32]/70 mt-0.5">
+            <p className="mt-0.5 text-xs text-[#4A3B32]/70">
               اختر ثيم الألوان المعتمد لكروت المنتجات في واجهة الزبائن (يتحدث فورياً).
             </p>
           </div>
@@ -1497,14 +1497,14 @@ function StoreCmsPanel() {
                     toast.error(`تعذر حفظ الثيم: ${message}`);
                   }
                 }}
-                className={`flex flex-col items-center gap-2.5 rounded-2xl border p-4 text-center transition-all cursor-pointer ${
+                className={`flex cursor-pointer flex-col items-center gap-2.5 rounded-2xl border p-4 text-center transition-all ${
                   active
-                    ? "border-2 border-[#B8801C] bg-[#FEF7EB] shadow-md scale-105 ring-2 ring-[#B8801C]/20"
+                    ? "scale-105 border-2 border-[#B8801C] bg-[#FEF7EB] shadow-md ring-2 ring-[#B8801C]/20"
                     : "border-[#EFE8DC] bg-white hover:border-[#B8801C]/50 hover:bg-[#FAF5EB]"
                 }`}
               >
                 <div
-                  className="h-10 w-10 rounded-full shadow-md border border-black/10 flex items-center justify-center text-white font-bold transition-transform group-hover:scale-110"
+                  className="flex h-10 w-10 items-center justify-center rounded-full border border-black/10 font-bold text-white shadow-md transition-transform group-hover:scale-110"
                   style={{ backgroundColor: theme.main }}
                 >
                   {active && <Check className="h-5 w-5 stroke-[3]" />}
@@ -1636,11 +1636,11 @@ function StoreOperationsPanel() {
   return (
     <section aria-labelledby="settings-heading" className="space-y-6">
       {/* Branch Information */}
-      <div className="rounded-3xl border border-[#EFE8DC] bg-white p-5 sm:p-6 shadow-xs space-y-4">
+      <div className="space-y-4 rounded-3xl border border-[#EFE8DC] bg-white p-5 shadow-xs sm:p-6">
         <div className="flex items-center justify-between border-b border-[#EFE8DC] pb-3">
           <h2
             id="settings-heading"
-            className="text-base font-black text-[#26160F] flex items-center gap-2"
+            className="flex items-center gap-2 text-base font-black text-[#26160F]"
           >
             <Building2 className="h-5 w-5 text-[#B8801C]" />
             بيانات فرع عمّان الرئيسي (Single Physical Branch)
@@ -1648,7 +1648,7 @@ function StoreOperationsPanel() {
           <button
             type="button"
             onClick={handleSaveSettings}
-            className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-[#B8801C] px-4 text-xs font-bold text-white shadow-xs hover:bg-[#9E6C14] cursor-pointer"
+            className="inline-flex h-10 cursor-pointer items-center gap-1.5 rounded-xl bg-[#B8801C] px-4 text-xs font-bold text-white shadow-xs hover:bg-[#9E6C14]"
           >
             <Save className="h-4 w-4" />
             <span>حفظ البيانات</span>
@@ -1680,14 +1680,14 @@ function StoreOperationsPanel() {
       </div>
 
       {/* CliQ Payment Accounts Configuration */}
-      <div className="rounded-3xl border border-[#EFE8DC] bg-white p-5 sm:p-6 shadow-xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-[#EFE8DC] pb-3">
+      <div className="space-y-4 rounded-3xl border border-[#EFE8DC] bg-white p-5 shadow-xs sm:p-6">
+        <div className="flex flex-col gap-3 border-b border-[#EFE8DC] pb-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h3 className="text-base font-black text-[#26160F] flex items-center gap-2">
+            <h3 className="flex items-center gap-2 text-base font-black text-[#26160F]">
               <CreditCard className="h-5 w-5 text-[#B8801C]" />
               <span>إعدادات وتعديل أسماء حسابات كليك (شاشة إنشاء الطلب)</span>
             </h3>
-            <p className="text-xs text-[#4A3B32]/80 mt-1">
+            <p className="mt-1 text-xs text-[#4A3B32]/80">
               تعديل النصوص والأسماء التي تظهر داخل أيقونات كليك عند اختيار (دفع كامل أو عربون عبر
               كليك)
             </p>
@@ -1696,7 +1696,7 @@ function StoreOperationsPanel() {
             <button
               type="button"
               onClick={handleResetCliq}
-              className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
+              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 transition hover:bg-slate-50"
             >
               <RotateCcw className="h-3.5 w-3.5" />
               <span>استعادة الأسماء الافتراضية</span>
@@ -1704,7 +1704,7 @@ function StoreOperationsPanel() {
             <button
               type="button"
               onClick={handleSaveCliq}
-              className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-[#8B4513] px-4 text-xs font-bold text-white shadow-xs hover:bg-[#6D340E] transition cursor-pointer"
+              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl bg-[#8B4513] px-4 text-xs font-bold text-white shadow-xs transition hover:bg-[#6D340E]"
             >
               <Save className="h-3.5 w-3.5" />
               <span>حفظ خيارات كليك</span>
@@ -1717,14 +1717,14 @@ function StoreOperationsPanel() {
           {localCliqAccounts.map((acc, idx) => (
             <div
               key={acc.id}
-              className="rounded-2xl border border-[#EFE8DC] bg-[#FDFBF7] p-4 space-y-3"
+              className="space-y-3 rounded-2xl border border-[#EFE8DC] bg-[#FDFBF7] p-4"
             >
               <div className="flex items-center gap-2.5">
-                <span className="text-2xl p-2 rounded-xl bg-white border border-[#EFE8DC] shadow-xs">
+                <span className="rounded-xl border border-[#EFE8DC] bg-white p-2 text-2xl shadow-xs">
                   {acc.icon}
                 </span>
                 <div>
-                  <span className="text-xs font-black text-[#26160F] block">
+                  <span className="block text-xs font-black text-[#26160F]">
                     الخيار {idx + 1}:{" "}
                     {acc.id === "staff"
                       ? "حساب موظفة"
@@ -1737,7 +1737,7 @@ function StoreOperationsPanel() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#26160F] mb-1">
+                <label className="mb-1 block text-xs font-bold text-[#26160F]">
                   الاسم داخل الأيقونة:
                 </label>
                 <input
@@ -1745,7 +1745,7 @@ function StoreOperationsPanel() {
                   value={acc.label}
                   onChange={(e) => handleCliqLabelChange(acc.id, e.target.value)}
                   placeholder="اكتب الاسم هنا..."
-                  className="w-full min-h-11 rounded-xl border border-[#EFE8DC] bg-white px-3 text-xs font-bold text-[#26160F] focus:outline-none focus:ring-2 focus:ring-[#B8801C]"
+                  className="min-h-11 w-full rounded-xl border border-[#EFE8DC] bg-white px-3 text-xs font-bold text-[#26160F] focus:ring-2 focus:ring-[#B8801C] focus:outline-none"
                 />
               </div>
             </div>
@@ -1753,17 +1753,17 @@ function StoreOperationsPanel() {
         </div>
 
         {/* Live Preview */}
-        <div className="rounded-2xl border border-dashed border-[#B8860B]/40 bg-[#FFFDF7] p-4 space-y-2">
+        <div className="space-y-2 rounded-2xl border border-dashed border-[#B8860B]/40 bg-[#FFFDF7] p-4">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-[#8B4513]">
               معاينة مباشرة: شكل الأزرار في شاشة إنشاء الطلب (طلب جديد):
             </span>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+          <div className="grid grid-cols-1 gap-2 pt-1 sm:grid-cols-3">
             {localCliqAccounts.map((acc) => (
               <div
                 key={acc.id}
-                className="flex items-center justify-center gap-2 rounded-xl p-2.5 text-xs font-black border border-[#8B4513] bg-[#8B4513] text-white shadow-xs"
+                className="flex items-center justify-center gap-2 rounded-xl border border-[#8B4513] bg-[#8B4513] p-2.5 text-xs font-black text-white shadow-xs"
               >
                 <span className="text-base">{acc.icon}</span>
                 <span>{acc.label || "(بدون اسم)"}</span>
@@ -1774,14 +1774,14 @@ function StoreOperationsPanel() {
       </div>
 
       {/* Delivery Zones */}
-      <div className="rounded-3xl border border-[#EFE8DC] bg-white p-5 sm:p-6 shadow-xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-[#EFE8DC] pb-3">
+      <div className="space-y-4 rounded-3xl border border-[#EFE8DC] bg-white p-5 shadow-xs sm:p-6">
+        <div className="flex flex-col gap-3 border-b border-[#EFE8DC] pb-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h3 className="text-base font-black text-[#26160F] flex items-center gap-2">
+            <h3 className="flex items-center gap-2 text-base font-black text-[#26160F]">
               <MapPin className="h-5 w-5 text-[#B8801C]" />
               مناطق وأجور التوصيل المعتمدة في عمّان (Amman Delivery Zones)
             </h3>
-            <p className="text-xs text-[#4A3B32]/80 mt-1">
+            <p className="mt-1 text-xs text-[#4A3B32]/80">
               تعديل أسعار التوصيل حسب المناطق. اكتب المناطق مفصولة بفاصلة (،).
             </p>
           </div>
@@ -1789,7 +1789,7 @@ function StoreOperationsPanel() {
             <button
               type="button"
               onClick={handleResetZones}
-              className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 hover:bg-slate-50 transition cursor-pointer"
+              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 transition hover:bg-slate-50"
             >
               <RotateCcw className="h-3.5 w-3.5" />
               <span>استعادة الأساسية</span>
@@ -1797,7 +1797,7 @@ function StoreOperationsPanel() {
             <button
               type="button"
               onClick={handleSaveZones}
-              className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-[#8B4513] px-4 text-xs font-bold text-white shadow-xs hover:bg-[#6D340E] transition cursor-pointer"
+              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl bg-[#8B4513] px-4 text-xs font-bold text-white shadow-xs transition hover:bg-[#6D340E]"
             >
               <Save className="h-3.5 w-3.5" />
               <span>حفظ خيارات التوصيل</span>
@@ -1809,17 +1809,17 @@ function StoreOperationsPanel() {
           {localZones.map((zone, idx) => (
             <div
               key={idx}
-              className="rounded-2xl border border-[#EFE8DC] bg-[#FDFBF7] p-4 space-y-3"
+              className="space-y-3 rounded-2xl border border-[#EFE8DC] bg-[#FDFBF7] p-4"
             >
               <div className="flex items-center gap-2">
                 <input
                   type="text"
                   value={zone.labelAr}
                   onChange={(e) => handleZoneChange(idx, "labelAr", e.target.value)}
-                  className="w-full h-9 rounded-lg border border-[#EFE8DC] bg-white px-2 text-xs font-bold text-[#26160F] focus:outline-none focus:ring-2 focus:ring-[#B8801C]"
+                  className="h-9 w-full rounded-lg border border-[#EFE8DC] bg-white px-2 text-xs font-bold text-[#26160F] focus:ring-2 focus:ring-[#B8801C] focus:outline-none"
                   placeholder="اسم الفئة (عربي)"
                 />
-                <div className="flex items-center gap-1 shrink-0 rounded-lg border border-[#EFE8DC] bg-white px-2 h-9">
+                <div className="flex h-9 shrink-0 items-center gap-1 rounded-lg border border-[#EFE8DC] bg-white px-2">
                   <input
                     type="number"
                     min="0"
@@ -1833,7 +1833,7 @@ function StoreOperationsPanel() {
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-[#4A3B32] mb-1">
+                <label className="mb-1 block text-[10px] font-bold text-[#4A3B32]">
                   المناطق المشمولة:
                 </label>
                 <textarea
@@ -1849,7 +1849,7 @@ function StoreOperationsPanel() {
                     )
                   }
                   rows={3}
-                  className="w-full rounded-lg border border-[#EFE8DC] bg-white p-2 text-[11px] text-[#4A3B32] leading-relaxed focus:outline-none focus:ring-2 focus:ring-[#B8801C] resize-none"
+                  className="w-full resize-none rounded-lg border border-[#EFE8DC] bg-white p-2 text-[11px] leading-relaxed text-[#4A3B32] focus:ring-2 focus:ring-[#B8801C] focus:outline-none"
                   placeholder="ماركا، طبربور، عبدون..."
                 />
               </div>
@@ -1859,14 +1859,14 @@ function StoreOperationsPanel() {
       </div>
 
       {/* Danger Zone: Database Maintenance & Wiping Orders */}
-      <div className="rounded-3xl border-2 border-dashed border-rose-300 bg-rose-50/40 p-5 sm:p-6 shadow-xs space-y-3">
+      <div className="space-y-3 rounded-3xl border-2 border-dashed border-rose-300 bg-rose-50/40 p-5 shadow-xs sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-rose-200 pb-3">
           <div>
-            <h3 className="text-base font-black text-rose-950 flex items-center gap-2">
+            <h3 className="flex items-center gap-2 text-base font-black text-rose-950">
               <AlertTriangle className="h-5 w-5 text-rose-600" />
               منطقة العمليات الحساسة: تنظيف ومسح كافة الطلبات (Database Reset)
             </h3>
-            <p className="text-xs text-rose-900/80 mt-0.5">
+            <p className="mt-0.5 text-xs text-rose-900/80">
               مسح وتفريغ كافة الطلبات السابقة والتجريبية من قاعدة البيانات للبدء بسجل طلبات نظيف.
             </p>
           </div>
@@ -1874,7 +1874,7 @@ function StoreOperationsPanel() {
             type="button"
             onClick={handleWipeAllOrders}
             disabled={wiping}
-            className="inline-flex min-h-11 items-center gap-2 rounded-2xl bg-rose-600 px-5 text-xs font-black text-white shadow-md hover:bg-rose-700 active:scale-95 disabled:opacity-50 transition cursor-pointer"
+            className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-2xl bg-rose-600 px-5 text-xs font-black text-white shadow-md transition hover:bg-rose-700 active:scale-95 disabled:opacity-50"
           >
             {wiping ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
             <span>{wiping ? "جار المسح..." : "مسح كافة الطلبات من السيرفر"}</span>

@@ -1,10 +1,10 @@
-import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
-import { setTimeout as delay } from 'node:timers/promises';
-import { sameEntry } from './path-semantics.mjs';
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
+import { sameEntry } from "./path-semantics.mjs";
 
-const retryable = new Set(['EBUSY', 'EPERM', 'EACCES', 'ENOTEMPTY']);
+const retryable = new Set(["EBUSY", "EPERM", "EACCES", "ENOTEMPTY"]);
 
 function directoryIdentity(directory) {
   const stat = fs.lstatSync(directory, { bigint: true });
@@ -16,8 +16,11 @@ function directoryIdentity(directory) {
 
 function verifyIdentity(expected) {
   const current = directoryIdentity(expected.directory);
-  if (current.dev !== expected.dev || current.ino !== expected.ino
-    || current.birthtimeNs !== expected.birthtimeNs) {
+  if (
+    current.dev !== expected.dev ||
+    current.ino !== expected.ino ||
+    current.birthtimeNs !== expected.birthtimeNs
+  ) {
     throw new Error(`Temporary directory identity changed: ${expected.directory}`);
   }
 }
@@ -27,14 +30,14 @@ function verifyIdentity(expected) {
 // and between retries. Path-based Node APIs cannot eliminate a hostile mutation
 // racing the final check and rm; this is not a filesystem sandbox.
 export function createOwnedTempDirectory(prefix, { parent = os.tmpdir() } = {}) {
-  if (!/^[a-zA-Z0-9-]+-$/.test(prefix)) throw new Error('Invalid temporary directory prefix');
+  if (!/^[a-zA-Z0-9-]+-$/.test(prefix)) throw new Error("Invalid temporary directory prefix");
   const canonicalParent = fs.realpathSync.native(path.resolve(parent));
   const ancestors = [];
   for (let current = canonicalParent; ; current = path.dirname(current)) {
     ancestors.push(directoryIdentity(current));
     const parentRelation = sameEntry(current, path.dirname(current));
-    if (parentRelation.status === 'match') break;
-    if (parentRelation.status !== 'different') {
+    if (parentRelation.status === "match") break;
+    if (parentRelation.status !== "different") {
       throw new Error(`Temporary directory ancestor identity is unavailable: ${current}`);
     }
   }
@@ -52,7 +55,7 @@ export function createOwnedTempDirectory(prefix, { parent = os.tmpdir() } = {}) 
     try {
       verifyIdentity(identity);
     } catch (error) {
-      if (error.code === 'ENOENT') return;
+      if (error.code === "ENOENT") return;
       throw error;
     }
     // No internal retry: each new attempt must revalidate the entire binding.
@@ -71,8 +74,11 @@ export function createOwnedTempDirectory(prefix, { parent = os.tmpdir() } = {}) 
             await delay(100 * (attempt + 1));
             continue;
           }
-          const error = new Error(`Temporary directory cleanup failed; retained path "${directory}": ${cause.message}`, { cause });
-          error.code = 'ARCHIFY_TEMP_CLEANUP';
+          const error = new Error(
+            `Temporary directory cleanup failed; retained path "${directory}": ${cause.message}`,
+            { cause },
+          );
+          error.code = "ARCHIFY_TEMP_CLEANUP";
           error.directory = directory;
           throw error;
         }

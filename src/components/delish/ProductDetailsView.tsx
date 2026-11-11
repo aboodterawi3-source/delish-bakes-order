@@ -20,7 +20,11 @@ import {
 import { LangToggle, useLang } from "@/lib/i18n";
 import { formatJod } from "@/lib/currency";
 import { WHATSAPP } from "@/lib/menu";
-import { priceForSize, getProductFallbackImage, type StorefrontProduct } from "@/lib/storefront-content";
+import {
+  priceForSize,
+  getProductFallbackImage,
+  type StorefrontProduct,
+} from "@/lib/storefront-content";
 import { useBrandPalette } from "@/lib/brand-palette";
 
 export interface ProductDetailsAddPayload {
@@ -95,20 +99,20 @@ export function ProductDetailsView({
       dir={dir}
       className={`relative flex min-h-dvh w-full max-w-full flex-col justify-between overflow-x-hidden overflow-y-auto bg-background text-foreground ${
         isEmbedded
-          ? "min-h-[740px] max-h-[820px] rounded-[38px] border-4 border-cocoa shadow-2xl"
+          ? "max-h-[820px] min-h-[740px] rounded-[38px] border-4 border-cocoa shadow-2xl"
           : ""
       }`}
     >
       <BackgroundCurves />
 
       {/* Top Header Bar */}
-      <header className="sticky top-0 z-20 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 border-b border-border/80 bg-background/80 px-3 py-3.5 backdrop-blur-md sm:px-5">
+      <header className="sticky top-0 z-20 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 bg-background/98 px-3 py-3.5 shadow-2xs transition-shadow sm:px-5">
         {onBack ? (
           <button
             type="button"
             onClick={onBack}
             aria-label={t("back")}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-primary shadow-sm transition-transform hover:scale-[1.04] hover:bg-secondary/40 active:scale-95"
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card text-primary shadow-sm transition-transform hover:scale-[1.04] hover:bg-secondary/40 active:scale-95"
           >
             <ChevronLeft className={`h-5 w-5 ${ar ? "rotate-180" : ""}`} />
           </button>
@@ -116,7 +120,7 @@ export function ProductDetailsView({
           <Link
             to="/discover"
             aria-label={t("back")}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-primary shadow-sm transition-transform hover:scale-[1.04] hover:bg-secondary/40 active:scale-95"
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card text-primary shadow-sm transition-transform hover:scale-[1.04] hover:bg-secondary/40 active:scale-95"
           >
             <ChevronLeft className={`h-5 w-5 ${ar ? "rotate-180" : ""}`} />
           </Link>
@@ -126,7 +130,7 @@ export function ProductDetailsView({
           <DelishLogo size="sm" />
           <span
             style={{ color: palette.main }}
-            className="-mt-0.5 truncate text-[9px] font-bold uppercase tracking-[0.24em]"
+            className="-mt-0.5 truncate text-[9px] font-bold tracking-[0.24em] uppercase"
           >
             {t("celebrationCakes")}
           </span>
@@ -138,7 +142,7 @@ export function ProductDetailsView({
             type="button"
             onClick={onOpenCart}
             aria-label={t("cart")}
-            className="relative flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-primary shadow-sm transition-transform hover:scale-[1.04] hover:bg-secondary/40 active:scale-95 cursor-pointer"
+            className="relative flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-primary shadow-sm transition-transform hover:scale-[1.04] hover:bg-secondary/40 active:scale-95"
           >
             <ShoppingBag className="h-4 w-4" />
             {cartCount > 0 && (
@@ -169,13 +173,13 @@ export function ProductDetailsView({
             <div className="flex h-64 min-w-0 items-center justify-center sm:h-80">
               <img
                 src={
-                  product.image_url ||
-                  getProductFallbackImage(product.slug, product.category, name)
+                  product.image_url || getProductFallbackImage(product.slug, product.category, name)
                 }
                 alt={name}
                 onError={(e) => {
                   const fallback = getProductFallbackImage(product.slug, product.category, name);
-                  if (e.currentTarget.src !== fallback) {
+                  if (!e.currentTarget.dataset["fallbackApplied"]) {
+                    e.currentTarget.dataset["fallbackApplied"] = "true";
                     e.currentTarget.src = fallback;
                   }
                 }}
@@ -185,7 +189,7 @@ export function ProductDetailsView({
 
             <div className="space-y-4 pt-1">
               <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
-                <h1 className="min-w-0 break-words font-sans text-xl font-bold leading-tight tracking-tight text-foreground sm:text-3xl">
+                <h1 className="min-w-0 font-sans text-xl leading-tight font-bold tracking-tight break-words text-foreground sm:text-3xl">
                   {name}
                 </h1>
 
@@ -194,7 +198,7 @@ export function ProductDetailsView({
                     type="button"
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
                     aria-label={ar ? "تقليل الكمية" : "Decrease quantity"}
-                    className="p-1 transition hover:text-gold-light active:scale-90"
+                    className="grid h-11 w-11 cursor-pointer place-items-center rounded-full transition hover:text-gold-light active:scale-90"
                   >
                     <Minus className="h-3.5 w-3.5" />
                   </button>
@@ -203,7 +207,7 @@ export function ProductDetailsView({
                     type="button"
                     onClick={() => setQuantity(quantity + 1)}
                     aria-label={ar ? "زيادة الكمية" : "Increase quantity"}
-                    className="p-1 transition hover:text-gold-light active:scale-90"
+                    className="grid h-11 w-11 cursor-pointer place-items-center rounded-full transition hover:text-gold-light active:scale-90"
                   >
                     <Plus className="h-3.5 w-3.5" />
                   </button>
@@ -217,7 +221,7 @@ export function ProductDetailsView({
                     type="button"
                     onClick={() => setDescriptionOpen(!descriptionOpen)}
                     aria-expanded={descriptionOpen}
-                    className="flex w-full items-center justify-between text-xs font-bold uppercase tracking-wider text-primary"
+                    className="flex w-full items-center justify-between text-xs font-bold tracking-wider text-primary uppercase"
                   >
                     <span>{t("description")}</span>
                     <ChevronDown
@@ -269,11 +273,11 @@ export function ProductDetailsView({
       </main>
 
       {/* Sticky Bottom Action Bar */}
-      <footer className="sticky bottom-0 z-20 grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] items-center gap-3 border-t border-border bg-background/95 px-4 py-4 backdrop-blur-md sm:flex sm:flex-wrap sm:justify-between sm:px-6">
+      <footer className="sticky bottom-0 z-20 grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] items-center gap-3 border-t border-border bg-background/98 px-4 py-4 sm:flex sm:flex-wrap sm:justify-between sm:px-6">
         {product?.price_on_request ? (
           <>
             <div className="flex min-w-0 flex-col">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-primary">
+              <span className="text-[11px] font-semibold tracking-wider text-primary uppercase">
                 {ar ? "السعر" : "Price"}
               </span>
               <span className="font-sans text-base font-extrabold text-foreground sm:text-xl">
@@ -288,7 +292,7 @@ export function ProductDetailsView({
               )}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex min-h-[50px] min-w-0 items-center justify-center gap-2 rounded-full bg-whatsapp px-4 py-3.5 text-center text-xs font-bold uppercase text-whatsapp-foreground shadow-sm sm:flex-none sm:px-7 sm:text-sm"
+              className="inline-flex min-h-[50px] min-w-0 items-center justify-center gap-2 rounded-full bg-whatsapp px-4 py-3.5 text-center text-xs font-bold text-whatsapp-foreground uppercase shadow-sm sm:flex-none sm:px-7 sm:text-sm"
             >
               {ar ? "اطلب السعر" : "On request"}
             </a>
@@ -296,7 +300,7 @@ export function ProductDetailsView({
         ) : (
           <>
             <div className="flex min-w-0 flex-col">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <span className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
                 {t("from")}
               </span>
               <span
@@ -312,7 +316,7 @@ export function ProductDetailsView({
               onClick={handleAdd}
               disabled={!product}
               style={{ backgroundColor: palette.btnBg }}
-              className="inline-flex min-h-[50px] min-w-0 items-center justify-center gap-2 rounded-full px-4 py-3.5 text-center text-xs font-bold uppercase text-white shadow-sm transition-all hover:scale-[1.02] hover:opacity-90 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 sm:flex-none sm:px-7 sm:text-sm cursor-pointer"
+              className="inline-flex min-h-[50px] min-w-0 cursor-pointer items-center justify-center gap-2 rounded-full px-4 py-3.5 text-center text-xs font-bold text-white uppercase shadow-sm transition-all hover:scale-[1.02] hover:opacity-90 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 sm:flex-none sm:px-7 sm:text-sm"
             >
               {addedAnimation ? (
                 <>

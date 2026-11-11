@@ -25,7 +25,7 @@ export function OrderStatusBadge({
 
   return (
     <span
-      className={`inline-flex items-center font-bold rounded-full border shadow-2xs ${meta.chip} ${sizeClasses} ${className}`}
+      className={`inline-flex items-center rounded-full border font-bold shadow-2xs ${meta.chip} ${sizeClasses} ${className}`}
     >
       {showDot && (
         <span className={`h-1.5 w-1.5 rounded-full ${meta.dot} shrink-0`} aria-hidden="true" />

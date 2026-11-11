@@ -95,7 +95,7 @@ export function StorefrontMenuDrawer({ open, onClose }: StorefrontMenuDrawerProp
   return (
     <div
       dir="rtl"
-      className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-xs transition-opacity duration-300"
+      className="fixed inset-0 z-50 flex justify-end bg-black/60 transition-opacity duration-300"
       role="dialog"
       aria-modal="true"
       aria-label="القائمة الرئيسية للمتجر"
@@ -104,7 +104,7 @@ export function StorefrontMenuDrawer({ open, onClose }: StorefrontMenuDrawerProp
       <div className="absolute inset-0" onClick={onClose} aria-hidden="true" />
 
       {/* Drawer Panel */}
-      <aside className="relative flex h-full w-full max-w-md flex-col overflow-hidden bg-background text-foreground shadow-2xl transition-transform duration-300">
+      <aside className="relative flex h-full w-full max-w-md flex-col overflow-hidden bg-background text-foreground shadow-2xl transition-transform duration-300 will-change-transform">
         {/* Header */}
         <header className="flex items-center justify-between border-b border-border bg-card p-4">
           <div className="flex items-center gap-3">
@@ -117,7 +117,7 @@ export function StorefrontMenuDrawer({ open, onClose }: StorefrontMenuDrawerProp
             type="button"
             onClick={onClose}
             aria-label="إغلاق القائمة"
-            className="grid h-9 w-9 cursor-pointer place-items-center rounded-full border border-border bg-background text-foreground hover:bg-secondary/40 active:scale-95"
+            className="grid h-11 w-11 cursor-pointer place-items-center rounded-full border border-border bg-background text-foreground hover:bg-secondary/40 active:scale-95"
           >
             <X className="h-4 w-4" />
           </button>
@@ -303,7 +303,7 @@ export function StorefrontMenuDrawer({ open, onClose }: StorefrontMenuDrawerProp
                     value={feedbackName}
                     onChange={(e) => setFeedbackName(e.target.value)}
                     placeholder="الاسم الكامل"
-                    className="mt-1 min-h-10 w-full rounded-xl border border-input bg-background px-3 text-xs text-foreground outline-none focus:border-primary"
+                    className="mt-1 min-h-11 w-full rounded-xl border border-input bg-background px-3 text-xs text-foreground outline-none focus:border-primary"
                   />
                 </label>
 
@@ -316,7 +316,7 @@ export function StorefrontMenuDrawer({ open, onClose }: StorefrontMenuDrawerProp
                     value={feedbackPhone}
                     onChange={(e) => setFeedbackPhone(e.target.value)}
                     placeholder="079XXXXXXX"
-                    className="mt-1 min-h-10 w-full rounded-xl border border-input bg-background px-3 text-xs text-foreground outline-none focus:border-primary"
+                    className="mt-1 min-h-11 w-full rounded-xl border border-input bg-background px-3 text-xs text-foreground outline-none focus:border-primary"
                   />
                 </label>
 
@@ -325,7 +325,7 @@ export function StorefrontMenuDrawer({ open, onClose }: StorefrontMenuDrawerProp
                   <select
                     value={feedbackCategory}
                     onChange={(e) => setFeedbackCategory(e.target.value)}
-                    className="mt-1 min-h-10 w-full rounded-xl border border-input bg-background px-3 text-xs text-foreground"
+                    className="mt-1 min-h-11 w-full rounded-xl border border-input bg-background px-3 text-xs text-foreground"
                   >
                     <option value="suggestion">اقتراح وتحسين</option>
                     <option value="complaint">شكوى أو ملاحظة على طلب</option>

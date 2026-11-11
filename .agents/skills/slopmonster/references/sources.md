@@ -13,12 +13,12 @@ A matching pattern alone does not establish who wrote a passage.
 
 The following open-source projects informed the original implementation:
 
-| Project | Contribution to this repository |
-|---|---|
-| [blader/humanizer](https://github.com/blader/humanizer) | Pattern categories drawn from the Wikipedia catalogue. |
-| [harshaneel/humanize](https://github.com/harshaneel/humanize) | Research references and punctuation patterns. |
-| [lguz/humanize-writing-skill](https://github.com/lguz/humanize-writing-skill) | An editing workflow with multiple passes and vocabulary lists. |
-| [haidrrrry/humanize-ai-writing](https://github.com/haidrrrry/humanize-ai-writing) | Instructions that can be used as a standalone editing prompt. |
+| Project                                                                           | Contribution to this repository                                |
+| --------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| [blader/humanizer](https://github.com/blader/humanizer)                           | Pattern categories drawn from the Wikipedia catalogue.         |
+| [harshaneel/humanize](https://github.com/harshaneel/humanize)                     | Research references and punctuation patterns.                  |
+| [lguz/humanize-writing-skill](https://github.com/lguz/humanize-writing-skill)     | An editing workflow with multiple passes and vocabulary lists. |
+| [haidrrrry/humanize-ai-writing](https://github.com/haidrrrry/humanize-ai-writing) | Instructions that can be used as a standalone editing prompt.  |
 
 See each project for its own documentation and license. The implemented rules in
 [tools/deslop.py](../tools/deslop.py) determine the score. The broader catalogue in
@@ -27,7 +27,7 @@ editorial judgment.
 
 ## Editorial guidance
 
-Steve Krug's *Don't Make Me Think* informs the emphasis on making information easy
+Steve Krug's _Don't Make Me Think_ informs the emphasis on making information easy
 to understand. The original marketing examples drew on Daniel Priestley's
 problem-first pitch order and Alex Hormozi's work on offers and supporting claims.
 

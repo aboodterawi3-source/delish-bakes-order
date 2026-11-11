@@ -60,10 +60,7 @@
     },
     "point": {
       "type": "array",
-      "prefixItems": [
-        { "type": "number" },
-        { "type": "number" }
-      ],
+      "prefixItems": [{ "type": "number" }, { "type": "number" }],
       "items": false,
       "minItems": 2,
       "maxItems": 2
@@ -73,7 +70,30 @@
     },
     "nodeIcon": {
       "description": "Decorative corner icon. Omit the icon field for the type default; none hides it. Does not change type, color, or legend grouping.",
-      "enum": ["calendar", "clock", "person", "briefcase", "flag", "moon", "frontend", "backend", "database", "cloud", "security", "messagebus", "external", "start", "active", "waiting", "decision", "success", "failure", "stop", "neutral", "none"]
+      "enum": [
+        "calendar",
+        "clock",
+        "person",
+        "briefcase",
+        "flag",
+        "moon",
+        "frontend",
+        "backend",
+        "database",
+        "cloud",
+        "security",
+        "messagebus",
+        "external",
+        "start",
+        "active",
+        "waiting",
+        "decision",
+        "success",
+        "failure",
+        "stop",
+        "neutral",
+        "none"
+      ]
     },
     "brandMark": {
       "oneOf": [
@@ -81,10 +101,7 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 2048,
-          "anyOf": [
-            { "maxLength": 80, "pattern": "^[^\\r\\n]+$" },
-            { "pattern": "^https?://" }
-          ]
+          "anyOf": [{ "maxLength": 80, "pattern": "^[^\\r\\n]+$" }, { "pattern": "^https?://" }]
         },
         {
           "type": "object",

@@ -6,11 +6,7 @@
   "commandRunner": {
     "command": "node --experimental-strip-types test/acceptance_hardening.test.mjs"
   },
-  "mutate": [
-    "src/lib/confirmation-message.ts",
-    "src/lib/role-guard.ts",
-    "src/lib/username.ts"
-  ],
+  "mutate": ["src/lib/confirmation-message.ts", "src/lib/role-guard.ts", "src/lib/username.ts"],
   "tempDirName": ".stryker-tmp",
   "cleanTempDir": true,
   "thresholds": {

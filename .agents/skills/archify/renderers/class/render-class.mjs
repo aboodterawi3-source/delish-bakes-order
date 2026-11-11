@@ -1,6 +1,6 @@
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { esc, renderDefinitions, textUnits } from '../shared/utils.mjs';
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { esc, renderDefinitions, textUnits } from "../shared/utils.mjs";
 import {
   animateAttr,
   focusEdgeAttrs,
@@ -10,18 +10,18 @@ import {
   svgAccessibleText,
   svgRootAttrs,
   writeDiagram,
-} from '../shared/cli.mjs';
-import { throwDiagnosticProblems } from '../shared/diagnostics.mjs';
+} from "../shared/cli.mjs";
+import { throwDiagnosticProblems } from "../shared/diagnostics.mjs";
 import {
   legendFootprint,
   measureLegend,
   relationshipLegendObstacles,
   resolveLegend,
   renderLegend as renderResolvedLegend,
-} from '../shared/legend.mjs';
-import { nodeTextFit } from '../shared/text-fit.mjs';
-import { translateMessage as i18nText } from '../shared/i18n.mjs';
-import { bandedLayout, resolveEntityPos } from '../erd/grid.mjs';
+} from "../shared/legend.mjs";
+import { nodeTextFit } from "../shared/text-fit.mjs";
+import { translateMessage as i18nText } from "../shared/i18n.mjs";
+import { bandedLayout, resolveEntityPos } from "../erd/grid.mjs";
 import {
   asArray,
   cleanAmbiguousCorridorProblems,
@@ -40,18 +40,23 @@ import {
   segmentIntersectsRect,
   suggestComponentSeparation,
   suggestLabelObstacleFix,
-} from '../shared/geometry.mjs';
-import { createRouter } from '../architecture/routing.mjs';
-import { placeAutomaticLabels } from '../shared/automatic-labels.mjs';
-import { connectionPath as relationshipPath } from '../shared/layout-report.mjs';
+} from "../shared/geometry.mjs";
+import { createRouter } from "../architecture/routing.mjs";
+import { placeAutomaticLabels } from "../shared/automatic-labels.mjs";
+import { connectionPath as relationshipPath } from "../shared/layout-report.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const layoutJsonMode = process.argv.includes('--layout-json');
-const cliArgs = process.argv.filter((arg) => arg !== '--layout-json');
-const { diagram: cd, template, outPath, sourceEvidence } = loadDiagram({
+const layoutJsonMode = process.argv.includes("--layout-json");
+const cliArgs = process.argv.filter((arg) => arg !== "--layout-json");
+const {
+  diagram: cd,
+  template,
+  outPath,
+  sourceEvidence,
+} = loadDiagram({
   rendererDir: __dirname,
-  diagramType: 'class',
-  defaultExample: 'payments.class.json',
+  diagramType: "class",
+  defaultExample: "payments.class.json",
   argv: cliArgs,
 });
 const locale = cd.meta.locale;
@@ -87,31 +92,31 @@ const layout = {
 // carries no keyword, which is the UML default; every other kind states it, so
 // an interface can never be read as a class that merely has no fields.
 const KIND_TONE = {
-  class: 'backend',
-  abstract: 'backend',
-  interface: 'frontend',
-  enum: 'messagebus',
-  record: 'database',
+  class: "backend",
+  abstract: "backend",
+  interface: "frontend",
+  enum: "messagebus",
+  record: "database",
 };
 const STEREOTYPE = {
-  abstract: '«abstract»',
-  interface: '«interface»',
-  enum: '«enumeration»',
-  record: '«record»',
+  abstract: "«abstract»",
+  interface: "«interface»",
+  enum: "«enumeration»",
+  record: "«record»",
 };
 
-const VISIBILITY_GLYPH = { public: '+', protected: '#', package: '~', private: '-' };
+const VISIBILITY_GLYPH = { public: "+", protected: "#", package: "~", private: "-" };
 
 function visibilityPrefix(member) {
-  return member.visibility ? `${VISIBILITY_GLYPH[member.visibility]} ` : '';
+  return member.visibility ? `${VISIBILITY_GLYPH[member.visibility]} ` : "";
 }
 
 function attributeText(attribute) {
-  return `${visibilityPrefix(attribute)}${attribute.name}${attribute.type ? `: ${attribute.type}` : ''}`;
+  return `${visibilityPrefix(attribute)}${attribute.name}${attribute.type ? `: ${attribute.type}` : ""}`;
 }
 
 function methodText(method) {
-  return `${visibilityPrefix(method)}${method.name}(${method.parameters ?? ''})${method.returns ? `: ${method.returns}` : ''}`;
+  return `${visibilityPrefix(method)}${method.name}(${method.parameters ?? ""})${method.returns ? `: ${method.returns}` : ""}`;
 }
 
 // Member rows are set in a monospace face, whose ASCII advance is the shared
@@ -132,8 +137,17 @@ function nameWidth(type) {
 
 function memberRows(type) {
   return [
-    { kind: 'attributes', rows: asArray(type.attributes).map((attribute) => ({ member: attribute, text: attributeText(attribute) })) },
-    { kind: 'methods', rows: asArray(type.methods).map((method) => ({ member: method, text: methodText(method) })) },
+    {
+      kind: "attributes",
+      rows: asArray(type.attributes).map((attribute) => ({
+        member: attribute,
+        text: attributeText(attribute),
+      })),
+    },
+    {
+      kind: "methods",
+      rows: asArray(type.methods).map((method) => ({ member: method, text: methodText(method) })),
+    },
   ].filter((compartment) => compartment.rows.length);
 }
 
@@ -148,7 +162,7 @@ const PARAMETER_INDENT = 4;
 
 function fillLines(pieces, limit, firstIndent, indent) {
   const lines = [];
-  let current = '';
+  let current = "";
   const room = () => limit - (lines.length ? indent : firstIndent);
   const push = (text) => lines.push({ text, indent: lines.length ? indent : firstIndent });
   for (const piece of pieces) {
@@ -161,9 +175,10 @@ function fillLines(pieces, limit, firstIndent, indent) {
     while (textUnits(current) > room()) {
       const chars = Array.from(current);
       let cut = 0;
-      for (let units = 0; cut < chars.length && units + textUnits(chars[cut]) <= room(); cut += 1) units += textUnits(chars[cut]);
-      push(chars.slice(0, Math.max(1, cut)).join(''));
-      current = chars.slice(Math.max(1, cut)).join('');
+      for (let units = 0; cut < chars.length && units + textUnits(chars[cut]) <= room(); cut += 1)
+        units += textUnits(chars[cut]);
+      push(chars.slice(0, Math.max(1, cut)).join(""));
+      current = chars.slice(Math.max(1, cut)).join("");
     }
   }
   if (current) push(current.trimEnd());
@@ -174,8 +189,8 @@ function wrapMember(text, availablePx) {
   const limit = Math.max(8, Math.floor(availablePx / MEMBER_ADVANCE));
   if (textUnits(text) <= limit) return [{ text, indent: 0 }];
   const lines = fillLines(text.split(/(?<=\(|, )|(?=\): )/), limit, 0, CONTINUATION_INDENT);
-  const open = text.indexOf('(');
-  const close = text.lastIndexOf(')');
+  const open = text.indexOf("(");
+  const close = text.lastIndexOf(")");
   if (open === -1 || close < open) return lines;
   const head = text.slice(0, open + 1);
   const parameters = text.slice(open + 1, close).split(/(?<=, )/);
@@ -196,10 +211,16 @@ const BADGE_SIZE = 16;
 const BADGE_PORCH = BADGE_SIZE + 8;
 
 function headerWidth(type) {
-  return Math.ceil(layout.padX * 2 + BADGE_PORCH * 2 + Math.max(
-    nameWidth(type),
-    STEREOTYPE[type.kind] ? textUnits(STEREOTYPE[type.kind]) * layout.stereotypeFont * nodeTextFit.widthFactor : 0,
-  ));
+  return Math.ceil(
+    layout.padX * 2 +
+      BADGE_PORCH * 2 +
+      Math.max(
+        nameWidth(type),
+        STEREOTYPE[type.kind]
+          ? textUnits(STEREOTYPE[type.kind]) * layout.stereotypeFont * nodeTextFit.widthFactor
+          : 0,
+      ),
+  );
 }
 
 // An authored width is authoritative. An omitted one grows to the widest
@@ -207,7 +228,8 @@ function headerWidth(type) {
 // wraps, so a box is always at least as wide as its header needs.
 function resolvedWidth(type) {
   if (Number.isFinite(type.width)) return type.width;
-  const members = memberRows(type).flatMap((compartment) => compartment.rows)
+  const members = memberRows(type)
+    .flatMap((compartment) => compartment.rows)
     .reduce((max, row) => Math.max(max, textUnits(row.text) * MEMBER_ADVANCE), 0);
   const wanted = Math.ceil(members + layout.padX * 2 + VIS_EXTRA);
   return Math.max(headerWidth(type), Math.min(grid.typeMaxW, Math.max(grid.typeW, wanted)));
@@ -222,9 +244,16 @@ function compartments(type) {
 }
 
 function typeHeight(type) {
-  return headerHeight(type) + compartments(type).reduce((sum, compartment) => sum
-    + compartment.rows.reduce((lines, row) => lines + row.lines.length, 0) * layout.rowH
-    + layout.compartmentPad * 2, 0);
+  return (
+    headerHeight(type) +
+    compartments(type).reduce(
+      (sum, compartment) =>
+        sum +
+        compartment.rows.reduce((lines, row) => lines + row.lines.length, 0) * layout.rowH +
+        layout.compartmentPad * 2,
+      0,
+    )
+  );
 }
 
 const measuredTypes = asArray(cd.types).map((type) => {
@@ -234,20 +263,28 @@ const measuredTypes = asArray(cd.types).map((type) => {
 const bands = bandedLayout(measuredTypes, { ...grid, entityW: grid.typeW });
 // Types are centred in their row band, so a relationship between two types of
 // one row runs straight across instead of jogging between their centres.
-const types = new Map(measuredTypes.map((type) => {
-  const [x, top] = resolveEntityPos(type, { ...grid, entityW: grid.typeW }, bands);
-  const y = placedByGrid(type) ? top + ((bands.heights.get(type.row) ?? type.height) - type.height) / 2 : top;
-  return [type.id, { ...type, x, y, cx: x + type.width / 2, cy: y + type.height / 2 }];
-}));
+const types = new Map(
+  measuredTypes.map((type) => {
+    const [x, top] = resolveEntityPos(type, { ...grid, entityW: grid.typeW }, bands);
+    const y = placedByGrid(type)
+      ? top + ((bands.heights.get(type.row) ?? type.height) - type.height) / 2
+      : top;
+    return [type.id, { ...type, x, y, cx: x + type.width / 2, cy: y + type.height / 2 }];
+  }),
+);
 
 // Routing runs at module load, so a type without a position is reported before
 // any geometry is computed from it.
 {
-  const unplaced = [...types.values()].filter((type) => !Number.isFinite(type.x) || !Number.isFinite(type.y));
+  const unplaced = [...types.values()].filter(
+    (type) => !Number.isFinite(type.x) || !Number.isFinite(type.y),
+  );
   if (unplaced.length) {
-    throwDiagnosticProblems('Class diagram placement failed',
+    throwDiagnosticProblems(
+      "Class diagram placement failed",
       unplaced.map((type) => `Type "${type.id}" needs grid row/col or an absolute pos [x,y].`),
-      { code: 'layout/constraint', subject: { diagramType: 'class' } });
+      { code: "layout/constraint", subject: { diagramType: "class" } },
+    );
   }
 }
 
@@ -280,27 +317,51 @@ for (const [index, type] of asArray(cd.types).entries()) {
 // - composition: `from` owns `to` (lifetime) solid,  filled diamond at `from`
 // - aggregation: `from` groups `to`          solid,  hollow diamond at `from`
 const NOTATION = {
-  dependency: { dashed: true, end: 'open' },
-  association: { dashed: false, end: 'open' },
-  inheritance: { dashed: false, end: 'triangle' },
-  realization: { dashed: true, end: 'triangle' },
-  composition: { dashed: false, start: 'diamond-filled' },
-  aggregation: { dashed: false, start: 'diamond-hollow' },
+  dependency: { dashed: true, end: "open" },
+  association: { dashed: false, end: "open" },
+  inheritance: { dashed: false, end: "triangle" },
+  realization: { dashed: true, end: "triangle" },
+  composition: { dashed: false, start: "diamond-filled" },
+  aggregation: { dashed: false, start: "diamond-hollow" },
 };
 const RELATIONSHIP_KINDS = Object.keys(NOTATION);
-const GENERALIZATION = new Set(['inheritance', 'realization']);
+const GENERALIZATION = new Set(["inheritance", "realization"]);
 
 // Marker glyphs, in marker space. The path end sits on the type border at refX,
 // so a triangle's tip and a diamond's point touch the type they describe.
 const GLYPH = {
-  open: { width: 12, height: 12, refX: 11, refY: 6, body: '<path d="M 1 1 L 11 6 L 1 11" fill="none"/>' },
-  triangle: { width: 16, height: 16, refX: 15, refY: 8, body: '<path d="M 1 1.5 L 15 8 L 1 14.5 Z" class="cl-marker-hollow"/>' },
-  'diamond-filled': { width: 20, height: 12, refX: 1, refY: 6, body: '<path d="M 1 6 L 10 1 L 19 6 L 10 11 Z" class="cl-marker-filled"/>' },
-  'diamond-hollow': { width: 20, height: 12, refX: 1, refY: 6, body: '<path d="M 1 6 L 10 1 L 19 6 L 10 11 Z" class="cl-marker-hollow"/>' },
+  open: {
+    width: 12,
+    height: 12,
+    refX: 11,
+    refY: 6,
+    body: '<path d="M 1 1 L 11 6 L 1 11" fill="none"/>',
+  },
+  triangle: {
+    width: 16,
+    height: 16,
+    refX: 15,
+    refY: 8,
+    body: '<path d="M 1 1.5 L 15 8 L 1 14.5 Z" class="cl-marker-hollow"/>',
+  },
+  "diamond-filled": {
+    width: 20,
+    height: 12,
+    refX: 1,
+    refY: 6,
+    body: '<path d="M 1 6 L 10 1 L 19 6 L 10 11 Z" class="cl-marker-filled"/>',
+  },
+  "diamond-hollow": {
+    width: 20,
+    height: 12,
+    refX: 1,
+    refY: 6,
+    body: '<path d="M 1 6 L 10 1 L 19 6 L 10 11 Z" class="cl-marker-hollow"/>',
+  },
 };
 // A hierarchy bus is drawn from the supertype outward (see renderRelationshipPath),
 // so its triangle is a start marker turned back toward the supertype.
-GLYPH['triangle-start'] = { ...GLYPH.triangle, orient: 'auto-start-reverse' };
+GLYPH["triangle-start"] = { ...GLYPH.triangle, orient: "auto-start-reverse" };
 // The tallest glyph; ports on one side closer than this would draw overlapping
 // markers that read as one shape.
 const MARKER_HEIGHT = 16;
@@ -313,12 +374,16 @@ function renderMarkerDefs() {
     if (notation?.end) used.add(notation.end);
     if (notation?.start) used.add(notation.start);
   }
-  if (busPaths.size) used.add('triangle-start');
-  const markup = Object.entries(GLYPH).filter(([id]) => used.has(id)).map(([id, glyph]) => (
-    `          <marker id="cl-${id}" markerWidth="${glyph.width}" markerHeight="${glyph.height}" refX="${glyph.refX}" refY="${glyph.refY}" orient="${glyph.orient || 'auto'}" markerUnits="userSpaceOnUse" class="cl-marker" stroke-width="1.5" stroke-linejoin="round">
+  if (busPaths.size) used.add("triangle-start");
+  const markup = Object.entries(GLYPH)
+    .filter(([id]) => used.has(id))
+    .map(
+      ([id, glyph]) =>
+        `          <marker id="cl-${id}" markerWidth="${glyph.width}" markerHeight="${glyph.height}" refX="${glyph.refX}" refY="${glyph.refY}" orient="${glyph.orient || "auto"}" markerUnits="userSpaceOnUse" class="cl-marker" stroke-width="1.5" stroke-linejoin="round">
             ${glyph.body}
-          </marker>`));
-  return markup.length ? `\n          <!-- UML relationship markers -->\n${markup.join('\n')}` : '';
+          </marker>`,
+    );
+  return markup.length ? `\n          <!-- UML relationship markers -->\n${markup.join("\n")}` : "";
 }
 
 // ---- Layout --------------------------------------------------------------------
@@ -326,24 +391,31 @@ function placedByGrid(type) {
   return !(Array.isArray(type.pos) && type.pos.length === 2);
 }
 
-const LEGEND_CATALOG = RELATIONSHIP_KINDS
-  .map((kind) => ({ kind, label: i18nText(locale, `legend.class.${kind}`), interactive: false }));
+const LEGEND_CATALOG = RELATIONSHIP_KINDS.map((kind) => ({
+  kind,
+  label: i18nText(locale, `legend.class.${kind}`),
+  interactive: false,
+}));
 const presentKinds = new Set(relationships.map((relationship) => relationship.kind));
 const LEGEND_SWATCH = 34;
 const LEGEND_BASELINE_GAP = 16;
 const LEGEND_FONT_SIZE = 10;
-const legendEntries = resolveLegend(cd.meta?.legend, LEGEND_CATALOG, presentKinds)
-  .map((entry) => ({ ...entry, swatchWidth: LEGEND_SWATCH }));
+const legendEntries = resolveLegend(cd.meta?.legend, LEGEND_CATALOG, presentKinds).map((entry) => ({
+  ...entry,
+  swatchWidth: LEGEND_SWATCH,
+}));
 
 function contentBounds() {
-  const placed = [...types.values()].filter((type) => Number.isFinite(type.x) && Number.isFinite(type.y));
+  const placed = [...types.values()].filter(
+    (type) => Number.isFinite(type.x) && Number.isFinite(type.y),
+  );
   return {
     maxX: Math.max(0, ...placed.map((type) => type.x + type.width)),
     maxY: Math.max(0, ...placed.map((type) => type.y + type.height)),
   };
 }
 
-function legendLayout(width, height, { obstacles = [], unfit = 'error' } = {}) {
+function legendLayout(width, height, { obstacles = [], unfit = "error" } = {}) {
   return {
     x: layout.margin,
     baselineY: height - LEGEND_BASELINE_GAP,
@@ -352,7 +424,7 @@ function legendLayout(width, height, { obstacles = [], unfit = 'error' } = {}) {
     minTitleY: contentBounds().maxY + 8,
     obstacles,
     unfit,
-    diagramType: 'class',
+    diagramType: "class",
   };
 }
 
@@ -364,9 +436,11 @@ function autoViewBox() {
     width = Math.ceil(footprint.minWidth + layout.margin * 2);
     footprint = legendFootprint(legendEntries, { width: width - layout.margin * 2 });
   }
-  let height = Math.ceil(maxY + layout.margin + (legendEntries.length ? layout.legendH + footprint.extraHeight : 0));
+  let height = Math.ceil(
+    maxY + layout.margin + (legendEntries.length ? layout.legendH + footprint.extraHeight : 0),
+  );
   for (let attempt = 0; legendEntries.length && attempt < 4; attempt += 1) {
-    if (measureLegend(legendEntries, legendLayout(width, height, { unfit: 'hide' }))) break;
+    if (measureLegend(legendEntries, legendLayout(width, height, { unfit: "hide" }))) break;
     height += layout.legendH;
   }
   return [Math.max(320, width), Math.max(240, height)];
@@ -386,14 +460,19 @@ function sideFor(relationship, endpoint) {
   const overlapX = from.x < to.x + to.width && to.x < from.x + from.width;
   const overlapY = from.y < to.y + to.height && to.y < from.y + from.height;
   const vertical = overlapX || (!overlapY && GENERALIZATION.has(relationship.kind));
-  if (!vertical) return endpoint === 'source' ? legacyDefaultFromSide(from, to) : legacyDefaultToSide(from, to);
+  if (!vertical)
+    return endpoint === "source" ? legacyDefaultFromSide(from, to) : legacyDefaultToSide(from, to);
   const down = to.cy > from.cy;
-  if (endpoint === 'source') return down ? 'bottom' : 'top';
-  return down ? 'top' : 'bottom';
+  if (endpoint === "source") return down ? "bottom" : "top";
+  return down ? "top" : "bottom";
 }
 
 function renderableRelationship(relationship) {
-  return types.has(relationship.from) && types.has(relationship.to) && relationship.from !== relationship.to;
+  return (
+    types.has(relationship.from) &&
+    types.has(relationship.to) &&
+    relationship.from !== relationship.to
+  );
 }
 
 const routable = relationships.filter(renderableRelationship);
@@ -408,8 +487,13 @@ const routable = relationships.filter(renderableRelationship);
 const BUS_MIN_GAP = 40;
 
 function autoRouted(relationship) {
-  return !relationship.via?.length && (!relationship.route || relationship.route === 'auto')
-    && !relationship.fromSide && !relationship.toSide && !relationship.labelAt;
+  return (
+    !relationship.via?.length &&
+    (!relationship.route || relationship.route === "auto") &&
+    !relationship.fromSide &&
+    !relationship.toSide &&
+    !relationship.labelAt
+  );
 }
 
 const busPaths = new Map();
@@ -433,15 +517,30 @@ const busGroups = new Map();
     const paths = members.map((relationship, index) => {
       const source = sources[index];
       return Math.abs(source.cx - target.cx) < 0.5
-        ? [[source.cx, source.y], [target.cx, bottom]]
-        : [[source.cx, source.y], [source.cx, busY], [target.cx, busY], [target.cx, bottom]];
+        ? [
+            [source.cx, source.y],
+            [target.cx, bottom],
+          ]
+        : [
+            [source.cx, source.y],
+            [source.cx, busY],
+            [target.cx, busY],
+            [target.cx, bottom],
+          ];
     });
     // Each drop may touch only its own subtype and the supertype; a deeper
     // subtype's drop must not run through a sibling placed above it.
     const clear = paths.every((points, member) => {
-      const others = [...types.values()].filter((type) => type !== target && type !== sources[member]);
-      return points.slice(1).every((point, index) => others
-        .every((type) => !segmentIntersectsRect({ start: points[index], end: point }, type)));
+      const others = [...types.values()].filter(
+        (type) => type !== target && type !== sources[member],
+      );
+      return points
+        .slice(1)
+        .every((point, index) =>
+          others.every(
+            (type) => !segmentIntersectsRect({ start: points[index], end: point }, type),
+          ),
+        );
     });
     if (!clear) continue;
     members.forEach((relationship, index) => {
@@ -453,37 +552,59 @@ const busGroups = new Map();
 
 let separateFallbackRoutes = false;
 function ordinaryRouter() {
-  return createRouter(types, routable.filter((relationship) => !busPaths.has(relationship)), {
-    sideFor,
-    maxPortSpacing: PORT_SPACING,
-    distinctAutomaticPorts: separateFallbackRoutes,
-    // As for the ERD: re-plan a route against the complete scene when it crosses
-    // or bends needlessly, and look for a detour that crosses nothing before the
-    // obstacle search that may cross earlier routes. The showcase gate rejects
-    // any proper crossing, so the shorter crossing route only buys a repair.
-    preferReadableRoutes: true,
-    crossingFreeGridFirst: true,
-    // A detour keeps a readable gap from every type it only passes instead of
-    // running along its border at the grid's 2-unit clearance.
-    componentGapPx: 10,
-  });
+  return createRouter(
+    types,
+    routable.filter((relationship) => !busPaths.has(relationship)),
+    {
+      sideFor,
+      maxPortSpacing: PORT_SPACING,
+      distinctAutomaticPorts: separateFallbackRoutes,
+      // As for the ERD: re-plan a route against the complete scene when it crosses
+      // or bends needlessly, and look for a detour that crosses nothing before the
+      // obstacle search that may cross earlier routes. The showcase gate rejects
+      // any proper crossing, so the shorter crossing route only buys a repair.
+      preferReadableRoutes: true,
+      crossingFreeGridFirst: true,
+      // A detour keeps a readable gap from every type it only passes instead of
+      // running along its border at the grid's 2-unit clearance.
+      componentGapPx: 10,
+    },
+  );
 }
 
 function busRouteConflict(left, right) {
-  for (const [leftField, leftPoint] of [['from', left.points[0]], ['to', left.points.at(-1)]]) {
-    for (const [rightField, rightPoint] of [['from', right.points[0]], ['to', right.points.at(-1)]]) {
-      if (left.relation[leftField] === right.relation[rightField]
-        && Math.hypot(leftPoint[0] - rightPoint[0], leftPoint[1] - rightPoint[1]) < MARKER_HEIGHT - 0.0001) return true;
+  for (const [leftField, leftPoint] of [
+    ["from", left.points[0]],
+    ["to", left.points.at(-1)],
+  ]) {
+    for (const [rightField, rightPoint] of [
+      ["from", right.points[0]],
+      ["to", right.points.at(-1)],
+    ]) {
+      if (
+        left.relation[leftField] === right.relation[rightField] &&
+        Math.hypot(leftPoint[0] - rightPoint[0], leftPoint[1] - rightPoint[1]) <
+          MARKER_HEIGHT - 0.0001
+      )
+        return true;
     }
   }
-  if (collectAmbiguousCorridors({
-    routedRelations: [left, right],
-    includeSharedEndpoints: () => true,
-  }).length) return true;
-  return left.points.slice(1).some((end, index) => right.points.slice(1)
-    .some((otherEnd, otherIndex) => properSegmentIntersection(
-      left.points[index], end, right.points[otherIndex], otherEnd,
-    )));
+  if (
+    collectAmbiguousCorridors({
+      routedRelations: [left, right],
+      includeSharedEndpoints: () => true,
+    }).length
+  )
+    return true;
+  return left.points
+    .slice(1)
+    .some((end, index) =>
+      right.points
+        .slice(1)
+        .some((otherEnd, otherIndex) =>
+          properSegmentIntersection(left.points[index], end, right.points[otherIndex], otherEnd),
+        ),
+    );
 }
 
 let router;
@@ -491,7 +612,8 @@ for (;;) {
   router = ordinaryRouter();
   if (!busPaths.size) break;
   const routes = routable.map((relation) => ({
-    relation, points: busPaths.get(relation) || router.pathFor(relation).points,
+    relation,
+    points: busPaths.get(relation) || router.pathFor(relation).points,
   }));
   const rejected = new Set();
   for (let leftIndex = 0; leftIndex < routes.length; leftIndex += 1) {
@@ -525,18 +647,21 @@ function pathFor(relationship) {
 // A bus drop leaves the subtype's top and the trunk enters the supertype's
 // bottom; every other relationship keeps the router's resolved sides.
 function connectionEndpointSide(relationship, endpoint) {
-  if (busPaths.has(relationship)) return endpoint === 'source' ? 'top' : 'bottom';
+  if (busPaths.has(relationship)) return endpoint === "source" ? "top" : "bottom";
   return router.connectionEndpointSide(relationship, endpoint);
 }
 function inferredSides(relationship) {
-  if (busPaths.has(relationship)) return { fromSide: 'top', toSide: 'bottom' };
+  if (busPaths.has(relationship)) return { fromSide: "top", toSide: "bottom" };
   return router.inferredSides(relationship);
 }
 
 const RELATIONSHIP_LABEL_FONT = 9.5;
 const RELATIONSHIP_LABEL_ADVANCE = 0.62;
 function relationshipLabelWidth(relationship) {
-  return Math.max(30, textUnits(relationship.label) * RELATIONSHIP_LABEL_FONT * RELATIONSHIP_LABEL_ADVANCE + 10);
+  return Math.max(
+    30,
+    textUnits(relationship.label) * RELATIONSHIP_LABEL_FONT * RELATIONSHIP_LABEL_ADVANCE + 10,
+  );
 }
 // A label sits on the segment with the most room unless the author picks one:
 // above a horizontal run, beside a vertical one, so it never covers its own
@@ -549,14 +674,21 @@ function defaultRelationshipLabelPoint(relationship) {
   if (relationship.labelAt) return relationship.labelAt;
   const points = pathFor(relationship).points;
   const width = relationshipLabelWidth(relationship);
-  const vertical = (index) => Math.abs(points[index][0] - points[index + 1][0]) < Math.abs(points[index][1] - points[index + 1][1]);
+  const vertical = (index) =>
+    Math.abs(points[index][0] - points[index + 1][0]) <
+    Math.abs(points[index][1] - points[index + 1][1]);
   const room = (index) => {
-    const length = Math.hypot(points[index + 1][0] - points[index][0], points[index + 1][1] - points[index][1]);
+    const length = Math.hypot(
+      points[index + 1][0] - points[index][0],
+      points[index + 1][1] - points[index][1],
+    );
     return length - (vertical(index) ? 22 : width + 8);
   };
   const index = Number.isInteger(relationship.labelSegment)
     ? Math.min(points.length - 2, relationship.labelSegment)
-    : points.slice(1).reduce((best, _, candidate) => (room(candidate) > room(best) ? candidate : best), 0);
+    : points
+        .slice(1)
+        .reduce((best, _, candidate) => (room(candidate) > room(best) ? candidate : best), 0);
   const [a, b] = [points[index], points[index + 1]];
   const dx = relationship.labelDx || 0;
   const dy = relationship.labelDy || 0;
@@ -578,31 +710,57 @@ const MARKER_REACH = 20;
 // Half the tallest marker plus the 2-unit overlap the placer tolerates.
 const MARKER_HALF = 10;
 function markerBox([x, y], side) {
-  if (side === 'left') return { x: x - MARKER_REACH, y: y - MARKER_HALF, width: MARKER_REACH, height: MARKER_HALF * 2 };
-  if (side === 'right') return { x, y: y - MARKER_HALF, width: MARKER_REACH, height: MARKER_HALF * 2 };
-  if (side === 'top') return { x: x - MARKER_HALF, y: y - MARKER_REACH, width: MARKER_HALF * 2, height: MARKER_REACH };
+  if (side === "left")
+    return {
+      x: x - MARKER_REACH,
+      y: y - MARKER_HALF,
+      width: MARKER_REACH,
+      height: MARKER_HALF * 2,
+    };
+  if (side === "right")
+    return { x, y: y - MARKER_HALF, width: MARKER_REACH, height: MARKER_HALF * 2 };
+  if (side === "top")
+    return {
+      x: x - MARKER_HALF,
+      y: y - MARKER_REACH,
+      width: MARKER_HALF * 2,
+      height: MARKER_REACH,
+    };
   return { x: x - MARKER_HALF, y, width: MARKER_HALF * 2, height: MARKER_REACH };
 }
 {
-  const labels = routable.filter((relationship) => relationship.label).map((relationship) => {
-    const [lx, ly] = defaultRelationshipLabelPoint(relationship);
-    return { relation: relationship, relationIndex: relationships.indexOf(relationship), label: relationship.label,
-      ...relationshipLabelBox(relationship), lx, ly };
-  });
+  const labels = routable
+    .filter((relationship) => relationship.label)
+    .map((relationship) => {
+      const [lx, ly] = defaultRelationshipLabelPoint(relationship);
+      return {
+        relation: relationship,
+        relationIndex: relationships.indexOf(relationship),
+        label: relationship.label,
+        ...relationshipLabelBox(relationship),
+        lx,
+        ly,
+      };
+    });
   if (labels.length) {
     const markers = routable.flatMap((relationship) => {
       const { points } = pathFor(relationship);
       return [
-        markerBox(points[0], connectionEndpointSide(relationship, 'source')),
-        markerBox(points.at(-1), connectionEndpointSide(relationship, 'target')),
+        markerBox(points[0], connectionEndpointSide(relationship, "source")),
+        markerBox(points.at(-1), connectionEndpointSide(relationship, "target")),
       ];
     });
     const footprint = legendEntries.length
-      ? layout.legendH + legendFootprint(legendEntries, { width: Math.max(1, viewBox[0] - layout.margin * 2) }).extraHeight
+      ? layout.legendH +
+        legendFootprint(legendEntries, { width: Math.max(1, viewBox[0] - layout.margin * 2) })
+          .extraHeight
       : 0;
     const placed = placeAutomaticLabels({
       labels,
-      routes: routable.map((relationship) => ({ relationIndex: relationships.indexOf(relationship), points: pathFor(relationship).points })),
+      routes: routable.map((relationship) => ({
+        relationIndex: relationships.indexOf(relationship),
+        points: pathFor(relationship).points,
+      })),
       components: [...types.values(), ...markers],
       titles: [],
       viewBox,
@@ -617,29 +775,36 @@ function markerBox([x, y], side) {
 
 // ---- Validation ----------------------------------------------------------------
 function detail(code, message, subject, evidence, supportedFixes) {
-  return { code, severity: 'error', message, subject: { diagramType: 'class', ...subject }, evidence, supportedFixes };
+  return {
+    code,
+    severity: "error",
+    message,
+    subject: { diagramType: "class", ...subject },
+    evidence,
+    supportedFixes,
+  };
 }
 
 function generalizationCycle() {
   const parents = new Map();
   for (const relationship of relationships) {
-    if (relationship.kind !== 'inheritance' || !renderableRelationship(relationship)) continue;
+    if (relationship.kind !== "inheritance" || !renderableRelationship(relationship)) continue;
     if (!parents.has(relationship.from)) parents.set(relationship.from, []);
     parents.get(relationship.from).push(relationship.to);
   }
   const state = new Map();
   const stack = [];
   const visit = (id) => {
-    if (state.get(id) === 'done') return null;
-    if (state.get(id) === 'open') return [...stack.slice(stack.indexOf(id)), id];
-    state.set(id, 'open');
+    if (state.get(id) === "done") return null;
+    if (state.get(id) === "open") return [...stack.slice(stack.indexOf(id)), id];
+    state.set(id, "open");
     stack.push(id);
     for (const parent of parents.get(id) || []) {
       const cycle = visit(parent);
       if (cycle) return cycle;
     }
     stack.pop();
-    state.set(id, 'done');
+    state.set(id, "done");
     return null;
   };
   for (const id of parents.keys()) {
@@ -660,87 +825,131 @@ function validateClassDiagram() {
   const seen = new Set();
   const cells = new Map();
   for (const [index, type] of asArray(cd.types).entries()) {
-    if (seen.has(type.id)) problems.push(`Type ids must be unique; "${type.id}" is declared twice.`);
+    if (seen.has(type.id))
+      problems.push(`Type ids must be unique; "${type.id}" is declared twice.`);
     seen.add(type.id);
     if (placedByGrid(type)) {
       if (!Number.isInteger(type.row) || !Number.isInteger(type.col * 2)) {
-        problems.push(`Type "${type.id}" needs grid row/col (col may be a half step, e.g. 1.5) or an absolute pos [x,y].`);
+        problems.push(
+          `Type "${type.id}" needs grid row/col (col may be a half step, e.g. 1.5) or an absolute pos [x,y].`,
+        );
       } else {
         // A half column straddles the two columns beside it.
         for (const col of new Set([Math.floor(type.col), Math.ceil(type.col)])) {
           const key = `${type.row},${col}`;
-          if (cells.has(key)) problems.push(`Types "${cells.get(key)}" and "${type.id}" share grid cell row ${type.row} col ${col}.`);
+          if (cells.has(key))
+            problems.push(
+              `Types "${cells.get(key)}" and "${type.id}" share grid cell row ${type.row} col ${col}.`,
+            );
           else cells.set(key, type.id);
         }
       }
     }
     const attributeNames = new Set();
     for (const attribute of asArray(type.attributes)) {
-      if (attributeNames.has(attribute.name)) problems.push(`Type "${type.id}" declares attribute "${attribute.name}" twice.`);
+      if (attributeNames.has(attribute.name))
+        problems.push(`Type "${type.id}" declares attribute "${attribute.name}" twice.`);
       attributeNames.add(attribute.name);
     }
     // Members wrap, but the title is one line: a box must be wide enough for it.
     const placed = types.get(type.id);
     const needed = headerWidth(type);
     if (placed && needed > placed.width) {
-      fail(detail('class/title-text-capacity',
-        `Type "${type.id}" title "${type.label}" needs ${needed}px but the type is ${placed.width}px wide — remove or raise the authored width, or shorten the title.`,
-        { path: `/types/${index}/width`, typeId: type.id },
-        { label: type.label, width: placed.width, requiredWidth: needed },
-        ['Remove the authored width so the type sizes itself.', `Set width to at least ${needed}.`, 'Shorten the type title.']));
+      fail(
+        detail(
+          "class/title-text-capacity",
+          `Type "${type.id}" title "${type.label}" needs ${needed}px but the type is ${placed.width}px wide — remove or raise the authored width, or shorten the title.`,
+          { path: `/types/${index}/width`, typeId: type.id },
+          { label: type.label, width: placed.width, requiredWidth: needed },
+          [
+            "Remove the authored width so the type sizes itself.",
+            `Set width to at least ${needed}.`,
+            "Shorten the type title.",
+          ],
+        ),
+      );
     }
   }
 
   for (const type of types.values()) {
     for (const other of types.values()) {
       if (type.id >= other.id || !rectsOverlap(type, other, 0)) continue;
-      problems.push(`Type "${type.id}" overlaps type "${other.id}".\n${suggestComponentSeparation(type, other)}`);
+      problems.push(
+        `Type "${type.id}" overlaps type "${other.id}".\n${suggestComponentSeparation(type, other)}`,
+      );
     }
   }
 
   for (const [index, relationship] of relationships.entries()) {
-    const id = relationship.id ? ` id "${relationship.id}"` : '';
+    const id = relationship.id ? ` id "${relationship.id}"` : "";
     const from = types.get(relationship.from);
     const to = types.get(relationship.to);
     if (!from || !to) {
-      problems.push(`Relationship ${index}${id} references unknown type "${from ? relationship.to : relationship.from}".`);
+      problems.push(
+        `Relationship ${index}${id} references unknown type "${from ? relationship.to : relationship.from}".`,
+      );
       continue;
     }
     if (relationship.from === relationship.to) {
-      problems.push(`Relationship ${index}${id} connects type "${relationship.from}" to itself — describe the self-reference as a member type or in a card.`);
+      problems.push(
+        `Relationship ${index}${id} connects type "${relationship.from}" to itself — describe the self-reference as a member type or in a card.`,
+      );
       continue;
     }
     // The hollow triangle claims a supertype; the claim has to agree with the
     // kinds, or the diagram states an impossible hierarchy.
-    if (relationship.kind === 'realization' && (to.kind !== 'interface' || from.kind === 'interface')) {
-      fail(detail('class/realization-target',
-        `Relationship ${index}${id} "${relationship.from}" realizes "${relationship.to}", but realization runs from a non-interface type to an interface (here ${from.kind} -> ${to.kind}). Use inheritance for class-to-class or interface-to-interface extension.`,
-        { path: `/relationships/${index}`, relationshipIndex: index },
-        { from: relationship.from, fromKind: from.kind, to: relationship.to, toKind: to.kind },
-        ['Use kind "inheritance" for extension between two classes or two interfaces.', 'Point the realization at the interface it implements.']));
+    if (
+      relationship.kind === "realization" &&
+      (to.kind !== "interface" || from.kind === "interface")
+    ) {
+      fail(
+        detail(
+          "class/realization-target",
+          `Relationship ${index}${id} "${relationship.from}" realizes "${relationship.to}", but realization runs from a non-interface type to an interface (here ${from.kind} -> ${to.kind}). Use inheritance for class-to-class or interface-to-interface extension.`,
+          { path: `/relationships/${index}`, relationshipIndex: index },
+          { from: relationship.from, fromKind: from.kind, to: relationship.to, toKind: to.kind },
+          [
+            'Use kind "inheritance" for extension between two classes or two interfaces.',
+            "Point the realization at the interface it implements.",
+          ],
+        ),
+      );
     }
-    if (relationship.kind === 'inheritance' && (from.kind === 'interface') !== (to.kind === 'interface')) {
-      fail(detail('class/inheritance-kind',
-        `Relationship ${index}${id} "${relationship.from}" inherits from "${relationship.to}" across an interface boundary (${from.kind} -> ${to.kind}). A class implementing an interface is a realization.`,
-        { path: `/relationships/${index}`, relationshipIndex: index },
-        { from: relationship.from, fromKind: from.kind, to: relationship.to, toKind: to.kind },
-        ['Use kind "realization" for a class implementing an interface.']));
+    if (
+      relationship.kind === "inheritance" &&
+      (from.kind === "interface") !== (to.kind === "interface")
+    ) {
+      fail(
+        detail(
+          "class/inheritance-kind",
+          `Relationship ${index}${id} "${relationship.from}" inherits from "${relationship.to}" across an interface boundary (${from.kind} -> ${to.kind}). A class implementing an interface is a realization.`,
+          { path: `/relationships/${index}`, relationshipIndex: index },
+          { from: relationship.from, fromKind: from.kind, to: relationship.to, toKind: to.kind },
+          ['Use kind "realization" for a class implementing an interface.'],
+        ),
+      );
     }
     const routed = pathFor(relationship);
     const [start, end] = [routed.points[0], routed.points.at(-1)];
     const distance = Math.hypot(end[0] - start[0], end[1] - start[1]);
     if (distance < layout.minRelationshipLength) {
-      problems.push(`Relationship ${index}${id} "${relationship.from}" -> "${relationship.to}" is too short (${Math.round(distance)}px; minimum ${layout.minRelationshipLength}px) — place the types farther apart.`);
+      problems.push(
+        `Relationship ${index}${id} "${relationship.from}" -> "${relationship.to}" is too short (${Math.round(distance)}px; minimum ${layout.minRelationshipLength}px) — place the types farther apart.`,
+      );
     }
   }
 
   const cycle = generalizationCycle();
   if (cycle) {
-    fail(detail('class/inheritance-cycle',
-      `Inheritance forms a cycle: ${cycle.map((id) => `"${id}"`).join(' -> ')}. A type cannot be its own supertype.`,
-      { path: '/relationships', typeId: cycle[0] },
-      { cycle },
-      ['Remove or reverse one inheritance relationship in the cycle.']));
+    fail(
+      detail(
+        "class/inheritance-cycle",
+        `Inheritance forms a cycle: ${cycle.map((id) => `"${id}"`).join(" -> ")}. A type cannot be its own supertype.`,
+        { path: "/relationships", typeId: cycle[0] },
+        { cycle },
+        ["Remove or reverse one inheritance relationship in the cycle."],
+      ),
+    );
   }
 
   // Busy sides can leave less room than a marker is tall: the router spreads
@@ -755,15 +964,27 @@ function validateClassDiagram() {
     }
     for (const [side, count] of sides) {
       if (count < 2) continue;
-      const extent = side === 'left' || side === 'right' ? type.height : type.width;
+      const extent = side === "left" || side === "right" ? type.height : type.width;
       const spacing = Math.min(PORT_SPACING, Math.max(0, extent - 32) / (count - 1));
       if (spacing >= MARKER_HEIGHT) continue;
       fail({
-        ...detail('layout/marker-capacity',
+        ...detail(
+          "layout/marker-capacity",
           `Type "${typeId}" shares its ${side} side with ${count} relationship ends ${Math.round(spacing)}px apart, under the ${MARKER_HEIGHT}px a relationship marker needs, so the markers overlap. Spread the relationships across sides or place the related types so they arrive from different directions.`,
           { path: `/types/${typeId}` },
-          { type: typeId, side, relationshipEnds: count, spacingPx: Math.round(spacing), markerHeightPx: MARKER_HEIGHT, sideExtentPx: extent },
-          ['Spread the relationships across sides with room.', 'Move related types so they approach from different sides.']),
+          {
+            type: typeId,
+            side,
+            relationshipEnds: count,
+            spacingPx: Math.round(spacing),
+            markerHeightPx: MARKER_HEIGHT,
+            sideExtentPx: extent,
+          },
+          [
+            "Spread the relationships across sides with room.",
+            "Move related types so they approach from different sides.",
+          ],
+        ),
       });
     }
   }
@@ -772,47 +993,75 @@ function validateClassDiagram() {
     relations: routable,
     endpointIds: new Set(types.keys()),
     pathFor,
-    diagramType: 'class',
-    relationCollection: 'relationships',
+    diagramType: "class",
+    relationCollection: "relationships",
     profile: cd.meta?.quality_profile,
   };
-  problems.push(...cleanEndpointSideProblems({
-    ...shared,
-    fromSideFor: (relationship) => connectionEndpointSide(relationship, 'source'),
-    toSideFor: (relationship) => connectionEndpointSide(relationship, 'target'),
-    routeHint: 'keep automatic routing, or set truthful fromSide/toSide',
-  }));
-  problems.push(...cleanFlowProblems({
-    relations: routable,
-    obstacles: types.values(),
-    pathFor,
-    diagramType: 'class',
-    relationCollection: 'relationships',
-    obstacleKind: 'type',
-    routeHint: 'adjust fromSide/toSide, set route/via, or move the type',
-  }));
-  problems.push(...cleanCrossingProblems({ ...shared, routeHint: 'move the types so unrelated relationships use separate corridors' }));
-  problems.push(...cleanAmbiguousCorridorProblems({ ...shared, routeHint: 'give the relationships different sides, or move a type so their corridors differ' }));
-  problems.push(...cleanRouteRhythmProblems({ ...shared, routeHint: 'widen layout.gapX/gapY so every turn has room to read' }));
+  problems.push(
+    ...cleanEndpointSideProblems({
+      ...shared,
+      fromSideFor: (relationship) => connectionEndpointSide(relationship, "source"),
+      toSideFor: (relationship) => connectionEndpointSide(relationship, "target"),
+      routeHint: "keep automatic routing, or set truthful fromSide/toSide",
+    }),
+  );
+  problems.push(
+    ...cleanFlowProblems({
+      relations: routable,
+      obstacles: types.values(),
+      pathFor,
+      diagramType: "class",
+      relationCollection: "relationships",
+      obstacleKind: "type",
+      routeHint: "adjust fromSide/toSide, set route/via, or move the type",
+    }),
+  );
+  problems.push(
+    ...cleanCrossingProblems({
+      ...shared,
+      routeHint: "move the types so unrelated relationships use separate corridors",
+    }),
+  );
+  problems.push(
+    ...cleanAmbiguousCorridorProblems({
+      ...shared,
+      routeHint: "give the relationships different sides, or move a type so their corridors differ",
+    }),
+  );
+  problems.push(
+    ...cleanRouteRhythmProblems({
+      ...shared,
+      routeHint: "widen layout.gapX/gapY so every turn has room to read",
+    }),
+  );
 
   const labels = [];
   for (const [index, relationship] of relationships.entries()) {
     if (!relationship.label || !renderableRelationship(relationship)) continue;
     const [lx, ly] = relationshipLabelPoint(relationship);
-    labels.push({ relation: relationship, relationIndex: index, label: relationship.label, ...relationshipLabelBox(relationship), lx, ly });
+    labels.push({
+      relation: relationship,
+      relationIndex: index,
+      label: relationship.label,
+      ...relationshipLabelBox(relationship),
+      lx,
+      ly,
+    });
   }
   for (const rect of labels) {
     for (const type of types.values()) {
       if (!rectsOverlap(rect, type, -2)) continue;
-      problems.push(`Label "${rect.label}" overlaps type "${type.id}" — adjust labelDx/labelDy/labelSegment or set labelAt.\n${suggestLabelObstacleFix(rect, rect.lx, rect.ly, type, 'type')}`);
+      problems.push(
+        `Label "${rect.label}" overlaps type "${type.id}" — adjust labelDx/labelDy/labelSegment or set labelAt.\n${suggestLabelObstacleFix(rect, rect.lx, rect.ly, type, "type")}`,
+      );
     }
   }
   problems.push(...cleanLabelRouteClearanceProblems({ ...shared, labels }));
 
   if (problems.length) {
-    throwDiagnosticProblems('Class diagram validation failed', problems, {
-      code: 'layout/constraint',
-      subject: { diagramType: 'class' },
+    throwDiagnosticProblems("Class diagram validation failed", problems, {
+      code: "layout/constraint",
+      subject: { diagramType: "class" },
       diagnostics: details,
     });
   }
@@ -820,7 +1069,7 @@ function validateClassDiagram() {
 
 function buildLayoutReport() {
   return {
-    diagram_type: 'class',
+    diagram_type: "class",
     viewBox,
     types: [...types.values()].map((type) => ({
       id: type.id,
@@ -844,18 +1093,19 @@ function buildLayoutReport() {
 // A member reads like a signature in an editor: the visibility glyph and every
 // type annotation are quiet, so the names carry the row. Wrapping never splits
 // an annotation, so each line is coloured on its own.
-const VISIBILITY_CLASS = { '+': 'public', '#': 'protected', '~': 'package', '-': 'private' };
+const VISIBILITY_CLASS = { "+": "public", "#": "protected", "~": "package", "-": "private" };
 
 function punctuated(text) {
   return esc(text).replace(/[(),]/g, (mark) => `<tspan class="t-muted cl-punct">${mark}</tspan>`);
 }
 
 function memberSpans(text, first) {
-  let out = '';
+  let out = "";
   let rest = text;
   // A continuation line with no annotation of its own is the rest of a type
   // (`PaymentProcessor>`), so it is set like the start of that type.
-  if (!first && !rest.includes(':') && !rest.startsWith(')')) return `<tspan class="t-muted cl-type-ref">${esc(rest)}</tspan>`;
+  if (!first && !rest.includes(":") && !rest.startsWith(")"))
+    return `<tspan class="t-muted cl-type-ref">${esc(rest)}</tspan>`;
   const glyph = first ? rest.match(/^([+#~-]) /) : null;
   if (glyph) {
     out += `<tspan class="t-muted cl-vis cl-vis-${VISIBILITY_CLASS[glyph[1]]}">${esc(glyph[1])}</tspan> `;
@@ -879,16 +1129,19 @@ function visibilityChip(glyph, x, baseline) {
 }
 
 function memberColumns(member, kind) {
-  if (kind === 'attributes') return { left: punctuated(member.name), right: member.type };
+  if (kind === "attributes") return { left: punctuated(member.name), right: member.type };
   const parameters = member.parameters
-    ? String(member.parameters).split(/(,\s*)/).map((part) => {
-      if (/^,\s*$/.test(part)) return `<tspan class="t-muted cl-punct">,</tspan> `;
-      const [name, ...annotation] = part.split(':');
-      return annotation.length
-        ? `<tspan class="cl-param">${esc(name)}</tspan><tspan class="t-muted cl-punct">:</tspan><tspan class="t-muted cl-type-ref">${esc(annotation.join(':'))}</tspan>`
-        : `<tspan class="cl-param">${esc(part)}</tspan>`;
-    }).join('')
-    : '';
+    ? String(member.parameters)
+        .split(/(,\s*)/)
+        .map((part) => {
+          if (/^,\s*$/.test(part)) return `<tspan class="t-muted cl-punct">,</tspan> `;
+          const [name, ...annotation] = part.split(":");
+          return annotation.length
+            ? `<tspan class="cl-param">${esc(name)}</tspan><tspan class="t-muted cl-punct">:</tspan><tspan class="t-muted cl-type-ref">${esc(annotation.join(":"))}</tspan>`
+            : `<tspan class="cl-param">${esc(part)}</tspan>`;
+        })
+        .join("")
+    : "";
   return {
     left: `${esc(member.name)}<tspan class="t-muted cl-punct">(</tspan>${parameters}<tspan class="t-muted cl-punct">)</tspan>`,
     right: member.returns,
@@ -898,49 +1151,61 @@ function memberColumns(member, kind) {
 function renderMembers(type) {
   let top = type.y + headerHeight(type);
   let stripe = 0;
-  return compartments(type).map((compartment) => {
-    const rule = `<line x1="${type.x}" y1="${top}" x2="${type.x + type.width}" y2="${top}" class="cl-rule" stroke-width="1"/>`;
-    let line = 0;
-    const rows = compartment.rows.flatMap(({ member, lines }) => {
-      const style = [
-        member.static ? 'text-decoration: underline' : '',
-        member.abstract ? 'font-style: italic' : '',
-      ].filter(Boolean).join('; ');
-      const styleAttr = style ? ` style="${style}"` : '';
-      const rowTop = top + layout.compartmentPad + line * layout.rowH;
-      const zebra = stripe++ % 2
-        ? `<rect x="${type.x + 4}" y="${rowTop + 1}" width="${type.width - 8}" height="${lines.length * layout.rowH - 2}" rx="4" class="cl-zebra"/>`
-        : '';
-      const glyph = member.visibility ? VISIBILITY_GLYPH[member.visibility] : '';
-      const x0 = type.x + layout.padX;
-      const chip = glyph ? visibilityChip(glyph, x0, rowTop + layout.rowH - 5) : '';
-      const textX = glyph ? x0 + VIS_CHIP + VIS_GAP : x0;
-      if (lines.length === 1) {
-        const baseline = top + layout.compartmentPad + (line += 1) * layout.rowH - 5;
-        const { left, right } = memberColumns(member, compartment.kind);
-        const typeText = right
-          ? `<text data-detail="context" x="${type.x + type.width - layout.padX}" y="${baseline}" class="t-muted cl-member cl-type-ref" font-size="${layout.memberFont}" text-anchor="end"${styleAttr}>${esc(right)}</text>`
-          : '';
-        return [`${zebra}${chip}<text data-detail="context" data-class-member="${compartment.kind}" x="${textX}" y="${baseline}" class="t-primary cl-member" font-size="${layout.memberFont}"${styleAttr}>${left}</text>${typeText}`];
-      }
-      return lines.map((entry, index) => {
-        const baseline = top + layout.compartmentPad + (line += 1) * layout.rowH - 5;
-        const text = index || !glyph ? entry.text : entry.text.slice(2);
-        const x = index || !glyph ? x0 + (glyph ? VIS_CHIP + VIS_GAP - 2 * MEMBER_ADVANCE : 0) + entry.indent * MEMBER_ADVANCE : textX;
-        const continued = index ? ' data-class-continuation=""' : '';
-        return `${index ? '' : `${zebra}${chip}`}<text data-detail="context" data-class-member="${compartment.kind}"${continued} x="${x}" y="${baseline}" class="t-primary cl-member" font-size="${layout.memberFont}"${styleAttr}>${memberSpans(text, !index)}</text>`;
+  return compartments(type)
+    .map((compartment) => {
+      const rule = `<line x1="${type.x}" y1="${top}" x2="${type.x + type.width}" y2="${top}" class="cl-rule" stroke-width="1"/>`;
+      let line = 0;
+      const rows = compartment.rows.flatMap(({ member, lines }) => {
+        const style = [
+          member.static ? "text-decoration: underline" : "",
+          member.abstract ? "font-style: italic" : "",
+        ]
+          .filter(Boolean)
+          .join("; ");
+        const styleAttr = style ? ` style="${style}"` : "";
+        const rowTop = top + layout.compartmentPad + line * layout.rowH;
+        const zebra =
+          stripe++ % 2
+            ? `<rect x="${type.x + 4}" y="${rowTop + 1}" width="${type.width - 8}" height="${lines.length * layout.rowH - 2}" rx="4" class="cl-zebra"/>`
+            : "";
+        const glyph = member.visibility ? VISIBILITY_GLYPH[member.visibility] : "";
+        const x0 = type.x + layout.padX;
+        const chip = glyph ? visibilityChip(glyph, x0, rowTop + layout.rowH - 5) : "";
+        const textX = glyph ? x0 + VIS_CHIP + VIS_GAP : x0;
+        if (lines.length === 1) {
+          const baseline = top + layout.compartmentPad + (line += 1) * layout.rowH - 5;
+          const { left, right } = memberColumns(member, compartment.kind);
+          const typeText = right
+            ? `<text data-detail="context" x="${type.x + type.width - layout.padX}" y="${baseline}" class="t-muted cl-member cl-type-ref" font-size="${layout.memberFont}" text-anchor="end"${styleAttr}>${esc(right)}</text>`
+            : "";
+          return [
+            `${zebra}${chip}<text data-detail="context" data-class-member="${compartment.kind}" x="${textX}" y="${baseline}" class="t-primary cl-member" font-size="${layout.memberFont}"${styleAttr}>${left}</text>${typeText}`,
+          ];
+        }
+        return lines.map((entry, index) => {
+          const baseline = top + layout.compartmentPad + (line += 1) * layout.rowH - 5;
+          const text = index || !glyph ? entry.text : entry.text.slice(2);
+          const x =
+            index || !glyph
+              ? x0 +
+                (glyph ? VIS_CHIP + VIS_GAP - 2 * MEMBER_ADVANCE : 0) +
+                entry.indent * MEMBER_ADVANCE
+              : textX;
+          const continued = index ? ' data-class-continuation=""' : "";
+          return `${index ? "" : `${zebra}${chip}`}<text data-detail="context" data-class-member="${compartment.kind}"${continued} x="${x}" y="${baseline}" class="t-primary cl-member" font-size="${layout.memberFont}"${styleAttr}>${memberSpans(text, !index)}</text>`;
+        });
       });
-    });
-    top += line * layout.rowH + layout.compartmentPad * 2;
-    return `          <g data-detail="context" data-class-compartment="${compartment.kind}">
+      top += line * layout.rowH + layout.compartmentPad * 2;
+      return `          <g data-detail="context" data-class-compartment="${compartment.kind}">
             ${rule}
-            ${rows.join('\n            ')}
+            ${rows.join("\n            ")}
           </g>`;
-  }).join('\n');
+    })
+    .join("\n");
 }
 
 function renderType(type) {
-  const tone = KIND_TONE[type.kind] || 'backend';
+  const tone = KIND_TONE[type.kind] || "backend";
   const header = headerHeight(type);
   const stereotype = STEREOTYPE[type.kind];
   const kindLabel = i18nText(locale, `node.context.class.${type.kind}`);
@@ -949,19 +1214,19 @@ function renderType(type) {
   const nameY = stereotype ? type.y + 34 : type.y + 22;
   const badgeX = type.x + layout.padX;
   const badgeY = type.y + (stereotype ? 14 : 9);
-  const italic = type.kind === 'abstract' ? ' font-style="italic"' : '';
+  const italic = type.kind === "abstract" ? ' font-style="italic"' : "";
   const r = 8;
   return `        <g ${focusNodeAttrs(type.id, type.label, passport, locale)} data-class-kind="${esc(type.kind)}" class="cl-hue-${tone}">
           ${focusNodeTitle(type.label, passport)}
           <rect x="${type.x}" y="${type.y}" width="${type.width}" height="${type.height}" rx="${r}" class="c-mask"/>
-          <rect x="${type.x}" y="${type.y}" width="${type.width}" height="${type.height}" rx="${r}" class="c-${tone} cl-type"${animateAttr(cd.meta, 'node', typeSteps.get(type.id))} stroke-width="1.2"/>
+          <rect x="${type.x}" y="${type.y}" width="${type.width}" height="${type.height}" rx="${r}" class="c-${tone} cl-type"${animateAttr(cd.meta, "node", typeSteps.get(type.id))} stroke-width="1.2"/>
           <path class="cl-header c-${tone}" stroke="none" d="M ${type.x + r} ${type.y} H ${type.x + type.width - r} A ${r} ${r} 0 0 1 ${type.x + type.width} ${type.y + r} V ${type.y + header} H ${type.x} V ${type.y + r} A ${r} ${r} 0 0 1 ${type.x + r} ${type.y} Z"/>
           <path class="cl-cap" d="M ${type.x + 12} ${type.y + 1.4} H ${type.x + type.width - 12}" stroke-width="2.6" stroke-linecap="round" fill="none"/>
           <g aria-hidden="true" class="cl-badge">
             <rect x="${badgeX}" y="${badgeY}" width="${BADGE_SIZE}" height="${BADGE_SIZE}" rx="${BADGE_SIZE * 0.3}" class="cl-badge-chip"/>
             <text x="${badgeX + BADGE_SIZE / 2}" y="${badgeY + BADGE_SIZE / 2 + 3.5}" class="t-${tone} cl-badge-letter" font-size="10" font-weight="800" text-anchor="middle">${esc(type.kind[0].toUpperCase())}</text>
           </g>
-          ${stereotype ? `<text x="${cx}" y="${type.y + 16}" class="t-muted cl-stereotype" font-size="${layout.stereotypeFont}" text-anchor="middle">${esc(stereotype)}</text>` : ''}
+          ${stereotype ? `<text x="${cx}" y="${type.y + 16}" class="t-muted cl-stereotype" font-size="${layout.stereotypeFont}" text-anchor="middle">${esc(stereotype)}</text>` : ""}
           <text data-node-label="" x="${cx}" y="${nameY}" class="t-primary" font-size="${layout.nameFont}" font-weight="700" text-anchor="middle"${italic}>${esc(type.label)}</text>
 ${renderMembers(type)}
         </g>`;
@@ -970,11 +1235,11 @@ ${renderMembers(type)}
 function markerAttrs(kind, { reversed = false } = {}) {
   const notation = NOTATION[kind];
   if (reversed) return ` marker-start="url(#cl-${notation.end}-start)"`;
-  return `${notation.start ? ` marker-start="url(#cl-${notation.start})"` : ''}${notation.end ? ` marker-end="url(#cl-${notation.end})"` : ''}`;
+  return `${notation.start ? ` marker-start="url(#cl-${notation.start})"` : ""}${notation.end ? ` marker-end="url(#cl-${notation.end})"` : ""}`;
 }
 
 function relationshipClass(kind) {
-  return `a-default cl-relationship${NOTATION[kind].dashed ? ' cl-dashed' : ''}`;
+  return `a-default cl-relationship${NOTATION[kind].dashed ? " cl-dashed" : ""}`;
 }
 
 // Bus members share their trunk and bus, so each is drawn starting at the
@@ -984,12 +1249,14 @@ function renderRelationshipPath(relationship, index) {
   const routed = pathFor(relationship);
   const reversed = busPaths.has(relationship);
   const d = reversed ? roundedPath([...routed.points].reverse(), 8) : routed.d;
-  const bus = reversed ? ` data-class-bus="${esc(relationship.to)}" data-motion-path="${esc(routed.d)}"` : '';
-  return `        <path ${focusEdgeAttrs(relationship.from, relationship.to, relationship.label, index, relationship.id)} data-class-relationship="${relationship.kind}"${bus} data-composition-points="${routePointsValue(routed.points)}" d="${d}" class="${relationshipClass(relationship.kind)}"${animateAttr(cd.meta, 'edge', index)} stroke-width="1.5"${markerAttrs(relationship.kind, { reversed })}/>`;
+  const bus = reversed
+    ? ` data-class-bus="${esc(relationship.to)}" data-motion-path="${esc(routed.d)}"`
+    : "";
+  return `        <path ${focusEdgeAttrs(relationship.from, relationship.to, relationship.label, index, relationship.id)} data-class-relationship="${relationship.kind}"${bus} data-composition-points="${routePointsValue(routed.points)}" d="${d}" class="${relationshipClass(relationship.kind)}"${animateAttr(cd.meta, "edge", index)} stroke-width="1.5"${markerAttrs(relationship.kind, { reversed })}/>`;
 }
 
 function renderRelationshipLabel(relationship, index) {
-  if (!relationship.label) return '';
+  if (!relationship.label) return "";
   const [lx, ly] = relationshipLabelPoint(relationship);
   const box = relationshipLabelBox(relationship);
   return `        <g data-detail="context" ${focusEdgeAttrs(relationship.from, relationship.to, relationship.label, index, relationship.id)} data-class-relationship="${relationship.kind}">
@@ -1009,12 +1276,16 @@ function legendSwatch(entry) {
   return `${hit}<path d="M ${x0} ${y} L ${x1} ${y}" class="${relationshipClass(entry.kind)}" stroke-width="1.5"${markerAttrs(entry.kind)}/>`;
 }
 
-const LEGEND_HOVER_RULES = RELATIONSHIP_KINDS.map((kind) => `          svg[data-class-ui]:has([data-legend-semantic-kind="${kind}"]:is(:hover, :focus-within)) [data-class-relationship]:not([data-class-relationship="${kind}"]) { opacity: .15; }`).join('\n');
+const LEGEND_HOVER_RULES = RELATIONSHIP_KINDS.map(
+  (kind) =>
+    `          svg[data-class-ui]:has([data-legend-semantic-kind="${kind}"]:is(:hover, :focus-within)) [data-class-relationship]:not([data-class-relationship="${kind}"]) { opacity: .15; }`,
+).join("\n");
 
 function renderLegend() {
   const obstacles = relationshipLegendObstacles(routable, {
     pointsFor: (relationship) => pathFor(relationship).points,
-    labelRectFor: (relationship) => (relationship.label ? relationshipLabelBox(relationship) : null),
+    labelRectFor: (relationship) =>
+      relationship.label ? relationshipLabelBox(relationship) : null,
   });
   return renderResolvedLegend({
     entries: legendEntries,
@@ -1027,14 +1298,16 @@ function renderLegend() {
 function renderSvg() {
   // Like the ERD, an automatic canvas lets the reader scroll a tall model
   // instead of shrinking member rows past legibility.
-  const readerFit = cd.meta?.viewBox ? '' : ' data-reader-fit="intrinsic-height" data-reader-min-text="7.5"';
+  const readerFit = cd.meta?.viewBox
+    ? ""
+    : ' data-reader-fit="intrinsic-height" data-reader-min-text="7.5"';
   return `      <svg viewBox="0 0 ${viewBox[0]} ${viewBox[1]}" ${svgRootAttrs(cd.meta)} data-class-ui=""${readerFit}>
-${svgAccessibleText(cd.meta, 'class')}
+${svgAccessibleText(cd.meta, "class")}
 ${renderDefinitions(renderMarkerDefs())}
         <style>
           svg[data-class-ui] .cl-zebra { fill: color-mix(in srgb, var(--cl-hue) 6%, transparent); }
           svg[data-class-ui] .cl-param { fill: color-mix(in srgb, var(--text) 72%, var(--text-muted)); }
-${[...new Set(Object.values(KIND_TONE))].map((tone) => `          svg[data-class-ui] .cl-hue-${tone} { --cl-hue: var(--${tone}-stroke); }`).join('\n')}
+${[...new Set(Object.values(KIND_TONE))].map((tone) => `          svg[data-class-ui] .cl-hue-${tone} { --cl-hue: var(--${tone}-stroke); }`).join("\n")}
           svg[data-class-ui] .cl-type { fill: var(--mask); stroke: color-mix(in srgb, var(--cl-hue) 46%, var(--lane-stroke)); }
           svg[data-class-ui] [data-class-kind="abstract"] .cl-type { stroke-dasharray: 5 3; stroke: color-mix(in srgb, var(--cl-hue) 64%, var(--lane-stroke)); }
           svg[data-class-ui] .cl-header { stroke: none; }
@@ -1066,13 +1339,23 @@ ${LEGEND_HOVER_RULES}
         <rect width="100%" height="100%" fill="url(#grid)" />
 
         <!-- Relationships (before types for correct z-order) -->
-${relationships.map((relationship, index) => (renderableRelationship(relationship) ? renderRelationshipPath(relationship, index) : '')).filter(Boolean).join('\n')}
+${relationships
+  .map((relationship, index) =>
+    renderableRelationship(relationship) ? renderRelationshipPath(relationship, index) : "",
+  )
+  .filter(Boolean)
+  .join("\n")}
 
         <!-- Types -->
-${[...types.values()].map(renderType).join('\n\n')}
+${[...types.values()].map(renderType).join("\n\n")}
 
         <!-- Relationship labels -->
-${relationships.map((relationship, index) => (renderableRelationship(relationship) ? renderRelationshipLabel(relationship, index) : '')).filter(Boolean).join('\n')}
+${relationships
+  .map((relationship, index) =>
+    renderableRelationship(relationship) ? renderRelationshipLabel(relationship, index) : "",
+  )
+  .filter(Boolean)
+  .join("\n")}
 
         <!-- Legend -->
 ${renderLegend()}
@@ -1087,7 +1370,7 @@ if (layoutJsonMode) {
 writeDiagram({
   outPath,
   template,
-  diagramType: 'class',
+  diagramType: "class",
   meta: cd.meta,
   svg: renderSvg(),
   cards: cd.cards,

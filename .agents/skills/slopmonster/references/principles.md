@@ -11,7 +11,7 @@ function before discussing optional integrations. In an email, state the reason
 for writing early. A sales page may need to establish a customer problem before
 describing the offer.
 
-Steve Krug's *Don't Make Me Think* informs the emphasis on reducing unnecessary
+Steve Krug's _Don't Make Me Think_ informs the emphasis on reducing unnecessary
 interpretation. Problem-first pitch guidance from Daniel Priestley and Alex
 Hormozi is useful for sales copy; it should not dictate every document's opening.
 

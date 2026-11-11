@@ -76,11 +76,11 @@ export function MessagesPanel() {
     <main dir="rtl" className="mx-auto w-full max-w-4xl space-y-4 px-4 py-5">
       <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
         <div>
-          <h1 className="font-display text-lg font-bold text-foreground flex items-center gap-2">
+          <h1 className="flex items-center gap-2 font-display text-lg font-bold text-foreground">
             <MessageSquare className="h-5 w-5 text-primary" />
             رسائل العملاء والشكاوى (Customer Messages)
           </h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
+          <p className="mt-0.5 text-xs text-muted-foreground">
             متابعة استفسارات وشكاوى وآراء العملاء المرسلة عبر الموقع والتواصل المباشر معهم.
           </p>
         </div>
@@ -88,8 +88,8 @@ export function MessagesPanel() {
           <span
             className={`rounded-full px-3.5 py-1 text-xs font-black transition-all ${
               openCount > 0
-                ? "bg-amber-100 text-amber-800 border border-amber-300 animate-pulse"
-                : "bg-emerald-100 text-emerald-800 border border-emerald-300"
+                ? "animate-pulse border border-amber-300 bg-amber-100 text-amber-800"
+                : "border border-emerald-300 bg-emerald-100 text-emerald-800"
             }`}
           >
             {openCount > 0 ? `جديدة: ${openCount} 📬` : "كل الرسائل مجابة ✅"}
@@ -121,7 +121,7 @@ export function MessagesPanel() {
             return (
               <li
                 key={row.id}
-                className={`rounded-2xl border p-4 sm:p-5 shadow-xs transition-all ${
+                className={`rounded-2xl border p-4 shadow-xs transition-all sm:p-5 ${
                   handled
                     ? "border-slate-200 bg-white/70 opacity-80"
                     : "border-amber-300 bg-[#FFFDF9] ring-1 ring-amber-400/30"
@@ -130,9 +130,9 @@ export function MessagesPanel() {
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 pb-3">
                   <div className="min-w-0 space-y-0.5">
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-base text-foreground">{row.name}</span>
+                      <span className="text-base font-bold text-foreground">{row.name}</span>
                       {!handled && (
-                        <span className="rounded-full bg-amber-500 text-white px-2 py-0.5 text-[10px] font-black uppercase">
+                        <span className="rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-black text-white uppercase">
                           جديدة
                         </span>
                       )}
@@ -151,7 +151,7 @@ export function MessagesPanel() {
                 </div>
 
                 {/* Message Body */}
-                <div className="mt-3 rounded-xl bg-white p-3.5 border border-border/60 text-sm text-foreground leading-relaxed whitespace-pre-wrap break-words">
+                <div className="mt-3 rounded-xl border border-border/60 bg-white p-3.5 text-sm leading-relaxed break-words whitespace-pre-wrap text-foreground">
                   {row.message}
                 </div>
 
@@ -162,7 +162,7 @@ export function MessagesPanel() {
                     href={waUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-full bg-[#25D366] px-4 text-xs font-extrabold text-white shadow-xs hover:bg-[#20ba59] active:scale-95 transition-all"
+                    className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-full bg-[#25D366] px-4 text-xs font-extrabold text-white shadow-xs transition-all hover:bg-[#20ba59] active:scale-95"
                   >
                     <MessageSquare className="h-4 w-4" />
                     <span>💬 تواصل عبر واتساب</span>
@@ -176,7 +176,7 @@ export function MessagesPanel() {
                     onClick={() =>
                       update.mutate({ id: row.id, status: handled ? "new" : "handled" })
                     }
-                    className={`inline-flex min-h-10 items-center gap-1.5 rounded-full px-4 text-xs font-bold transition-all disabled:opacity-60 cursor-pointer ${
+                    className={`inline-flex min-h-10 cursor-pointer items-center gap-1.5 rounded-full px-4 text-xs font-bold transition-all disabled:opacity-60 ${
                       handled
                         ? "border border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200"
                         : "bg-[#B8801C] text-white shadow-xs hover:bg-[#9E6C14]"
@@ -203,7 +203,7 @@ export function MessagesPanel() {
                           remove.mutate(row.id);
                         }
                       }}
-                      className="inline-flex min-h-10 items-center gap-1.5 rounded-full px-3.5 text-xs font-bold text-destructive hover:bg-destructive/10 border border-destructive/20 transition-all cursor-pointer disabled:opacity-60"
+                      className="inline-flex min-h-10 cursor-pointer items-center gap-1.5 rounded-full border border-destructive/20 px-3.5 text-xs font-bold text-destructive transition-all hover:bg-destructive/10 disabled:opacity-60"
                       title="حذف الرسالة نهائياً"
                     >
                       <Trash2 className="h-4 w-4" />

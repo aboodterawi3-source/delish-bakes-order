@@ -20,9 +20,12 @@ async function runTests() {
   if (phoneLikeMatch) {
     const PHONE_PATTERN = eval(phoneLikeMatch[1]);
     const validPhone = "0791234567";
-    const invalidPhone = "٠٧٩١٢٣٤٥٦٧"; 
+    const invalidPhone = "٠٧٩١٢٣٤٥٦٧";
     console.assert(PHONE_PATTERN.test(validPhone), `Valid phone failed`);
-    console.assert(!PHONE_PATTERN.test(invalidPhone), `Invalid phone passed (should block Arabic numerals)`);
+    console.assert(
+      !PHONE_PATTERN.test(invalidPhone),
+      `Invalid phone passed (should block Arabic numerals)`,
+    );
     console.log("✔ PHONE_LIKE regex tested (blocks Arabic-Indic numbers)");
   } else {
     console.error("❌ PHONE_PATTERN not found in validators.ts");

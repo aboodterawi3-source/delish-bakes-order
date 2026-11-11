@@ -80,6 +80,6 @@ $ python3 tools/deslop.py --text "$(cat cleansed.txt)"
 **3/5 → 5/5, meaning intact, length within 10%, nothing invented.** That is the whole
 loop: lint, rewrite, cleanse, re-lint.
 
-Note what the cleanse did *not* fix: the copy is now clean, but it is still generic —
+Note what the cleanse did _not_ fix: the copy is now clean, but it is still generic —
 no numbers, no named pain, no refusals. That is what `references/principles.md` is for.
 The linter gets you to "not machine". The principles get you to "good".

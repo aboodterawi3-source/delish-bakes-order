@@ -482,33 +482,33 @@ export function OrdersWorkspace({
   return (
     <div dir="rtl" className="min-w-0 space-y-4 font-sans select-none">
       {/* 1. MASTER COMMAND & METRICS BAR */}
-      <div className="grid gap-3.5 rounded-3xl border border-border/80 bg-card p-4 sm:p-5 shadow-xs">
+      <div className="grid gap-3.5 rounded-3xl border border-border/80 bg-card p-4 shadow-xs sm:p-5">
         {/* Quick Analytics Counters */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-          <div className="rounded-2xl bg-secondary/40 p-3 border border-border/60">
-            <span className="text-[11px] font-bold text-muted-foreground block">
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+          <div className="rounded-2xl border border-border/60 bg-secondary/40 p-3">
+            <span className="block text-[11px] font-bold text-muted-foreground">
               إجمالي الطلبات
             </span>
             <span className="text-lg font-black text-foreground">{stats.totalOrders} طلب</span>
           </div>
-          <div className="rounded-2xl bg-amber-500/10 p-3 border border-amber-500/20">
-            <span className="text-[11px] font-black text-amber-700 dark:text-amber-300 block">
+          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-3">
+            <span className="block text-[11px] font-black text-amber-700 dark:text-amber-300">
               الطلبات النشطة الآن
             </span>
             <span className="text-lg font-black text-amber-700 dark:text-amber-300">
               {stats.activeCount} قيد المتابعة
             </span>
           </div>
-          <div className="rounded-2xl bg-emerald-500/10 p-3 border border-emerald-500/20">
-            <span className="text-[11px] font-black text-emerald-700 dark:text-emerald-300 block">
+          <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-3">
+            <span className="block text-[11px] font-black text-emerald-700 dark:text-emerald-300">
               المبالغ المحصلة
             </span>
             <span className="text-lg font-black text-emerald-700 dark:text-emerald-300">
               {jd(stats.totalCollected)}
             </span>
           </div>
-          <div className="rounded-2xl bg-rose-500/10 p-3 border border-rose-500/20">
-            <span className="text-[11px] font-black text-rose-700 dark:text-rose-300 block">
+          <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 p-3">
+            <span className="block text-[11px] font-black text-rose-700 dark:text-rose-300">
               المتبقي عند التسليم
             </span>
             <span className="text-lg font-black text-rose-700 dark:text-rose-300">
@@ -518,21 +518,21 @@ export function OrdersWorkspace({
         </div>
 
         {/* Search & Actions Row */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pt-2 border-t border-border/60">
+        <div className="flex flex-col items-stretch justify-between gap-2.5 border-t border-border/60 pt-2 sm:flex-row sm:items-center">
           <div className="relative flex-1">
             <input
               type="search"
               value={term}
               onChange={(e) => setTerm(e.target.value)}
               placeholder="ابحث بالاسم، هاتف العميل، اسم الكيك، أو رقم الطلب..."
-              className="min-h-[46px] w-full rounded-2xl border border-input bg-background pe-10 ps-3.5 text-sm font-bold text-foreground outline-none focus:border-primary"
+              className="min-h-[46px] w-full rounded-2xl border border-input bg-background ps-3.5 pe-10 text-sm font-bold text-foreground outline-none focus:border-primary"
             />
-            <Search className="absolute end-3.5 top-3.5 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Search className="pointer-events-none absolute end-3.5 top-3.5 h-4 w-4 text-muted-foreground" />
             {term && (
               <button
                 type="button"
                 onClick={() => setTerm("")}
-                className="absolute end-10 top-3 text-muted-foreground hover:text-foreground p-1 cursor-pointer"
+                className="absolute end-10 top-3 cursor-pointer p-1 text-muted-foreground hover:text-foreground"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -541,13 +541,13 @@ export function OrdersWorkspace({
 
           <div className="flex items-center gap-2">
             {/* View Mode Switcher (List vs Calendar) */}
-            <div className="flex rounded-2xl bg-secondary/60 p-1 border border-border/70">
+            <div className="flex rounded-2xl border border-border/70 bg-secondary/60 p-1">
               <button
                 type="button"
                 onClick={() => setMode("list")}
-                className={`min-h-[38px] px-3.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                className={`min-h-[38px] cursor-pointer rounded-xl px-3.5 text-xs font-black transition-all ${
                   mode === "list"
-                    ? "bg-card text-foreground shadow-xs border border-border/80"
+                    ? "border border-border/80 bg-card text-foreground shadow-xs"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -556,9 +556,9 @@ export function OrdersWorkspace({
               <button
                 type="button"
                 onClick={() => setMode("calendar")}
-                className={`min-h-[38px] px-3.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                className={`min-h-[38px] cursor-pointer rounded-xl px-3.5 text-xs font-black transition-all ${
                   mode === "calendar"
-                    ? "bg-card text-primary shadow-xs border border-border/80"
+                    ? "border border-border/80 bg-card text-primary shadow-xs"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -571,7 +571,7 @@ export function OrdersWorkspace({
               type="button"
               onClick={() => void orders.refetch()}
               title="تحديث البيانات"
-              className="grid h-11 w-11 place-items-center rounded-2xl border border-border bg-card text-foreground hover:bg-secondary cursor-pointer"
+              className="grid h-11 w-11 cursor-pointer place-items-center rounded-2xl border border-border bg-card text-foreground hover:bg-secondary"
             >
               <RefreshCw
                 className={`h-4 w-4 ${orders.isFetching ? "animate-spin text-primary" : ""}`}
@@ -583,7 +583,7 @@ export function OrdersWorkspace({
               type="button"
               onClick={() => setWipeConfirmOpen(true)}
               title="تنظيف ومسح كافة الطلبات"
-              className="min-h-[44px] px-3.5 rounded-2xl border border-rose-300 bg-rose-50 text-rose-800 hover:bg-rose-100 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-300 text-xs font-black shadow-2xs hover:opacity-95 active:scale-95 transition flex items-center gap-1.5 cursor-pointer shrink-0"
+              className="flex min-h-[44px] shrink-0 cursor-pointer items-center gap-1.5 rounded-2xl border border-rose-300 bg-rose-50 px-3.5 text-xs font-black text-rose-800 shadow-2xs transition hover:bg-rose-100 hover:opacity-95 active:scale-95 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-300"
             >
               <Trash2 className="h-4 w-4 text-rose-600" />
               <span className="hidden md:inline">تنظيف كافة الطلبات</span>
@@ -594,7 +594,7 @@ export function OrdersWorkspace({
               <button
                 type="button"
                 onClick={() => setShiftOpen(true)}
-                className="min-h-[44px] px-4 rounded-2xl bg-primary text-primary-foreground text-xs font-black shadow-xs hover:opacity-90 active:scale-95 transition flex items-center gap-1.5 cursor-pointer shrink-0"
+                className="flex min-h-[44px] shrink-0 cursor-pointer items-center gap-1.5 rounded-2xl bg-primary px-4 text-xs font-black text-primary-foreground shadow-xs transition hover:opacity-90 active:scale-95"
               >
                 <BadgeDollarSign className="h-4 w-4" />
                 <span>إغلاق الشيفت المالي</span>
@@ -609,7 +609,7 @@ export function OrdersWorkspace({
         {/* Status Filter Chips & Method Selector */}
         <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
           {/* Method Filter */}
-          <div className="flex items-center gap-1 p-1 rounded-2xl bg-secondary/50 border border-border/70">
+          <div className="flex items-center gap-1 rounded-2xl border border-border/70 bg-secondary/50 p-1">
             {[
               { id: "all" as const, label: "الكل" },
               { id: "delivery" as const, label: "🛵 دليفري منازل" },
@@ -619,9 +619,9 @@ export function OrdersWorkspace({
                 key={tab.id}
                 type="button"
                 onClick={() => setMethodFilter(tab.id)}
-                className={`min-h-[36px] px-3 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                className={`min-h-[36px] cursor-pointer rounded-xl px-3 text-xs font-bold transition-all ${
                   methodFilter === tab.id
-                    ? "bg-primary text-primary-foreground shadow-2xs font-black"
+                    ? "bg-primary font-black text-primary-foreground shadow-2xs"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -647,10 +647,10 @@ export function OrdersWorkspace({
                   key={st.key}
                   type="button"
                   onClick={() => setStatusFilter(st.key)}
-                  className={`min-h-[34px] px-3 rounded-xl text-xs font-black shrink-0 transition-all cursor-pointer border ${
+                  className={`min-h-[34px] shrink-0 cursor-pointer rounded-xl border px-3 text-xs font-black transition-all ${
                     isActive
-                      ? "bg-foreground text-background border-foreground shadow-2xs"
-                      : "border-border/70 bg-card text-muted-foreground hover:text-foreground hover:bg-secondary/60"
+                      ? "border-foreground bg-foreground text-background shadow-2xs"
+                      : "border-border/70 bg-card text-muted-foreground hover:bg-secondary/60 hover:text-foreground"
                   }`}
                 >
                   {st.label}
@@ -671,7 +671,7 @@ export function OrdersWorkspace({
         </div>
       ) : orders.isError ? (
         <div className="grid h-48 place-items-center rounded-3xl border border-destructive/30 bg-destructive/5 p-6 text-center text-destructive">
-          <p className="font-bold text-sm">تعذر تحميل بيانات الطلبات. يرجى تحديث الصفحة.</p>
+          <p className="text-sm font-bold">تعذر تحميل بيانات الطلبات. يرجى تحديث الصفحة.</p>
         </div>
       ) : mode === "calendar" ? (
         <OrdersCalendar
@@ -682,8 +682,8 @@ export function OrdersWorkspace({
       ) : list.length === 0 ? (
         <div className="grid h-52 place-items-center rounded-3xl border border-dashed border-border bg-card p-6 text-center">
           <div>
-            <CalendarClock className="mx-auto h-8 w-8 text-muted-foreground/40 mb-2" />
-            <p className="font-black text-sm text-muted-foreground">
+            <CalendarClock className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
+            <p className="text-sm font-black text-muted-foreground">
               لا توجد طلبات مطابقة للبحث أو الفلتر المحدد
             </p>
           </div>
@@ -774,18 +774,18 @@ export function OrdersWorkspace({
       {zoomImage && (
         <div
           onClick={() => setZoomImage(null)}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 flex animate-in items-center justify-center bg-black/90 p-4 backdrop-blur-md duration-200 fade-in"
         >
           <div className="relative max-h-[92vh] max-w-4xl" onClick={(e) => e.stopPropagation()}>
             <img
               src={zoomImage}
               alt="صورة التصميم"
-              className="max-h-[85vh] max-w-full rounded-3xl object-contain shadow-2xl border border-white/20"
+              className="max-h-[85vh] max-w-full rounded-3xl border border-white/20 object-contain shadow-2xl"
             />
             <button
               type="button"
               onClick={() => setZoomImage(null)}
-              className="mt-3 mx-auto min-h-[44px] px-6 rounded-full bg-white text-slate-950 font-black text-xs shadow-md flex items-center gap-1.5 cursor-pointer"
+              className="mx-auto mt-3 flex min-h-[44px] cursor-pointer items-center gap-1.5 rounded-full bg-white px-6 text-xs font-black text-slate-950 shadow-md"
             >
               <X className="h-4 w-4" /> إغلاق العرض
             </button>
@@ -795,15 +795,15 @@ export function OrdersWorkspace({
 
       {/* 5. CANCEL ORDER MODAL */}
       {cancelFor && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="w-full max-w-md rounded-3xl border border-border bg-card p-5 shadow-2xl space-y-4">
-            <div className="flex items-center gap-2.5 text-destructive border-b border-border pb-3">
+        <div className="fixed inset-0 z-50 grid animate-in place-items-center bg-black/60 p-4 backdrop-blur-xs duration-150 fade-in">
+          <div className="w-full max-w-md space-y-4 rounded-3xl border border-border bg-card p-5 shadow-2xl">
+            <div className="flex items-center gap-2.5 border-b border-border pb-3 text-destructive">
               <AlertTriangle className="h-5 w-5" />
-              <h3 className="font-black text-base">إلغاء الطلب {cancelFor.order_number}</h3>
+              <h3 className="text-base font-black">إلغاء الطلب {cancelFor.order_number}</h3>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-foreground mb-1">
+              <label className="mb-1 block text-xs font-bold text-foreground">
                 سبب الإلغاء (مطلوب لتوثيق السجل) *
               </label>
               <textarea
@@ -830,14 +830,14 @@ export function OrdersWorkspace({
                   setSelectedId(null);
                   toast.success("تم إلغاء الطلب وتوثيق السبب");
                 }}
-                className="flex-1 min-h-[46px] rounded-xl bg-destructive text-destructive-foreground font-black text-xs shadow-xs hover:opacity-90 disabled:opacity-40 cursor-pointer"
+                className="min-h-[46px] flex-1 cursor-pointer rounded-xl bg-destructive text-xs font-black text-destructive-foreground shadow-xs hover:opacity-90 disabled:opacity-40"
               >
                 تأكيد الإلغاء
               </button>
               <button
                 type="button"
                 onClick={() => setCancelFor(null)}
-                className="flex-1 min-h-[46px] rounded-xl border border-border bg-secondary/50 text-foreground font-bold text-xs hover:bg-secondary cursor-pointer"
+                className="min-h-[46px] flex-1 cursor-pointer rounded-xl border border-border bg-secondary/50 text-xs font-bold text-foreground hover:bg-secondary"
               >
                 تراجع
               </button>
@@ -851,12 +851,12 @@ export function OrdersWorkspace({
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-150"
+          className="fixed inset-0 z-50 grid animate-in place-items-center bg-black/60 p-4 backdrop-blur-xs duration-150 fade-in"
           onClick={(e) => {
             if (e.target === e.currentTarget && !wiping) setWipeConfirmOpen(false);
           }}
         >
-          <div className="w-full max-w-md rounded-3xl border border-border bg-card p-6 shadow-2xl text-center space-y-4">
+          <div className="w-full max-w-md space-y-4 rounded-3xl border border-border bg-card p-6 text-center shadow-2xl">
             <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-rose-100 text-rose-700">
               <AlertTriangle className="h-7 w-7" />
             </div>
@@ -864,21 +864,21 @@ export function OrdersWorkspace({
               <h3 className="font-display text-lg font-black text-foreground">
                 تأكيد مسح وتنظيف كافة الطلبات
               </h3>
-              <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
                 هل أنت متأكد من رغبتك في حذف وتنظيف جميع الطلبات المسجلة في الموقع؟ سيتم تفريغ جدول
                 الطلبات وشاشات المطبخ والمبيعات بالكامل للبدء بسجل نظيف.
                 <br />
-                <strong className="text-rose-600 block mt-1">
+                <strong className="mt-1 block text-rose-600">
                   هذا الإجراء نهائي ولا يمكن التراجع عنه.
                 </strong>
               </p>
             </div>
-            <div className="flex flex-col sm:flex-row gap-2 pt-2">
+            <div className="flex flex-col gap-2 pt-2 sm:flex-row">
               <button
                 type="button"
                 onClick={handleWipeAll}
                 disabled={wiping}
-                className="flex-1 min-h-12 inline-flex items-center justify-center gap-2 rounded-2xl bg-rose-600 px-5 text-sm font-black text-white hover:bg-rose-700 disabled:opacity-50 transition cursor-pointer"
+                className="inline-flex min-h-12 flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl bg-rose-600 px-5 text-sm font-black text-white transition hover:bg-rose-700 disabled:opacity-50"
               >
                 {wiping ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -891,7 +891,7 @@ export function OrdersWorkspace({
                 type="button"
                 onClick={() => setWipeConfirmOpen(false)}
                 disabled={wiping}
-                className="min-h-12 rounded-2xl border border-border bg-background px-5 text-sm font-bold text-foreground hover:bg-secondary transition cursor-pointer"
+                className="min-h-12 cursor-pointer rounded-2xl border border-border bg-background px-5 text-sm font-bold text-foreground transition hover:bg-secondary"
               >
                 إلغاء وتراجع
               </button>
@@ -902,12 +902,12 @@ export function OrdersWorkspace({
 
       {/* 6. SHIFT FINANCIAL REPORT MODAL */}
       {shiftOpen && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="w-full max-w-md rounded-3xl border border-border bg-card p-5 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 grid animate-in place-items-center bg-black/60 p-4 backdrop-blur-xs duration-150 fade-in">
+          <div className="max-h-[92vh] w-full max-w-md space-y-4 overflow-y-auto rounded-3xl border border-border bg-card p-5 shadow-2xl">
             <div className="flex items-center justify-between border-b border-border pb-3">
               <div className="flex items-center gap-2">
                 <BadgeDollarSign className="h-5 w-5 text-emerald-600" />
-                <h3 className="font-black text-base text-foreground">تقرير إغلاق الشيفت المالي</h3>
+                <h3 className="text-base font-black text-foreground">تقرير إغلاق الشيفت المالي</h3>
               </div>
               <button
                 type="button"
@@ -919,7 +919,7 @@ export function OrdersWorkspace({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-foreground mb-1">تاريخ الشيفت:</label>
+              <label className="mb-1 block text-xs font-bold text-foreground">تاريخ الشيفت:</label>
               <input
                 type="date"
                 value={shiftDate}
@@ -929,7 +929,7 @@ export function OrdersWorkspace({
             </div>
 
             {report ? (
-              <div className="space-y-3 rounded-2xl bg-secondary/30 p-3.5 border border-border/70 text-xs">
+              <div className="space-y-3 rounded-2xl border border-border/70 bg-secondary/30 p-3.5 text-xs">
                 {report.byMethod.map((row) => (
                   <div key={row.method} className="flex items-center justify-between font-bold">
                     <span>
@@ -939,11 +939,11 @@ export function OrdersWorkspace({
                     <span className="text-foreground">{jd(row.collected)}</span>
                   </div>
                 ))}
-                <div className="flex items-center justify-between border-t border-border/80 pt-2 font-black text-sm text-foreground">
+                <div className="flex items-center justify-between border-t border-border/80 pt-2 text-sm font-black text-foreground">
                   <span>إجمالي المحصل:</span>
-                  <span className="text-emerald-600 text-base">{jd(report.collected)}</span>
+                  <span className="text-base text-emerald-600">{jd(report.collected)}</span>
                 </div>
-                <div className="flex items-center justify-between text-muted-foreground font-bold">
+                <div className="flex items-center justify-between font-bold text-muted-foreground">
                   <span>المتبقي على العملاء:</span>
                   <span className="text-rose-600">{jd(report.outstanding)}</span>
                 </div>
@@ -957,7 +957,7 @@ export function OrdersWorkspace({
                 <button
                   type="button"
                   onClick={() => printShiftReport(report, shiftDate)}
-                  className="w-full min-h-[48px] rounded-2xl bg-primary text-primary-foreground font-black text-xs shadow-md hover:opacity-90 active:scale-95 transition flex items-center justify-center gap-2 cursor-pointer mt-2"
+                  className="mt-2 flex min-h-[48px] w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-primary text-xs font-black text-primary-foreground shadow-md transition hover:opacity-90 active:scale-95"
                 >
                   <Printer className="h-4 w-4" />
                   <span>طباعة بون الشيفت الحراري 🖨️</span>
@@ -999,19 +999,19 @@ const OrderRowCard = memo(function OrderRowCard({
   const statusInfo = statusMeta[order.status] || statusMeta.new;
 
   return (
-    <div className="rounded-3xl border border-border/80 bg-card p-3.5 sm:p-4 shadow-2xs hover:shadow-xs hover:border-primary/40 transition-all space-y-3">
+    <div className="space-y-3 rounded-3xl border border-border/80 bg-card p-3.5 shadow-2xs transition-all hover:border-primary/40 hover:shadow-xs sm:p-4">
       {/* Top Strip: Status, Order Number, Delivery Method, Date/Time */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-2.5">
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex flex-wrap items-center gap-2">
           <OrderStatusBadge status={order.status} showDot size="md" />
-          <span className="font-black text-sm text-foreground">
+          <span className="text-sm font-black text-foreground">
             {orderLabel(order.order_number, order.staff_code)}
           </span>
-          <span className="text-xs font-bold text-foreground truncate max-w-[200px]">
+          <span className="max-w-[200px] truncate text-xs font-bold text-foreground">
             {order.order_name?.trim() || order.customer_name}
           </span>
           {order.last_edited_at && (
-            <span className="inline-flex items-center gap-1 rounded-lg bg-amber-500/10 px-2 py-0.5 text-[10px] font-black text-amber-600 border border-amber-500/20">
+            <span className="inline-flex items-center gap-1 rounded-lg border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[10px] font-black text-amber-600">
               <Pencil className="h-2.5 w-2.5" /> معدّل
             </span>
           )}
@@ -1023,7 +1023,7 @@ const OrderRowCard = memo(function OrderRowCard({
             {order.requested_date}
           </span>
           <span>•</span>
-          <span className="inline-flex items-center gap-1 text-foreground font-black">
+          <span className="inline-flex items-center gap-1 font-black text-foreground">
             <Clock className="h-3.5 w-3.5 text-amber-500" />
             {order.requested_time.slice(0, 5)}
           </span>
@@ -1031,14 +1031,14 @@ const OrderRowCard = memo(function OrderRowCard({
       </div>
 
       {/* Middle Row: Content, Inscription, and Fulfilment */}
-      <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
-        <div className="space-y-1.5 flex-1 min-w-0">
+      <div className="flex flex-col items-start justify-between gap-3 sm:flex-row">
+        <div className="min-w-0 flex-1 space-y-1.5">
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <span className="font-black text-foreground">{order.customer_name}</span>
-            <span dir="ltr" className="text-muted-foreground font-bold">
+            <span dir="ltr" className="font-bold text-muted-foreground">
               {order.customer_phone}
             </span>
-            <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg bg-secondary text-foreground">
+            <span className="rounded-lg bg-secondary px-2 py-0.5 text-[11px] font-bold text-foreground">
               {order.method === "delivery"
                 ? `🛵 توصيل (${order.area || "عمان"})`
                 : "🏪 استلام محلي"}
@@ -1052,7 +1052,7 @@ const OrderRowCard = memo(function OrderRowCard({
 
           {/* Inscription Ribbon Badge if present */}
           {order.inscription && (
-            <div className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500/10 px-2.5 py-1 text-xs font-black text-amber-900 dark:text-amber-200 border border-amber-500/20">
+            <div className="inline-flex items-center gap-1.5 rounded-xl border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-xs font-black text-amber-900 dark:text-amber-200">
               <span>✍️</span>
               <span>"{order.inscription}"</span>
             </div>
@@ -1060,19 +1060,19 @@ const OrderRowCard = memo(function OrderRowCard({
 
           {/* Modifications alert banner if any */}
           {order.modifications && order.modifications.length > 0 && (
-            <div className="text-[11px] font-bold text-amber-800 dark:text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-xl border border-amber-500/20">
+            <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-[11px] font-bold text-amber-800 dark:text-amber-300">
               آخر تعديل: {order.modifications[order.modifications.length - 1]?.field}
             </div>
           )}
         </div>
 
         {/* Financial Badge */}
-        <div className="flex sm:flex-col items-end justify-between sm:justify-start w-full sm:w-auto gap-1 shrink-0 pt-2 sm:pt-0 border-t sm:border-0 border-border/40">
+        <div className="flex w-full shrink-0 items-end justify-between gap-1 border-t border-border/40 pt-2 sm:w-auto sm:flex-col sm:justify-start sm:border-0 sm:pt-0">
           <span className="text-base font-black text-foreground">{jd(order.total)}</span>
           <div className="flex items-center gap-2 text-xs">
             <span className="text-muted-foreground">مدفوع: {jd(order.deposit_paid)}</span>
             {isOverpaid ? (
-              <span className="font-black text-purple-600 bg-purple-500/10 px-2 py-0.5 rounded-md border border-purple-500/20">
+              <span className="rounded-md border border-purple-500/20 bg-purple-500/10 px-2 py-0.5 font-black text-purple-600">
                 مستحق إرجاع: {jd(refundDue)} 🔄
               </span>
             ) : (
@@ -1087,12 +1087,12 @@ const OrderRowCard = memo(function OrderRowCard({
       </div>
 
       {/* Bottom Actions Deck */}
-      <div className="flex flex-wrap items-center justify-between gap-2 pt-2.5 border-t border-border/60">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/60 pt-2.5">
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => onOpen(order.id)}
-            className="min-h-[40px] px-4 rounded-xl bg-primary text-primary-foreground text-xs font-black shadow-xs hover:opacity-90 active:scale-95 transition cursor-pointer"
+            className="min-h-[40px] cursor-pointer rounded-xl bg-primary px-4 text-xs font-black text-primary-foreground shadow-xs transition hover:opacity-90 active:scale-95"
           >
             إدارة الطلب ⚡
           </button>
@@ -1101,7 +1101,7 @@ const OrderRowCard = memo(function OrderRowCard({
             <button
               type="button"
               onClick={() => onEditOrder(order.id)}
-              className="min-h-[40px] px-3.5 rounded-xl border border-border bg-card text-foreground text-xs font-bold hover:bg-secondary active:scale-95 transition flex items-center gap-1.5 cursor-pointer"
+              className="flex min-h-[40px] cursor-pointer items-center gap-1.5 rounded-xl border border-border bg-card px-3.5 text-xs font-bold text-foreground transition hover:bg-secondary active:scale-95"
             >
               <Pencil className="h-3.5 w-3.5 text-primary" />
               <span>تعديل</span>
@@ -1111,7 +1111,7 @@ const OrderRowCard = memo(function OrderRowCard({
           <button
             type="button"
             onClick={() => sendCustomerWhatsApp(order)}
-            className="min-h-[40px] px-3.5 rounded-xl border border-emerald-600/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-xs font-black hover:bg-emerald-500/20 active:scale-95 transition flex items-center gap-1.5 cursor-pointer"
+            className="flex min-h-[40px] cursor-pointer items-center gap-1.5 rounded-xl border border-emerald-600/30 bg-emerald-500/10 px-3.5 text-xs font-black text-emerald-700 transition hover:bg-emerald-500/20 active:scale-95 dark:text-emerald-300"
           >
             <MessageCircle className="h-3.5 w-3.5 text-emerald-600" />
             <span>واتساب</span>
@@ -1120,7 +1120,7 @@ const OrderRowCard = memo(function OrderRowCard({
           <button
             type="button"
             onClick={() => printReceipt(order)}
-            className="min-h-[40px] px-3.5 rounded-xl border border-border bg-card text-foreground text-xs font-bold hover:bg-secondary active:scale-95 transition flex items-center gap-1.5 cursor-pointer"
+            className="flex min-h-[40px] cursor-pointer items-center gap-1.5 rounded-xl border border-border bg-card px-3.5 text-xs font-bold text-foreground transition hover:bg-secondary active:scale-95"
           >
             <Printer className="h-3.5 w-3.5" />
             <span>فاتورة</span>
@@ -1132,7 +1132,7 @@ const OrderRowCard = memo(function OrderRowCard({
               onClick={onQuickPaid}
               disabled={isCollecting}
               title="تسجيل دفع المتبقي كاملاً كاش بنقرة واحدة"
-              className="min-h-[40px] px-3.5 rounded-xl bg-emerald-600 text-white text-xs font-black shadow-2xs hover:bg-emerald-700 active:scale-95 transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
+              className="flex min-h-[40px] cursor-pointer items-center gap-1 rounded-xl bg-emerald-600 px-3.5 text-xs font-black text-white shadow-2xs transition hover:bg-emerald-700 active:scale-95 disabled:opacity-50"
             >
               <CheckCircle2 className="h-3.5 w-3.5" />
               <span>{isCollecting ? "جاري التحصيل..." : `استلام ${jd(remaining)} كاش`}</span>
@@ -1143,7 +1143,7 @@ const OrderRowCard = memo(function OrderRowCard({
             <button
               type="button"
               onClick={() => sendScheduleConfirmation(order)}
-              className="min-h-[40px] px-3.5 rounded-xl bg-amber-600 text-white text-xs font-black hover:bg-amber-700 active:scale-95 transition flex items-center gap-1.5 cursor-pointer"
+              className="flex min-h-[40px] cursor-pointer items-center gap-1.5 rounded-xl bg-amber-600 px-3.5 text-xs font-black text-white transition hover:bg-amber-700 active:scale-95"
             >
               <span>تأكيد الموعد 🔄</span>
             </button>
@@ -1156,7 +1156,7 @@ const OrderRowCard = memo(function OrderRowCard({
             type="button"
             onClick={() => onMove(order.id, -1)}
             title="تقديم في الطابور"
-            className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-card active:scale-90 transition cursor-pointer"
+            className="grid h-8 w-8 cursor-pointer place-items-center rounded-lg text-muted-foreground transition hover:bg-card hover:text-foreground active:scale-90"
           >
             <ArrowUp className="h-3.5 w-3.5" />
           </button>
@@ -1164,7 +1164,7 @@ const OrderRowCard = memo(function OrderRowCard({
             type="button"
             onClick={() => onMove(order.id, 1)}
             title="تأخير في الطابور"
-            className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-card active:scale-90 transition cursor-pointer"
+            className="grid h-8 w-8 cursor-pointer place-items-center rounded-lg text-muted-foreground transition hover:bg-card hover:text-foreground active:scale-90"
           >
             <ArrowDown className="h-3.5 w-3.5" />
           </button>
@@ -1377,22 +1377,22 @@ ${collectionText}
 
   return (
     <div
-      className="fixed inset-0 z-40 flex justify-start bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
+      className="fixed inset-0 z-40 flex animate-in justify-start bg-black/60 backdrop-blur-xs duration-200 fade-in"
       role="dialog"
       aria-modal="true"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="ms-auto flex h-full w-full max-w-lg flex-col bg-card p-4 sm:p-5 shadow-2xl animate-in slide-in-from-right duration-250 border-s border-border">
+      <div className="ms-auto flex h-full w-full max-w-lg animate-in flex-col border-s border-border bg-card p-4 shadow-2xl duration-250 slide-in-from-right sm:p-5">
         {/* Drawer Header */}
-        <div className="border-b border-border/80 pb-3 flex items-center justify-between">
+        <div className="flex items-center justify-between border-b border-border/80 pb-3">
           <div className="flex items-center gap-2">
-            <h2 className="font-black text-lg text-foreground">
+            <h2 className="text-lg font-black text-foreground">
               {orderLabel(order.order_number, order.staff_code)}
             </h2>
             {order.last_edited_at && (
-              <span className="rounded-lg bg-amber-500/10 px-2 py-0.5 text-[10px] font-black text-amber-600 border border-amber-500/20">
+              <span className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[10px] font-black text-amber-600">
                 معدّل
               </span>
             )}
@@ -1400,19 +1400,19 @@ ${collectionText}
           <button
             type="button"
             onClick={onClose}
-            className="grid h-10 w-10 place-items-center rounded-full border border-border text-foreground hover:bg-secondary cursor-pointer"
+            className="grid h-10 w-10 cursor-pointer place-items-center rounded-full border border-border text-foreground hover:bg-secondary"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto pt-3.5 space-y-4">
+        <div className="flex-1 space-y-4 overflow-y-auto pt-3.5">
           {/* Workflow Stepper */}
-          <div className="rounded-2xl border border-border bg-secondary/20 p-3 space-y-2">
+          <div className="space-y-2 rounded-2xl border border-border bg-secondary/20 p-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-black text-foreground">حالة الطلب السريعة:</span>
               {order.status === "cancelled" && (
-                <span className="text-[10px] font-black bg-rose-500/10 text-rose-600 px-2 py-0.5 rounded-md">
+                <span className="rounded-md bg-rose-500/10 px-2 py-0.5 text-[10px] font-black text-rose-600">
                   ملغي: {order.cancel_reason}
                 </span>
               )}
@@ -1425,14 +1425,14 @@ ${collectionText}
                     key={step.key}
                     type="button"
                     onClick={() => onPatch({ status: step.key })}
-                    className={`flex flex-col items-center justify-center rounded-xl p-2 min-h-[50px] transition-all cursor-pointer ${
+                    className={`flex min-h-[50px] cursor-pointer flex-col items-center justify-center rounded-xl p-2 transition-all ${
                       isActive
-                        ? "bg-primary text-primary-foreground font-black shadow-xs scale-102"
-                        : "bg-card text-foreground hover:bg-secondary/60 active:scale-95 border border-border/60"
+                        ? "scale-102 bg-primary font-black text-primary-foreground shadow-xs"
+                        : "border border-border/60 bg-card text-foreground hover:bg-secondary/60 active:scale-95"
                     }`}
                   >
                     <span className="text-sm">{step.icon}</span>
-                    <span className="text-[10px] font-bold mt-0.5">{step.label}</span>
+                    <span className="mt-0.5 text-[10px] font-bold">{step.label}</span>
                   </button>
                 );
               })}
@@ -1440,7 +1440,7 @@ ${collectionText}
           </div>
 
           {/* Quick Financial Settle */}
-          <div className="rounded-2xl border border-border bg-card p-3.5 space-y-2.5">
+          <div className="space-y-2.5 rounded-2xl border border-border bg-card p-3.5">
             <div className="flex items-center justify-between text-xs">
               <span className="font-bold text-muted-foreground">
                 الإجمالي: <strong className="text-foreground">{jd(liveTotal)}</strong>
@@ -1449,7 +1449,7 @@ ${collectionText}
                 المدفوع: <strong className="text-emerald-600">{jd(Number(deposit) || 0)}</strong>
               </span>
               {drawerRefundDue > 0 ? (
-                <span className="font-black text-purple-600 bg-purple-500/10 px-2 py-0.5 rounded-md border border-purple-500/20">
+                <span className="rounded-md border border-purple-500/20 bg-purple-500/10 px-2 py-0.5 font-black text-purple-600">
                   مستحق إرجاع: {jd(drawerRefundDue)} 🔄
                 </span>
               ) : (
@@ -1462,13 +1462,13 @@ ${collectionText}
             </div>
 
             {drawerRefundDue > 0 ? (
-              <div className="rounded-xl bg-purple-50 dark:bg-purple-950/40 p-2.5 text-center text-xs font-black text-purple-800 dark:text-purple-200 border border-purple-200 space-y-1">
+              <div className="space-y-1 rounded-xl border border-purple-200 bg-purple-50 p-2.5 text-center text-xs font-black text-purple-800 dark:bg-purple-950/40 dark:text-purple-200">
                 <div>🔄 يوجد فائض دفع بقيمة {jd(drawerRefundDue)} واجب إرجاعه للعميل</div>
                 <button
                   type="button"
                   disabled={isProcessingPayment}
                   onClick={handleSettleRefund}
-                  className="mt-1 px-3 py-1 rounded-lg bg-purple-600 text-white text-[11px] font-bold hover:bg-purple-700 disabled:opacity-50 cursor-pointer"
+                  className="mt-1 cursor-pointer rounded-lg bg-purple-600 px-3 py-1 text-[11px] font-bold text-white hover:bg-purple-700 disabled:opacity-50"
                 >
                   {isProcessingPayment
                     ? "جاري المعالجة..."
@@ -1481,7 +1481,7 @@ ${collectionText}
                   type="button"
                   disabled={isProcessingPayment}
                   onClick={() => handleMarkPaidInFull("cash")}
-                  className="w-full min-h-[46px] rounded-xl bg-emerald-600 text-white font-black text-xs shadow-sm hover:bg-emerald-700 active:scale-95 transition flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                  className="flex min-h-[46px] w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-emerald-600 text-xs font-black text-white shadow-sm transition hover:bg-emerald-700 active:scale-95 disabled:opacity-50"
                 >
                   <CheckCircle2 className="h-4 w-4" />
                   <span>💵 تم استلام المتبقي كاملاً ({jd(remaining)} - كاش)</span>
@@ -1490,22 +1490,22 @@ ${collectionText}
                   type="button"
                   disabled={isProcessingPayment}
                   onClick={() => handleMarkPaidInFull("cliq")}
-                  className="w-full min-h-[40px] rounded-xl border border-emerald-600/30 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 font-bold text-xs hover:bg-emerald-100 disabled:opacity-50 cursor-pointer"
+                  className="min-h-[40px] w-full cursor-pointer rounded-xl border border-emerald-600/30 bg-emerald-50 text-xs font-bold text-emerald-800 hover:bg-emerald-100 disabled:opacity-50 dark:bg-emerald-950/40 dark:text-emerald-200"
                 >
                   💳 تم استلام المتبقي عبر CliQ
                 </button>
               </div>
             ) : (
-              <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/40 p-2 text-center text-xs font-black text-emerald-800 dark:text-emerald-200 border border-emerald-200">
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-2 text-center text-xs font-black text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
                 ✅ الحساب مسدد بالكامل
               </div>
             )}
           </div>
 
           {/* Items & Inscription Review */}
-          <div className="rounded-2xl border border-border bg-card p-3.5 space-y-2">
+          <div className="space-y-2 rounded-2xl border border-border bg-card p-3.5">
             <div className="flex items-center justify-between border-b border-border/60 pb-2">
-              <h4 className="font-black text-xs text-foreground">المنتجات المطلوبة</h4>
+              <h4 className="text-xs font-black text-foreground">المنتجات المطلوبة</h4>
               {onEditOrder && (
                 <button
                   type="button"
@@ -1524,33 +1524,33 @@ ${collectionText}
               {order.items.map((item, idx) => (
                 <div
                   key={idx}
-                  className="rounded-2xl border border-amber-200/80 bg-gradient-to-b from-amber-50/50 to-orange-50/20 dark:from-amber-950/20 dark:to-orange-950/10 p-3.5 space-y-2.5 shadow-2xs"
+                  className="space-y-2.5 rounded-2xl border border-amber-200/80 bg-gradient-to-b from-amber-50/50 to-orange-50/20 p-3.5 shadow-2xs dark:from-amber-950/20 dark:to-orange-950/10"
                 >
-                  <div className="flex justify-between items-center gap-2">
-                    <p className="font-black text-sm text-foreground flex items-center gap-2">
-                      <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-md bg-[#8B4513] text-white text-xs font-black shrink-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="flex items-center gap-2 text-sm font-black text-foreground">
+                      <span className="inline-flex shrink-0 items-center justify-center rounded-md bg-[#8B4513] px-2 py-0.5 text-xs font-black text-white">
                         {item.quantity}×
                       </span>
                       <span className="text-sm font-black">{item.name_ar}</span>
                     </p>
-                    <span className="font-black text-xs text-foreground bg-white dark:bg-card px-2.5 py-1 rounded-lg border border-amber-200/80 dark:border-amber-800/50 shrink-0 whitespace-nowrap shadow-2xs">
+                    <span className="shrink-0 rounded-lg border border-amber-200/80 bg-white px-2.5 py-1 text-xs font-black whitespace-nowrap text-foreground shadow-2xs dark:border-amber-800/50 dark:bg-card">
                       {jd(item.unit_price * item.quantity)}
                     </span>
                   </div>
 
                   {item.options_ar.length > 0 && (
-                    <div className="space-y-1.5 pt-2 border-t border-amber-200/60 dark:border-amber-800/40">
-                      <span className="text-[11px] font-bold text-amber-900/80 dark:text-amber-300/80 block mb-1">
+                    <div className="space-y-1.5 border-t border-amber-200/60 pt-2 dark:border-amber-800/40">
+                      <span className="mb-1 block text-[11px] font-bold text-amber-900/80 dark:text-amber-300/80">
                         تفاصيل ومواصفات الكيكة:
                       </span>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
                         {item.options_ar.map((option, optIdx) => (
                           <div
                             key={optIdx}
-                            className="flex items-center gap-2 rounded-xl bg-white dark:bg-card px-3 py-2 text-xs font-bold text-foreground border border-amber-200/70 dark:border-amber-800/40 shadow-2xs"
+                            className="flex items-center gap-2 rounded-xl border border-amber-200/70 bg-white px-3 py-2 text-xs font-bold text-foreground shadow-2xs dark:border-amber-800/40 dark:bg-card"
                             dir="auto"
                           >
-                            <span className="h-2 w-2 rounded-full bg-amber-500 shrink-0" />
+                            <span className="h-2 w-2 shrink-0 rounded-full bg-amber-500" />
                             <span className="leading-snug">{option}</span>
                           </div>
                         ))}
@@ -1559,7 +1559,7 @@ ${collectionText}
                   )}
 
                   {item.notes && (
-                    <div className="text-xs text-foreground bg-white dark:bg-card p-2.5 rounded-xl border border-amber-200/70 dark:border-amber-800/40">
+                    <div className="rounded-xl border border-amber-200/70 bg-white p-2.5 text-xs text-foreground dark:border-amber-800/40 dark:bg-card">
                       <span className="font-bold text-amber-900 dark:text-amber-300">
                         ملاحظة الصنف:{" "}
                       </span>
@@ -1577,14 +1577,14 @@ ${collectionText}
             )}
 
             {order.notes && (
-              <div className="text-[11px] text-muted-foreground bg-secondary/30 p-2.5 rounded-xl">
+              <div className="rounded-xl bg-secondary/30 p-2.5 text-[11px] text-muted-foreground">
                 ملاحظات: {order.notes}
               </div>
             )}
 
             {order.staff_notes && formatStaffNotes(order.staff_notes) && (
-              <div className="text-[11px] text-amber-950 dark:text-amber-200 bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-xl space-y-1">
-                <span className="font-bold block text-foreground">
+              <div className="space-y-1 rounded-xl border border-amber-500/20 bg-amber-500/10 p-2.5 text-[11px] text-amber-950 dark:text-amber-200">
+                <span className="block font-bold text-foreground">
                   ملاحظات الفريق والسوشيال / إشعار كليك:
                 </span>
                 <p className="whitespace-pre-wrap">{formatStaffNotes(order.staff_notes)}</p>
@@ -1592,15 +1592,15 @@ ${collectionText}
             )}
 
             {order.design_image_url && (
-              <div className="rounded-2xl border border-border bg-card p-3 space-y-2">
+              <div className="space-y-2 rounded-2xl border border-border bg-card p-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-foreground flex items-center gap-1.5">
+                  <span className="flex items-center gap-1.5 text-xs font-black text-foreground">
                     🖼️ الصورة المرفقة بالطلب (تصميم / إشعار حوالة)
                   </span>
                   <button
                     type="button"
                     onClick={() => onZoom(order.design_image_url as string)}
-                    className="text-xs font-bold text-primary hover:underline cursor-pointer"
+                    className="cursor-pointer text-xs font-bold text-primary hover:underline"
                   >
                     تكبير 🔍
                   </button>
@@ -1609,7 +1609,7 @@ ${collectionText}
                   src={order.design_image_url}
                   alt="مرفق الطلب"
                   onClick={() => onZoom(order.design_image_url as string)}
-                  className="max-h-48 w-full rounded-xl object-contain bg-slate-50 border border-slate-200 cursor-pointer hover:opacity-95 transition"
+                  className="max-h-48 w-full cursor-pointer rounded-xl border border-slate-200 bg-slate-50 object-contain transition hover:opacity-95"
                 />
               </div>
             )}
@@ -1617,8 +1617,8 @@ ${collectionText}
 
           {/* Delivery & Driver Dispatch */}
           {order.method === "delivery" && (
-            <div className="rounded-2xl border border-border bg-card p-3.5 space-y-2.5">
-              <h4 className="font-black text-xs text-foreground">توجيه التوصيل والسائق</h4>
+            <div className="space-y-2.5 rounded-2xl border border-border bg-card p-3.5">
+              <h4 className="text-xs font-black text-foreground">توجيه التوصيل والسائق</h4>
               <p className="text-xs text-muted-foreground">
                 العنوان: {order.area} {order.address ? `— ${order.address}` : ""}
               </p>
@@ -1648,7 +1648,7 @@ ${collectionText}
                   href={`https://wa.me/${waNumber(driverPhone)}?text=${encodeURIComponent(driverDispatchMessage)}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full min-h-[42px] rounded-xl bg-[#25D366] text-white font-black text-xs shadow-xs hover:brightness-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                  className="flex min-h-[42px] w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-[#25D366] text-xs font-black text-white shadow-xs hover:brightness-95"
                 >
                   <MessageCircle className="h-4 w-4" />
                   <span>إرسال تفاصيل التوصيل للسائق عبر WhatsApp</span>
@@ -1662,7 +1662,7 @@ ${collectionText}
             href={`https://wa.me/${waNumber(order.sender_phone || order.customer_phone)}?text=${encodeURIComponent(confirmationMessage)}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full min-h-[46px] rounded-2xl bg-[#25D366] text-white font-black text-xs shadow-md hover:brightness-95 flex items-center justify-center gap-2 cursor-pointer"
+            className="flex min-h-[46px] w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-[#25D366] text-xs font-black text-white shadow-md hover:brightness-95"
           >
             <MessageCircle className="h-4 w-4" />
             <span>إرسال الفاتورة والتأكيد المالي للمشتري عبر WhatsApp</span>
@@ -1679,7 +1679,7 @@ ${collectionText}
               )}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full min-h-[42px] rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 text-white font-black text-xs shadow-sm hover:brightness-95 flex items-center justify-center gap-2 cursor-pointer"
+              className="flex min-h-[42px] w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 text-xs font-black text-white shadow-sm hover:brightness-95"
             >
               <span>🎁 إرسال بطاقة الإهداء للمستلم عبر WhatsApp (بدون أسعار)</span>
             </a>
@@ -1689,18 +1689,18 @@ ${collectionText}
           <button
             type="button"
             onClick={() => printReceipt(order)}
-            className="w-full min-h-[46px] rounded-2xl border border-border bg-card text-foreground font-black text-xs hover:bg-secondary flex items-center justify-center gap-2 cursor-pointer"
+            className="flex min-h-[46px] w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border border-border bg-card text-xs font-black text-foreground hover:bg-secondary"
           >
             <Printer className="h-4 w-4" />
             <span>طباعة الإيصال الحراري 🖨️</span>
           </button>
 
           {/* Cancel & Delete Order Actions */}
-          <div className="pt-2 flex items-center justify-center gap-4 text-xs">
+          <div className="flex items-center justify-center gap-4 pt-2 text-xs">
             <button
               type="button"
               onClick={onCancel}
-              className="text-amber-700 font-bold hover:underline cursor-pointer"
+              className="cursor-pointer font-bold text-amber-700 hover:underline"
             >
               إلغاء هذا الطلب
             </button>
@@ -1710,7 +1710,7 @@ ${collectionText}
                 <button
                   type="button"
                   onClick={() => onDeletePermanent(order.id)}
-                  className="text-rose-600 font-bold hover:underline cursor-pointer flex items-center gap-1"
+                  className="flex cursor-pointer items-center gap-1 font-bold text-rose-600 hover:underline"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                   <span>حذف نهائي من السيرفر</span>

@@ -66,14 +66,14 @@ write failed provenance.
 
 An existing directory or legacy lock is handled without automatic recovery:
 
-| Observed lock state | Required `deliver` result |
-| --- | --- |
-| No directory entry | Attempt exclusive creation; only its success grants ownership. |
-| Valid schema-v1 lock whose PID is running, or whose death cannot be established | Exit 1 with `delivery/concurrent-attempt`; preserve every shared path. |
-| Valid schema-v1 lock whose PID is known to have exited | Exit 1 with `delivery/lock-stale`; preserve the lock, artifact, journal, and current provenance exactly. |
-| Unreadable, malformed, symlink, dangling symlink, directory, or other non-regular lock entry | Exit 1 with `delivery/lock-invalid`; preserve the entry and every other shared path. |
-| An acquired capability no longer matches the current lock or journal | Exit 1 with `delivery/ownership-lost`; stop all shared-path mutation. |
-| The matching owner cannot remove its lock | Exit 1 with `delivery/lock-release`; preserve the lock. |
+| Observed lock state                                                                          | Required `deliver` result                                                                                |
+| -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| No directory entry                                                                           | Attempt exclusive creation; only its success grants ownership.                                           |
+| Valid schema-v1 lock whose PID is running, or whose death cannot be established              | Exit 1 with `delivery/concurrent-attempt`; preserve every shared path.                                   |
+| Valid schema-v1 lock whose PID is known to have exited                                       | Exit 1 with `delivery/lock-stale`; preserve the lock, artifact, journal, and current provenance exactly. |
+| Unreadable, malformed, symlink, dangling symlink, directory, or other non-regular lock entry | Exit 1 with `delivery/lock-invalid`; preserve the entry and every other shared path.                     |
+| An acquired capability no longer matches the current lock or journal                         | Exit 1 with `delivery/ownership-lost`; stop all shared-path mutation.                                    |
+| The matching owner cannot remove its lock                                                    | Exit 1 with `delivery/lock-release`; preserve the lock.                                                  |
 
 A `delivery/lock-stale` diagnostic identifies the absolute output and lock
 paths plus the original PID and receipt ID. Recovery is deliberately explicit

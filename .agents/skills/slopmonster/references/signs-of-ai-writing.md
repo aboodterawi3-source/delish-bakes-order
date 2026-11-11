@@ -1,7 +1,7 @@
 # Signs of AI writing — the catalogue
 
 This catalogue lists patterns to review while editing. It draws on Wikipedia's
-*Signs of AI writing*, maintained by WikiProject AI Cleanup, and the projects in
+_Signs of AI writing_, maintained by WikiProject AI Cleanup, and the projects in
 [sources.md](sources.md). These patterns can also appear in human writing.
 
 The five groups correspond to the checker's scoring categories, but some advice
@@ -36,17 +36,17 @@ with an explanation of what happens. Often a plain word such as `use` is enough.
 
 Review sentence structures as well as individual words:
 
-| Shape | Example | Fix |
-|---|---|---|
-| `not just X, but Y` | `It's not just a course, it's a journey` | Cut the first clause, keep the claim |
-| `more than just` | `More than just another app` | Same |
-| `whether you're X or Y` | `Whether you're a beginner or a pro…` | Name the one reader you mean |
-| `that's where X comes in` | `That's where Acme comes in` | State what X does |
-| `say goodbye to` | `Say goodbye to guesswork` | Name what replaces it |
-| `imagine a…` | `Imagine a world where…` | Show it instead |
-| hedged benefit | `helps you to`, `can help you` | Describe the benefit at the certainty the evidence supports |
-| stacked hedging | `may potentially`, `could possibly` | Remove redundant hedges while preserving uncertainty |
-| self-answering question | `The result? Faster shipping.` | A sentence |
+| Shape                     | Example                                  | Fix                                                         |
+| ------------------------- | ---------------------------------------- | ----------------------------------------------------------- |
+| `not just X, but Y`       | `It's not just a course, it's a journey` | Cut the first clause, keep the claim                        |
+| `more than just`          | `More than just another app`             | Same                                                        |
+| `whether you're X or Y`   | `Whether you're a beginner or a pro…`    | Name the one reader you mean                                |
+| `that's where X comes in` | `That's where Acme comes in`             | State what X does                                           |
+| `say goodbye to`          | `Say goodbye to guesswork`               | Name what replaces it                                       |
+| `imagine a…`              | `Imagine a world where…`                 | Show it instead                                             |
+| hedged benefit            | `helps you to`, `can help you`           | Describe the benefit at the certainty the evidence supports |
+| stacked hedging           | `may potentially`, `could possibly`      | Remove redundant hedges while preserving uncertainty        |
+| self-answering question   | `The result? Faster shipping.`           | A sentence                                                  |
 
 Also review adjacent sentences that repeat a metaphor, manufacture a contrast
 between audiences or introduce a second hook before explaining the first.

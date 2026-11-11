@@ -194,7 +194,7 @@ export type StorefrontContent = {
 
 export const BANNER_SELECT = "id, is_active, discount_text, subtitle, button_text, image_url";
 export const CATEGORY_SELECT =
-  "id, name_en, name_ar, icon, image_url, tint, sort_order, is_active, priority_color";
+  "id, name_en, name_ar, image_url, tint, sort_order, is_active, priority_color";
 export const PRODUCT_SELECT =
   "id, slug, name_ar, name_en, description_ar, description_en, category, category_id, price, image_url, is_available, is_popular, filling_ar, filling_en, price_on_request, sizes, tint, sort_order, priority_color";
 
@@ -203,11 +203,45 @@ export function getCategoryFallbackIcon(name?: string): string {
   const n = (name || "").toLowerCase();
   if (n.includes("تخرج") || n.includes("graduat")) return "🎓";
   if (n.includes("تشيز") || n.includes("cheesecake")) return "🍰";
-  if (n.includes("حلويات") || n.includes("pastr") || n.includes("cupcake") || n.includes("كب كيك") || n.includes("ميني")) return "🧁";
-  if (n.includes("كوكيز") || n.includes("cookie") || n.includes("براوني") || n.includes("brownie")) return "🍪";
+  if (
+    n.includes("حلويات") ||
+    n.includes("pastr") ||
+    n.includes("cupcake") ||
+    n.includes("كب كيك") ||
+    n.includes("ميني")
+  )
+    return "🧁";
+  if (n.includes("كوكيز") || n.includes("cookie") || n.includes("براوني") || n.includes("brownie"))
+    return "🍪";
   if (n.includes("هدايا") || n.includes("توابع") || n.includes("gift")) return "🎁";
-  if (n.includes("عربية") || n.includes("arabic") || n.includes("كنافة") || n.includes("بقلاوة")) return "✨";
+  if (n.includes("عربية") || n.includes("arabic") || n.includes("كنافة") || n.includes("بقلاوة"))
+    return "✨";
   return "🎂";
+}
+
+/** Resolves an authentic bakery photography asset for categories when image_url is missing */
+export function getCategoryFallbackImage(name?: string): string {
+  const n = (name || "").toLowerCase();
+  if (n.includes("تشيز") || n.includes("cheesecake") || n.includes("سان سيباستيان"))
+    return images["cheesecake"] || "";
+  if (n.includes("كوكيز") || n.includes("cookie") || n.includes("براوني") || n.includes("brownie"))
+    return images["cookies"] || "";
+  if (
+    n.includes("حلويات") ||
+    n.includes("pastr") ||
+    n.includes("cupcake") ||
+    n.includes("كب كيك") ||
+    n.includes("ميني") ||
+    n.includes("فردية")
+  )
+    return images["cupcakes"] || "";
+  if (n.includes("كيك") || n.includes("cake") || n.includes("تخرج") || n.includes("مناسبات"))
+    return images["cake-berry"] || "";
+  if (n.includes("عربية") || n.includes("arabic") || n.includes("كنافة"))
+    return images["knafeh"] || "";
+  if (n.includes("بقلاوة") || n.includes("baklava"))
+    return images["baklava"] || "";
+  return images["cheesecake"] || luxuryCakeShowcaseImg || "";
 }
 
 /** Resolves an optimized, high-resolution product photography asset when image_url is missing */
@@ -216,13 +250,40 @@ export function getProductFallbackImage(slug?: string, category?: string, name?:
   const c = (category || "").toLowerCase();
   const n = (name || "").toLowerCase();
 
-  if (s.includes("choc") || n.includes("شوكولاتة") || n.includes("chocolate") || n.includes("فادج")) return images["cake-choc"] || "";
-  if (s.includes("red-velvet") || n.includes("فيلفيت") || n.includes("red velvet")) return images["cake-red"] || "";
-  if (s.includes("cheesecake") || s.includes("san-sebastian") || n.includes("تشيز") || n.includes("سان سيباستيان") || c.includes("cheesecake")) return images["cheesecake"] || "";
-  if (s.includes("pistachio") || n.includes("فستق")) return luxuryCakeShowcaseImg || images["cake-berry"] || "";
-  if (s.includes("caramel") || n.includes("كراميل") || s.includes("vanilla") || n.includes("فانيلا") || s.includes("berry") || n.includes("توت")) return images["cake-berry"] || "";
-  if (s.includes("mini-cake") || s.includes("cupcake") || n.includes("ميني") || n.includes("كب كيك") || c.includes("dessert") || c.includes("pastr")) return images["cupcakes"] || "";
-  if (s.includes("cookie") || s.includes("brownie") || n.includes("كوكيز") || n.includes("براوني")) return images["cookies"] || "";
+  if (s.includes("choc") || n.includes("شوكولاتة") || n.includes("chocolate") || n.includes("فادج"))
+    return images["cake-choc"] || "";
+  if (s.includes("red-velvet") || n.includes("فيلفيت") || n.includes("red velvet"))
+    return images["cake-red"] || "";
+  if (
+    s.includes("cheesecake") ||
+    s.includes("san-sebastian") ||
+    n.includes("تشيز") ||
+    n.includes("سان سيباستيان") ||
+    c.includes("cheesecake")
+  )
+    return images["cheesecake"] || "";
+  if (s.includes("pistachio") || n.includes("فستق"))
+    return luxuryCakeShowcaseImg || images["cake-berry"] || "";
+  if (
+    s.includes("caramel") ||
+    n.includes("كراميل") ||
+    s.includes("vanilla") ||
+    n.includes("فانيلا") ||
+    s.includes("berry") ||
+    n.includes("توت")
+  )
+    return images["cake-berry"] || "";
+  if (
+    s.includes("mini-cake") ||
+    s.includes("cupcake") ||
+    n.includes("ميني") ||
+    n.includes("كب كيك") ||
+    c.includes("dessert") ||
+    c.includes("pastr")
+  )
+    return images["cupcakes"] || "";
+  if (s.includes("cookie") || s.includes("brownie") || n.includes("كوكيز") || n.includes("براوني"))
+    return images["cookies"] || "";
   if (s.includes("knafeh") || n.includes("كنافة")) return images["knafeh"] || "";
   if (s.includes("baklava") || n.includes("بقلاوة")) return images["baklava"] || "";
 
@@ -247,7 +308,10 @@ export function normaliseCategory(row: Record<string, unknown>): StorefrontCateg
   const nameAr = typeof row["name_ar"] === "string" ? row["name_ar"] : "";
   const nameEn = typeof row["name_en"] === "string" ? row["name_en"] : "";
   const rawIcon = typeof row["icon"] === "string" && row["icon"].trim() ? row["icon"].trim() : null;
-  const rawImage = typeof row["image_url"] === "string" && row["image_url"].trim() ? row["image_url"].trim() : null;
+  const rawImage =
+    typeof row["image_url"] === "string" && row["image_url"].trim()
+      ? row["image_url"].trim()
+      : null;
 
   return {
     ...(row as unknown as StorefrontCategory),
@@ -261,7 +325,10 @@ export function normaliseProduct(row: Record<string, unknown>): StorefrontProduc
   const category = typeof row["category"] === "string" ? row["category"] : "";
   const nameAr = typeof row["name_ar"] === "string" ? row["name_ar"] : "";
   const nameEn = typeof row["name_en"] === "string" ? row["name_en"] : "";
-  const rawImage = typeof row["image_url"] === "string" && row["image_url"].trim() ? row["image_url"].trim() : null;
+  const rawImage =
+    typeof row["image_url"] === "string" && row["image_url"].trim()
+      ? row["image_url"].trim()
+      : null;
   const fallback = getProductFallbackImage(slug, category, nameAr || nameEn);
 
   return {

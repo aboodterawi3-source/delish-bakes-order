@@ -4,13 +4,7 @@
   "title": "Archify Sequence Diagram",
   "type": "object",
   "additionalProperties": false,
-  "required": [
-    "schema_version",
-    "diagram_type",
-    "meta",
-    "participants",
-    "messages"
-  ],
+  "required": ["schema_version", "diagram_type", "meta", "participants", "messages"],
   "properties": {
     "schema_version": {
       "const": 1
@@ -21,10 +15,7 @@
     "meta": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "title",
-        "output"
-      ],
+      "required": ["title", "output"],
       "properties": {
         "title": {
           "type": "string",
@@ -103,11 +94,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "id",
-          "type",
-          "label"
-        ],
+        "required": ["id", "type", "label"],
         "properties": {
           "id": {
             "$ref": "common.schema.json#/$defs/id"
@@ -137,11 +124,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "from",
-          "to",
-          "label"
-        ],
+        "required": ["from", "to", "label"],
         "properties": {
           "from": {
             "type": "number"
@@ -162,12 +145,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "from",
-          "to",
-          "y",
-          "label"
-        ],
+        "required": ["from", "to", "y", "label"],
         "properties": {
           "id": {
             "$ref": "common.schema.json#/$defs/id"
@@ -187,13 +165,7 @@
             "minLength": 1
           },
           "variant": {
-            "enum": [
-              "default",
-              "emphasis",
-              "security",
-              "dashed",
-              "return"
-            ]
+            "enum": ["default", "emphasis", "security", "dashed", "return"]
           },
           "note": {
             "type": "string"
@@ -206,11 +178,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "participant",
-          "from",
-          "to"
-        ],
+        "required": ["participant", "from", "to"],
         "properties": {
           "participant": {
             "$ref": "common.schema.json#/$defs/id"

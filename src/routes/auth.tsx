@@ -150,14 +150,14 @@ function AuthPage() {
           <DelishLogo size="md" />
 
           <div
-            className="mb-3 mt-5 flex h-16 w-16 items-center justify-center rounded-full border border-[#B8860B]/20 bg-[#FDE2CF] p-4 text-[#B8860B] shadow-md"
+            className="mt-5 mb-3 flex h-16 w-16 items-center justify-center rounded-full border border-[#B8860B]/20 bg-[#FDE2CF] p-4 text-[#B8860B] shadow-md"
             aria-label={portal.iconLabel}
           >
             <Icon className="h-8 w-8" />
           </div>
 
           <div className="max-w-[16rem]">
-            <h1 className="font-display text-balance text-lg font-bold leading-snug text-[#3E2723] sm:text-xl">
+            <h1 className="font-display text-lg leading-snug font-bold text-balance text-[#3E2723] sm:text-xl">
               {portal.titleAr} <span className="text-[#B8860B]">|</span> {portal.titleEn}
             </h1>
             <p className="mt-1 text-xs text-[#8B4513]/80">{portal.subtitle}</p>
@@ -173,7 +173,7 @@ function AuthPage() {
               autoComplete="username"
               value={username}
               onChange={(event) => setUsername(event.target.value)}
-              className="mt-1 min-h-12 w-full rounded-xl border border-[#B8860B]/20 bg-[#F9FBFC] px-3 text-sm text-[#3E2723] placeholder:text-[#3E2723]/40 focus:border-[#B8860B] focus:outline-none focus:ring-2 focus:ring-[#B8860B]/20"
+              className="mt-1 min-h-12 w-full rounded-xl border border-[#B8860B]/20 bg-[#F9FBFC] px-3 text-sm text-[#3E2723] placeholder:text-[#3E2723]/40 focus:border-[#B8860B] focus:ring-2 focus:ring-[#B8860B]/20 focus:outline-none"
             />
           </label>
           <label className="block text-sm font-bold text-[#3E2723]">
@@ -184,7 +184,7 @@ function AuthPage() {
               autoComplete="current-password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              className="mt-1 min-h-12 w-full rounded-xl border border-[#B8860B]/20 bg-[#F9FBFC] px-3 text-sm text-[#3E2723] placeholder:text-[#3E2723]/40 focus:border-[#B8860B] focus:outline-none focus:ring-2 focus:ring-[#B8860B]/20"
+              className="mt-1 min-h-12 w-full rounded-xl border border-[#B8860B]/20 bg-[#F9FBFC] px-3 text-sm text-[#3E2723] placeholder:text-[#3E2723]/40 focus:border-[#B8860B] focus:ring-2 focus:ring-[#B8860B]/20 focus:outline-none"
             />
           </label>
 

@@ -33,7 +33,7 @@ async function verifyRuntime() {
   if (!URL) log.fatal("Missing SUPABASE_URL in .env");
   if (!ANON_KEY) log.fatal("Missing SUPABASE_PUBLISHABLE_KEY in .env");
   if (!SERVICE_KEY) log.fatal("Missing SUPABASE_SERVICE_ROLE_KEY in .env");
-  
+
   log.success("All critical environment variables are present.");
   log.info(`Supabase URL configured as: ${new URL(URL).origin}`);
 
@@ -49,33 +49,39 @@ async function verifyRuntime() {
   log.info("Verifying RLS Policies and Boundary Defenses...");
   try {
     // Attempt malicious anonymous insert (Should be blocked by our RLS fix)
-    const { error: anonInsertError } = await anonClient
-      .from("orders")
-      .insert({
-        customer_name: "Attacker",
-        customer_phone: "00000",
-        total: 0,
-        status: "new"
-      });
+    const { error: anonInsertError } = await anonClient.from("orders").insert({
+      customer_name: "Attacker",
+      customer_phone: "00000",
+      total: 0,
+      status: "new",
+    });
 
     if (!anonInsertError) {
       log.fatal("SECURITY BREACH: Anonymous user successfully inserted an order! RLS is failing.");
-    } else if (anonInsertError.code === '42501' || anonInsertError.message.includes('row-level security')) {
-      log.success(`RLS Boundary Intact: Anonymous insert correctly blocked. (Error: ${anonInsertError.code})`);
+    } else if (
+      anonInsertError.code === "42501" ||
+      anonInsertError.message.includes("row-level security")
+    ) {
+      log.success(
+        `RLS Boundary Intact: Anonymous insert correctly blocked. (Error: ${anonInsertError.code})`,
+      );
     } else {
-      log.warn(`Anonymous insert failed, but not strictly due to RLS. Error: ${anonInsertError.message}`);
+      log.warn(
+        `Anonymous insert failed, but not strictly due to RLS. Error: ${anonInsertError.message}`,
+      );
     }
 
     // Verify Admin Client has full access
     const { error: adminReadError, count } = await adminClient
       .from("orders")
       .select("*", { count: "exact", head: true });
-    
+
     if (adminReadError) {
-      log.fatal(`Admin access failed: ${adminReadError.message}. Check your SUPABASE_SERVICE_ROLE_KEY.`);
+      log.fatal(
+        `Admin access failed: ${adminReadError.message}. Check your SUPABASE_SERVICE_ROLE_KEY.`,
+      );
     }
     log.success(`Admin Authorization Intact: Can read orders table (Total Rows: ${count}).`);
-    
   } catch (err) {
     log.fatal(`Unexpected error during RLS verification: ${err}`);
   }
@@ -91,7 +97,7 @@ async function verifyRuntime() {
       .from("site-media")
       .upload(testFileName, testContent, {
         contentType: "text/plain",
-        upsert: false
+        upsert: false,
       });
 
     if (uploadError) log.fatal(`Storage Upload Failed: ${uploadError.message}`);
@@ -111,10 +117,9 @@ async function verifyRuntime() {
     const { error: deleteError } = await adminClient.storage
       .from("site-media")
       .remove([testFileName]);
-      
+
     if (deleteError) log.fatal(`Storage Cleanup Failed: ${deleteError.message}`);
     log.success("Storage Cleanup Intact: Diagnostic file completely removed.");
-
   } catch (err) {
     log.fatal(`Unexpected error during storage verification: ${err}`);
   }
@@ -124,4 +129,4 @@ async function verifyRuntime() {
   console.log("==============================================\n");
 }
 
-verifyRuntime().catch(err => log.fatal(err.message));
+verifyRuntime().catch((err) => log.fatal(err.message));

@@ -16,7 +16,10 @@ type Dict = Record<string, { ar: string; en: string }>;
 const STORAGE_KEY = "delish-lang";
 
 export const t_: Dict = {
-  brandTag: { ar: "مخبز وحلويات بوتيك · يُخبز بحب في عمّان", en: "Artisan Boutique Patisserie · Baked with Love in Amman" },
+  brandTag: {
+    ar: "مخبز وحلويات بوتيك · يُخبز بحب في عمّان",
+    en: "Artisan Boutique Patisserie · Baked with Love in Amman",
+  },
   navMenu: { ar: "القائمة", en: "Menu" },
   navBuilder: { ar: "صمّم كيكتك", en: "Cake Builder" },
   navAbout: { ar: "من نحن", en: "About" },

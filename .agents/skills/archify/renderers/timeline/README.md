@@ -15,9 +15,15 @@ events (with their millisecond timestamps and x positions) instead of HTML.
 {
   "schema_version": 1,
   "diagram_type": "timeline",
-  "meta": { "title": "Payment failure incident", "evidence": "illustrative", "timezone": "Asia/Shanghai" },
+  "meta": {
+    "title": "Payment failure incident",
+    "evidence": "illustrative",
+    "timezone": "Asia/Shanghai"
+  },
   "lanes": [{ "id": "release", "label": "Release" }],
-  "events": [{ "id": "deploy", "at": "2026-10-01T10:00:00+08:00", "title": "Deploy v2.4", "lane": "release" }]
+  "events": [
+    { "id": "deploy", "at": "2026-10-01T10:00:00+08:00", "title": "Deploy v2.4", "lane": "release" }
+  ]
 }
 ```
 

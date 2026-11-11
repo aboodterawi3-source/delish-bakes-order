@@ -9,18 +9,23 @@ export function createSpatialGrid(cellSize, { maxCells = DEFAULT_MAX_CELLS } = {
   const items = [];
   // Items whose own box cannot be walked are candidates for every query.
   const overflow = [];
-  const keyOf = (x, y) => x + ':' + y;
+  const keyOf = (x, y) => x + ":" + y;
   const rangeOf = (box) => ({
-    x0: Math.floor(box.minX / cellSize), x1: Math.floor(box.maxX / cellSize),
-    y0: Math.floor(box.minY / cellSize), y1: Math.floor(box.maxY / cellSize),
+    x0: Math.floor(box.minX / cellSize),
+    x1: Math.floor(box.maxX / cellSize),
+    y0: Math.floor(box.minY / cellSize),
+    y1: Math.floor(box.maxY / cellSize),
   });
   // Finite coordinates can still land outside the safe-integer range, where
   // incrementing an index no longer advances it; and a legal coordinate can
   // name more cells than the grid is worth. Both cases stay out of the buckets
   // and are answered by the item list, so they never hang or allocate.
-  const walkable = (range) => Number.isSafeInteger(range.x0) && Number.isSafeInteger(range.x1)
-    && Number.isSafeInteger(range.y0) && Number.isSafeInteger(range.y1)
-    && (range.x1 - range.x0 + 1) * (range.y1 - range.y0 + 1) <= maxCells;
+  const walkable = (range) =>
+    Number.isSafeInteger(range.x0) &&
+    Number.isSafeInteger(range.x1) &&
+    Number.isSafeInteger(range.y0) &&
+    Number.isSafeInteger(range.y1) &&
+    (range.x1 - range.x0 + 1) * (range.y1 - range.y0 + 1) <= maxCells;
 
   return {
     insert(box, item) {
@@ -34,7 +39,10 @@ export function createSpatialGrid(cellSize, { maxCells = DEFAULT_MAX_CELLS } = {
         for (let y = range.y0; y <= range.y1; y += 1) {
           const key = keyOf(x, y);
           let bucket = buckets.get(key);
-          if (!bucket) { bucket = []; buckets.set(key, bucket); }
+          if (!bucket) {
+            bucket = [];
+            buckets.set(key, bucket);
+          }
           bucket.push(item);
         }
       }

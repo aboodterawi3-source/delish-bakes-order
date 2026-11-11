@@ -52,7 +52,10 @@ export function handleMockSupabaseRequest(url: string, method: string, body?: an
         },
       };
     }
-    return { status: 400, data: { error: "invalid_grant", error_description: "Invalid credentials" } };
+    return {
+      status: 400,
+      data: { error: "invalid_grant", error_description: "Invalid credentials" },
+    };
   }
 
   // 2. Mock Orders query

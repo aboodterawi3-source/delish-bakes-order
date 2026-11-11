@@ -1,6 +1,7 @@
-const PORTABLE_PATH_PROFILES = new Set(['output', 'repo', 'archive']);
-const WINDOWS_SAFE_PROFILES = new Set(['output', 'archive']);
-const WINDOWS_RESERVED_NAME = /^(?:con|prn|aux|nul|conin\$|conout\$|com[1-9¹²³]|lpt[1-9¹²³])(?:\.|$)/iu;
+const PORTABLE_PATH_PROFILES = new Set(["output", "repo", "archive"]);
+const WINDOWS_SAFE_PROFILES = new Set(["output", "archive"]);
+const WINDOWS_RESERVED_NAME =
+  /^(?:con|prn|aux|nul|conin\$|conout\$|com[1-9¹²³]|lpt[1-9¹²³])(?:\.|$)/iu;
 const WINDOWS_SHORT_NAME = /~[1-9][0-9]*(?:\.|$)/iu;
 const URI_SCHEME = /^[A-Za-z][A-Za-z0-9+.-]*:/u;
 const CONTROL_CHARACTER = /\p{Cc}/u;
@@ -8,27 +9,30 @@ const WINDOWS_INVALID_CHARACTER = /[<>"|?*]/u;
 const MAX_SEMANTIC_VARIANTS = 32;
 
 export class PortablePathError extends Error {
-  constructor(message, {
-    code,
-    reason,
-    value,
-    profile,
-    segment,
-    segmentIndex,
-    character,
-    index,
-    conflictIndex,
-    conflictValue,
-    collisionKind,
-    semantics,
-    pathPart,
-    conflictPathPart,
-    utf8Bytes,
-    utf16CodeUnits,
-    limit,
-  } = {}) {
+  constructor(
+    message,
+    {
+      code,
+      reason,
+      value,
+      profile,
+      segment,
+      segmentIndex,
+      character,
+      index,
+      conflictIndex,
+      conflictValue,
+      collisionKind,
+      semantics,
+      pathPart,
+      conflictPathPart,
+      utf8Bytes,
+      utf16CodeUnits,
+      limit,
+    } = {},
+  ) {
     super(message);
-    this.name = 'PortablePathError';
+    this.name = "PortablePathError";
     this.code = code;
     this.reason = reason;
     this.value = value;
@@ -64,8 +68,8 @@ function assertProfile(profile) {
   throw pathError(
     undefined,
     profile,
-    'profile',
-    `Portable path profile must be one of: ${[...PORTABLE_PATH_PROFILES].join(', ')}.`,
+    "profile",
+    `Portable path profile must be one of: ${[...PORTABLE_PATH_PROFILES].join(", ")}.`,
   );
 }
 
@@ -73,53 +77,53 @@ export function validatePortablePath(value, options = {}) {
   const profile = options?.profile;
   assertProfile(profile);
 
-  if (typeof value !== 'string') {
-    throw pathError(value, profile, 'type', 'Portable path must be a string.');
+  if (typeof value !== "string") {
+    throw pathError(value, profile, "type", "Portable path must be a string.");
   }
   if (value.length === 0) {
-    throw pathError(value, profile, 'empty', 'Portable path must not be empty.');
+    throw pathError(value, profile, "empty", "Portable path must not be empty.");
   }
-  if (/^[A-Za-z]:[\\/]/u.test(value) || value.startsWith('/') || value.startsWith('\\')) {
-    throw pathError(value, profile, 'absolute', 'Portable path must be relative.');
+  if (/^[A-Za-z]:[\\/]/u.test(value) || value.startsWith("/") || value.startsWith("\\")) {
+    throw pathError(value, profile, "absolute", "Portable path must be relative.");
   }
   if (/^[A-Za-z]:/u.test(value)) {
     throw pathError(
       value,
       profile,
-      'drive-relative',
-      'Portable path must not use a drive-relative Windows path.',
+      "drive-relative",
+      "Portable path must not use a drive-relative Windows path.",
     );
   }
   if (URI_SCHEME.test(value)) {
-    throw pathError(value, profile, 'uri', 'Portable path must not be a URI.');
+    throw pathError(value, profile, "uri", "Portable path must not be a URI.");
   }
-  if (value.includes('\\')) {
+  if (value.includes("\\")) {
     throw pathError(
       value,
       profile,
-      'backslash',
-      'Portable path must use forward slashes as separators.',
+      "backslash",
+      "Portable path must use forward slashes as separators.",
     );
   }
 
-  const segments = value.split('/');
+  const segments = value.split("/");
   for (const [segmentIndex, segment] of segments.entries()) {
     const segmentDetails = { segment, segmentIndex };
     if (segment.length === 0) {
       throw pathError(
         value,
         profile,
-        'empty-segment',
-        'Portable path must not contain empty segments.',
+        "empty-segment",
+        "Portable path must not contain empty segments.",
         segmentDetails,
       );
     }
-    if (segment === '.' || segment === '..') {
+    if (segment === "." || segment === "..") {
       throw pathError(
         value,
         profile,
-        'dot-segment',
-        'Portable path must not contain dot segments.',
+        "dot-segment",
+        "Portable path must not contain dot segments.",
         segmentDetails,
       );
     }
@@ -128,8 +132,8 @@ export function validatePortablePath(value, options = {}) {
       throw pathError(
         value,
         profile,
-        'control',
-        'Portable path must not contain control characters.',
+        "control",
+        "Portable path must not contain control characters.",
         { ...segmentDetails, character: controlMatch[0] },
       );
     }
@@ -138,20 +142,20 @@ export function validatePortablePath(value, options = {}) {
       throw pathError(
         value,
         profile,
-        'unpaired-surrogate',
-        'Portable path must not contain unpaired UTF-16 surrogates.',
+        "unpaired-surrogate",
+        "Portable path must not contain unpaired UTF-16 surrogates.",
         { ...segmentDetails, character: surrogateMatch[0] },
       );
     }
 
     if (!WINDOWS_SAFE_PROFILES.has(profile)) continue;
-    if (segment.includes(':')) {
+    if (segment.includes(":")) {
       throw pathError(
         value,
         profile,
-        'windows-ads',
-        'Portable path must not select a Windows alternate data stream.',
-        { ...segmentDetails, character: ':' },
+        "windows-ads",
+        "Portable path must not select a Windows alternate data stream.",
+        { ...segmentDetails, character: ":" },
       );
     }
     const invalidMatch = segment.match(WINDOWS_INVALID_CHARACTER);
@@ -159,8 +163,8 @@ export function validatePortablePath(value, options = {}) {
       throw pathError(
         value,
         profile,
-        'windows-invalid-character',
-        'Portable path contains a character that is invalid in Windows file names.',
+        "windows-invalid-character",
+        "Portable path contains a character that is invalid in Windows file names.",
         { ...segmentDetails, character: invalidMatch[0] },
       );
     }
@@ -168,8 +172,8 @@ export function validatePortablePath(value, options = {}) {
       throw pathError(
         value,
         profile,
-        'windows-trailing-dot-space',
-        'Portable path segments must not end with a dot or space.',
+        "windows-trailing-dot-space",
+        "Portable path segments must not end with a dot or space.",
         segmentDetails,
       );
     }
@@ -177,8 +181,8 @@ export function validatePortablePath(value, options = {}) {
       throw pathError(
         value,
         profile,
-        'windows-reserved-name',
-        'Portable path must not use a reserved Windows device name.',
+        "windows-reserved-name",
+        "Portable path must not use a reserved Windows device name.",
         segmentDetails,
       );
     }
@@ -186,19 +190,19 @@ export function validatePortablePath(value, options = {}) {
       throw pathError(
         value,
         profile,
-        'windows-short-name',
-        'Portable path must not use a Windows 8.3 short-name shape.',
+        "windows-short-name",
+        "Portable path must not use a Windows 8.3 short-name shape.",
         segmentDetails,
       );
     }
-    const utf8Bytes = Buffer.byteLength(segment, 'utf8');
+    const utf8Bytes = Buffer.byteLength(segment, "utf8");
     const utf16CodeUnits = segment.length;
     if (utf8Bytes > 255 || utf16CodeUnits > 255) {
       throw pathError(
         value,
         profile,
-        'component-too-long',
-        'Portable path segments must fit both UTF-8 and UTF-16 filesystem component limits.',
+        "component-too-long",
+        "Portable path segments must fit both UTF-8 and UTF-16 filesystem component limits.",
         {
           ...segmentDetails,
           utf8Bytes,
@@ -216,7 +220,7 @@ function collisionError(values, profile, index, conflictIndex, reason, details =
   return new PortablePathError(
     `Portable paths at indexes ${conflictIndex} and ${index} collide under portable filesystem semantics.`,
     {
-      code: 'portable-path/collision',
+      code: "portable-path/collision",
       reason,
       value: values[index],
       profile,
@@ -236,12 +240,12 @@ function semanticEnvelope(value, profile, index) {
   const variants = [value];
   const seen = new Set(variants);
   const transforms = [
-    (candidate) => candidate.normalize('NFC'),
-    (candidate) => candidate.normalize('NFD'),
+    (candidate) => candidate.normalize("NFC"),
+    (candidate) => candidate.normalize("NFD"),
     // path-contract-allow: portable-logical-path -- Archive names require conservative case-collision closure.
-    (candidate) => candidate.toLocaleLowerCase('en-US'),
+    (candidate) => candidate.toLocaleLowerCase("en-US"),
     // path-contract-allow: portable-logical-path -- Archive names require conservative case-collision closure.
-    (candidate) => candidate.toLocaleUpperCase('en-US'),
+    (candidate) => candidate.toLocaleUpperCase("en-US"),
   ];
 
   for (let cursor = 0; cursor < variants.length; cursor += 1) {
@@ -252,8 +256,8 @@ function semanticEnvelope(value, profile, index) {
         throw pathError(
           value,
           profile,
-          'semantic-expansion',
-          'Portable path semantic comparison exceeded its bounded Unicode expansion.',
+          "semantic-expansion",
+          "Portable path semantic comparison exceeded its bounded Unicode expansion.",
           { index, limit: MAX_SEMANTIC_VARIANTS },
         );
       }
@@ -266,14 +270,14 @@ function semanticEnvelope(value, profile, index) {
 }
 
 function classifySemanticCollision(value, conflictValue) {
-  if (value === conflictValue) return 'exact';
-  if (value.normalize('NFC') === conflictValue.normalize('NFC')) return 'normalization';
+  if (value === conflictValue) return "exact";
+  if (value.normalize("NFC") === conflictValue.normalize("NFC")) return "normalization";
 
-  const directLowerMatch = value.toLocaleLowerCase('en-US')
-    === conflictValue.toLocaleLowerCase('en-US');
-  const directUpperMatch = value.toLocaleUpperCase('en-US')
-    === conflictValue.toLocaleUpperCase('en-US');
-  return directLowerMatch || directUpperMatch ? 'case' : 'case-and-normalization';
+  const directLowerMatch =
+    value.toLocaleLowerCase("en-US") === conflictValue.toLocaleLowerCase("en-US");
+  const directUpperMatch =
+    value.toLocaleUpperCase("en-US") === conflictValue.toLocaleUpperCase("en-US");
+  return directLowerMatch || directUpperMatch ? "case" : "case-and-normalization";
 }
 
 function findSemanticCollision(semanticIndex, value, profile, sourceIndex) {
@@ -301,7 +305,7 @@ export function validatePortablePathSet(values, options = {}) {
   const profile = options?.profile;
   assertProfile(profile);
   if (!Array.isArray(values)) {
-    throw pathError(values, profile, 'set-type', 'Portable path set must be an array.');
+    throw pathError(values, profile, "set-type", "Portable path set must be an array.");
   }
 
   const leafEntries = createSemanticIndex();
@@ -323,9 +327,9 @@ export function validatePortablePathSet(values, options = {}) {
         profile,
         index,
         conflictIndex,
-        leafCollision.semantics === 'exact' ? 'duplicate' : leafCollision.semantics,
+        leafCollision.semantics === "exact" ? "duplicate" : leafCollision.semantics,
         {
-          collisionKind: 'entry',
+          collisionKind: "entry",
           semantics: leafCollision.semantics,
           pathPart: value,
           conflictPathPart: leafCollision.entry.value,
@@ -333,13 +337,13 @@ export function validatePortablePathSet(values, options = {}) {
       );
     }
 
-    const segments = value.split('/');
-    const prefixes = segments.slice(0, -1).map((_, prefixIndex) => (
-      segments.slice(0, prefixIndex + 1).join('/')
-    ));
+    const segments = value.split("/");
+    const prefixes = segments
+      .slice(0, -1)
+      .map((_, prefixIndex) => segments.slice(0, prefixIndex + 1).join("/"));
     for (const prefix of prefixes) {
       const directoryCollision = findSemanticCollision(directoryEntries, prefix, profile, index);
-      if (directoryCollision.entry && directoryCollision.semantics !== 'exact') {
+      if (directoryCollision.entry && directoryCollision.semantics !== "exact") {
         throw collisionError(
           values,
           profile,
@@ -347,7 +351,7 @@ export function validatePortablePathSet(values, options = {}) {
           directoryCollision.entry.index,
           `directory-${directoryCollision.semantics}`,
           {
-            collisionKind: 'directory-spelling',
+            collisionKind: "directory-spelling",
             semantics: directoryCollision.semantics,
             pathPart: prefix,
             conflictPathPart: directoryCollision.entry.value,
@@ -362,11 +366,11 @@ export function validatePortablePathSet(values, options = {}) {
           profile,
           index,
           fileCollision.entry.index,
-          fileCollision.semantics === 'exact'
-            ? 'tree-file'
+          fileCollision.semantics === "exact"
+            ? "tree-file"
             : `tree-file-${fileCollision.semantics}`,
           {
-            collisionKind: 'tree-file',
+            collisionKind: "tree-file",
             semantics: fileCollision.semantics,
             pathPart: prefix,
             conflictPathPart: fileCollision.entry.value,
@@ -382,11 +386,11 @@ export function validatePortablePathSet(values, options = {}) {
         profile,
         index,
         directoryCollision.entry.index,
-        directoryCollision.semantics === 'exact'
-          ? 'tree-file'
+        directoryCollision.semantics === "exact"
+          ? "tree-file"
           : `tree-file-${directoryCollision.semantics}`,
         {
-          collisionKind: 'tree-file',
+          collisionKind: "tree-file",
           semantics: directoryCollision.semantics,
           pathPart: value,
           conflictPathPart: directoryCollision.entry.value,

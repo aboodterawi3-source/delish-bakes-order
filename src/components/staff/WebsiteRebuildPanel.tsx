@@ -130,7 +130,7 @@ export function WebsiteRebuildPanel({
         </select>
       </div>
 
-      <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
         {visible.map((product) => (
           <button
             key={product.id}
@@ -139,7 +139,7 @@ export function WebsiteRebuildPanel({
             className="min-w-0 rounded-xl border border-border bg-card p-2.5 text-start shadow-xs transition-colors hover:border-primary hover:bg-secondary/40"
           >
             <div className="space-y-1 p-3">
-              <p className="break-words text-sm font-bold text-foreground">{product.name_ar}</p>
+              <p className="text-sm font-bold break-words text-foreground">{product.name_ar}</p>
               <p className="text-xs font-bold text-primary">
                 {product.price_on_request ? "السعر عند الطلب" : jd(product.price)}
               </p>
@@ -167,7 +167,7 @@ export function WebsiteRebuildPanel({
             {lines.map((line, index) => (
               <li key={line.key} className="rounded-xl border border-border p-3">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="min-w-0 flex-1 break-words text-sm font-bold text-foreground">
+                  <span className="min-w-0 flex-1 text-sm font-bold break-words text-foreground">
                     {line.name}
                   </span>
                   <button
@@ -182,12 +182,12 @@ export function WebsiteRebuildPanel({
                   </button>
                 </div>
                 {(line.options ?? []).length > 0 ? (
-                  <p className="mt-1 break-words text-xs text-muted-foreground">
+                  <p className="mt-1 text-xs break-words text-muted-foreground">
                     {(line.options ?? []).join(" · ")}
                   </p>
                 ) : null}
                 {line.notes ? (
-                  <p className="mt-1 break-words text-xs text-muted-foreground">
+                  <p className="mt-1 text-xs break-words text-muted-foreground">
                     ملاحظة: {line.notes}
                   </p>
                 ) : null}

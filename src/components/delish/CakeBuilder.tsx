@@ -105,7 +105,7 @@ export function CakeBuilder({ onDone }: { onDone: () => void }) {
           sizes="(min-width: 768px) 460px, 92vw"
           className="aspect-square w-full object-cover"
         />
-        <div className="absolute bottom-0 start-0 end-0 bg-gradient-to-t from-primary/90 to-transparent p-4">
+        <div className="absolute start-0 end-0 bottom-0 bg-gradient-to-t from-primary/90 to-transparent p-4">
           <p className="font-display text-lg text-primary-foreground">{label(size)}</p>
           <p className="text-xs text-primary-foreground/80">
             {label(flavor)} · {label(filling)} · {label(frosting)}
@@ -113,7 +113,7 @@ export function CakeBuilder({ onDone }: { onDone: () => void }) {
         </div>
       </div>
 
-      <div className="surface-card rounded-3xl p-5">
+      <div className="rounded-3xl surface-card p-5">
         <div className="flex items-center justify-between">
           <p
             className="text-xs font-semibold tracking-wide text-muted-foreground uppercase"

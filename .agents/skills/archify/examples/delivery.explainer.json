@@ -50,10 +50,7 @@
         {
           "type": "comparison",
           "id": "cache-comparison",
-          "columns": [
-            "命中",
-            "未命中"
-          ],
+          "columns": ["命中", "未命中"],
           "rows": [
             {
               "label": "读Redis",

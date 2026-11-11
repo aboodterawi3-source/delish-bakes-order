@@ -4,12 +4,7 @@
   "title": "Archify Event Timeline",
   "type": "object",
   "additionalProperties": false,
-  "required": [
-    "schema_version",
-    "diagram_type",
-    "meta",
-    "events"
-  ],
+  "required": ["schema_version", "diagram_type", "meta", "events"],
   "properties": {
     "schema_version": {
       "const": 1
@@ -20,10 +15,7 @@
     "meta": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "title",
-        "evidence"
-      ],
+      "required": ["title", "evidence"],
       "properties": {
         "title": {
           "type": "string",
@@ -57,10 +49,7 @@
           "$ref": "common.schema.json#/$defs/guidedViews"
         },
         "evidence": {
-          "enum": [
-            "observed",
-            "illustrative"
-          ],
+          "enum": ["observed", "illustrative"],
           "description": "Whether the events are recorded observations or illustrative input; drawn on the canvas."
         },
         "timezone": {
@@ -80,10 +69,7 @@
           "description": "Drawing width of the time axis in px."
         },
         "breaks": {
-          "enum": [
-            "auto",
-            "none"
-          ],
+          "enum": ["auto", "none"],
           "description": "auto compresses long quiet periods into disclosed axis breaks."
         }
       }
@@ -93,10 +79,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "id",
-          "label"
-        ],
+        "required": ["id", "label"],
         "properties": {
           "id": {
             "$ref": "common.schema.json#/$defs/id"
@@ -114,11 +97,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "id",
-          "at",
-          "title"
-        ],
+        "required": ["id", "at", "title"],
         "properties": {
           "id": {
             "$ref": "common.schema.json#/$defs/id"
@@ -139,13 +118,7 @@
             "$ref": "common.schema.json#/$defs/id"
           },
           "kind": {
-            "enum": [
-              "default",
-              "change",
-              "alert",
-              "action",
-              "recovery"
-            ]
+            "enum": ["default", "change", "alert", "action", "recovery"]
           },
           "sources": {
             "$ref": "common.schema.json#/$defs/sourceReferences"

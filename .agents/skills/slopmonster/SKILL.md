@@ -67,11 +67,11 @@ Use a different model family from the one that wrote the draft. This provides a
 second review with the same audience and purpose; inspect its suggestions before
 accepting them.
 
-| Draft written with | Command |
-|---|---|
-| Claude | `DESLOP_WRITER=claude tools/cleanse.sh draft.md > cleansed.md` |
-| GPT / Codex / ChatGPT | `DESLOP_WRITER=gpt tools/cleanse.sh draft.md > cleansed.md` |
-| Gemini | Use either command to select an installed rival CLI. |
+| Draft written with    | Command                                                        |
+| --------------------- | -------------------------------------------------------------- |
+| Claude                | `DESLOP_WRITER=claude tools/cleanse.sh draft.md > cleansed.md` |
+| GPT / Codex / ChatGPT | `DESLOP_WRITER=gpt tools/cleanse.sh draft.md > cleansed.md`    |
+| Gemini                | Use either command to select an installed rival CLI.           |
 
 The script uses the selected CLI's configured model and
 [prompts/cleanse.txt](prompts/cleanse.txt). The CLI must be installed and

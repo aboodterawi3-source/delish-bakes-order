@@ -180,7 +180,11 @@ export function generateAvailableSlots(options: SlotGeneratorOptions): TimeSlot[
   const slots: TimeSlot[] = [];
   const stepHours = method === "delivery" ? 2 : 1;
 
-  for (let startH = BAKERY_OPEN_HOUR; startH + stepHours <= BAKERY_CLOSE_HOUR; startH += stepHours) {
+  for (
+    let startH = BAKERY_OPEN_HOUR;
+    startH + stepHours <= BAKERY_CLOSE_HOUR;
+    startH += stepHours
+  ) {
     const endH = startH + stepHours;
     const startStr = `${String(startH).padStart(2, "0")}:00`;
     const endStr = `${String(endH).padStart(2, "0")}:00`;

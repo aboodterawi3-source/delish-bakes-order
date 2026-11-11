@@ -1,12 +1,25 @@
 #!/usr/bin/env node
 
-import fs from 'node:fs';
-import { isExplainerHtml, checkExplainerHtml } from '../explainer/check.mjs';
-import { analyzeSvgPath } from '../renderers/shared/svg-path-analysis.mjs';
-import { textUnits } from '../renderers/shared/utils.mjs';
-import { createHash } from 'node:crypto';
-import path from 'node:path';
-import { collectAmbiguousCorridors, collectArrowheadCollisions, collectBorderRuns, collectLabelCanvasOverflow, collectLabelRouteClearance, collectRouteRhythmIssues, describeLabelCanvasOverflow, formatRect, forwardCollinearAnalysisSegments, minimumLabelRouteClearance, normalizeRoutePoints, routeBudgetMetrics } from '../renderers/shared/geometry.mjs';
+import fs from "node:fs";
+import { isExplainerHtml, checkExplainerHtml } from "../explainer/check.mjs";
+import { analyzeSvgPath } from "../renderers/shared/svg-path-analysis.mjs";
+import { textUnits } from "../renderers/shared/utils.mjs";
+import { createHash } from "node:crypto";
+import path from "node:path";
+import {
+  collectAmbiguousCorridors,
+  collectArrowheadCollisions,
+  collectBorderRuns,
+  collectLabelCanvasOverflow,
+  collectLabelRouteClearance,
+  collectRouteRhythmIssues,
+  describeLabelCanvasOverflow,
+  formatRect,
+  forwardCollinearAnalysisSegments,
+  minimumLabelRouteClearance,
+  normalizeRoutePoints,
+  routeBudgetMetrics,
+} from "../renderers/shared/geometry.mjs";
 import {
   DESKTOP_READABILITY_VIEWPORT,
   DESKTOP_READER_DIAGRAM_WIDTH,
@@ -16,12 +29,12 @@ import {
   describeFixedWidthOverflow,
   predictedFixedWidthOverflow,
   projectedNodeTextPx,
-} from '../renderers/shared/desktop-readability.mjs';
+} from "../renderers/shared/desktop-readability.mjs";
 
 const input = process.argv[2];
 
-if (!input || input === '-h' || input === '--help') {
-  console.error('Usage: node scripts/check-render-output.mjs <diagram.html>');
+if (!input || input === "-h" || input === "--help") {
+  console.error("Usage: node scripts/check-render-output.mjs <diagram.html>");
   process.exit(input ? 0 : 2);
 }
 
@@ -30,14 +43,20 @@ let html;
 let artifact;
 try {
   const bytes = fs.readFileSync(htmlPath);
-  html = bytes.toString('utf8');
-  artifact = { sha256: createHash('sha256').update(bytes).digest('hex'), bytes: bytes.byteLength };
+  html = bytes.toString("utf8");
+  artifact = { sha256: createHash("sha256").update(bytes).digest("hex"), bytes: bytes.byteLength };
 } catch (err) {
-  console.error(JSON.stringify({
-    ok: false,
-    file: htmlPath,
-    checks: [{ name: 'file_readable', ok: false, details: [err.message] }],
-  }, null, 2));
+  console.error(
+    JSON.stringify(
+      {
+        ok: false,
+        file: htmlPath,
+        checks: [{ name: "file_readable", ok: false, details: [err.message] }],
+      },
+      null,
+      2,
+    ),
+  );
   process.exit(1);
 }
 
@@ -52,8 +71,8 @@ const pathDiagnostics = [];
 const pathAnalyses = new Map();
 let composition = {
   schemaVersion: 1,
-  profile: 'standard',
-  status: 'pass',
+  profile: "standard",
+  status: "pass",
   summary: { errors: 0, warnings: 0 },
   metrics: {
     properCrossings: 0,
@@ -82,30 +101,117 @@ let composition = {
 
 const NON_FINITE_TOKEN = /\b(?:NaN|undefined|Infinity)\b/;
 // Consume comments/CDATA as whole tokens, including any tag-like prose.
-const SVG_TAG_TOKEN = /<!--[\s\S]*?(?:-->|$)|<!\[CDATA\[[\s\S]*?(?:\]\]>|$)|<(\/?)([A-Za-z][\w:-]*)(?=[\s/>])(?:[^>"']|"[^"]*"|'[^']*')*>/g;
-const AUTOMATIC_CROSSOVER_UNDERLAY_TAG = /<path\b[^>]*\bdata-graph-role="automatic-crossover-underlay"[^>]*\/>/i;
-const HTML_VOID_ELEMENTS = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr']);
-const SVG_HTML_INTEGRATION_POINTS = new Set(['foreignobject', 'desc', 'title']);
+const SVG_TAG_TOKEN =
+  /<!--[\s\S]*?(?:-->|$)|<!\[CDATA\[[\s\S]*?(?:\]\]>|$)|<(\/?)([A-Za-z][\w:-]*)(?=[\s/>])(?:[^>"']|"[^"]*"|'[^']*')*>/g;
+const AUTOMATIC_CROSSOVER_UNDERLAY_TAG =
+  /<path\b[^>]*\bdata-graph-role="automatic-crossover-underlay"[^>]*\/>/i;
+const HTML_VOID_ELEMENTS = new Set([
+  "area",
+  "base",
+  "br",
+  "col",
+  "embed",
+  "hr",
+  "img",
+  "input",
+  "link",
+  "meta",
+  "param",
+  "source",
+  "track",
+  "wbr",
+]);
+const SVG_HTML_INTEGRATION_POINTS = new Set(["foreignobject", "desc", "title"]);
 const HTML_ATTRIBUTE = /([A-Za-z_:][\w:.-]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/g;
 const readerContract = readerContractFromHtml(html);
 const NUMERIC_ATTRS = new Set([
-  'x', 'y', 'x1', 'y1', 'x2', 'y2', 'dx', 'dy', 'cx', 'cy', 'r', 'rx', 'ry', 'fx', 'fy',
-  'fr', 'width', 'height', 'd', 'points', 'pathlength', 'transform', 'viewbox', 'offset',
-  'opacity', 'fill-opacity', 'flood-opacity', 'stop-opacity', 'stroke-opacity', 'font-size',
-  'font-size-adjust', 'font-weight', 'letter-spacing', 'word-spacing', 'kerning', 'stroke-width',
-  'stroke-dasharray', 'stroke-dashoffset', 'stroke-miterlimit', 'textlength', 'startoffset',
-  'rotate', 'markerwidth', 'markerheight', 'refx', 'refy', 'orient', 'patterntransform',
-  'gradienttransform', 'filterres', 'stddeviation', 'basefrequency', 'numoctaves', 'seed',
-  'surfacescale', 'diffuseconstant', 'specularconstant', 'specularexponent',
-  'limitingconeangle', 'azimuth', 'elevation', 'pointsatx', 'pointsaty', 'pointsatz',
-  'kernelmatrix', 'order', 'divisor', 'bias', 'targetx', 'targety', 'kernelunitlength',
-  'scale', 'radius', 'k1', 'k2', 'k3', 'k4', 'tablevalues', 'slope', 'intercept',
-  'amplitude', 'exponent',
+  "x",
+  "y",
+  "x1",
+  "y1",
+  "x2",
+  "y2",
+  "dx",
+  "dy",
+  "cx",
+  "cy",
+  "r",
+  "rx",
+  "ry",
+  "fx",
+  "fy",
+  "fr",
+  "width",
+  "height",
+  "d",
+  "points",
+  "pathlength",
+  "transform",
+  "viewbox",
+  "offset",
+  "opacity",
+  "fill-opacity",
+  "flood-opacity",
+  "stop-opacity",
+  "stroke-opacity",
+  "font-size",
+  "font-size-adjust",
+  "font-weight",
+  "letter-spacing",
+  "word-spacing",
+  "kerning",
+  "stroke-width",
+  "stroke-dasharray",
+  "stroke-dashoffset",
+  "stroke-miterlimit",
+  "textlength",
+  "startoffset",
+  "rotate",
+  "markerwidth",
+  "markerheight",
+  "refx",
+  "refy",
+  "orient",
+  "patterntransform",
+  "gradienttransform",
+  "filterres",
+  "stddeviation",
+  "basefrequency",
+  "numoctaves",
+  "seed",
+  "surfacescale",
+  "diffuseconstant",
+  "specularconstant",
+  "specularexponent",
+  "limitingconeangle",
+  "azimuth",
+  "elevation",
+  "pointsatx",
+  "pointsaty",
+  "pointsatz",
+  "kernelmatrix",
+  "order",
+  "divisor",
+  "bias",
+  "targetx",
+  "targety",
+  "kernelunitlength",
+  "scale",
+  "radius",
+  "k1",
+  "k2",
+  "k3",
+  "k4",
+  "tablevalues",
+  "slope",
+  "intercept",
+  "amplitude",
+  "exponent",
 ]);
 const ELEMENT_NUMERIC_ATTRS = new Map([
-  ['fecolormatrix', new Set(['values'])],
-  ['fepointlight', new Set(['z'])],
-  ['fespotlight', new Set(['z'])],
+  ["fecolormatrix", new Set(["values"])],
+  ["fepointlight", new Set(["z"])],
+  ["fespotlight", new Set(["z"])],
 ]);
 
 function addCheck(name, ok, details = []) {
@@ -113,18 +219,18 @@ function addCheck(name, ok, details = []) {
 }
 
 const svgMatches = [...html.matchAll(/<svg\b[\s\S]*?<\/svg>/gi)];
-addCheck('single_svg', svgMatches.length === 1, [`found ${svgMatches.length} <svg> block(s)`]);
+addCheck("single_svg", svgMatches.length === 1, [`found ${svgMatches.length} <svg> block(s)`]);
 
 if (svgMatches.length === 1) {
   const svg = svgMatches[0][0];
-  const svgRoot = svg.match(/<svg\b[^>]*>/i)?.[0] || '';
+  const svgRoot = svg.match(/<svg\b[^>]*>/i)?.[0] || "";
   const svgAttrs = parseAttrs(svgRoot);
-  const qualityProfile = svgAttrs['data-quality-profile'] || 'standard';
-  const workflowV2 = svgAttrs['data-layout-contract'] === 'readable-v2';
-  const qualityGatesEnforced = svgAttrs['data-quality-gates'] !== 'advisory';
+  const qualityProfile = svgAttrs["data-quality-profile"] || "standard";
+  const workflowV2 = svgAttrs["data-layout-contract"] === "readable-v2";
+  const qualityGatesEnforced = svgAttrs["data-quality-gates"] !== "advisory";
   const nonFiniteAttrs = collectNonFiniteAttrs(svg);
-  addCheck('finite_svg', nonFiniteAttrs.length === 0, nonFiniteAttrs);
-  const legendStart = svg.indexOf('<!-- Legend -->');
+  addCheck("finite_svg", nonFiniteAttrs.length === 0, nonFiniteAttrs);
+  const legendStart = svg.indexOf("<!-- Legend -->");
   const beforeLegend = legendStart >= 0 ? svg.slice(0, legendStart) : svg;
   const desktopReadability = collectDesktopReadability(svgAttrs, beforeLegend, readerContract);
   const desktopReadabilityIssue = desktopReadability.issue;
@@ -132,23 +238,28 @@ if (svgMatches.length === 1) {
   const viewportHeightIssue = predictedFixedWidthOverflow({
     viewBoxWidth: viewBoxSize(svgAttrs)[0],
     viewBoxHeight: viewBoxSize(svgAttrs)[1],
-    readerFit: svgAttrs['data-reader-fit'] || null,
-    diagramType: svgAttrs['data-diagram-type'] || null,
+    readerFit: svgAttrs["data-reader-fit"] || null,
+    diagramType: svgAttrs["data-diagram-type"] || null,
   });
   const arrows = collectArrows(beforeLegend, workflowV2);
-  const diagonal = arrows.flatMap((arrow) => diagonalStraightSegments(arrow).map((segment) => ({ arrow, ...segment })));
+  const diagonal = arrows.flatMap((arrow) =>
+    diagonalStraightSegments(arrow).map((segment) => ({ arrow, ...segment })),
+  );
   addCheck(
-    'orthogonal_arrows',
+    "orthogonal_arrows",
     diagonal.length === 0,
-    diagonal.map(({ arrow, segmentIndex }) => `${arrow.kind} ${arrow.index} segment ${segmentIndex + 1}: expected an orthogonal segment or an explicitly authored direct straight route; ${arrow.raw}`),
+    diagonal.map(
+      ({ arrow, segmentIndex }) =>
+        `${arrow.kind} ${arrow.index} segment ${segmentIndex + 1}: expected an orthogonal segment or an explicitly authored direct straight route; ${arrow.raw}`,
+    ),
   );
   const measuredRelationshipCrossings = collectRelationshipCrossings(arrows, workflowV2);
-  const resolvedCrossovers = measuredRelationshipCrossings.filter((hit) => (
-    hit.left.crossoverHalo && hit.right.crossoverHalo
-  ));
-  const relationshipCrossings = measuredRelationshipCrossings.filter((hit) => (
-    !hit.left.crossoverHalo || !hit.right.crossoverHalo
-  ));
+  const resolvedCrossovers = measuredRelationshipCrossings.filter(
+    (hit) => hit.left.crossoverHalo && hit.right.crossoverHalo,
+  );
+  const relationshipCrossings = measuredRelationshipCrossings.filter(
+    (hit) => !hit.left.crossoverHalo || !hit.right.crossoverHalo,
+  );
   const compositionFrames = collectCompositionFrames(beforeLegend);
   const containerBorderRuns = collectBorderRuns({
     routedRelations: arrows
@@ -161,41 +272,71 @@ if (svgMatches.length === 1) {
     frames: compositionFrames,
   });
   const routedRelationships = arrows
-    .filter((arrow) => arrow.from && arrow.to && arrow.routeSubpaths.some(points => points.length > 1))
+    .filter(
+      (arrow) => arrow.from && arrow.to && arrow.routeSubpaths.some((points) => points.length > 1),
+    )
     .map((arrow) => ({ relation: arrow, relationIndex: arrow.index, points: arrow.routePoints }));
   const nodeRects = svgAttrs.transform ? [] : collectUntransformedNodeRects(beforeLegend);
   const routeMetrics = subpathBudgetMetrics(routedRelationships);
   // Architecture marks only one of its two Reader fits with its type.
-  const crowdedSides = svgAttrs['data-diagram-type'] === 'architecture' || svgAttrs['data-reader-primary-text'] === '14'
-    ? crowdedNodeSides(arrows, nodeRects) : [];
+  const crowdedSides =
+    svgAttrs["data-diagram-type"] === "architecture" ||
+    svgAttrs["data-reader-primary-text"] === "14"
+      ? crowdedNodeSides(arrows, nodeRects)
+      : [];
   const routeRhythmIssues = subpathRhythmIssues(routedRelationships);
   const ambiguousCorridors = subpathCorridors({
     routedRelations: routedRelationships,
-    includeSharedEndpoints: (left, right) => workflowV2 || (left.independentPorts && right.independentPorts),
+    includeSharedEndpoints: (left, right) =>
+      workflowV2 || (left.independentPorts && right.independentPorts),
     allowShortWorkflowTrunks: workflowV2,
-    includeSharedEndpointCounterflow: (left, right) => left.automaticWorkflowRoute && right.automaticWorkflowRoute,
+    includeSharedEndpointCounterflow: (left, right) =>
+      left.automaticWorkflowRoute && right.automaticWorkflowRoute,
   });
   const arrowheadCollisions = collectArrowheadCollisions({
-    routedRelations: routedRelationships.filter((entry) => workflowV2 || entry.relation.independentPorts)
-      .flatMap(entry => routeParts(entry).filter(part => part.targetEndpoint)),
+    routedRelations: routedRelationships
+      .filter((entry) => workflowV2 || entry.relation.independentPorts)
+      .flatMap((entry) => routeParts(entry).filter((part) => part.targetEndpoint)),
     allowShortWorkflowTrunks: workflowV2,
   });
   const relationshipLabels = collectRelationshipLabelMasks(beforeLegend, arrows);
   const leadingSpace = collectArchitectureLeadingSpace({
-    svgAttrs, fragment: beforeLegend, nodeRects, frames: compositionFrames,
-    arrows, labels: relationshipLabels,
+    svgAttrs,
+    fragment: beforeLegend,
+    nodeRects,
+    frames: compositionFrames,
+    arrows,
+    labels: relationshipLabels,
   });
-  const sequenceColumnSpace = collectSequenceColumnSpace({ svgAttrs, fragment: beforeLegend, nodeRects, arrows });
-  const sequenceNoteBorders = collectSequenceNoteBorders({ svgAttrs, fragment: beforeLegend, frames: compositionFrames, arrows });
-  const labelClearanceThreshold = qualityProfile === 'showcase' ? 4 : 2;
+  const sequenceColumnSpace = collectSequenceColumnSpace({
+    svgAttrs,
+    fragment: beforeLegend,
+    nodeRects,
+    arrows,
+  });
+  const sequenceNoteBorders = collectSequenceNoteBorders({
+    svgAttrs,
+    fragment: beforeLegend,
+    frames: compositionFrames,
+    arrows,
+  });
+  const labelClearanceThreshold = qualityProfile === "showcase" ? 4 : 2;
   const labelRouteMeasurements = subpathLabelClearance({
     labels: relationshipLabels,
-    routedRelations: arrows.map((arrow) => ({ relation: arrow, relationIndex: arrow.index, points: arrow.routePoints })),
+    routedRelations: arrows.map((arrow) => ({
+      relation: arrow,
+      relationIndex: arrow.index,
+      points: arrow.routePoints,
+    })),
     threshold: Number.MAX_VALUE,
   });
   const labelRouteClearance = subpathLabelClearance({
     labels: relationshipLabels,
-    routedRelations: arrows.map((arrow) => ({ relation: arrow, relationIndex: arrow.index, points: arrow.routePoints })),
+    routedRelations: arrows.map((arrow) => ({
+      relation: arrow,
+      relationIndex: arrow.index,
+      points: arrow.routePoints,
+    })),
     threshold: labelClearanceThreshold,
   });
   // The renderers bound their own label rects, but `check` also re-measures an
@@ -205,34 +346,36 @@ if (svgMatches.length === 1) {
     labels: relationshipLabels,
     viewBox: viewBoxRect(svgAttrs),
   });
-  const crossingIsError = qualityProfile === 'showcase';
-  const corridorIsError = qualityProfile === 'showcase';
-  const rhythmIsError = qualityProfile === 'showcase';
-  const labelClearanceIsError = qualityProfile === 'showcase';
-  const labelContainmentIsError = qualityProfile === 'showcase';
-  const desktopReadabilityIsError = qualityProfile === 'showcase';
+  const crossingIsError = qualityProfile === "showcase";
+  const corridorIsError = qualityProfile === "showcase";
+  const rhythmIsError = qualityProfile === "showcase";
+  const labelClearanceIsError = qualityProfile === "showcase";
+  const labelContainmentIsError = qualityProfile === "showcase";
+  const desktopReadabilityIsError = qualityProfile === "showcase";
   // Certain geometry, but new: surface it as evidence first (CONTRIBUTING.md#product-and-compatibility-contracts).
   const viewportHeightIsError = false;
-  const compositionErrors = (qualityGatesEnforced ? containerBorderRuns.length : 0)
-    + (crossingIsError ? relationshipCrossings.length : 0)
-    + (corridorIsError ? ambiguousCorridors.length + arrowheadCollisions.length : 0)
-    + (labelClearanceIsError ? labelRouteClearance.length : 0)
-    + (labelContainmentIsError ? labelCanvasOverflow.length : 0)
-    + (rhythmIsError ? routeRhythmIssues.length : 0)
-    + (desktopReadabilityIsError && desktopReadabilityIssue ? 1 : 0)
-    + (viewportHeightIsError && viewportHeightIssue ? 1 : 0);
-  const compositionWarnings = (qualityGatesEnforced ? 0 : containerBorderRuns.length)
-    + (crossingIsError ? 0 : relationshipCrossings.length)
-    + (corridorIsError ? 0 : ambiguousCorridors.length + arrowheadCollisions.length)
-    + (labelClearanceIsError ? 0 : labelRouteClearance.length)
-    + (labelContainmentIsError ? 0 : labelCanvasOverflow.length)
-    + (rhythmIsError ? 0 : routeRhythmIssues.length)
-    + (desktopReadabilityIsError || !desktopReadabilityIssue ? 0 : 1)
-    + (viewportHeightIsError || !viewportHeightIssue ? 0 : 1);
+  const compositionErrors =
+    (qualityGatesEnforced ? containerBorderRuns.length : 0) +
+    (crossingIsError ? relationshipCrossings.length : 0) +
+    (corridorIsError ? ambiguousCorridors.length + arrowheadCollisions.length : 0) +
+    (labelClearanceIsError ? labelRouteClearance.length : 0) +
+    (labelContainmentIsError ? labelCanvasOverflow.length : 0) +
+    (rhythmIsError ? routeRhythmIssues.length : 0) +
+    (desktopReadabilityIsError && desktopReadabilityIssue ? 1 : 0) +
+    (viewportHeightIsError && viewportHeightIssue ? 1 : 0);
+  const compositionWarnings =
+    (qualityGatesEnforced ? 0 : containerBorderRuns.length) +
+    (crossingIsError ? 0 : relationshipCrossings.length) +
+    (corridorIsError ? 0 : ambiguousCorridors.length + arrowheadCollisions.length) +
+    (labelClearanceIsError ? 0 : labelRouteClearance.length) +
+    (labelContainmentIsError ? 0 : labelCanvasOverflow.length) +
+    (rhythmIsError ? 0 : routeRhythmIssues.length) +
+    (desktopReadabilityIsError || !desktopReadabilityIssue ? 0 : 1) +
+    (viewportHeightIsError || !viewportHeightIssue ? 0 : 1);
   composition = {
     schemaVersion: 1,
     profile: qualityProfile,
-    status: compositionErrors ? 'fail' : 'pass',
+    status: compositionErrors ? "fail" : "pass",
     summary: {
       errors: compositionErrors,
       warnings: compositionWarnings,
@@ -257,7 +400,9 @@ if (svgMatches.length === 1) {
     // crossover can be preferable to a long crossing-free detour.
     routeReview: {
       crossings: resolvedCrossovers.map((hit) => {
-        const shared = [hit.left.from, hit.left.to].find((id) => id && (id === hit.right.from || id === hit.right.to));
+        const shared = [hit.left.from, hit.left.to].find(
+          (id) => id && (id === hit.right.from || id === hit.right.to),
+        );
         return {
           left: relationshipRecord(hit.left),
           right: relationshipRecord(hit.right),
@@ -269,12 +414,17 @@ if (svgMatches.length === 1) {
       detours: routedRelationships.flatMap((entry) => {
         const metrics = subpathBudgetMetrics([entry]);
         const blockers = directCorridorBlockers(entry.relation, nodeRects);
-        return metrics.routesOverSuggestedBends || metrics.routesOverSuggestedStretch ? [{
-          relationship: relationshipRecord(entry.relation),
-          bends: metrics.maxBends,
-          stretch: metrics.maxStretch == null ? null : Math.round(metrics.maxStretch * 1000) / 1000,
-          ...(blockers.length ? { directCorridorBlockers: blockers } : {}),
-        }] : [];
+        return metrics.routesOverSuggestedBends || metrics.routesOverSuggestedStretch
+          ? [
+              {
+                relationship: relationshipRecord(entry.relation),
+                bends: metrics.maxBends,
+                stretch:
+                  metrics.maxStretch == null ? null : Math.round(metrics.maxStretch * 1000) / 1000,
+                ...(blockers.length ? { directCorridorBlockers: blockers } : {}),
+              },
+            ]
+          : [];
       }),
     },
     leadingSpace,
@@ -283,8 +433,8 @@ if (svgMatches.length === 1) {
     desktopReadability: desktopReadability.evidence,
     issues: [
       ...containerBorderRuns.map((hit) => ({
-        severity: qualityGatesEnforced ? 'error' : 'warning',
-        code: 'composition/container-border-run',
+        severity: qualityGatesEnforced ? "error" : "warning",
+        code: "composition/container-border-run",
         relationship: relationshipRecord(hit.relation),
         frame: frameRecord(hit.frame),
         side: hit.side,
@@ -294,9 +444,9 @@ if (svgMatches.length === 1) {
         to: hit.overlapEnd.map((value) => Math.round(value * 10) / 10),
       })),
       ...labelRouteClearance.map((hit) => ({
-        severity: labelClearanceIsError ? 'error' : 'warning',
-        code: 'composition/label-route-clearance',
-        label: hit.label?.label || hit.labelRelation?.label || '',
+        severity: labelClearanceIsError ? "error" : "warning",
+        code: "composition/label-route-clearance",
+        label: hit.label?.label || hit.labelRelation?.label || "",
         labelRelationship: relationshipRecord(hit.labelRelation),
         otherRelationship: relationshipRecord(hit.otherRelation),
         segmentIndex: hit.segmentIndex,
@@ -308,29 +458,29 @@ if (svgMatches.length === 1) {
         to: hit.end.map((value) => Math.round(value * 10) / 10),
       })),
       ...labelCanvasOverflow.map((hit) => {
-        const label = hit.label?.label || hit.relation?.label || '';
+        const label = hit.label?.label || hit.relation?.label || "";
         return {
-          severity: labelContainmentIsError ? 'error' : 'warning',
-          code: 'composition/label-canvas-containment',
+          severity: labelContainmentIsError ? "error" : "warning",
+          code: "composition/label-canvas-containment",
           label,
           relationship: relationshipRecord(hit.relation),
           labelRect: roundedRect(hit.rect),
           viewBox: hit.viewBox,
           viewBoxOrigin: hit.viewBoxOrigin,
           overflowPx: hit.overflowPx,
-          detail: `[composition/label-canvas-containment] ${qualityProfile} label "${label}" on ${relationshipName(hit.relation)} extends past the ${describeLabelCanvasOverflow(hit)} (label rect ${formatRect(hit.rect)}; viewBox ${hit.viewBox[0]}x${hit.viewBox[1]}${hit.viewBoxOrigin.some(Boolean) ? ` at ${hit.viewBoxOrigin[0]},${hit.viewBoxOrigin[1]}` : ''}) — use renderer-supported label controls (shorten the label or reorder participants for sequence; otherwise labelAt, labelDx, labelDy, or labelSegment), or enlarge meta.viewBox.`,
+          detail: `[composition/label-canvas-containment] ${qualityProfile} label "${label}" on ${relationshipName(hit.relation)} extends past the ${describeLabelCanvasOverflow(hit)} (label rect ${formatRect(hit.rect)}; viewBox ${hit.viewBox[0]}x${hit.viewBox[1]}${hit.viewBoxOrigin.some(Boolean) ? ` at ${hit.viewBoxOrigin[0]},${hit.viewBoxOrigin[1]}` : ""}) — use renderer-supported label controls (shorten the label or reorder participants for sequence; otherwise labelAt, labelDx, labelDy, or labelSegment), or enlarge meta.viewBox.`,
         };
       }),
       ...relationshipCrossings.map((hit) => ({
-        severity: crossingIsError ? 'error' : 'warning',
-        code: 'composition/proper-crossing',
+        severity: crossingIsError ? "error" : "warning",
+        code: "composition/proper-crossing",
         relationship: relationshipRecord(hit.left),
         otherRelationship: relationshipRecord(hit.right),
         point: hit.point.map((value) => Math.round(value * 10) / 10),
       })),
       ...ambiguousCorridors.map((hit) => ({
-        severity: corridorIsError ? 'error' : 'warning',
-        code: 'composition/ambiguous-corridor',
+        severity: corridorIsError ? "error" : "warning",
+        code: "composition/ambiguous-corridor",
         relationship: relationshipRecord(hit.left.relation),
         otherRelationship: relationshipRecord(hit.right.relation),
         segmentIndex: hit.leftSegment,
@@ -340,8 +490,8 @@ if (svgMatches.length === 1) {
         to: hit.overlapEnd.map((value) => Math.round(value * 10) / 10),
       })),
       ...arrowheadCollisions.map((hit) => ({
-        severity: corridorIsError ? 'error' : 'warning',
-        code: 'composition/arrowhead-collision',
+        severity: corridorIsError ? "error" : "warning",
+        code: "composition/arrowhead-collision",
         relationship: relationshipRecord(hit.left.relation),
         otherRelationship: relationshipRecord(hit.right.relation),
         distancePx: hit.distance,
@@ -349,7 +499,7 @@ if (svgMatches.length === 1) {
         endpoints: [hit.left.tip, hit.right.tip],
       })),
       ...routeRhythmIssues.map((hit) => ({
-        severity: rhythmIsError ? 'error' : 'warning',
+        severity: rhythmIsError ? "error" : "warning",
         code: hit.code,
         relationship: relationshipRecord(hit.relation),
         segmentIndex: hit.segmentIndex,
@@ -358,74 +508,91 @@ if (svgMatches.length === 1) {
         from: hit.start.map((value) => Math.round(value * 10) / 10),
         to: hit.end.map((value) => Math.round(value * 10) / 10),
       })),
-      ...(desktopReadabilityIssue ? [{
-        severity: desktopReadabilityIsError ? 'error' : 'warning',
-        code: 'composition/desktop-readability',
-        ...(desktopReadabilityIssue.nodeId ? { nodeId: desktopReadabilityIssue.nodeId } : {}),
-        owner: desktopReadabilityIssue.owner,
-        viewportWidth: DESKTOP_READABILITY_VIEWPORT.width,
-        viewportHeight: DESKTOP_READABILITY_VIEWPORT.height,
-        availableDiagramWidth: desktopReadability.evidence.availableDiagramWidth,
-        budgetBasis: desktopReadability.evidence.budgetBasis,
-        readerContract: desktopReadability.evidence.readerContract,
-        requestedTargetPx: desktopReadability.evidence.requestedTargetPx,
-        requestedTargetMet: desktopReadability.evidence.requestedTargetMet,
-        budgetLimit: desktopReadability.evidence.limit,
-        viewBoxWidth: desktopReadabilityIssue.viewBoxWidth,
-        scale: desktopReadabilityIssue.scale,
-        text: desktopReadabilityIssue.text,
-        detail: desktopReadabilityIssue.detail,
-        sourceFontPx: desktopReadabilityIssue.sourceFontPx,
-        projectedFontPx: desktopReadabilityIssue.projectedFontPx,
-        minimumProjectedFontPx: MIN_PROJECTED_NODE_TEXT_PX,
-      }] : []),
-      ...(viewportHeightIssue ? [{
-        severity: viewportHeightIsError ? 'error' : 'warning',
-        code: 'composition/viewport-height',
-        readerFit: svgAttrs['data-reader-fit'] || null,
-        viewBoxWidth: viewBoxSize(svgAttrs)[0],
-        viewBoxHeight: viewBoxSize(svgAttrs)[1],
-        ...viewportHeightIssue,
-        detail: `[composition/viewport-height] ${describeFixedWidthOverflow({ ...viewportHeightIssue, viewBoxWidth: viewBoxSize(svgAttrs)[0], viewBoxHeight: viewBoxSize(svgAttrs)[1] })}`,
-      }] : []),
+      ...(desktopReadabilityIssue
+        ? [
+            {
+              severity: desktopReadabilityIsError ? "error" : "warning",
+              code: "composition/desktop-readability",
+              ...(desktopReadabilityIssue.nodeId ? { nodeId: desktopReadabilityIssue.nodeId } : {}),
+              owner: desktopReadabilityIssue.owner,
+              viewportWidth: DESKTOP_READABILITY_VIEWPORT.width,
+              viewportHeight: DESKTOP_READABILITY_VIEWPORT.height,
+              availableDiagramWidth: desktopReadability.evidence.availableDiagramWidth,
+              budgetBasis: desktopReadability.evidence.budgetBasis,
+              readerContract: desktopReadability.evidence.readerContract,
+              requestedTargetPx: desktopReadability.evidence.requestedTargetPx,
+              requestedTargetMet: desktopReadability.evidence.requestedTargetMet,
+              budgetLimit: desktopReadability.evidence.limit,
+              viewBoxWidth: desktopReadabilityIssue.viewBoxWidth,
+              scale: desktopReadabilityIssue.scale,
+              text: desktopReadabilityIssue.text,
+              detail: desktopReadabilityIssue.detail,
+              sourceFontPx: desktopReadabilityIssue.sourceFontPx,
+              projectedFontPx: desktopReadabilityIssue.projectedFontPx,
+              minimumProjectedFontPx: MIN_PROJECTED_NODE_TEXT_PX,
+            },
+          ]
+        : []),
+      ...(viewportHeightIssue
+        ? [
+            {
+              severity: viewportHeightIsError ? "error" : "warning",
+              code: "composition/viewport-height",
+              readerFit: svgAttrs["data-reader-fit"] || null,
+              viewBoxWidth: viewBoxSize(svgAttrs)[0],
+              viewBoxHeight: viewBoxSize(svgAttrs)[1],
+              ...viewportHeightIssue,
+              detail: `[composition/viewport-height] ${describeFixedWidthOverflow({ ...viewportHeightIssue, viewBoxWidth: viewBoxSize(svgAttrs)[0], viewBoxHeight: viewBoxSize(svgAttrs)[1] })}`,
+            },
+          ]
+        : []),
     ],
   };
   addCheck(
-    'label_route_clearance',
+    "label_route_clearance",
     !labelClearanceIsError || labelRouteClearance.length === 0,
-    labelRouteClearance.map((hit) => (
-      `[composition/label-route-clearance] ${qualityProfile} label "${hit.label?.label || hit.labelRelation?.label || ''}" on ${relationshipName(hit.labelRelation)} is ${Math.round(hit.clearance * 10) / 10}px from ${relationshipName(hit.otherRelation)} segment ${hit.segmentIndex} [${formatPoint(hit.start)}] -> [${formatPoint(hit.end)}]${hit.intersectionLength > 0 ? ` with ${Math.round(hit.intersectionLength * 10) / 10}px hidden by the mask` : ''} (minimum ${hit.threshold}px) — use renderer-supported label controls (message y for sequence; otherwise labelAt, labelDx, labelDy, or labelSegment), or adjust the other relationship route/via/channel.`
-    )),
+    labelRouteClearance.map(
+      (hit) =>
+        `[composition/label-route-clearance] ${qualityProfile} label "${hit.label?.label || hit.labelRelation?.label || ""}" on ${relationshipName(hit.labelRelation)} is ${Math.round(hit.clearance * 10) / 10}px from ${relationshipName(hit.otherRelation)} segment ${hit.segmentIndex} [${formatPoint(hit.start)}] -> [${formatPoint(hit.end)}]${hit.intersectionLength > 0 ? ` with ${Math.round(hit.intersectionLength * 10) / 10}px hidden by the mask` : ""} (minimum ${hit.threshold}px) — use renderer-supported label controls (message y for sequence; otherwise labelAt, labelDx, labelDy, or labelSegment), or adjust the other relationship route/via/channel.`,
+    ),
   );
   addCheck(
-    'relationship_crossings',
+    "relationship_crossings",
     !crossingIsError || relationshipCrossings.length === 0,
-    relationshipCrossings.map((hit) => (
-      `[composition/proper-crossing] ${qualityProfile} ${relationshipName(hit.left)} crosses ${relationshipName(hit.right)} at [${formatPoint(hit.point)}]`
-    )),
+    relationshipCrossings.map(
+      (hit) =>
+        `[composition/proper-crossing] ${qualityProfile} ${relationshipName(hit.left)} crosses ${relationshipName(hit.right)} at [${formatPoint(hit.point)}]`,
+    ),
   );
   addCheck(
-    'relationship_corridors',
+    "relationship_corridors",
     !corridorIsError || ambiguousCorridors.length + arrowheadCollisions.length === 0,
-    [...ambiguousCorridors.map((hit) => (
-      `[composition/ambiguous-corridor] ${qualityProfile} ${relationshipName(hit.left.relation)} shares a ${Math.round(hit.overlapLength * 10) / 10}px corridor with ${relationshipName(hit.right.relation)} at [${formatPoint(hit.overlapStart)}] -> [${formatPoint(hit.overlapEnd)}]`
-    )), ...arrowheadCollisions.map((hit) => (
-      `[composition/arrowhead-collision] ${qualityProfile} ${relationshipName(hit.left.relation)} and ${relationshipName(hit.right.relation)} have incoming arrowheads ${hit.distance}px apart (minimum ${hit.minimum}px) — enlarge or reposition the destination, or choose separate toSide ports.`
-    ))],
+    [
+      ...ambiguousCorridors.map(
+        (hit) =>
+          `[composition/ambiguous-corridor] ${qualityProfile} ${relationshipName(hit.left.relation)} shares a ${Math.round(hit.overlapLength * 10) / 10}px corridor with ${relationshipName(hit.right.relation)} at [${formatPoint(hit.overlapStart)}] -> [${formatPoint(hit.overlapEnd)}]`,
+      ),
+      ...arrowheadCollisions.map(
+        (hit) =>
+          `[composition/arrowhead-collision] ${qualityProfile} ${relationshipName(hit.left.relation)} and ${relationshipName(hit.right.relation)} have incoming arrowheads ${hit.distance}px apart (minimum ${hit.minimum}px) — enlarge or reposition the destination, or choose separate toSide ports.`,
+      ),
+    ],
   );
   addCheck(
-    'container_border_runs',
+    "container_border_runs",
     !qualityGatesEnforced || containerBorderRuns.length === 0,
-    containerBorderRuns.map((hit) => (
-      `[composition/container-border-run] ${relationshipName(hit.relation)} follows ${frameName(hit.frame)} ${hit.side} border for ${Math.round(hit.overlapLength * 10) / 10}px on segment ${hit.segmentIndex} [${formatPoint(hit.overlapStart)}] -> [${formatPoint(hit.overlapEnd)}]`
-    )),
+    containerBorderRuns.map(
+      (hit) =>
+        `[composition/container-border-run] ${relationshipName(hit.relation)} follows ${frameName(hit.frame)} ${hit.side} border for ${Math.round(hit.overlapLength * 10) / 10}px on segment ${hit.segmentIndex} [${formatPoint(hit.overlapStart)}] -> [${formatPoint(hit.overlapEnd)}]`,
+    ),
   );
   addCheck(
-    'route_rhythm',
+    "route_rhythm",
     !rhythmIsError || routeRhythmIssues.length === 0,
-    routeRhythmIssues.map((hit) => (
-      `[${hit.code}] ${qualityProfile} ${relationshipName(hit.relation)} has a ${Math.round(hit.length * 10) / 10}px ${hit.position} segment ${hit.segmentIndex} [${formatPoint(hit.start)}] -> [${formatPoint(hit.end)}]`
-    )),
+    routeRhythmIssues.map(
+      (hit) =>
+        `[${hit.code}] ${qualityProfile} ${relationshipName(hit.relation)} has a ${Math.round(hit.length * 10) / 10}px ${hit.position} segment ${hit.segmentIndex} [${formatPoint(hit.start)}] -> [${formatPoint(hit.end)}]`,
+    ),
   );
 
   if (legendStart >= 0) {
@@ -433,21 +600,39 @@ if (svgMatches.length === 1) {
     const legendBoxes = collectLegendBoxes(legendFragment);
     const collisions = collectLegendCollisions(arrows, legendBoxes);
     addCheck(
-      'legend_clearance',
+      "legend_clearance",
       collisions.length === 0,
-      collisions.map((hit) => `${hit.arrow.kind} ${hit.arrow.index} crosses legend ${hit.box.label}`),
+      collisions.map(
+        (hit) => `${hit.arrow.kind} ${hit.arrow.index} crosses legend ${hit.box.label}`,
+      ),
     );
   } else {
-    addCheck('legend_clearance', true, ['no legend marker found']);
+    addCheck("legend_clearance", true, ["no legend marker found"]);
   }
 }
 
-if (pathDiagnostics.length) addCheck('svg_path_data', false, pathDiagnostics.map(item => item.message));
+if (pathDiagnostics.length)
+  addCheck(
+    "svg_path_data",
+    false,
+    pathDiagnostics.map((item) => item.message),
+  );
 
-const ok = checks.every((check) => check.ok) && composition.status !== 'fail';
-console.log(JSON.stringify({ ok, file: htmlPath, artifact, checks, composition,
-  ...(pathDiagnostics.length ? { diagnostics: pathDiagnostics } : {}),
-}, null, 2));
+const ok = checks.every((check) => check.ok) && composition.status !== "fail";
+console.log(
+  JSON.stringify(
+    {
+      ok,
+      file: htmlPath,
+      artifact,
+      checks,
+      composition,
+      ...(pathDiagnostics.length ? { diagnostics: pathDiagnostics } : {}),
+    },
+    null,
+    2,
+  ),
+);
 // Let pending stdout writes drain: large receipts are asynchronous when piped.
 process.exitCode = ok ? 0 : 1;
 
@@ -460,75 +645,81 @@ function collectArrows(fragment, useActualPoints = false) {
 
   for (const tag of fragment.matchAll(SVG_TAG_TOKEN)) {
     const name = tag[2]?.toLowerCase();
-    if (tag[1] || !['path', 'line'].includes(name)) continue;
-    if (name === 'path') pathIndex += 1;
+    if (tag[1] || !["path", "line"].includes(name)) continue;
+    if (name === "path") pathIndex += 1;
     const tagStart = tag.index;
     const raw = tag[0];
-    const gap = previousTag ? fragment.slice(previousTagEnd, tagStart) : '';
-    const precedingUnderlay = previousTag
-      && /^\s*$/.test(gap)
-      && previousTag.name === 'path'
-      && previousTag.underlayAttrs;
+    const gap = previousTag ? fragment.slice(previousTagEnd, tagStart) : "";
+    const precedingUnderlay =
+      previousTag && /^\s*$/.test(gap) && previousTag.name === "path" && previousTag.underlayAttrs;
     previousTag = {
       name: name,
-      underlayAttrs: name === 'path' && AUTOMATIC_CROSSOVER_UNDERLAY_TAG.test(raw)
-        ? parseAttrs(raw)
-        : null,
+      underlayAttrs:
+        name === "path" && AUTOMATIC_CROSSOVER_UNDERLAY_TAG.test(raw) ? parseAttrs(raw) : null,
     };
     previousTagEnd = tagStart + raw.length;
     if (!/\bclass="[^"]*\ba-(?:default|emphasis|security|dashed)\b/.test(raw)) continue;
     if (!/\bmarker-end=/.test(raw)) continue;
     const attrs = parseAttrs(raw);
-    const routeStrokeWidth = numberAttr(attrs, 'stroke-width');
-    const underlayStrokeWidth = precedingUnderlay ? numberAttr(precedingUnderlay, 'stroke-width') : NaN;
-    const verifiedCrossoverHalo = attrs['data-composition-crossover'] === 'halo'
-      && precedingUnderlay?.d === attrs.d
-      && precedingUnderlay?.fill === 'none'
-      && precedingUnderlay?.stroke === 'var(--mask)'
-      && precedingUnderlay?.['pointer-events'] === 'none'
-      && Number.isFinite(routeStrokeWidth)
-      && Number.isFinite(underlayStrokeWidth)
-      && underlayStrokeWidth >= routeStrokeWidth + 3;
-    const line = name === 'line';
-    const parsed = line ? null : inspectedPath(attrs, tag.index, pathIndex, 'relationship');
-    const segments = line ? lineSegments(attrs) : parsed.subpaths.flatMap(part => part.segments);
-    const borderSegments = line ? segments : parsed.subpaths.flatMap(part => part.straightSegments);
-    let routeSubpaths = line ? continuousRoutePoints(segments)
-      : parsed.subpaths.flatMap(part => continuousRoutePoints(part.straightSegments));
+    const routeStrokeWidth = numberAttr(attrs, "stroke-width");
+    const underlayStrokeWidth = precedingUnderlay
+      ? numberAttr(precedingUnderlay, "stroke-width")
+      : NaN;
+    const verifiedCrossoverHalo =
+      attrs["data-composition-crossover"] === "halo" &&
+      precedingUnderlay?.d === attrs.d &&
+      precedingUnderlay?.fill === "none" &&
+      precedingUnderlay?.stroke === "var(--mask)" &&
+      precedingUnderlay?.["pointer-events"] === "none" &&
+      Number.isFinite(routeStrokeWidth) &&
+      Number.isFinite(underlayStrokeWidth) &&
+      underlayStrokeWidth >= routeStrokeWidth + 3;
+    const line = name === "line";
+    const parsed = line ? null : inspectedPath(attrs, tag.index, pathIndex, "relationship");
+    const segments = line ? lineSegments(attrs) : parsed.subpaths.flatMap((part) => part.segments);
+    const borderSegments = line
+      ? segments
+      : parsed.subpaths.flatMap((part) => part.straightSegments);
+    let routeSubpaths = line
+      ? continuousRoutePoints(segments)
+      : parsed.subpaths.flatMap((part) => continuousRoutePoints(part.straightSegments));
     // Legacy single-path metadata remains supported. It cannot bridge actual moveto boundaries.
     if (!useActualPoints && (line || parsed.subpaths.length === 1)) {
-      const authoredPoints = parseRoutePoints(attrs['data-composition-points']);
+      const authoredPoints = parseRoutePoints(attrs["data-composition-points"]);
       if (authoredPoints) routeSubpaths = [authoredPoints];
     }
     arrows.push({
       kind: name,
-      index: index += 1,
+      index: (index += 1),
       raw,
       // Trust route intent only for a semantic edge with one visible direct
       // segment. A stale marker on bent/curved geometry cannot waive the gate.
-      authoredStraight: attrs['data-composition-route'] === 'straight'
-        && Boolean(attrs['data-edge-from'] && attrs['data-edge-to'])
-        && segments.length === 1 && borderSegments.length === 1
-        && (name === 'line' || /^\s*M\s+[-+\d.eE]+\s+[-+\d.eE]+\s+L\s+[-+\d.eE]+\s+[-+\d.eE]+\s*$/.test(attrs.d || '')),
+      authoredStraight:
+        attrs["data-composition-route"] === "straight" &&
+        Boolean(attrs["data-edge-from"] && attrs["data-edge-to"]) &&
+        segments.length === 1 &&
+        borderSegments.length === 1 &&
+        (name === "line" ||
+          /^\s*M\s+[-+\d.eE]+\s+[-+\d.eE]+\s+L\s+[-+\d.eE]+\s+[-+\d.eE]+\s*$/.test(attrs.d || "")),
       crossoverHalo: verifiedCrossoverHalo,
-      independentPorts: verifiedCrossoverHalo && attrs['data-composition-independent'] === 'true',
+      independentPorts: verifiedCrossoverHalo && attrs["data-composition-independent"] === "true",
       // Compatibility with first-round exports lacking a root layout contract.
       // Readable-v2's root contract supersedes this narrower automatic-pair rule.
       // This marker never certifies a crossover halo or waives a quality rule.
-      automaticWorkflowRoute: attrs['data-composition-routing'] === 'workflow-v2-auto',
-      junction: attrs['data-composition-junction'] || null,
+      automaticWorkflowRoute: attrs["data-composition-routing"] === "workflow-v2-auto",
+      junction: attrs["data-composition-junction"] || null,
       width: routeStrokeWidth,
-      variant: raw.match(/\ba-(default|emphasis|security|dashed)\b/)?.[1] || 'default',
-      role: attrs['data-edge-role'],
+      variant: raw.match(/\ba-(default|emphasis|security|dashed)\b/)?.[1] || "default",
+      role: attrs["data-edge-role"],
       segments,
       borderSegments,
       routePoints: routeSubpaths.length === 1 ? routeSubpaths[0] : [],
       routeSubpaths,
-      from: attrs['data-edge-from'] || attrs['data-composition-edge-from'],
-      to: attrs['data-edge-to'] || attrs['data-composition-edge-to'],
-      id: attrs['data-edge-id'] || attrs['data-composition-edge-id'],
-      key: attrs['data-edge-key'],
-      label: attrs['data-edge-label'],
+      from: attrs["data-edge-from"] || attrs["data-composition-edge-from"],
+      to: attrs["data-edge-to"] || attrs["data-composition-edge-to"],
+      id: attrs["data-edge-id"] || attrs["data-composition-edge-id"],
+      key: attrs["data-edge-key"],
+      label: attrs["data-edge-label"],
       offset: tag.index,
     });
   }
@@ -553,22 +744,24 @@ function continuousRoutePoints(segments) {
 
 function inspectedPath(attrs, offset, pathIndex, role) {
   if (pathAnalyses.has(offset)) return pathAnalyses.get(offset);
-  const result = analyzeSvgPath(decodeNumericReferences(attrs.d || ''));
+  const result = analyzeSvgPath(decodeNumericReferences(attrs.d || ""));
   if (result.ok) {
     pathAnalyses.set(offset, result);
     return result;
   }
   const { code, ...evidence } = result.error;
-  const id = attrs.id || attrs['data-edge-id'] || attrs['data-composition-frame-id'];
+  const id = attrs.id || attrs["data-edge-id"] || attrs["data-composition-frame-id"];
   pathDiagnostics.push({
     code,
-    severity: 'error',
-    message: `${role} path ${pathIndex}${id ? ` (${id})` : ''}: ${evidence.reason} at d offset ${evidence.tokenOffset}.`,
+    severity: "error",
+    message: `${role} path ${pathIndex}${id ? ` (${id})` : ""}: ${evidence.reason} at d offset ${evidence.tokenOffset}.`,
     subject: { role, pathIndex, ...(id ? { id } : {}) },
     evidence,
-    supportedFixes: [code === 'artifact/svg-path-unsupported'
-      ? 'regenerate the inspected relationship or frame using M/L/H/V/Q/Z commands'
-      : 'correct the path data at the reported offset or regenerate it from the original diagram'],
+    supportedFixes: [
+      code === "artifact/svg-path-unsupported"
+        ? "regenerate the inspected relationship or frame using M/L/H/V/Q/Z commands"
+        : "correct the path data at the reported offset or regenerate it from the original diagram",
+    ],
   });
   const invalid = { ok: false, subpaths: [] };
   pathAnalyses.set(offset, invalid);
@@ -582,15 +775,20 @@ function routeParts(entry) {
   let segmentOffset = 0;
   return subpaths.flatMap((points, subpathIndex) => {
     const normalized = normalizeRoutePoints(points);
-    const part = { ...entry, points: normalized, segmentOffset,
-      sourceEndpoint: subpathIndex === 0, targetEndpoint: subpathIndex === subpaths.length - 1 };
+    const part = {
+      ...entry,
+      points: normalized,
+      segmentOffset,
+      sourceEndpoint: subpathIndex === 0,
+      targetEndpoint: subpathIndex === subpaths.length - 1,
+    };
     segmentOffset += Math.max(0, normalized.length - 1);
     return normalized.length > 1 ? [part] : [];
   });
 }
 
 function subpathBudgetMetrics(entries) {
-  if (entries.every(entry => entry.relation.routeSubpaths.length <= 1)) {
+  if (entries.every((entry) => entry.relation.routeSubpaths.length <= 1)) {
     return routeBudgetMetrics({ routedRelations: entries });
   }
   const total = routeBudgetMetrics({ routedRelations: [] });
@@ -602,8 +800,10 @@ function subpathBudgetMetrics(entries) {
     metrics.routesOverSuggestedBends = Number(metrics.maxBends > 2);
     metrics.routesOverSuggestedStretch = Number(metrics.routesOverSuggestedStretch > 0);
     for (const [key, value] of Object.entries(metrics)) {
-      if (key.startsWith('max')) total[key] = value == null ? total[key] : Math.max(total[key] ?? value, value);
-      else if (key.startsWith('min')) total[key] = value == null ? total[key] : Math.min(total[key] ?? value, value);
+      if (key.startsWith("max"))
+        total[key] = value == null ? total[key] : Math.max(total[key] ?? value, value);
+      else if (key.startsWith("min"))
+        total[key] = value == null ? total[key] : Math.min(total[key] ?? value, value);
       else total[key] += value;
     }
   }
@@ -611,15 +811,18 @@ function subpathBudgetMetrics(entries) {
 }
 
 function subpathRhythmIssues(entries) {
-  return entries.flatMap(entry => routeParts(entry).flatMap(part => (
-    collectRouteRhythmIssues({ routedRelations: [part] }).map(issue => ({
-      ...issue, segmentIndex: issue.segmentIndex + part.segmentOffset,
-    }))
-  )));
+  return entries.flatMap((entry) =>
+    routeParts(entry).flatMap((part) =>
+      collectRouteRhythmIssues({ routedRelations: [part] }).map((issue) => ({
+        ...issue,
+        segmentIndex: issue.segmentIndex + part.segmentOffset,
+      })),
+    ),
+  );
 }
 
 function subpathCorridors({ routedRelations, ...options }) {
-  if (routedRelations.every(entry => entry.relation.routeSubpaths.length <= 1)) {
+  if (routedRelations.every((entry) => entry.relation.routeSubpaths.length <= 1)) {
     return collectAmbiguousCorridors({ routedRelations, ...options });
   }
   const hits = [];
@@ -627,13 +830,17 @@ function subpathCorridors({ routedRelations, ...options }) {
   for (let left = 0; left < parts.length; left += 1) {
     for (let right = left + 1; right < parts.length; right += 1) {
       let longest;
-      for (const a of parts[left]) for (const b of parts[right]) {
-        const hit = collectAmbiguousCorridors({ routedRelations: [a, b], ...options })[0];
-        if (hit && (!longest || hit.overlapLength > longest.overlapLength + 0.0001)) {
-          longest = { ...hit, leftSegment: hit.leftSegment + a.segmentOffset,
-            rightSegment: hit.rightSegment + b.segmentOffset };
+      for (const a of parts[left])
+        for (const b of parts[right]) {
+          const hit = collectAmbiguousCorridors({ routedRelations: [a, b], ...options })[0];
+          if (hit && (!longest || hit.overlapLength > longest.overlapLength + 0.0001)) {
+            longest = {
+              ...hit,
+              leftSegment: hit.leftSegment + a.segmentOffset,
+              rightSegment: hit.rightSegment + b.segmentOffset,
+            };
+          }
         }
-      }
       if (longest) hits.push(longest);
     }
   }
@@ -641,7 +848,7 @@ function subpathCorridors({ routedRelations, ...options }) {
 }
 
 function subpathLabelClearance({ routedRelations, labels, threshold }) {
-  if (routedRelations.every(entry => entry.relation.routeSubpaths.length <= 1)) {
+  if (routedRelations.every((entry) => entry.relation.routeSubpaths.length <= 1)) {
     return collectLabelRouteClearance({ routedRelations, labels, threshold });
   }
   // The shared helper deduplicates by relationship identity. Measure each piece
@@ -650,17 +857,27 @@ function subpathLabelClearance({ routedRelations, labels, threshold }) {
   const seen = new Set();
   for (const entry of routedRelations) {
     const relation = entry.relation;
-    const identity = relation.key !== undefined ? `key:${relation.key}`
-      : relation.id ? `id:${relation.from || ''}\0${relation.to || ''}\0${relation.id}` : `index:${entry.relationIndex}`;
+    const identity =
+      relation.key !== undefined
+        ? `key:${relation.key}`
+        : relation.id
+          ? `id:${relation.from || ""}\0${relation.to || ""}\0${relation.id}`
+          : `index:${entry.relationIndex}`;
     if (seen.has(identity) || !routeParts(entry).length) continue;
     seen.add(identity);
     const nearest = new Map();
     for (const part of routeParts(entry)) {
-      for (const hit of collectLabelRouteClearance({ routedRelations: [part], labels, threshold })) {
+      for (const hit of collectLabelRouteClearance({
+        routedRelations: [part],
+        labels,
+        threshold,
+      })) {
         const current = nearest.get(hit.labelRelationIndex);
-        if (!current || hit.clearance < current.clearance) nearest.set(hit.labelRelationIndex, {
-          ...hit, segmentIndex: hit.segmentIndex + part.segmentOffset,
-        });
+        if (!current || hit.clearance < current.clearance)
+          nearest.set(hit.labelRelationIndex, {
+            ...hit,
+            segmentIndex: hit.segmentIndex + part.segmentOffset,
+          });
       }
     }
     hits.push(...nearest.values());
@@ -670,45 +887,54 @@ function subpathLabelClearance({ routedRelations, labels, threshold }) {
 
 function collectRelationshipLabelMasks(fragment, arrows) {
   const labels = [];
-  for (const match of fragment.matchAll(/<g\b[^>]*\bdata-edge-(?:key|id|from)="[^"]*"[^>]*>[\s\S]*?<\/g>/gi)) {
+  for (const match of fragment.matchAll(
+    /<g\b[^>]*\bdata-edge-(?:key|id|from)="[^"]*"[^>]*>[\s\S]*?<\/g>/gi,
+  )) {
     const group = match[0];
-    const groupAttrs = parseAttrs(group.match(/<g\b[^>]*>/i)?.[0] || '');
+    const groupAttrs = parseAttrs(group.match(/<g\b[^>]*>/i)?.[0] || "");
     const rectTag = [...group.matchAll(/<rect\b[^>]*>/gi)]
       .map((item) => item[0])
       .find((tag) => /\bclass="[^"]*\bc-mask\b/.test(tag));
     if (!rectTag) continue;
     const attrs = parseAttrs(rectTag);
     const rect = {
-      x: numberAttr(attrs, 'x'),
-      y: numberAttr(attrs, 'y'),
-      width: numberAttr(attrs, 'width'),
-      height: numberAttr(attrs, 'height'),
+      x: numberAttr(attrs, "x"),
+      y: numberAttr(attrs, "y"),
+      width: numberAttr(attrs, "width"),
+      height: numberAttr(attrs, "height"),
     };
     if (![rect.x, rect.y, rect.width, rect.height].every(Number.isFinite)) continue;
     const groupStart = match.index;
     const groupEnd = groupStart + group.length;
-    const containedOwner = arrows.find((arrow) => (
-      arrow.offset > groupStart
-      && arrow.offset < groupEnd
-      && arrow.from === groupAttrs['data-edge-from']
-      && arrow.to === groupAttrs['data-edge-to']
-      && (!groupAttrs['data-edge-id'] || !arrow.id || arrow.id === groupAttrs['data-edge-id'])
-    ));
-    const owner = arrows.find((arrow) => (
-      groupAttrs['data-edge-key'] !== undefined && arrow.key === groupAttrs['data-edge-key']
-    )) || containedOwner || arrows.find((arrow) => (
-      arrow.id === groupAttrs['data-edge-id']
-      && arrow.from === groupAttrs['data-edge-from']
-      && arrow.to === groupAttrs['data-edge-to']
-    ));
+    const containedOwner = arrows.find(
+      (arrow) =>
+        arrow.offset > groupStart &&
+        arrow.offset < groupEnd &&
+        arrow.from === groupAttrs["data-edge-from"] &&
+        arrow.to === groupAttrs["data-edge-to"] &&
+        (!groupAttrs["data-edge-id"] || !arrow.id || arrow.id === groupAttrs["data-edge-id"]),
+    );
+    const owner =
+      arrows.find(
+        (arrow) =>
+          groupAttrs["data-edge-key"] !== undefined && arrow.key === groupAttrs["data-edge-key"],
+      ) ||
+      containedOwner ||
+      arrows.find(
+        (arrow) =>
+          arrow.id === groupAttrs["data-edge-id"] &&
+          arrow.from === groupAttrs["data-edge-from"] &&
+          arrow.to === groupAttrs["data-edge-to"],
+      );
     if (!owner) continue;
-    if (owner.key === undefined && groupAttrs['data-edge-key'] !== undefined) owner.key = groupAttrs['data-edge-key'];
-    if (!owner.id && groupAttrs['data-edge-id']) owner.id = groupAttrs['data-edge-id'];
-    if (!owner.label && groupAttrs['data-edge-label']) owner.label = groupAttrs['data-edge-label'];
+    if (owner.key === undefined && groupAttrs["data-edge-key"] !== undefined)
+      owner.key = groupAttrs["data-edge-key"];
+    if (!owner.id && groupAttrs["data-edge-id"]) owner.id = groupAttrs["data-edge-id"];
+    if (!owner.label && groupAttrs["data-edge-label"]) owner.label = groupAttrs["data-edge-label"];
     labels.push({
       relation: owner,
       relationIndex: owner.index,
-      label: groupAttrs['data-edge-label'] || '',
+      label: groupAttrs["data-edge-label"] || "",
       rect,
     });
   }
@@ -716,7 +942,9 @@ function collectRelationshipLabelMasks(fragment, arrows) {
 }
 
 function roundedRect(rect) {
-  return Object.fromEntries(Object.entries(rect).map(([key, value]) => [key, Math.round(value * 10) / 10]));
+  return Object.fromEntries(
+    Object.entries(rect).map(([key, value]) => [key, Math.round(value * 10) / 10]),
+  );
 }
 
 function roundedRouteMetrics(metrics) {
@@ -724,23 +952,30 @@ function roundedRouteMetrics(metrics) {
     ...metrics,
     maxStretch: metrics.maxStretch == null ? null : Math.round(metrics.maxStretch * 1000) / 1000,
     minSegmentPx: metrics.minSegmentPx == null ? null : Math.round(metrics.minSegmentPx * 10) / 10,
-    minInteriorSegmentPx: metrics.minInteriorSegmentPx == null ? null : Math.round(metrics.minInteriorSegmentPx * 10) / 10,
+    minInteriorSegmentPx:
+      metrics.minInteriorSegmentPx == null
+        ? null
+        : Math.round(metrics.minInteriorSegmentPx * 10) / 10,
   };
 }
 
 function parseRoutePoints(value) {
   if (!value) return null;
-  const points = value.split(';').map((pair) => pair.split(',').map(Number));
+  const points = value.split(";").map((pair) => pair.split(",").map(Number));
   return points.length >= 2 && points.every(isPoint) ? points : null;
 }
 
 function collectRelationshipCrossings(arrows, includeSharedEndpoints = false) {
-  const relationships = arrows.filter((arrow) => arrow.from && arrow.to && arrow.segments.length).map(arrow => ({
-    ...arrow,
-    // Readable-v2 routePoints come from the visible path, never its metadata.
-    // A straight-through via is not a visual endpoint; preserve real bends.
-    segments: includeSharedEndpoints ? arrow.routeSubpaths.flatMap(forwardCollinearAnalysisSegments) : arrow.segments,
-  }));
+  const relationships = arrows
+    .filter((arrow) => arrow.from && arrow.to && arrow.segments.length)
+    .map((arrow) => ({
+      ...arrow,
+      // Readable-v2 routePoints come from the visible path, never its metadata.
+      // A straight-through via is not a visual endpoint; preserve real bends.
+      segments: includeSharedEndpoints
+        ? arrow.routeSubpaths.flatMap(forwardCollinearAnalysisSegments)
+        : arrow.segments,
+    }));
   const crossings = [];
   for (let leftIndex = 0; leftIndex < relationships.length; leftIndex += 1) {
     const left = relationships[leftIndex];
@@ -748,14 +983,22 @@ function collectRelationshipCrossings(arrows, includeSharedEndpoints = false) {
       const right = relationships[rightIndex];
       // A shared semantic endpoint does not make an interior X a junction
       // when both paths opt into automatic workflow or independent-port checks.
-      if ([left.from, left.to].some((id) => id === right.from || id === right.to)
-          && !includeSharedEndpoints
-          && !(left.independentPorts && right.independentPorts)
-          && !(left.automaticWorkflowRoute && right.automaticWorkflowRoute)) continue;
+      if (
+        [left.from, left.to].some((id) => id === right.from || id === right.to) &&
+        !includeSharedEndpoints &&
+        !(left.independentPorts && right.independentPorts) &&
+        !(left.automaticWorkflowRoute && right.automaticWorkflowRoute)
+      )
+        continue;
       let point = null;
       for (const leftSegment of left.segments) {
         for (const rightSegment of right.segments) {
-          point = properSegmentIntersection(leftSegment.start, leftSegment.end, rightSegment.start, rightSegment.end);
+          point = properSegmentIntersection(
+            leftSegment.start,
+            leftSegment.end,
+            rightSegment.start,
+            rightSegment.end,
+          );
           if (point) break;
         }
         if (point) break;
@@ -780,20 +1023,27 @@ function collectUntransformedNodeRects(fragment) {
   for (const token of fragment.matchAll(SVG_TAG_TOKEN)) {
     if (!token[2]) continue;
     const name = token[2].toLowerCase();
-    if (name === 'g') {
+    if (name === "g") {
       if (token[1]) groups.pop();
       else if (!/\/\s*>$/.test(token[0])) groups.push(parseAttrs(token[0]));
       continue;
     }
-    if (name !== 'rect' || token[1] || groups.some((group) => group.transform)) continue;
+    if (name !== "rect" || token[1] || groups.some((group) => group.transform)) continue;
     const attrs = parseAttrs(token[0]);
-    const owner = [...groups].reverse().find((group) => group['data-node-id']);
-    if (!owner || attrs.transform || !String(attrs.class || '').split(/\s+/).includes('c-mask')) continue;
-    const box = ['x', 'y', 'width', 'height'].map((key) => numberAttr(attrs, key));
+    const owner = [...groups].reverse().find((group) => group["data-node-id"]);
+    if (
+      !owner ||
+      attrs.transform ||
+      !String(attrs.class || "")
+        .split(/\s+/)
+        .includes("c-mask")
+    )
+      continue;
+    const box = ["x", "y", "width", "height"].map((key) => numberAttr(attrs, key));
     if (!box.every(Number.isFinite) || box[2] <= 0 || box[3] <= 0) continue;
-    const id = owner['data-node-id'];
+    const id = owner["data-node-id"];
     // Ambiguous ownership is not reliable evidence for moving a node.
-    nodes.set(id, nodes.has(id) ? null : { id, label: owner['data-node-label'] || id, box });
+    nodes.set(id, nodes.has(id) ? null : { id, label: owner["data-node-label"] || id, box });
   }
   return [...nodes.values()].filter(Boolean);
 }
@@ -814,9 +1064,15 @@ function directCorridorBlockers(relation, nodes) {
   const low = first.box[axis] + first.box[axis + 2];
   const high = last.box[axis];
   if (high <= low) return [];
-  return nodes.filter((node) => node !== from && node !== to
-    && node.box[axis] < high && node.box[axis] + node.box[axis + 2] > low
-    && node.box[cross] < a[cross] && node.box[cross] + node.box[cross + 2] > a[cross]);
+  return nodes.filter(
+    (node) =>
+      node !== from &&
+      node !== to &&
+      node.box[axis] < high &&
+      node.box[axis] + node.box[axis + 2] > low &&
+      node.box[cross] < a[cross] &&
+      node.box[cross] + node.box[cross + 2] > a[cross],
+  );
 }
 
 // Automatic ports need a 16px corner gutter and 14px between neighbours, so a
@@ -828,11 +1084,21 @@ function crowdedNodeSides(arrows, nodes) {
     const from = byId.get(arrow.from);
     const to = byId.get(arrow.to);
     if (!from || !to || from === to) continue;
-    for (const [node, other] of [[from, to], [to, from]]) {
+    for (const [node, other] of [
+      [from, to],
+      [to, from],
+    ]) {
       const [x, y, w, h] = node.box;
       const dx = other.box[0] + other.box[2] / 2 - (x + w / 2);
       const dy = other.box[1] + other.box[3] / 2 - (y + h / 2);
-      const side = dx !== 0 && Math.abs(dx) >= Math.abs(dy) ? (dx < 0 ? 'left' : 'right') : (dy > 0 ? 'bottom' : 'top');
+      const side =
+        dx !== 0 && Math.abs(dx) >= Math.abs(dy)
+          ? dx < 0
+            ? "left"
+            : "right"
+          : dy > 0
+            ? "bottom"
+            : "top";
       const key = `${node.id}\u0000${side}`;
       const entry = demand.get(key) || { node, side, relationships: 0 };
       entry.relationships += 1;
@@ -840,10 +1106,11 @@ function crowdedNodeSides(arrows, nodes) {
     }
   }
   return [...demand.values()].flatMap(({ node, side, relationships }) => {
-    const sidePx = side === 'left' || side === 'right' ? node.box[3] : node.box[2];
+    const sidePx = side === "left" || side === "right" ? node.box[3] : node.box[2];
     const neededPx = 32 + 14 * (relationships - 1);
     return relationships > 1 && sidePx < neededPx
-      ? [{ node: node.id, label: node.label, side, relationships, sidePx, neededPx }] : [];
+      ? [{ node: node.id, label: node.label, side, relationships, sidePx, neededPx }]
+      : [];
   });
 }
 
@@ -853,8 +1120,9 @@ function relationshipRecord(arrow) {
     id: arrow.id,
     from: arrow.from,
     to: arrow.to,
-    label: arrow.label || '',
-    collectionIndex: Number.isInteger(stableIndex) && stableIndex >= 0 ? stableIndex : arrow.index - 1,
+    label: arrow.label || "",
+    collectionIndex:
+      Number.isInteger(stableIndex) && stableIndex >= 0 ? stableIndex : arrow.index - 1,
     artifactIndex: arrow.index,
   };
 }
@@ -864,33 +1132,36 @@ function collectCompositionFrames(fragment) {
   let pathIndex = 0;
   for (const match of fragment.matchAll(SVG_TAG_TOKEN)) {
     const name = match[2]?.toLowerCase();
-    if (match[1] || !['rect', 'path', 'line'].includes(name)) continue;
-    if (name === 'path') pathIndex += 1;
+    if (match[1] || !["rect", "path", "line"].includes(name)) continue;
+    if (name === "path") pathIndex += 1;
     const attrs = parseAttrs(match[0]);
-    const kind = attrs['data-composition-frame-kind'];
+    const kind = attrs["data-composition-frame-kind"];
     if (!kind) continue;
-    const identity = attrs['data-composition-frame-id'] || frames.length;
-    if (name === 'rect') {
+    const identity = attrs["data-composition-frame-id"] || frames.length;
+    if (name === "rect") {
       const frame = {
         kind,
         id: identity,
-        x: numberAttr(attrs, 'x'),
-        y: numberAttr(attrs, 'y'),
-        width: numberAttr(attrs, 'width'),
-        height: numberAttr(attrs, 'height'),
-        radius: numberAttr(attrs, 'rx') || 0,
+        x: numberAttr(attrs, "x"),
+        y: numberAttr(attrs, "y"),
+        width: numberAttr(attrs, "width"),
+        height: numberAttr(attrs, "height"),
+        radius: numberAttr(attrs, "rx") || 0,
       };
       if ([frame.x, frame.y, frame.width, frame.height].every(Number.isFinite)) frames.push(frame);
       continue;
     }
-    const segments = name === 'line'
-      ? lineSegments(attrs)
-      : inspectedPath(attrs, match.index, pathIndex, 'structural-frame').subpaths.flatMap(part => part.segments);
+    const segments =
+      name === "line"
+        ? lineSegments(attrs)
+        : inspectedPath(attrs, match.index, pathIndex, "structural-frame").subpaths.flatMap(
+            (part) => part.segments,
+          );
     for (const [segmentIndex, segment] of segments.entries()) {
       frames.push({
         kind,
         id: segments.length > 1 ? `${identity}:${segmentIndex}` : identity,
-        shape: 'line',
+        shape: "line",
         start: segment.start,
         end: segment.end,
       });
@@ -901,32 +1172,46 @@ function collectCompositionFrames(fragment) {
 
 // Evidence for author review only. Automatic Architecture is identifiable by
 // its intrinsic Reader contract; authored canvases must retain their geometry.
-function collectArchitectureLeadingSpace({ svgAttrs, fragment, nodeRects, frames, arrows, labels }) {
+function collectArchitectureLeadingSpace({
+  svgAttrs,
+  fragment,
+  nodeRects,
+  frames,
+  arrows,
+  labels,
+}) {
   const evidence = { measured: false, reviewSuggested: false };
-  if (svgAttrs['data-reader-fit'] !== 'intrinsic-height'
-      || svgAttrs['data-reader-primary-text'] !== '14'
-      || svgAttrs.transform
-      || [...fragment.matchAll(/<g\b[^>]*\btransform\s*=[^>]*>/gi)]
-        .some((match) => !/\bdata-semantic-sigil=/.test(match[0]))
-      || /<(?:path|line|rect|text)\b[^>]*\btransform\s*=/i.test(fragment)) return evidence;
+  if (
+    svgAttrs["data-reader-fit"] !== "intrinsic-height" ||
+    svgAttrs["data-reader-primary-text"] !== "14" ||
+    svgAttrs.transform ||
+    [...fragment.matchAll(/<g\b[^>]*\btransform\s*=[^>]*>/gi)].some(
+      (match) => !/\bdata-semantic-sigil=/.test(match[0]),
+    ) ||
+    /<(?:path|line|rect|text)\b[^>]*\btransform\s*=/i.test(fragment)
+  )
+    return evidence;
   const [originX, originY, width, height] = viewBoxRect(svgAttrs);
-  if (![originX, originY, width, height].every(Number.isFinite) || width <= 0 || height <= 0) return evidence;
+  if (![originX, originY, width, height].every(Number.isFinite) || width <= 0 || height <= 0)
+    return evidence;
   const nodeCount = [...fragment.matchAll(/<g\b[^>]*\bdata-node-id=/gi)].length;
   if (!nodeRects.length || nodeRects.length !== nodeCount) return evidence;
   const semanticArrows = arrows.filter((arrow) => arrow.from && arrow.to);
-  if (semanticArrows.some((arrow) => !arrow.routeSubpaths.some(points => points.length))) return evidence;
+  if (semanticArrows.some((arrow) => !arrow.routeSubpaths.some((points) => points.length)))
+    return evidence;
 
   const occupied = nodeRects.map((node) => node.box[1]);
   for (const frame of frames) {
-    const top = frame.shape === 'line'
-      ? Math.min(frame.start[1], frame.end[1]) : frame.y;
+    const top = frame.shape === "line" ? Math.min(frame.start[1], frame.end[1]) : frame.y;
     if (!Number.isFinite(top)) return evidence;
     occupied.push(top);
   }
   // Boundary titles can protrude above their structural frame.
-  for (const match of fragment.matchAll(/<g\b[^>]*\bdata-graph-role="structural-frame-label"[^>]*>[\s\S]*?<rect\b[^>]*\bdata-graph-role="structural-frame-label-mask"[^>]*>/gi)) {
-    const rect = parseAttrs(match[0].match(/<rect\b[^>]*>/i)?.[0] || '');
-    const y = numberAttr(rect, 'y');
+  for (const match of fragment.matchAll(
+    /<g\b[^>]*\bdata-graph-role="structural-frame-label"[^>]*>[\s\S]*?<rect\b[^>]*\bdata-graph-role="structural-frame-label-mask"[^>]*>/gi,
+  )) {
+    const rect = parseAttrs(match[0].match(/<rect\b[^>]*>/i)?.[0] || "");
+    const y = numberAttr(rect, "y");
     if (!Number.isFinite(y)) return evidence;
     occupied.push(y);
   }
@@ -956,8 +1241,8 @@ function collectArchitectureLeadingSpace({ svgAttrs, fragment, nodeRects, frames
 // content, including long labels/notes, rather than treating every wide canvas
 // as wasted space. Auto-sized segment frames do not add a participant column.
 function collectSequenceColumnSpace({ svgAttrs, fragment, nodeRects, arrows }) {
-  const columnFit = svgAttrs['data-sequence-column-fit'];
-  if (!['fixed', 'spread'].includes(columnFit)) return null;
+  const columnFit = svgAttrs["data-sequence-column-fit"];
+  if (!["fixed", "spread"].includes(columnFit)) return null;
   const evidence = { measured: false, reviewSuggested: false, columnFit };
   if (svgAttrs.transform) return evidence;
   // Brand badges stay inside their participant box. Ignore only that subtree's
@@ -967,23 +1252,34 @@ function collectSequenceColumnSpace({ svgAttrs, fragment, nodeRects, arrows }) {
     if (!token[2]) continue;
     const name = token[2].toLowerCase();
     if (token[1]) {
-      if (name === 'g') brandGroups.pop();
+      if (name === "g") brandGroups.pop();
       continue;
     }
     const attrs = parseAttrs(token[0]);
-    const inBrand = brandGroups.at(-1) === true || (name === 'g'
-      && Boolean(attrs['data-brand-mark'])
-      && String(attrs.class || '').split(/\s+/).includes('brand-mark'));
-    if (!inBrand && attrs.transform && ['g', 'path', 'line', 'rect', 'text'].includes(name)
-        && !(name === 'g' && attrs['data-semantic-sigil'])) return evidence;
-    if (name === 'g' && !/\/\s*>$/.test(token[0])) brandGroups.push(inBrand);
+    const inBrand =
+      brandGroups.at(-1) === true ||
+      (name === "g" &&
+        Boolean(attrs["data-brand-mark"]) &&
+        String(attrs.class || "")
+          .split(/\s+/)
+          .includes("brand-mark"));
+    if (
+      !inBrand &&
+      attrs.transform &&
+      ["g", "path", "line", "rect", "text"].includes(name) &&
+      !(name === "g" && attrs["data-semantic-sigil"])
+    )
+      return evidence;
+    if (name === "g" && !/\/\s*>$/.test(token[0])) brandGroups.push(inBrand);
   }
   const [originX, , width, height] = viewBoxRect(svgAttrs);
-  if (![originX, width, height].every(Number.isFinite) || width <= 0 || height <= 0) return evidence;
+  if (![originX, width, height].every(Number.isFinite) || width <= 0 || height <= 0)
+    return evidence;
   const nodeCount = [...fragment.matchAll(/<g\b[^>]*\bdata-node-id=/gi)].length;
   if (!nodeRects.length || nodeCount !== nodeRects.length) return evidence;
   const semanticArrows = arrows.filter((arrow) => arrow.from && arrow.to);
-  if (semanticArrows.some((arrow) => !arrow.routeSubpaths.some(points => points.length))) return evidence;
+  if (semanticArrows.some((arrow) => !arrow.routeSubpaths.some((points) => points.length)))
+    return evidence;
   const rightEdges = nodeRects.map((node) => node.box[0] + node.box[2]);
   for (const arrow of semanticArrows) {
     for (const points of arrow.routeSubpaths) for (const point of points) rightEdges.push(point[0]);
@@ -991,16 +1287,23 @@ function collectSequenceColumnSpace({ svgAttrs, fragment, nodeRects, arrows }) {
   // Label plates, activations and segment titles also reserve horizontal room.
   for (const match of fragment.matchAll(/<rect\b[^>]*>/gi)) {
     const attrs = parseAttrs(match[0]);
-    if (!String(attrs.class || '').split(/\s+/).includes('c-mask')) continue;
-    rightEdges.push(numberAttr(attrs, 'x') + numberAttr(attrs, 'width'));
+    if (
+      !String(attrs.class || "")
+        .split(/\s+/)
+        .includes("c-mask")
+    )
+      continue;
+    rightEdges.push(numberAttr(attrs, "x") + numberAttr(attrs, "width"));
   }
   for (const match of fragment.matchAll(/<text\b([^>]*)>([\s\S]*?)<\/text>/gi)) {
     const attrs = parseAttrs(match[1]);
     // A wrapped note places each line in a <tspan> with its own x. Any other
     // line offset is not measured here.
     const lines = /<tspan\b/i.test(match[2])
-      ? [...match[2].matchAll(/<tspan\b([^>]*)>([\s\S]*?)<\/tspan>/gi)]
-        .map((line) => ({ attrs: { ...attrs, ...parseAttrs(line[1]) }, text: stripTags(line[2]).trim() }))
+      ? [...match[2].matchAll(/<tspan\b([^>]*)>([\s\S]*?)<\/tspan>/gi)].map((line) => ({
+          attrs: { ...attrs, ...parseAttrs(line[1]) },
+          text: stripTags(line[2]).trim(),
+        }))
       : [{ attrs, text: stripTags(match[2]).trim() }];
     if (!lines.length || lines.some((line) => line.attrs.dx !== undefined)) return evidence;
     for (const line of lines) {
@@ -1027,8 +1330,8 @@ function collectSequenceColumnSpace({ svgAttrs, fragment, nodeRects, arrows }) {
     typicalParticipantWidth,
     // Avoid stretching a small conversation merely to fill its canvas. These
     // conservative review thresholds never contribute errors or warnings.
-    reviewSuggested: columnFit === 'fixed' && nodeCount >= 4
-      && gap > 2 * typicalParticipantWidth && ratio > 0.25,
+    reviewSuggested:
+      columnFit === "fixed" && nodeCount >= 4 && gap > 2 * typicalParticipantWidth && ratio > 0.25,
   };
 }
 
@@ -1036,63 +1339,103 @@ function collectSequenceColumnSpace({ svgAttrs, fragment, nodeRects, arrows }) {
 // labels use a nested group. Inspect the emitted lines without changing layout.
 // This is advisory: phase ownership still belongs to the author.
 function collectSequenceNoteBorders({ svgAttrs, fragment, frames, arrows }) {
-  if (!svgAttrs['data-sequence-column-fit'] || svgAttrs.transform) return [];
-  const segments = frames.filter(frame => frame.kind === 'segment' && !frame.shape);
+  if (!svgAttrs["data-sequence-column-fit"] || svgAttrs.transform) return [];
+  const segments = frames.filter((frame) => frame.kind === "segment" && !frame.shape);
   if (!segments.length) return [];
-  const issues = [], stack = [];
+  const issues = [],
+    stack = [];
   for (const tag of fragment.matchAll(SVG_TAG_TOKEN)) {
     const name = tag[2]?.toLowerCase();
-    if (name === 'g') {
+    if (name === "g") {
       if (tag[1]) stack.pop();
-      else if (!tag[0].endsWith('/>')) stack.push(parseAttrs(tag[0]));
+      else if (!tag[0].endsWith("/>")) stack.push(parseAttrs(tag[0]));
       continue;
     }
-    if (name === 'rect' && !tag[1]) {
+    if (name === "rect" && !tag[1]) {
       const attrs = parseAttrs(tag[0]);
-      if (attrs['data-composition-frame-kind'] === 'segment' && (attrs.transform || stack.some(group => group.transform))) return [];
+      if (
+        attrs["data-composition-frame-kind"] === "segment" &&
+        (attrs.transform || stack.some((group) => group.transform))
+      )
+        return [];
     }
-    if (name !== 'text' || tag[1] || stack.some(attrs => attrs.transform)) continue;
-    const owner = stack.at(-1), attrs = parseAttrs(tag[0]);
-    if (!owner?.['data-edge-key'] || !['context', 'fine'].includes(attrs['data-detail']) || attrs.transform || attrs.rotate || attrs.dx || attrs.dy) continue;
-    const index = Number(owner['data-edge-key']);
+    if (name !== "text" || tag[1] || stack.some((attrs) => attrs.transform)) continue;
+    const owner = stack.at(-1),
+      attrs = parseAttrs(tag[0]);
+    if (
+      !owner?.["data-edge-key"] ||
+      !["context", "fine"].includes(attrs["data-detail"]) ||
+      attrs.transform ||
+      attrs.rotate ||
+      attrs.dx ||
+      attrs.dy
+    )
+      continue;
+    const index = Number(owner["data-edge-key"]);
     if (!Number.isSafeInteger(index) || index < 0) continue;
-    const arrow = arrows[index], arrowY = arrow?.routePoints?.[0]?.[1];
+    const arrow = arrows[index],
+      arrowY = arrow?.routePoints?.[0]?.[1];
     if (!Number.isFinite(arrowY)) continue;
-    const end = fragment.indexOf('</text>', tag.index + tag[0].length);
+    const end = fragment.indexOf("</text>", tag.index + tag[0].length);
     if (end < 0) continue;
     const content = fragment.slice(tag.index + tag[0].length, end);
-    let baseline = numberAttr(attrs, 'y');
+    let baseline = numberAttr(attrs, "y");
     const boxes = [];
     const spans = [...content.matchAll(/<tspan\b([^>]*)>([\s\S]*?)<\/tspan>/gi)];
     let supported = true;
-    for (const span of spans.length ? spans : [[null, '', content]]) {
+    for (const span of spans.length ? spans : [[null, "", content]]) {
       const line = parseAttrs(span[1]);
-      if (line.y !== undefined || line.dx !== undefined || line.rotate !== undefined || line.transform !== undefined) { supported = false; break; }
+      if (
+        line.y !== undefined ||
+        line.dx !== undefined ||
+        line.rotate !== undefined ||
+        line.transform !== undefined
+      ) {
+        supported = false;
+        break;
+      }
       baseline += Number(line.dy || 0);
       const box = textBox({ ...attrs, ...line, y: String(baseline) }, stripTags(span[2]));
-      if (!box || ![box.x1, box.x2, box.y1, box.y2].every(Number.isFinite)) { supported = false; break; }
+      if (!box || ![box.x1, box.x2, box.y1, box.y2].every(Number.isFinite)) {
+        supported = false;
+        break;
+      }
       boxes.push(box);
     }
     if (!supported || !boxes.length) continue;
-    const note = { x: Math.min(...boxes.map(b => b.x1)), y: Math.min(...boxes.map(b => b.y1)) };
-    note.width = Math.max(...boxes.map(b => b.x2)) - note.x;
-    note.height = Math.max(...boxes.map(b => b.y2)) - note.y;
+    const note = { x: Math.min(...boxes.map((b) => b.x1)), y: Math.min(...boxes.map((b) => b.y1)) };
+    note.width = Math.max(...boxes.map((b) => b.x2)) - note.x;
+    note.height = Math.max(...boxes.map((b) => b.y2)) - note.y;
     const bottom = note.y + note.height;
     for (const frame of segments) {
       const border = frame.y + frame.height;
-      if (!(arrowY >= frame.y && arrowY < border && note.y < border && bottom > border + 0.5)) continue;
+      if (!(arrowY >= frame.y && arrowY < border && note.y < border && bottom > border + 0.5))
+        continue;
       const requiredTo = Math.ceil(bottom + 4);
       // A single-field fix may not swallow another message or stage, or push
       // the frame beyond an authored canvas. Otherwise ask for a joint review.
-      const safe = /^\d+$/.test(String(frame.id)) && requiredTo <= viewBoxRect(svgAttrs)[1] + viewBoxRect(svgAttrs)[3] - 45
-        && !arrows.some(other => other.routePoints.some(point => point[1] > border - 4 && point[1] < requiredTo + 4))
-        && !segments.some(other => other !== frame && other.y < requiredTo && other.y + other.height > border);
+      const safe =
+        /^\d+$/.test(String(frame.id)) &&
+        requiredTo <= viewBoxRect(svgAttrs)[1] + viewBoxRect(svgAttrs)[3] - 45 &&
+        !arrows.some((other) =>
+          other.routePoints.some((point) => point[1] > border - 4 && point[1] < requiredTo + 4),
+        ) &&
+        !segments.some(
+          (other) => other !== frame && other.y < requiredTo && other.y + other.height > border,
+        );
       const segmentPath = `/segments/${frame.id}/to`;
       issues.push({
-        code: 'sequence/note-segment-border', reviewSuggested: true,
-        message: `Note on message "${owner['data-edge-label'] || owner['data-edge-id'] || index}" ends at y=${Math.ceil(bottom)}, crossing its segment bottom y=${border}. ${safe ? `Set ${segmentPath} to ${requiredTo} to keep the full note inside.` : 'Review the note and neighbouring phase boundaries together; keep the full note and message order.'}`,
-        subject: { diagramType: 'sequence', path: `/messages/${index}/note` },
-        evidence: { note, lines: boxes.length, messageY: arrowY, segment: { path: segmentPath, from: frame.y, to: border }, requiredTo },
+        code: "sequence/note-segment-border",
+        reviewSuggested: true,
+        message: `Note on message "${owner["data-edge-label"] || owner["data-edge-id"] || index}" ends at y=${Math.ceil(bottom)}, crossing its segment bottom y=${border}. ${safe ? `Set ${segmentPath} to ${requiredTo} to keep the full note inside.` : "Review the note and neighbouring phase boundaries together; keep the full note and message order."}`,
+        subject: { diagramType: "sequence", path: `/messages/${index}/note` },
+        evidence: {
+          note,
+          lines: boxes.length,
+          messageY: arrowY,
+          segment: { path: segmentPath, from: frame.y, to: border },
+          requiredTo,
+        },
         supportedFixes: safe ? [`set ${segmentPath} to ${requiredTo}`] : [],
       });
     }
@@ -1101,7 +1444,7 @@ function collectSequenceNoteBorders({ svgAttrs, fragment, frames, arrows }) {
 }
 
 function frameName(frame) {
-  return `${frame.kind || 'frame'} "${frame.id}"`;
+  return `${frame.kind || "frame"} "${frame.id}"`;
 }
 
 function frameRecord(frame) {
@@ -1109,23 +1452,23 @@ function frameRecord(frame) {
 }
 
 function formatPoint(point) {
-  return point.map((value) => Math.round(value * 10) / 10).join(', ');
+  return point.map((value) => Math.round(value * 10) / 10).join(", ");
 }
 
 function lineSegments(attrs) {
-  const start = [numberAttr(attrs, 'x1'), numberAttr(attrs, 'y1')];
-  const end = [numberAttr(attrs, 'x2'), numberAttr(attrs, 'y2')];
+  const start = [numberAttr(attrs, "x1"), numberAttr(attrs, "y1")];
+  const end = [numberAttr(attrs, "x2"), numberAttr(attrs, "y2")];
   if (!isPoint(start) || !isPoint(end)) return [];
   return [{ start, end }];
 }
 
 function diagonalStraightSegments(arrow) {
   if (arrow.authoredStraight) return [];
-  return arrow.borderSegments.flatMap(({ start, end }, segmentIndex) => (
+  return arrow.borderSegments.flatMap(({ start, end }, segmentIndex) =>
     Math.abs(start[0] - end[0]) > 0.01 && Math.abs(start[1] - end[1]) > 0.01
       ? [{ segmentIndex, start, end }]
-      : []
-  ));
+      : [],
+  );
 }
 
 function collectLegendBoxes(fragment) {
@@ -1133,10 +1476,10 @@ function collectLegendBoxes(fragment) {
 
   for (const match of fragment.matchAll(/<rect\b[^>]*>/gi)) {
     const attrs = parseAttrs(match[0]);
-    const x = numberAttr(attrs, 'x');
-    const y = numberAttr(attrs, 'y');
-    const width = numberAttr(attrs, 'width');
-    const height = numberAttr(attrs, 'height');
+    const x = numberAttr(attrs, "x");
+    const y = numberAttr(attrs, "y");
+    const width = numberAttr(attrs, "width");
+    const height = numberAttr(attrs, "height");
     if ([x, y, width, height].every(Number.isFinite)) {
       boxes.push({ x1: x, y1: y, x2: x + width, y2: y + height, label: `rect@${x},${y}` });
     }
@@ -1174,15 +1517,15 @@ function legendTextWidth(text, fontSize) {
 }
 
 function textBox(attrs, text, measure = estimatedTextWidth) {
-  const x = numberAttr(attrs, 'x');
-  const y = numberAttr(attrs, 'y');
-  const fontSize = Number.parseFloat(attrs['font-size'] || '10');
+  const x = numberAttr(attrs, "x");
+  const y = numberAttr(attrs, "y");
+  const fontSize = Number.parseFloat(attrs["font-size"] || "10");
   if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(fontSize)) return null;
   const width = measure(text, fontSize);
-  const anchor = attrs['text-anchor'] || 'start';
+  const anchor = attrs["text-anchor"] || "start";
   let x1 = x;
-  if (anchor === 'middle') x1 = x - width / 2;
-  if (anchor === 'end') x1 = x - width;
+  if (anchor === "middle") x1 = x - width / 2;
+  if (anchor === "end") x1 = x - width;
   return {
     x1,
     y1: y - fontSize,
@@ -1195,7 +1538,10 @@ function textBox(attrs, text, measure = estimatedTextWidth) {
 // A foreign artifact may author a legal non-zero viewBox origin, so containment
 // needs all four numbers; sizing checks read the trailing pair.
 function viewBoxRect(svgAttrs) {
-  const viewBox = String(svgAttrs.viewBox || '').trim().split(/[\s,]+/).map(Number);
+  const viewBox = String(svgAttrs.viewBox || "")
+    .trim()
+    .split(/[\s,]+/)
+    .map(Number);
   return viewBox.length === 4 ? viewBox : [Number.NaN, Number.NaN, Number.NaN, Number.NaN];
 }
 
@@ -1204,13 +1550,13 @@ function viewBoxSize(svgAttrs) {
 }
 
 function hasAttribute(attrs, name) {
-  return new RegExp('(?:^|\\s)' + name + '(?:\\s*=|\\s|$)', 'i').test(attrs);
+  return new RegExp("(?:^|\\s)" + name + "(?:\\s*=|\\s|$)", "i").test(attrs);
 }
 
 function readerContractFromHtml(source) {
   const markers = [...source.matchAll(/<meta\b[^>]*>/gi)]
     .map((match) => parseAttrs(match[0]))
-    .filter((attrs) => attrs.name === 'archify-reader-contract');
+    .filter((attrs) => attrs.name === "archify-reader-contract");
   return markers.length === 1 && markers[0].content === DECLARED_WIDE_READER_CONTRACT
     ? DECLARED_WIDE_READER_CONTRACT
     : null;
@@ -1218,92 +1564,127 @@ function readerContractFromHtml(source) {
 
 function collectDesktopReadability(svgAttrs, fragment, contract) {
   const [viewBoxWidth, viewBoxHeight] = viewBoxSize(svgAttrs);
-  const requestedMinimumTextPx = Number.parseFloat(svgAttrs['data-reader-min-text'] || '');
+  const requestedMinimumTextPx = Number.parseFloat(svgAttrs["data-reader-min-text"] || "");
   const entries = [];
   let invalidSemanticText = false;
   const groups = [];
   // Keep the complete ancestry, rather than a node-only stack: an edge can
   // share its context group with its label or nest that group (Sequence).
-  for (const match of fragment.matchAll(/<!--[\s\S]*?(?:-->|$)|<!\[CDATA\[[\s\S]*?(?:\]\]>|$)|<text\b([^>]*)>([\s\S]*?)<\/text>|<g\b[^>]*>|<\/g\s*>/gi)) {
-    if (match[0].startsWith('<!')) continue;
+  for (const match of fragment.matchAll(
+    /<!--[\s\S]*?(?:-->|$)|<!\[CDATA\[[\s\S]*?(?:\]\]>|$)|<text\b([^>]*)>([\s\S]*?)<\/text>|<g\b[^>]*>|<\/g\s*>/gi,
+  )) {
+    if (match[0].startsWith("<!")) continue;
     if (match[1] === undefined) {
       if (/^<\/g/i.test(match[0])) groups.pop();
       else if (!/\/\s*>$/.test(match[0])) groups.push(parseAttrs(match[0]));
       continue;
     }
     const attrs = parseAttrs(match[1]);
-    if (attrs['data-detail'] === 'fine' || groups.some((group) => group['data-detail'] === 'fine')) continue;
-    const primary = hasAttribute(match[1], 'data-node-label');
-    const boundary = hasAttribute(match[1], 'data-boundary-label');
-    const context = attrs['data-detail'] === 'context'
-      || groups.some((group) => group['data-detail'] === 'context');
-    const nodeOwner = [...groups].reverse().find((group) => group['data-node-id']);
-    const edgeOwner = [...groups].reverse().find((group) => group['data-edge-from'] && group['data-edge-to']);
+    if (attrs["data-detail"] === "fine" || groups.some((group) => group["data-detail"] === "fine"))
+      continue;
+    const primary = hasAttribute(match[1], "data-node-label");
+    const boundary = hasAttribute(match[1], "data-boundary-label");
+    const context =
+      attrs["data-detail"] === "context" ||
+      groups.some((group) => group["data-detail"] === "context");
+    const nodeOwner = [...groups].reverse().find((group) => group["data-node-id"]);
+    const edgeOwner = [...groups]
+      .reverse()
+      .find((group) => group["data-edge-from"] && group["data-edge-to"]);
     const owner = primary
-      ? { kind: 'node', id: nodeOwner?.['data-node-id'] || null }
-      : boundary ? { kind: 'boundary', id: null }
-        : context && edgeOwner ? {
-          kind: 'edge', id: edgeOwner['data-edge-id'] || null,
-          from: edgeOwner['data-edge-from'], to: edgeOwner['data-edge-to'],
-        }
-          : context && nodeOwner ? { kind: 'node', id: nodeOwner['data-node-id'] }
+      ? { kind: "node", id: nodeOwner?.["data-node-id"] || null }
+      : boundary
+        ? { kind: "boundary", id: null }
+        : context && edgeOwner
+          ? {
+              kind: "edge",
+              id: edgeOwner["data-edge-id"] || null,
+              from: edgeOwner["data-edge-from"],
+              to: edgeOwner["data-edge-to"],
+            }
+          : context && nodeOwner
+            ? { kind: "node", id: nodeOwner["data-node-id"] }
             : null;
     // A context text with neither semantic owner is legend/fine/loose copy.
     if (!owner) continue;
-    const fontSize = Number.parseFloat(attrs['font-size'] || '');
+    const fontSize = Number.parseFloat(attrs["font-size"] || "");
     if (!Number.isFinite(fontSize)) {
       invalidSemanticText = true;
       continue;
     }
     if (fontSize <= 0) invalidSemanticText = true;
     entries.push({
-      ...(owner.kind === 'node' && owner.id ? { nodeId: owner.id } : {}),
+      ...(owner.kind === "node" && owner.id ? { nodeId: owner.id } : {}),
       owner,
       text: stripTags(match[2]).trim(),
-      detail: primary ? 'primary' : boundary ? 'boundary' : owner.kind === 'edge' ? 'edge' : 'context',
+      detail: primary
+        ? "primary"
+        : boundary
+          ? "boundary"
+          : owner.kind === "edge"
+            ? "edge"
+            : "context",
       sourceFontPx: fontSize,
     });
   }
-  const minimumSourceTextPx = entries.length ? Math.min(...entries.map((entry) => entry.sourceFontPx)) : Number.NaN;
-  const eligible = contract === DECLARED_WIDE_READER_CONTRACT
-    && ['intrinsic-height', 'width-first'].includes(svgAttrs['data-reader-fit'])
-    && Number.isFinite(requestedMinimumTextPx) && requestedMinimumTextPx > 0
-    && !invalidSemanticText && entries.length > 0;
-  const declared = eligible ? declaredWideReadabilityBudget({
-    viewBoxWidth,
-    viewBoxHeight,
-    minimumSourceTextPx,
-    requestedMinimumTextPx,
-  }) : null;
+  const minimumSourceTextPx = entries.length
+    ? Math.min(...entries.map((entry) => entry.sourceFontPx))
+    : Number.NaN;
+  const eligible =
+    contract === DECLARED_WIDE_READER_CONTRACT &&
+    ["intrinsic-height", "width-first"].includes(svgAttrs["data-reader-fit"]) &&
+    Number.isFinite(requestedMinimumTextPx) &&
+    requestedMinimumTextPx > 0 &&
+    !invalidSemanticText &&
+    entries.length > 0;
+  const declared = eligible
+    ? declaredWideReadabilityBudget({
+        viewBoxWidth,
+        viewBoxHeight,
+        minimumSourceTextPx,
+        requestedMinimumTextPx,
+      })
+    : null;
   const availableDiagramWidth = declared?.guaranteedSvgWidth ?? DESKTOP_READER_DIAGRAM_WIDTH;
-  const budgetBasis = declared ? 'recognized-declared-wide' : 'legacy-930';
-  const scale = Number.isFinite(viewBoxWidth) && viewBoxWidth > 0
-    ? Math.min(1, availableDiagramWidth / viewBoxWidth) : Number.NaN;
+  const budgetBasis = declared ? "recognized-declared-wide" : "legacy-930";
+  const scale =
+    Number.isFinite(viewBoxWidth) && viewBoxWidth > 0
+      ? Math.min(1, availableDiagramWidth / viewBoxWidth)
+      : Number.NaN;
   const projected = entries.map((entry) => ({
     ...entry,
     viewBoxWidth,
     scale,
     projectedFontPx: projectedNodeTextPx(entry.sourceFontPx, viewBoxWidth, availableDiagramWidth),
   }));
-  const worst = projected.reduce((current, entry) => (
-    !current || entry.projectedFontPx < current.projectedFontPx ? entry : current
-  ), null);
-  const projectedMinimumTextPx = Number.isFinite(worst?.projectedFontPx) ? worst.projectedFontPx : null;
+  const worst = projected.reduce(
+    (current, entry) =>
+      !current || entry.projectedFontPx < current.projectedFontPx ? entry : current,
+    null,
+  );
+  const projectedMinimumTextPx = Number.isFinite(worst?.projectedFontPx)
+    ? worst.projectedFontPx
+    : null;
   const hardFloorMet = Number.isFinite(worst?.projectedFontPx)
-    ? worst.projectedFontPx >= MIN_PROJECTED_NODE_TEXT_PX : null;
-  const requestedTargetMet = worst && Number.isFinite(requestedMinimumTextPx)
-    ? worst.projectedFontPx >= requestedMinimumTextPx : null;
+    ? worst.projectedFontPx >= MIN_PROJECTED_NODE_TEXT_PX
+    : null;
+  const requestedTargetMet =
+    worst && Number.isFinite(requestedMinimumTextPx)
+      ? worst.projectedFontPx >= requestedMinimumTextPx
+      : null;
   const evidence = {
     budgetBasis,
     readerContract: contract,
     availableDiagramWidth,
     actualBudgetPx: availableDiagramWidth,
-    ...(declared ? {
-      actualReaderWidth: declared.actualReaderWidth,
-      desiredReaderWidth: declared.desiredReaderWidth,
-      viewportCap: declared.viewportCap,
-      limit: declared.limit,
-    } : { limit: 'legacy' }),
+    ...(declared
+      ? {
+          actualReaderWidth: declared.actualReaderWidth,
+          desiredReaderWidth: declared.desiredReaderWidth,
+          viewportCap: declared.viewportCap,
+          limit: declared.limit,
+        }
+      : { limit: "legacy" }),
     requestedTargetPx: Number.isFinite(requestedMinimumTextPx) ? requestedMinimumTextPx : null,
     requestedTargetMet,
     hardFloorPx: MIN_PROJECTED_NODE_TEXT_PX,
@@ -1328,7 +1709,8 @@ function properSegmentIntersection(a, b, c, d) {
   const cdA = crossProduct(c, d, a);
   const cdB = crossProduct(c, d, b);
   const epsilon = 1e-9;
-  const opposite = (left, right) => (left > epsilon && right < -epsilon) || (left < -epsilon && right > epsilon);
+  const opposite = (left, right) =>
+    (left > epsilon && right < -epsilon) || (left < -epsilon && right > epsilon);
   if (!opposite(abC, abD) || !opposite(cdA, cdB)) return null;
   const denominator = (a[0] - b[0]) * (c[1] - d[1]) - (a[1] - b[1]) * (c[0] - d[0]);
   if (Math.abs(denominator) < epsilon) return null;
@@ -1348,10 +1730,22 @@ function segmentIntersectsBox(segment, box) {
   const { start, end } = segment;
   if (pointInsideBox(start, box) || pointInsideBox(end, box)) return true;
   const edges = [
-    [[box.x1, box.y1], [box.x2, box.y1]],
-    [[box.x2, box.y1], [box.x2, box.y2]],
-    [[box.x2, box.y2], [box.x1, box.y2]],
-    [[box.x1, box.y2], [box.x1, box.y1]],
+    [
+      [box.x1, box.y1],
+      [box.x2, box.y1],
+    ],
+    [
+      [box.x2, box.y1],
+      [box.x2, box.y2],
+    ],
+    [
+      [box.x2, box.y2],
+      [box.x1, box.y2],
+    ],
+    [
+      [box.x1, box.y2],
+      [box.x1, box.y1],
+    ],
   ];
   return edges.some(([a, b]) => segmentsIntersect(start, end, a, b));
 }
@@ -1377,10 +1771,12 @@ function orientation(a, b, c) {
 }
 
 function onSegment(a, b, c) {
-  return b[0] <= Math.max(a[0], c[0]) + 1e-9
-    && b[0] + 1e-9 >= Math.min(a[0], c[0])
-    && b[1] <= Math.max(a[1], c[1]) + 1e-9
-    && b[1] + 1e-9 >= Math.min(a[1], c[1]);
+  return (
+    b[0] <= Math.max(a[0], c[0]) + 1e-9 &&
+    b[0] + 1e-9 >= Math.min(a[0], c[0]) &&
+    b[1] <= Math.max(a[1], c[1]) + 1e-9 &&
+    b[1] + 1e-9 >= Math.min(a[1], c[1])
+  );
 }
 
 function pointInsideBox(point, box) {
@@ -1407,16 +1803,18 @@ function collectNonFiniteAttrs(svg) {
     if (!match[2]) continue;
     const element = match[2].toLowerCase();
     if (match[1]) {
-      const index = stack.map(entry => entry.element).lastIndexOf(element);
+      const index = stack.map((entry) => entry.element).lastIndexOf(element);
       if (index >= 0) stack.length = index;
       continue;
     }
     const parent = stack[stack.length - 1];
-    const inSvg = element === 'svg'
-      || Boolean(parent?.inSvg && !SVG_HTML_INTEGRATION_POINTS.has(parent.element));
+    const inSvg =
+      element === "svg" ||
+      Boolean(parent?.inSvg && !SVG_HTML_INTEGRATION_POINTS.has(parent.element));
     if (inSvg) {
       for (const [name, value] of attrEntries(match[0])) {
-        if (!isNumericAttr(element, name) || !NON_FINITE_TOKEN.test(decodeNumericReferences(value))) continue;
+        if (!isNumericAttr(element, name) || !NON_FINITE_TOKEN.test(decodeNumericReferences(value)))
+          continue;
         details.push(`${match[2]} ${name}="${value}"`);
       }
     }
@@ -1435,14 +1833,17 @@ function decodeNumericReferences(value) {
   return value.replace(/&#(?:x([0-9a-f]+)|([0-9]+));?/gi, (_, hex, decimal) => {
     const point = Number.parseInt(hex || decimal, hex ? 16 : 10);
     return point > 0 && point <= 0x10ffff && !(point >= 0xd800 && point <= 0xdfff)
-      ? String.fromCodePoint(point) : '\uFFFD';
+      ? String.fromCodePoint(point)
+      : "\uFFFD";
   });
 }
 
 function isNumericAttr(elementName, attrName) {
   const normalizedAttr = attrName.toLowerCase();
-  return NUMERIC_ATTRS.has(normalizedAttr)
-    || ELEMENT_NUMERIC_ATTRS.get(elementName.toLowerCase())?.has(normalizedAttr);
+  return (
+    NUMERIC_ATTRS.has(normalizedAttr) ||
+    ELEMENT_NUMERIC_ATTRS.get(elementName.toLowerCase())?.has(normalizedAttr)
+  );
 }
 
 function attrEntries(tag) {
@@ -1465,5 +1866,5 @@ function isPoint(point) {
 }
 
 function stripTags(value) {
-  return value.replace(/<[^>]*>/g, '');
+  return value.replace(/<[^>]*>/g, "");
 }

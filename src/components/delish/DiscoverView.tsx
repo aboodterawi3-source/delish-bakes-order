@@ -14,7 +14,13 @@ import {
 import { DelishLogo } from "./DelishLogo";
 import { BackgroundCurves } from "./BackgroundCurves";
 import { useStorefrontContent } from "@/hooks/use-storefront-content";
-import { priceForSize, tintFill, getProductFallbackImage, type StorefrontProduct } from "@/lib/storefront-content";
+import {
+  priceForSize,
+  tintFill,
+  getProductFallbackImage,
+  getCategoryFallbackImage,
+  type StorefrontProduct,
+} from "@/lib/storefront-content";
 import { LangToggle, useLang, type Lang } from "@/lib/i18n";
 import { formatJod } from "@/lib/currency";
 import { useBrandPalette } from "@/lib/brand-palette";
@@ -28,7 +34,7 @@ interface DiscoverViewProps {
   isEmbedded?: boolean;
 }
 
-export function DiscoverView({
+export const DiscoverView = memo(function DiscoverView({
   onSelectProduct,
   onOpenCart,
   onOpenMenu,
@@ -78,14 +84,15 @@ export function DiscoverView({
       <BackgroundCurves />
 
       {/* Top Header Bar */}
-      <header className="sticky top-0 z-20 flex items-center justify-between gap-2 border-b border-border bg-background/95 px-4 py-3.5 backdrop-blur-md sm:px-6">
+      <header className="sticky top-0 z-20 flex items-center justify-between gap-2 bg-background/98 px-4 py-3.5 shadow-2xs transition-shadow sm:px-6">
         <div className="flex items-center gap-2">
           {onOpenMenu && (
             <button
               type="button"
               onClick={onOpenMenu}
+              onMouseEnter={() => import("@/components/delish/StorefrontMenuDrawer")}
               aria-label={lang === "ar" ? "القائمة الرئيسية" : "Main Menu"}
-              className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-foreground shadow-xs transition hover:bg-secondary/60 active:scale-95"
+              className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-foreground shadow-xs transition hover:bg-secondary/60 active:scale-95"
             >
               <Menu className="h-4 w-4" />
             </button>
@@ -102,15 +109,16 @@ export function DiscoverView({
             type="button"
             onClick={() => setSearchOpen(!searchOpen)}
             aria-label={lang === "ar" ? "بحث" : "Search"}
-            className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-foreground shadow-xs transition hover:bg-secondary/60 active:scale-95"
+            className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-foreground shadow-xs transition hover:bg-secondary/60 active:scale-95"
           >
             <Search className="h-4 w-4" />
           </button>
           <button
             type="button"
             onClick={onOpenCart}
+            onMouseEnter={() => import("@/components/delish/CartDrawer")}
             aria-label={t("cart")}
-            className="relative flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-foreground shadow-xs transition hover:bg-secondary/60 active:scale-95"
+            className="relative flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-foreground shadow-xs transition hover:bg-secondary/60 active:scale-95"
           >
             <ShoppingBag className="h-4 w-4" />
             {cartCount > 0 && (
@@ -212,7 +220,7 @@ export function DiscoverView({
                     type="button"
                     aria-pressed={active}
                     onClick={() => setSelectedCategory(active ? null : category.id)}
-                    className={`group flex min-w-[5.5rem] max-w-[6.5rem] shrink-0 cursor-pointer flex-col items-center gap-2 rounded-2xl p-2 transition-all duration-200 sm:min-w-[6rem] sm:max-w-[7rem] ${
+                    className={`group flex max-w-[6.5rem] min-w-[5.5rem] shrink-0 cursor-pointer flex-col items-center gap-2 rounded-2xl p-2 transition-[transform,background-color] duration-150 sm:max-w-[7rem] sm:min-w-[6rem] ${
                       active
                         ? "-translate-y-0.5 bg-secondary/40 shadow-xs ring-1 ring-primary/40"
                         : "hover:-translate-y-0.5 hover:bg-secondary/20"
@@ -237,6 +245,8 @@ export function DiscoverView({
                 );
               })}
             </div>
+
+
           </section>
         )}
 
@@ -277,9 +287,9 @@ export function DiscoverView({
       </main>
     </div>
   );
-}
+});
 
-function CategoryCircle({
+const CategoryCircle = memo(function CategoryCircle({
   imageUrl,
   icon,
   name,
@@ -290,32 +300,45 @@ function CategoryCircle({
   name: string;
   active: boolean;
 }) {
+  const fallbackImage = useMemo(() => getCategoryFallbackImage(name), [name]);
+  const [imgSrc, setImgSrc] = useState(imageUrl || fallbackImage);
   const [imgFailed, setImgFailed] = useState(false);
-  const showImg = Boolean(imageUrl && !imgFailed);
+
+  useEffect(() => {
+    setImgSrc(imageUrl || fallbackImage);
+    setImgFailed(false);
+  }, [imageUrl, fallbackImage]);
 
   return (
     <div
-      className={`relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border-2 bg-card p-1 transition-all duration-200 sm:h-20 sm:w-20 ${
+      className={`relative flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center overflow-hidden rounded-full border-2 bg-card p-0.5 transition-all duration-200 ${
         active
           ? "scale-105 border-primary shadow-sm ring-2 ring-primary/20"
-          : "border-border group-hover:border-primary/50"
+          : "border-[#EDE4D8] hover:border-primary/60 hover:shadow-2xs"
       }`}
     >
-      {showImg ? (
+      {!imgFailed && imgSrc ? (
         <img
-          src={imageUrl!}
+          src={imgSrc}
           alt={name}
-          onError={() => setImgFailed(true)}
+          decoding="async"
+          onError={() => {
+            if (imgSrc !== fallbackImage && fallbackImage) {
+              setImgSrc(fallbackImage);
+            } else {
+              setImgFailed(true);
+            }
+          }}
           className="h-full w-full rounded-full object-cover transition-transform duration-300 group-hover:scale-105"
         />
       ) : (
-        <span className="grid h-full w-full place-items-center rounded-full bg-secondary/30 text-2xl sm:text-3xl shadow-inner select-none">
-          {icon || "🎂"}
-        </span>
+        <div className="flex h-full w-full items-center justify-center rounded-full bg-secondary/40 font-display text-sm font-bold text-primary">
+          {name.slice(0, 2)}
+        </div>
       )}
     </div>
   );
-}
+});
 
 const ProductCard = memo(function ProductCard({
   product,
@@ -326,17 +349,16 @@ const ProductCard = memo(function ProductCard({
   lang: Lang;
   onSelect?: ((productId: string) => void) | undefined;
 }) {
-  const { palette } = useBrandPalette();
   const name = lang === "ar" ? product.name_ar : product.name_en;
   const description =
     lang === "ar"
-      ? product.description_ar || "كيك وحلويات فاخرة تُخبز طازجة يومياً"
-      : product.description_en || "Handcrafted artisan treats baked daily";
+      ? product.description_ar || "كيك وحلويات فاخرة تُخبز طازجة يومياً بأجود المكونات"
+      : product.description_en || "Handcrafted artisan treats baked fresh daily";
   const unitPrice = product.price;
 
   const fallback = useMemo(
     () => getProductFallbackImage(product.slug, product.category, name),
-    [product.slug, product.category, name]
+    [product.slug, product.category, name],
   );
   const [currentSrc, setCurrentSrc] = useState(product.image_url || fallback);
   const [imgFailed, setImgFailed] = useState(false);
@@ -349,10 +371,10 @@ const ProductCard = memo(function ProductCard({
   return (
     <div
       onClick={() => onSelect?.(product.id)}
-      className="group relative flex cursor-pointer flex-col justify-between overflow-hidden rounded-2xl border border-border bg-card p-3 shadow-2xs transition-all duration-200 hover:-translate-y-1 hover:shadow-md"
+      className="group relative flex cursor-pointer flex-col justify-between overflow-hidden rounded-2xl border border-border/70 bg-card p-3 shadow-2xs transition-all duration-200 will-change-transform [contain-intrinsic-size:0_320px] [content-visibility:auto] hover:-translate-y-1 hover:border-primary/40 hover:shadow-md"
     >
-      {/* Top Square Image Showcase Container */}
-      <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl bg-secondary/15 p-2 transition-colors">
+      {/* Top Image Showcase Container */}
+      <div className="relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-xl bg-secondary/15 transition-colors">
         {/* Center Hover Action Pill */}
         <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-foreground/10 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
           <button
@@ -361,12 +383,19 @@ const ProductCard = memo(function ProductCard({
               e.stopPropagation();
               onSelect?.(product.id);
             }}
-            className="pointer-events-auto flex cursor-pointer items-center gap-1.5 rounded-full border border-border bg-card/95 px-3.5 py-1.5 text-xs font-bold text-foreground shadow-sm backdrop-blur-xs transition-transform duration-200 hover:scale-105 active:scale-95"
+            className="pointer-events-auto flex cursor-pointer items-center gap-1.5 rounded-full border border-border bg-card/95 px-3.5 py-1.5 text-xs font-bold text-foreground shadow-sm transition-transform duration-200 hover:scale-105 active:scale-95"
           >
             <Sparkles className="h-3.5 w-3.5 text-primary" />
-            <span>{lang === "ar" ? "نظرة سريعة" : "Quick Look"}</span>
+            <span>{lang === "ar" ? "تخصيص والطلب" : "Customize"}</span>
           </button>
         </div>
+
+        {/* Popular Badge */}
+        {product.is_popular && (
+          <div className="absolute top-2.5 right-2.5 z-10 rounded-full bg-background/95 px-2.5 py-0.5 text-[10px] font-bold text-primary shadow-xs">
+            {lang === "ar" ? "⭐ الأكثر طلباً" : "⭐ Popular"}
+          </div>
+        )}
 
         {/* Product Photo or Fallback Badge */}
         {!imgFailed ? (
@@ -374,6 +403,7 @@ const ProductCard = memo(function ProductCard({
             src={currentSrc}
             alt={name}
             loading="lazy"
+            decoding="async"
             onError={() => {
               if (currentSrc !== fallback && fallback) {
                 setCurrentSrc(fallback);
@@ -381,31 +411,33 @@ const ProductCard = memo(function ProductCard({
                 setImgFailed(true);
               }
             }}
-            className="h-full w-full object-contain drop-shadow-xs transition-transform duration-300 group-hover:scale-105"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
         ) : (
-          <div className="flex flex-col items-center justify-center text-center p-2 select-none">
-            <span className="text-3xl sm:text-4xl">🎂</span>
-            <span className="mt-1 text-[10px] font-bold text-primary">DELISH Bakes</span>
+          <div className="flex flex-col items-center justify-center p-2 text-center select-none">
+            <span className="font-display text-2xl font-bold text-primary">DELISH</span>
+            <span className="mt-1 text-[11px] font-bold text-muted-foreground">Cake & Bake</span>
           </div>
         )}
       </div>
 
-      {/* Card Body Content */}
-      <div className="mt-3 flex-1 space-y-1 px-0.5">
-        <span className="block text-[11px] font-semibold text-primary/90">
+      {/* Card Body Content - Enhanced Type Scale */}
+      <div className="mt-3 flex-1 space-y-1.5 px-0.5">
+        <span className="block text-xs font-semibold tracking-wide text-primary">
           {product.category || (lang === "ar" ? "حلويات ديليش" : "Delish Bakes")}
         </span>
-        <h4 className="line-clamp-1 text-sm leading-snug font-bold text-foreground sm:text-base">
+        <h4 className="font-display line-clamp-1 text-base font-bold text-foreground sm:text-lg">
           {name}
         </h4>
-        <p className="line-clamp-1 text-xs text-muted-foreground">{description}</p>
+        <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground sm:text-sm">
+          {description}
+        </p>
       </div>
 
       {/* Card Footer Row: Price & Tactile Button */}
-      <div className="mt-3 flex items-center justify-between border-t border-border px-0.5 pt-2.5">
+      <div className="mt-3 flex items-center justify-between border-t border-border/60 px-0.5 pt-2.5">
         <div className="min-w-0">
-          <span className="text-sm font-bold text-foreground sm:text-base">
+          <span className="font-display text-base font-extrabold text-foreground sm:text-lg">
             {formatJod(unitPrice, lang)}
           </span>
         </div>
@@ -417,7 +449,7 @@ const ProductCard = memo(function ProductCard({
             onSelect?.(product.id);
           }}
           aria-label={lang === "ar" ? `طلب ${name}` : `Order ${name}`}
-          className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xs transition hover:scale-110 active:scale-95"
+          className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xs transition-transform duration-200 hover:scale-110 active:scale-95"
         >
           <Plus className="h-4 w-4" />
         </button>

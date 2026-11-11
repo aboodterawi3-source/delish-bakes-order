@@ -424,7 +424,10 @@ await test("6. K2: Zero-priced extras and authorized low-price items (0.00 & 0.5
   assert.equal(freeCandle.price, 0.0, "Price of 0.00 must NOT be overwritten by default 0.50!");
   assert.equal(parsedFree.savedExtrasTotal, 0.0, "Saved extras total must be 0.00 JD");
 
-  const basePriceFree = calculateBasePriceFromSaved(freeItem.unit_price, parsedFree.savedExtrasTotal);
+  const basePriceFree = calculateBasePriceFromSaved(
+    freeItem.unit_price,
+    parsedFree.savedExtrasTotal,
+  );
   assert.equal(basePriceFree, 20.0, "Net base price is 20.00 JD");
 
   // Save keeping the free extra -> 20.00 JD
@@ -477,7 +480,10 @@ await test("6. K2: Zero-priced extras and authorized low-price items (0.00 & 0.5
   const parsed050 = parseOptionsAndExtras(promoItem050.options_ar, DEFAULT_EXTRAS);
   assert.equal(parsed050.savedExtrasTotal, 1.0, "Saved extras total is 1.00 JD");
 
-  const basePrice050 = calculateBasePriceFromSaved(promoItem050.unit_price, parsed050.savedExtrasTotal);
+  const basePrice050 = calculateBasePriceFromSaved(
+    promoItem050.unit_price,
+    parsed050.savedExtrasTotal,
+  );
   assert.equal(basePrice050, -0.5, "Unclamped base price is -0.50 JD");
 
   // Save without modification or editing notes only -> MUST remain exactly 0.50 JD!

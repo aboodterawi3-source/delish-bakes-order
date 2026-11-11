@@ -540,7 +540,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
 
   return (
     <div
-      className="flex flex-col rounded-2xl border border-border bg-card shadow-lg text-card-foreground overflow-hidden transition-all select-none"
+      className="flex flex-col overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-lg transition-all select-none"
       dir="rtl"
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
@@ -584,13 +584,13 @@ export const OrdersCalendar = memo(function OrdersCalendar({
 
         {/* Right (RTL): View Mode Switcher */}
         <div className="flex items-center gap-2">
-          <div className="flex items-center rounded-xl bg-muted p-1 border border-border">
+          <div className="flex items-center rounded-xl border border-border bg-muted p-1">
             <button
               type="button"
               onClick={() => setViewMode("month")}
               className={`min-h-8 rounded-lg px-3 text-xs font-bold transition-all ${
                 viewMode === "month"
-                  ? "bg-background text-primary shadow-sm border border-border"
+                  ? "border border-border bg-background text-primary shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -601,7 +601,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
               onClick={() => setViewMode("day")}
               className={`min-h-8 rounded-lg px-3 text-xs font-bold transition-all ${
                 viewMode === "day"
-                  ? "bg-background text-primary shadow-sm border border-border"
+                  ? "border border-border bg-background text-primary shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -612,8 +612,8 @@ export const OrdersCalendar = memo(function OrdersCalendar({
       </div>
 
       {/* STATUS QUICK FILTER STRIP */}
-      <div className="flex items-center gap-1.5 overflow-x-auto border-b border-border bg-background p-2 text-xs no-scrollbar">
-        <span className="flex items-center gap-1 font-bold text-muted-foreground pl-1 shrink-0">
+      <div className="no-scrollbar flex items-center gap-1.5 overflow-x-auto border-b border-border bg-background p-2 text-xs">
+        <span className="flex shrink-0 items-center gap-1 pl-1 font-bold text-muted-foreground">
           <Filter className="h-3.5 w-3.5" /> تصفية:
         </span>
         <button
@@ -636,7 +636,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
               key={st}
               type="button"
               onClick={() => setStatusFilter(st)}
-              className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold border transition-all ${
+              className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-bold transition-all ${
                 statusFilter === st
                   ? `${cfg.badgeBg} ${cfg.badgeText} border-transparent shadow-sm`
                   : `border-border bg-background text-foreground hover:bg-muted`
@@ -650,25 +650,25 @@ export const OrdersCalendar = memo(function OrdersCalendar({
 
       {/* 2. DAY VIEW: HORIZONTAL WEEKDAY SELECTOR STRIP */}
       {viewMode === "day" ? (
-        <div className="flex items-center gap-2 overflow-x-auto border-b border-border bg-muted/20 p-2 text-center no-scrollbar">
+        <div className="no-scrollbar flex items-center gap-2 overflow-x-auto border-b border-border bg-muted/20 p-2 text-center">
           {surroundingDays.map((d) => (
             <button
               key={d.iso}
               type="button"
               onClick={() => setCurrentDate(d.date)}
-              className={`flex shrink-0 min-w-[72px] flex-col items-center justify-center rounded-xl p-2 transition-all ${
+              className={`flex min-w-[72px] shrink-0 flex-col items-center justify-center rounded-xl p-2 transition-all ${
                 d.isSelected
-                  ? "bg-primary text-primary-foreground font-black shadow-md ring-2 ring-primary/40"
+                  ? "bg-primary font-black text-primary-foreground shadow-md ring-2 ring-primary/40"
                   : d.isToday
-                    ? "bg-primary/10 text-primary border border-primary/30 font-bold"
-                    : "bg-background border border-border text-foreground hover:bg-muted"
+                    ? "border border-primary/30 bg-primary/10 font-bold text-primary"
+                    : "border border-border bg-background text-foreground hover:bg-muted"
               }`}
             >
               <span className="text-[11px] opacity-80">{d.dayName}</span>
-              <span className="text-base font-black leading-tight">{d.dayNum}</span>
+              <span className="text-base leading-tight font-black">{d.dayNum}</span>
               {d.count > 0 ? (
                 <span
-                  className={`mt-1 rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
+                  className={`py-0.2 mt-1 rounded-full px-1.5 text-[10px] font-bold ${
                     d.isSelected ? "bg-white/20 text-white" : "bg-primary/20 text-primary"
                   }`}
                 >
@@ -696,7 +696,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
           </div>
 
           {/* 7-Column Grid */}
-          <div className="grid grid-cols-7 border-collapse">
+          <div className="grid border-collapse grid-cols-7">
             {monthGridDays.map((cell, idx) => (
               <div
                 key={cell.iso + idx}
@@ -704,7 +704,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                   setCurrentDate(cell.date);
                   setViewMode("day");
                 }}
-                className={`group min-h-[110px] border-b border-l border-border p-1.5 transition-colors cursor-pointer hover:bg-muted/30 ${
+                className={`group min-h-[110px] cursor-pointer border-b border-l border-border p-1.5 transition-colors hover:bg-muted/30 ${
                   !cell.isCurrentMonth ? "bg-muted/10 opacity-50" : "bg-background"
                 }`}
               >
@@ -713,7 +713,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                   <span
                     className={`inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
                       cell.isToday
-                        ? "bg-primary text-primary-foreground font-black shadow-sm"
+                        ? "bg-primary font-black text-primary-foreground shadow-sm"
                         : cell.isCurrentMonth
                           ? "text-foreground group-hover:bg-accent"
                           : "text-muted-foreground"
@@ -743,7 +743,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                           e.stopPropagation();
                           setSelectedOrder(ord);
                         }}
-                        className={`truncate rounded-lg border px-1.5 py-1 text-[11px] font-bold transition-transform hover:scale-[1.02] shadow-2xs ${cfg.bg} ${cfg.border} ${cfg.text}`}
+                        className={`truncate rounded-lg border px-1.5 py-1 text-[11px] font-bold shadow-2xs transition-transform hover:scale-[1.02] ${cfg.bg} ${cfg.border} ${cfg.text}`}
                       >
                         <div className="flex items-center justify-between gap-1">
                           <span className="shrink-0 font-black">{timeStr}</span>
@@ -769,7 +769,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
         /* DAY HOURLY TIMELINE VIEW (06:00 AM to 11:00 PM) WITH TOUCH LONG-PRESS DRAG & DROP */
         <div className="relative flex flex-col bg-background">
           <div
-            className="max-h-[640px] overflow-y-auto overflow-x-hidden relative"
+            className="relative max-h-[640px] overflow-x-hidden overflow-y-auto"
             ref={timelineRef}
           >
             {/* Hourly Rows Grid */}
@@ -782,16 +782,16 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                 return (
                   <div
                     key={hourNum}
-                    className="flex h-[72px] border-b border-border/60 text-xs font-semibold text-muted-foreground relative"
+                    className="relative flex h-[72px] border-b border-border/60 text-xs font-semibold text-muted-foreground"
                   >
                     {/* Time Label Column */}
-                    <div className="w-16 sm:w-20 shrink-0 border-l border-border/60 bg-muted/10 p-2 text-left font-mono font-bold select-none">
+                    <div className="w-16 shrink-0 border-l border-border/60 bg-muted/10 p-2 text-left font-mono font-bold select-none sm:w-20">
                       {label}
                     </div>
 
                     {/* Hourly Horizontal Guide Line */}
-                    <div className="flex-1 relative">
-                      <div className="absolute inset-x-0 top-0 border-t border-dashed border-border/40 pointer-events-none" />
+                    <div className="relative flex-1">
+                      <div className="pointer-events-none absolute inset-x-0 top-0 border-t border-dashed border-border/40" />
                     </div>
                   </div>
                 );
@@ -801,9 +801,9 @@ export const OrdersCalendar = memo(function OrdersCalendar({
               {dragging ? (
                 <div
                   style={{ top: `${(dragging.targetHour - 6) * 72}px`, height: "72px" }}
-                  className="absolute inset-x-0 right-16 sm:right-20 z-20 flex items-center justify-between bg-primary/20 border-2 border-dashed border-primary px-4 rounded-xl shadow-lg pointer-events-none transition-all animate-pulse"
+                  className="pointer-events-none absolute inset-x-0 right-16 z-20 flex animate-pulse items-center justify-between rounded-xl border-2 border-dashed border-primary bg-primary/20 px-4 shadow-lg transition-all sm:right-20"
                 >
-                  <span className="text-xs font-black text-primary bg-background px-3 py-1 rounded-full shadow-sm">
+                  <span className="rounded-full bg-background px-3 py-1 text-xs font-black text-primary shadow-sm">
                     🎯 نقل الطلب إلى الساعة {formatMinutesArabic(dragging.targetHour * 60)}
                   </span>
                   <span className="text-xs font-bold text-primary">اترك الإصبع للإسقاط</span>
@@ -821,10 +821,10 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                       return (
                         <div
                           style={{ top: `${topPx}px` }}
-                          className="absolute inset-x-0 z-20 flex items-center pointer-events-none"
+                          className="pointer-events-none absolute inset-x-0 z-20 flex items-center"
                         >
-                          <div className="mr-14 sm:mr-18 flex items-center gap-1 w-full">
-                            <div className="h-3 w-3 rounded-full bg-rose-500 ring-4 ring-rose-500/20 shadow-sm" />
+                          <div className="mr-14 flex w-full items-center gap-1 sm:mr-18">
+                            <div className="h-3 w-3 rounded-full bg-rose-500 shadow-sm ring-4 ring-rose-500/20" />
                             <div className="h-0.5 w-full bg-rose-500 shadow-xs" />
                           </div>
                         </div>
@@ -835,7 +835,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                 : null}
 
               {/* POSITIONED MULTI-COLUMN EVENT CARDS WITH TOUCH LONG-PRESS DRAG */}
-              <div className="absolute top-0 bottom-0 right-16 sm:right-20 left-0 z-10">
+              <div className="absolute top-0 right-16 bottom-0 left-0 z-10 sm:right-20">
                 {positionedDayOrders.length === 0 ? (
                   <div className="flex h-48 items-center justify-center text-sm font-bold text-muted-foreground">
                     لا توجد طلبات مسجلة لهذا اليوم 🎉
@@ -874,13 +874,13 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                           WebkitUserSelect: "none",
                           WebkitTouchCallout: "none",
                         }}
-                        className={`order-item absolute rounded-xl border p-2.5 shadow-md cursor-grab active:cursor-grabbing transition-all hover:scale-[1.01] hover:z-30 overflow-hidden flex flex-col justify-between ${cfg.bg} ${cfg.border} ${cfg.text} ${
-                          isBeingDragged ? "opacity-30 scale-95 border-dashed border-primary" : ""
+                        className={`order-item absolute flex cursor-grab flex-col justify-between overflow-hidden rounded-xl border p-2.5 shadow-md transition-all hover:z-30 hover:scale-[1.01] active:cursor-grabbing ${cfg.bg} ${cfg.border} ${cfg.text} ${
+                          isBeingDragged ? "scale-95 border-dashed border-primary opacity-30" : ""
                         }`}
                       >
                         {/* Card Header: Code + Status Badge */}
-                        <div className="flex items-center justify-between gap-1 pointer-events-none">
-                          <span className="inline-flex items-center gap-1 rounded-md bg-black/10 px-1.5 py-0.5 font-mono text-[11px] font-black dir-ltr">
+                        <div className="pointer-events-none flex items-center justify-between gap-1">
+                          <span className="dir-ltr inline-flex items-center gap-1 rounded-md bg-black/10 px-1.5 py-0.5 font-mono text-[11px] font-black">
                             {code}
                           </span>
                           <span
@@ -891,22 +891,22 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                         </div>
 
                         {/* Card Body: Customer & Location */}
-                        <div className="mt-1 space-y-0.5 pointer-events-none">
-                          <div className="flex items-center gap-1 text-xs font-black truncate">
+                        <div className="pointer-events-none mt-1 space-y-0.5">
+                          <div className="flex items-center gap-1 truncate text-xs font-black">
                             {ord.method === "delivery" ? (
-                              <Truck className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+                              <Truck className="h-3.5 w-3.5 shrink-0 text-blue-600" />
                             ) : (
-                              <Store className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                              <Store className="h-3.5 w-3.5 shrink-0 text-amber-600" />
                             )}
                             <span className="truncate">{ord.customer_name}</span>
                           </div>
-                          <div className="text-[11px] font-bold opacity-90 truncate flex items-center gap-1">
+                          <div className="flex items-center gap-1 truncate text-[11px] font-bold opacity-90">
                             <MapPin className="h-3 w-3 shrink-0" /> {locationText} • {mainItem}
                           </div>
                         </div>
 
                         {/* Card Footer: Time slot */}
-                        <div className="mt-1 flex items-center justify-between text-[10px] font-bold opacity-75 pointer-events-none">
+                        <div className="pointer-events-none mt-1 flex items-center justify-between text-[10px] font-bold opacity-75">
                           <span className="flex items-center gap-1">
                             <Clock className="h-3 w-3" /> {timeWindow}
                           </span>
@@ -941,19 +941,19 @@ export const OrdersCalendar = memo(function OrdersCalendar({
             zIndex: 99999,
             pointerEvents: "none",
           }}
-          className="rounded-2xl border-2 border-primary bg-card p-3 shadow-2xl ring-4 ring-primary/40 rotate-2 scale-105 transition-transform"
+          className="scale-105 rotate-2 rounded-2xl border-2 border-primary bg-card p-3 shadow-2xl ring-4 ring-primary/40 transition-transform"
           dir="rtl"
         >
           <div className="flex items-center justify-between gap-1 text-xs font-black text-primary">
             <span>{orderLabel(dragging.order.order_number, dragging.order.staff_code)}</span>
-            <span className="text-[10px] bg-primary text-primary-foreground px-2 py-0.5 rounded-full font-bold">
+            <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground">
               سحب ✋
             </span>
           </div>
-          <div className="text-xs font-black text-foreground mt-1 truncate">
+          <div className="mt-1 truncate text-xs font-black text-foreground">
             {dragging.order.customer_name}
           </div>
-          <div className="text-[11px] font-bold text-primary mt-1 flex items-center gap-1">
+          <div className="mt-1 flex items-center gap-1 text-[11px] font-bold text-primary">
             <Clock className="h-3 w-3" /> نقل إلى: {formatMinutesArabic(dragging.targetHour * 60)}
           </div>
         </div>
@@ -962,10 +962,10 @@ export const OrdersCalendar = memo(function OrdersCalendar({
       {/* 4. STRUCTURED ORDER DETAILS MODAL / SHEET */}
       {selectedOrder ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 flex animate-in items-center justify-center bg-black/60 p-4 backdrop-blur-xs duration-200 fade-in"
           dir="rtl"
         >
-          <div className="relative w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl border border-border bg-card text-card-foreground shadow-2xl transition-all">
+          <div className="relative max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-border bg-card text-card-foreground shadow-2xl transition-all">
             {/* Modal Header */}
             <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-card/95 px-5 py-4 backdrop-blur-md">
               <div className="flex items-center gap-2">
@@ -973,7 +973,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                   <Package className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-black text-foreground flex items-center gap-2">
+                  <h3 className="flex items-center gap-2 text-base font-black text-foreground">
                     {selectedOrder.area ??
                       (selectedOrder.method === "delivery" ? "توصيل" : "استلام محل")}{" "}
                     • {orderLabel(selectedOrder.order_number, selectedOrder.staff_code)}
@@ -996,9 +996,9 @@ export const OrdersCalendar = memo(function OrdersCalendar({
             </div>
 
             {/* Modal Body */}
-            <div className="p-5 space-y-4">
+            <div className="space-y-4 p-5">
               {/* Status & Code Bar */}
-              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-muted/40 p-3 border border-border">
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-muted/40 p-3">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold text-muted-foreground">حالة الأوردر:</span>
                   <OrderStatusBadge status={selectedOrder.status} size="md" />
@@ -1011,7 +1011,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
               </div>
 
               {/* Customer & Direct Action Buttons */}
-              <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
+              <div className="space-y-3 rounded-2xl border border-border bg-card p-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-xs font-bold text-muted-foreground">العميل</span>
@@ -1029,7 +1029,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                   <div className="grid grid-cols-2 gap-2 pt-1">
                     <a
                       href={`tel:${selectedOrder.customer_phone}`}
-                      className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-600 text-white font-bold text-xs shadow-sm hover:bg-emerald-700 transition-colors"
+                      className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-600 text-xs font-bold text-white shadow-sm transition-colors hover:bg-emerald-700"
                     >
                       <Phone className="h-4 w-4" /> 📞 اتصال مباشر
                     </a>
@@ -1037,7 +1037,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                       href={getWhatsAppChatUrl(selectedOrder.customer_phone)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-500 text-white font-bold text-xs shadow-sm hover:bg-emerald-600 transition-colors"
+                      className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-500 text-xs font-bold text-white shadow-sm transition-colors hover:bg-emerald-600"
                     >
                       <MessageCircle className="h-4 w-4" /> 💬 واتساب
                     </a>
@@ -1046,15 +1046,15 @@ export const OrdersCalendar = memo(function OrdersCalendar({
               </div>
 
               {/* Date & Fulfillment */}
-              <div className="rounded-2xl border border-border bg-card p-4 space-y-2">
-                <h4 className="text-xs font-black text-muted-foreground flex items-center gap-1.5">
+              <div className="space-y-2 rounded-2xl border border-border bg-card p-4">
+                <h4 className="flex items-center gap-1.5 text-xs font-black text-muted-foreground">
                   <Clock className="h-4 w-4 text-primary" /> موعد ونوع التسليم
                 </h4>
                 <div className="text-sm font-bold text-foreground">
                   📅 {selectedOrder.requested_date} — الساعة{" "}
                   {formatMinutesArabic(parseTimeInMinutes(selectedOrder.requested_time))}
                 </div>
-                <div className="text-xs font-bold text-muted-foreground flex items-center gap-1">
+                <div className="flex items-center gap-1 text-xs font-bold text-muted-foreground">
                   {selectedOrder.method === "delivery" ? (
                     <>
                       <Truck className="h-4 w-4 text-blue-500" /> توصيل إلى:{" "}
@@ -1073,8 +1073,8 @@ export const OrdersCalendar = memo(function OrdersCalendar({
               </div>
 
               {/* Items & Options */}
-              <div className="rounded-2xl border border-border bg-card p-4 space-y-2">
-                <h4 className="text-xs font-black text-muted-foreground flex items-center gap-1.5">
+              <div className="space-y-2 rounded-2xl border border-border bg-card p-4">
+                <h4 className="flex items-center gap-1.5 text-xs font-black text-muted-foreground">
                   <Sparkles className="h-4 w-4 text-primary" /> تفاصيل الكيك والمنتجات
                 </h4>
                 <div className="divide-y divide-border">
@@ -1089,11 +1089,11 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                         ) : null}
                       </div>
                       {it.options_ar?.length ? (
-                        <div className="flex flex-wrap gap-1.5 mt-2 pt-1.5 border-t border-border/40">
+                        <div className="mt-2 flex flex-wrap gap-1.5 border-t border-border/40 pt-1.5">
                           {it.options_ar.map((opt, oIdx) => (
                             <span
                               key={oIdx}
-                              className="inline-flex items-center rounded-lg bg-amber-500/10 px-2 py-0.5 text-[11px] font-bold text-amber-900 border border-amber-500/20"
+                              className="inline-flex items-center rounded-lg border border-amber-500/20 bg-amber-500/10 px-2 py-0.5 text-[11px] font-bold text-amber-900"
                               dir="auto"
                             >
                               {opt}
@@ -1109,10 +1109,10 @@ export const OrdersCalendar = memo(function OrdersCalendar({
               {/* Inscription Text */}
               {selectedOrder.inscription ? (
                 <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4">
-                  <h4 className="text-xs font-black text-primary mb-1">
+                  <h4 className="mb-1 text-xs font-black text-primary">
                     ✍️ الكتابة على الكيك / القاعدة:
                   </h4>
-                  <p className="text-sm font-bold text-foreground bg-background p-2.5 rounded-xl border border-border">
+                  <p className="rounded-xl border border-border bg-background p-2.5 text-sm font-bold text-foreground">
                     "{selectedOrder.inscription}"
                   </p>
                 </div>
@@ -1120,25 +1120,25 @@ export const OrdersCalendar = memo(function OrdersCalendar({
 
               {/* Notes & Design Reference Image */}
               {selectedOrder.notes || selectedOrder.design_image_url ? (
-                <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
+                <div className="space-y-3 rounded-2xl border border-border bg-card p-4">
                   <h4 className="text-xs font-black text-muted-foreground">
                     📝 ملاحظات خاصة وصورة التصميم
                   </h4>
                   {selectedOrder.notes ? (
-                    <p className="text-xs font-bold text-foreground bg-muted p-2.5 rounded-xl">
+                    <p className="rounded-xl bg-muted p-2.5 text-xs font-bold text-foreground">
                       {selectedOrder.notes}
                     </p>
                   ) : null}
                   {selectedOrder.design_image_url ? (
                     <div>
-                      <span className="text-[11px] font-bold text-muted-foreground block mb-1">
+                      <span className="mb-1 block text-[11px] font-bold text-muted-foreground">
                         صورة التصميم المرفقة:
                       </span>
                       <img
                         src={selectedOrder.design_image_url}
                         alt="Design Reference"
                         onClick={() => setZoomImage(selectedOrder.design_image_url)}
-                        className="h-28 w-28 rounded-xl object-cover border border-border cursor-pointer hover:opacity-90 transition-opacity"
+                        className="h-28 w-28 cursor-pointer rounded-xl border border-border object-cover transition-opacity hover:opacity-90"
                       />
                     </div>
                   ) : null}
@@ -1147,8 +1147,8 @@ export const OrdersCalendar = memo(function OrdersCalendar({
 
               {/* Financial Calculation & Payment (Hidden in kitchen mode) */}
               {!isKitchen && (selectedOrder.total > 0 || selectedOrder.payment_method) ? (
-                <div className="rounded-2xl border border-border bg-card p-4 space-y-2 text-xs font-bold">
-                  <h4 className="text-xs font-black text-muted-foreground mb-2">
+                <div className="space-y-2 rounded-2xl border border-border bg-card p-4 text-xs font-bold">
+                  <h4 className="mb-2 text-xs font-black text-muted-foreground">
                     💵 الحساب المالي وطريقة الدفع
                   </h4>
                   <div className="flex justify-between">
@@ -1167,7 +1167,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                       <span>-{(selectedOrder.discount_amount ?? 0).toFixed(2)} د.أ</span>
                     </div>
                   ) : null}
-                  <div className="flex justify-between text-sm font-black pt-1 border-t border-border">
+                  <div className="flex justify-between border-t border-border pt-1 text-sm font-black">
                     <span>الإجمالي النهائي:</span>
                     <span className="text-primary">
                       {(selectedOrder.total ?? 0).toFixed(2)} د.أ
@@ -1177,14 +1177,14 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                     <span>المدفوع (العربون):</span>
                     <span>{(selectedOrder.deposit_paid ?? 0).toFixed(2)} د.أ</span>
                   </div>
-                  <div className="flex justify-between text-amber-600 font-black text-sm">
+                  <div className="flex justify-between text-sm font-black text-amber-600">
                     <span>المتبقي المطلوب:</span>
                     <span>
                       {((selectedOrder.total ?? 0) - (selectedOrder.deposit_paid ?? 0)).toFixed(2)}{" "}
                       د.أ
                     </span>
                   </div>
-                  <div className="pt-2 border-t border-border flex items-center justify-between text-muted-foreground">
+                  <div className="flex items-center justify-between border-t border-border pt-2 text-muted-foreground">
                     <span>طريقة الدفع:</span>
                     <span className="font-bold text-foreground">
                       {selectedOrder.payment_method
@@ -1200,7 +1200,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
               {(selectedOrder.modifications && selectedOrder.modifications.length > 0) ||
               selectedOrder.last_edited_at ||
               selectedOrder.schedule_updated_at ? (
-                <div className="rounded-2xl border-2 border-amber-500/80 bg-gradient-to-b from-amber-500/10 via-amber-500/5 to-amber-500/15 p-4 space-y-3 shadow-xs">
+                <div className="space-y-3 rounded-2xl border-2 border-amber-500/80 bg-gradient-to-b from-amber-500/10 via-amber-500/5 to-amber-500/15 p-4 shadow-xs">
                   <div className="flex items-center justify-between border-b border-amber-500/30 pb-2">
                     <span className="flex items-center gap-1.5 text-xs font-black text-amber-900 dark:text-amber-200">
                       <span>📝</span>
@@ -1212,7 +1212,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                       </span>
                     </span>
                     {(selectedOrder.last_edited_at || selectedOrder.schedule_updated_at) && (
-                      <span className="text-[10px] font-mono text-muted-foreground" dir="ltr">
+                      <span className="font-mono text-[10px] text-muted-foreground" dir="ltr">
                         {new Date(
                           selectedOrder.last_edited_at ||
                             selectedOrder.schedule_updated_at ||
@@ -1238,7 +1238,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                         .map((mod, idx) => (
                           <div
                             key={idx}
-                            className="rounded-xl bg-card p-2.5 border border-amber-300/60 dark:border-amber-700/60 space-y-1.5 shadow-2xs"
+                            className="space-y-1.5 rounded-xl border border-amber-300/60 bg-card p-2.5 shadow-2xs dark:border-amber-700/60"
                           >
                             <div className="flex items-center justify-between text-xs font-black text-foreground">
                               <span className="flex items-center gap-1 text-primary">
@@ -1247,7 +1247,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                               </span>
                               {mod.updatedAt && (
                                 <span
-                                  className="text-[10px] text-muted-foreground font-mono"
+                                  className="font-mono text-[10px] text-muted-foreground"
                                   dir="ltr"
                                 >
                                   {new Date(mod.updatedAt).toLocaleTimeString("ar-JO", {
@@ -1257,20 +1257,20 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                                 </span>
                               )}
                             </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                            <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
                               {mod.oldValue && (
-                                <div className="rounded-lg bg-red-500/10 p-2 border border-red-500/20 text-red-950 dark:text-red-200">
-                                  <span className="block text-[10px] font-bold text-red-700 dark:text-red-400 mb-0.5">
+                                <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-2 text-red-950 dark:text-red-200">
+                                  <span className="mb-0.5 block text-[10px] font-bold text-red-700 dark:text-red-400">
                                     ❌ السابق:
                                   </span>
-                                  <span className="line-through font-bold break-words">
+                                  <span className="font-bold break-words line-through">
                                     {mod.oldValue}
                                   </span>
                                 </div>
                               )}
                               {mod.newValue && (
-                                <div className="rounded-lg bg-emerald-500/10 p-2 border border-emerald-500/25 text-emerald-950 dark:text-emerald-200">
-                                  <span className="block text-[10px] font-black text-emerald-700 dark:text-emerald-400 mb-0.5">
+                                <div className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 p-2 text-emerald-950 dark:text-emerald-200">
+                                  <span className="mb-0.5 block text-[10px] font-black text-emerald-700 dark:text-emerald-400">
                                     ✅ الجديد:
                                   </span>
                                   <span className="font-black break-words">{mod.newValue}</span>
@@ -1281,7 +1281,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                         ))
                     ) : (
                       /* Fallback when modifications array is empty but order is flagged as edited */
-                      <div className="rounded-xl bg-card p-3 border border-amber-300/60 dark:border-amber-700/60 space-y-2 shadow-2xs">
+                      <div className="space-y-2 rounded-xl border border-amber-300/60 bg-card p-3 shadow-2xs dark:border-amber-700/60">
                         <div className="flex items-center justify-between text-xs font-black text-foreground">
                           <span className="flex items-center gap-1 text-primary">
                             <span>🔹</span>
@@ -1292,9 +1292,9 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                             </span>
                           </span>
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                          <div className="rounded-lg bg-red-500/10 p-2 border border-red-500/20 text-red-950 dark:text-red-200">
-                            <span className="block text-[10px] font-bold text-red-700 dark:text-red-400 mb-0.5">
+                        <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
+                          <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-2 text-red-950 dark:text-red-200">
+                            <span className="mb-0.5 block text-[10px] font-bold text-red-700 dark:text-red-400">
                               ❌ الحالة:
                             </span>
                             <span className="font-bold break-words">
@@ -1303,8 +1303,8 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                                 : "تم تعديل تفاصيل ومواصفات الطلب بمكتب المبيعات"}
                             </span>
                           </div>
-                          <div className="rounded-lg bg-emerald-500/10 p-2 border border-emerald-500/25 text-emerald-950 dark:text-emerald-200">
-                            <span className="block text-[10px] font-black text-emerald-700 dark:text-emerald-400 mb-0.5">
+                          <div className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 p-2 text-emerald-950 dark:text-emerald-200">
+                            <span className="mb-0.5 block text-[10px] font-black text-emerald-700 dark:text-emerald-400">
                               ✅ المعتمد حالياً للتجهيز:
                             </span>
                             <span className="font-black break-words">
@@ -1323,8 +1323,8 @@ export const OrdersCalendar = memo(function OrdersCalendar({
 
               {/* Kitchen Stage Transition Actions */}
               {isKitchen && onKitchenStage ? (
-                <div className="rounded-2xl border border-amber-300 bg-amber-50/60 p-4 space-y-2">
-                  <h4 className="text-xs font-black text-amber-900 flex items-center gap-1.5">
+                <div className="space-y-2 rounded-2xl border border-amber-300 bg-amber-50/60 p-4">
+                  <h4 className="flex items-center gap-1.5 text-xs font-black text-amber-900">
                     👨‍🍳 إجراءات مرحلة المطبخ · Kitchen Stage
                   </h4>
                   <div className="flex flex-wrap gap-2 pt-1">
@@ -1335,7 +1335,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                           onKitchenStage(selectedOrder.id, "baking");
                           setSelectedOrder((prev) => (prev ? { ...prev, status: "baking" } : null));
                         }}
-                        className="flex-1 min-h-10 rounded-xl bg-blue-600 text-white font-bold text-xs hover:bg-blue-700 transition"
+                        className="min-h-10 flex-1 rounded-xl bg-blue-600 text-xs font-bold text-white transition hover:bg-blue-700"
                       >
                         ⚡ بدء التجهيز بالمطبخ
                       </button>
@@ -1347,7 +1347,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                           onKitchenStage(selectedOrder.id, "ready");
                           setSelectedOrder((prev) => (prev ? { ...prev, status: "ready" } : null));
                         }}
-                        className="flex-1 min-h-10 rounded-xl bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 transition"
+                        className="min-h-10 flex-1 rounded-xl bg-emerald-600 text-xs font-bold text-white transition hover:bg-emerald-700"
                       >
                         ✅ جاهز بالمحل (Ready)
                       </button>
@@ -1363,7 +1363,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                 <button
                   type="button"
                   onClick={() => onPrintKitchenTicket(selectedOrder)}
-                  className="flex flex-1 min-h-11 items-center justify-center gap-2 rounded-xl bg-[#8B4513] text-white font-bold text-xs shadow-sm hover:bg-[#5D2E17] transition"
+                  className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-[#8B4513] text-xs font-bold text-white shadow-sm transition hover:bg-[#5D2E17]"
                 >
                   <Printer className="h-4 w-4" /> 🖨️ طباعة تذكرة المطبخ
                 </button>
@@ -1375,7 +1375,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                   setSelectedOrder(null);
                   onOpen(id);
                 }}
-                className="flex flex-1 min-h-11 items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground font-bold text-xs shadow-sm hover:opacity-90 transition-opacity"
+                className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-primary text-xs font-bold text-primary-foreground shadow-sm transition-opacity hover:opacity-90"
               >
                 <Pencil className="h-4 w-4" /> ✏️ تفاصيل كاملة
               </button>
@@ -1383,7 +1383,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                 <button
                   type="button"
                   onClick={() => printOrderReceipt(selectedOrder)}
-                  className="flex flex-1 min-h-11 items-center justify-center gap-2 rounded-xl border border-border bg-muted text-foreground font-bold text-xs hover:bg-accent transition-colors"
+                  className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-muted text-xs font-bold text-foreground transition-colors hover:bg-accent"
                 >
                   <Printer className="h-4 w-4" /> 🖨️ طباعة البون
                 </button>
@@ -1397,9 +1397,9 @@ export const OrdersCalendar = memo(function OrdersCalendar({
       {zoomImage ? (
         <div
           onClick={() => setZoomImage(null)}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md"
         >
-          <div className="relative max-w-3xl max-h-[90vh]">
+          <div className="relative max-h-[90vh] max-w-3xl">
             <img
               src={zoomImage}
               alt="Zoomed view"

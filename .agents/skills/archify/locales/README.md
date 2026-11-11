@@ -18,14 +18,14 @@ No renderer or schema change is needed. Locale tags match case-insensitively;
 region and script variants (for example `zh-Hant`) are distinct tags and are
 never collapsed onto another catalog.
 
-| Locale | Origin | Review status |
-| --- | --- | --- |
-| `en` | Archify source strings | Canonical |
-| `zh-CN` | #108 | Maintained with the renderer |
-| `zh-TW` | kevinlincg | Complete; OpenCC `s2twp` conversion hand-reviewed for Taiwan terminology; not independently native-reviewed |
-| `es` | Juan Pablo Tamayo (#457, moved to data in #586) | Complete; not independently native-reviewed |
-| `ko` | uygnoey (#457) | Complete; not independently native-reviewed |
-| `ar` | jahfaliabdulrahman-dev | Complete: 486/486 keys with placeholder parity checked mechanically; not independently native-reviewed |
+| Locale  | Origin                                          | Review status                                                                                               |
+| ------- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `en`    | Archify source strings                          | Canonical                                                                                                   |
+| `zh-CN` | #108                                            | Maintained with the renderer                                                                                |
+| `zh-TW` | kevinlincg                                      | Complete; OpenCC `s2twp` conversion hand-reviewed for Taiwan terminology; not independently native-reviewed |
+| `es`    | Juan Pablo Tamayo (#457, moved to data in #586) | Complete; not independently native-reviewed                                                                 |
+| `ko`    | uygnoey (#457)                                  | Complete; not independently native-reviewed                                                                 |
+| `ar`    | jahfaliabdulrahman-dev                          | Complete: 486/486 keys with placeholder parity checked mechanically; not independently native-reviewed      |
 
 Completeness checks prove key and placeholder coverage, not native wording,
 plural grammar, right-to-left layout, or glyph coverage.

@@ -4,14 +4,14 @@ import {
   resolveLocale,
   translateMessage,
   viewerCatalog,
-} from './i18n.mjs';
+} from "./i18n.mjs";
 
 export { esc };
 
 // `extra` appends type-owned definitions (the entity renderer's cardinality
 // markers) inside the same <defs>. Callers that pass nothing keep the exact
 // bytes the five longer-standing renderers already emit.
-export function renderDefinitions(extra = '') {
+export function renderDefinitions(extra = "") {
   return `        <!-- Definitions -->
         <defs>
           <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
@@ -33,20 +33,20 @@ export function renderDefinitions(extra = '') {
 }
 
 const SIGIL_TONE = {
-  frontend: 'frontend',
-  start: 'frontend',
-  backend: 'backend',
-  active: 'frontend',
-  database: 'database',
-  success: 'backend',
-  cloud: 'cloud',
-  waiting: 'cloud',
-  security: 'security',
-  decision: 'database',
-  failure: 'security',
-  messagebus: 'messagebus',
-  external: 'external',
-  neutral: 'external',
+  frontend: "frontend",
+  start: "frontend",
+  backend: "backend",
+  active: "frontend",
+  database: "database",
+  success: "backend",
+  cloud: "cloud",
+  waiting: "cloud",
+  security: "security",
+  decision: "database",
+  failure: "security",
+  messagebus: "messagebus",
+  external: "external",
+  neutral: "external",
 };
 
 const SIGIL_SHAPE = {
@@ -101,10 +101,10 @@ export const SEMANTIC_SIGIL_FOOTPRINT = SEMANTIC_SIGIL_INSET + SEMANTIC_SIGIL_SI
 export const SOURCE_BADGE_FOOTPRINT = 38;
 
 export function renderSemanticSigil(kind, { x, y, size = SEMANTIC_SIGIL_SIZE, icon } = {}) {
-  if (icon === 'none') return '';
+  if (icon === "none") return "";
   const selected = icon ?? kind;
-  const normalized = Object.hasOwn(SIGIL_SHAPE, selected) ? selected : 'neutral';
-  const tone = SIGIL_TONE[kind] || 'external';
+  const normalized = Object.hasOwn(SIGIL_SHAPE, selected) ? selected : "neutral";
+  const tone = SIGIL_TONE[kind] || "external";
   const scale = size / 16;
   return `<g aria-hidden="true" data-semantic-sigil="${esc(normalized)}" class="semantic-sigil s-${tone}" transform="translate(${x} ${y}) scale(${scale})">
             ${SIGIL_SHAPE[normalized]}
@@ -115,55 +115,57 @@ export function renderCards(cards) {
   const list = Array.isArray(cards) ? cards : [];
   return `    <!-- Info Cards -->
     <div class="cards">
-${list.map((card) => `      <div class="card">
+${list
+  .map(
+    (card) => `      <div class="card">
         <div class="card-header">
           <div class="card-dot ${esc(card.dot)}"></div>
           <h3>${esc(card.title)}</h3>
         </div>
         <ul>
-${card.items.map((item) => `          <li>${esc(item)}</li>`).join('\n')}
+${card.items.map((item) => `          <li>${esc(item)}</li>`).join("\n")}
         </ul>
-      </div>`).join('\n\n')}
+      </div>`,
+  )
+  .join("\n\n")}
     </div>`;
 }
 
-const SVG_SLOT_RE = /      <!-- ARCHIFY:SVG_SLOT_START -->[\s\S]*?      <!-- ARCHIFY:SVG_SLOT_END -->/;
-const CARDS_SLOT_RE = /    <!-- ARCHIFY:CARDS_SLOT_START -->[\s\S]*?    <!-- ARCHIFY:CARDS_SLOT_END -->/;
-const SUBTITLE_SLOT_RE = /^([ \t]*)<p class="subtitle">\[Subtitle description\]<\/p>[ \t]*(\r?\n)?/m;
-const SOURCE_EVIDENCE_PLACEHOLDER = '    <!-- ARCHIFY:SOURCE_EVIDENCE_DATA -->';
-const I18N_PLACEHOLDER = '    <!-- ARCHIFY:I18N_DATA -->';
+const SVG_SLOT_RE =
+  /      <!-- ARCHIFY:SVG_SLOT_START -->[\s\S]*?      <!-- ARCHIFY:SVG_SLOT_END -->/;
+const CARDS_SLOT_RE =
+  /    <!-- ARCHIFY:CARDS_SLOT_START -->[\s\S]*?    <!-- ARCHIFY:CARDS_SLOT_END -->/;
+const SUBTITLE_SLOT_RE =
+  /^([ \t]*)<p class="subtitle">\[Subtitle description\]<\/p>[ \t]*(\r?\n)?/m;
+const SOURCE_EVIDENCE_PLACEHOLDER = "    <!-- ARCHIFY:SOURCE_EVIDENCE_DATA -->";
+const I18N_PLACEHOLDER = "    <!-- ARCHIFY:I18N_DATA -->";
 
 function serializeScriptJson(value) {
   return JSON.stringify(value)
-    .replaceAll('<', '\\u003c')
-    .replaceAll('>', '\\u003e')
-    .replaceAll('&', '\\u0026');
+    .replaceAll("<", "\\u003c")
+    .replaceAll(">", "\\u003e")
+    .replaceAll("&", "\\u0026");
 }
 
 const TEMPLATE_PLACEHOLDERS = [
   '<html lang="en" data-theme="dark" data-preset="[VISUAL PRESET]">',
-  '<title>[PROJECT NAME] Architecture Diagram</title>',
-  '<h1>[PROJECT NAME] Architecture</h1>',
+  "<title>[PROJECT NAME] Architecture Diagram</title>",
+  "<h1>[PROJECT NAME] Architecture</h1>",
   I18N_PLACEHOLDER,
 ];
 
-export function applyTemplate(template, {
-  title,
-  subtitle,
-  svg,
-  cards,
-  locale,
-  visualPreset = 'classic',
-  sourceEvidence = null,
-}) {
+export function applyTemplate(
+  template,
+  { title, subtitle, svg, cards, locale, visualPreset = "classic", sourceEvidence = null },
+) {
   if (!SVG_SLOT_RE.test(template)) {
-    throw new Error('applyTemplate: template missing ARCHIFY:SVG_SLOT sentinel');
+    throw new Error("applyTemplate: template missing ARCHIFY:SVG_SLOT sentinel");
   }
   if (!CARDS_SLOT_RE.test(template)) {
-    throw new Error('applyTemplate: template missing ARCHIFY:CARDS_SLOT sentinel');
+    throw new Error("applyTemplate: template missing ARCHIFY:CARDS_SLOT sentinel");
   }
   if (!SUBTITLE_SLOT_RE.test(template)) {
-    throw new Error('applyTemplate: template missing subtitle placeholder');
+    throw new Error("applyTemplate: template missing subtitle placeholder");
   }
   for (const ph of TEMPLATE_PLACEHOLDERS) {
     if (!template.includes(ph)) {
@@ -174,30 +176,45 @@ export function applyTemplate(template, {
   // Silently dropping verified evidence would be misleading, so the new slot
   // becomes mandatory only for the opt-in evidence path.
   if (sourceEvidence && !template.includes(SOURCE_EVIDENCE_PLACEHOLDER)) {
-    throw new Error(`applyTemplate: repository evidence requires placeholder ${JSON.stringify(SOURCE_EVIDENCE_PLACEHOLDER)}`);
+    throw new Error(
+      `applyTemplate: repository evidence requires placeholder ${JSON.stringify(SOURCE_EVIDENCE_PLACEHOLDER)}`,
+    );
   }
   // Function replacers: a literal `$&`, `$'`, `$\`` or `$$` in titles, labels,
   // or rendered SVG must not be interpreted as a replacement pattern.
   const sourceEvidenceJson = serializeScriptJson(sourceEvidence);
   const resolvedLocale = resolveLocale(locale);
-  const i18nJson = serializeScriptJson({ locale: resolvedLocale, messages: viewerCatalog(resolvedLocale) });
-  const renderedSubtitle = typeof subtitle === 'string' && subtitle.trim()
-    ? `<p class="subtitle">${esc(subtitle)}</p>`
-    : '';
+  const i18nJson = serializeScriptJson({
+    locale: resolvedLocale,
+    messages: viewerCatalog(resolvedLocale),
+  });
+  const renderedSubtitle =
+    typeof subtitle === "string" && subtitle.trim()
+      ? `<p class="subtitle">${esc(subtitle)}</p>`
+      : "";
   const i18nData = `    <script id="archify-i18n-data" type="application/json">${i18nJson}</script>`;
   return localizeTemplate(template, resolvedLocale)
     .replace(I18N_PLACEHOLDER, () => i18nData)
-    .replace(TEMPLATE_PLACEHOLDERS[0], () => `<html lang="${esc(resolvedLocale)}" data-theme="dark" data-preset="${esc(visualPreset)}">`)
-    .replace(TEMPLATE_PLACEHOLDERS[1], () => `<title>${esc(translateMessage(resolvedLocale, 'page.title', { title }))}</title>`)
+    .replace(
+      TEMPLATE_PLACEHOLDERS[0],
+      () =>
+        `<html lang="${esc(resolvedLocale)}" data-theme="dark" data-preset="${esc(visualPreset)}">`,
+    )
+    .replace(
+      TEMPLATE_PLACEHOLDERS[1],
+      () => `<title>${esc(translateMessage(resolvedLocale, "page.title", { title }))}</title>`,
+    )
     .replace(TEMPLATE_PLACEHOLDERS[2], () => `<h1>${esc(title)}</h1>`)
-    .replace(SUBTITLE_SLOT_RE, (_match, indent, newline = '') => renderedSubtitle
-      ? `${indent}${renderedSubtitle}${newline}`
-      : '')
+    .replace(SUBTITLE_SLOT_RE, (_match, indent, newline = "") =>
+      renderedSubtitle ? `${indent}${renderedSubtitle}${newline}` : "",
+    )
     .replace(SVG_SLOT_RE, () => svg)
     .replace(CARDS_SLOT_RE, () => cards)
-    .replace(SOURCE_EVIDENCE_PLACEHOLDER, () => sourceEvidence
-      ? `    <script id="archify-source-evidence-data" type="application/json">${sourceEvidenceJson}</script>`
-      : '');
+    .replace(SOURCE_EVIDENCE_PLACEHOLDER, () =>
+      sourceEvidence
+        ? `    <script id="archify-source-evidence-data" type="application/json">${sourceEvidenceJson}</script>`
+        : "",
+    );
 }
 
 // CJK and other wide/fullwidth glyphs render at roughly twice the advance
@@ -216,7 +233,8 @@ export function applyTemplate(template, {
 // U+A97D-U+A97F are unassigned, and unassigned code points outside the CJK
 // ranges UAX #11 names default to Neutral rather than Wide. Spelled out as
 // ranges because V8 has no \p{East_Asian_Width=W} property escape.
-const FULLWIDTH_RE = /[\u1100-\u115F\u231A-\u231B\u2329-\u232A\u23E9-\u23EC\u23F0\u23F3\u25FD-\u25FE\u2614-\u2615\u2630-\u2637\u2648-\u2653\u267F\u268A-\u268F\u2693\u26A1\u26AA-\u26AB\u26BD-\u26BE\u26C4-\u26C5\u26CE\u26D4\u26EA\u26F2-\u26F3\u26F5\u26FA\u26FD\u2705\u270A-\u270B\u2728\u274C\u274E\u2753-\u2755\u2757\u2795-\u2797\u27B0\u27BF\u2B1B-\u2B1C\u2B50\u2B55\u2E80-\uA4CF\uA960-\uA97C\uAC00-\uD7A3\uF900-\uFAFF\uFE10-\uFE19\uFE30-\uFE6F\uFF01-\uFF60\uFFE0-\uFFE6\u{16FE0}-\u{18DFF}\u{1AFF0}-\u{1AFFF}\u{1B000}-\u{1B2FF}\u{1F000}-\u{1FAFF}\u{20000}-\u{3FFFD}]/u;
+const FULLWIDTH_RE =
+  /[\u1100-\u115F\u231A-\u231B\u2329-\u232A\u23E9-\u23EC\u23F0\u23F3\u25FD-\u25FE\u2614-\u2615\u2630-\u2637\u2648-\u2653\u267F\u268A-\u268F\u2693\u26A1\u26AA-\u26AB\u26BD-\u26BE\u26C4-\u26C5\u26CE\u26D4\u26EA\u26F2-\u26F3\u26F5\u26FA\u26FD\u2705\u270A-\u270B\u2728\u274C\u274E\u2753-\u2755\u2757\u2795-\u2797\u27B0\u27BF\u2B1B-\u2B1C\u2B50\u2B55\u2E80-\uA4CF\uA960-\uA97C\uAC00-\uD7A3\uF900-\uFAFF\uFE10-\uFE19\uFE30-\uFE6F\uFF01-\uFF60\uFFE0-\uFFE6\u{16FE0}-\u{18DFF}\u{1AFF0}-\u{1AFFF}\u{1B000}-\u{1B2FF}\u{1F000}-\u{1FAFF}\u{20000}-\u{3FFFD}]/u;
 
 // Variation selectors contribute no separate unit. This is a conservative
 // width estimate, not a measurement of the selected glyph: its actual advance
@@ -237,7 +255,7 @@ const MAX_TEXT_UNITS_CACHE_ENTRIES = 4096;
 const MAX_CACHED_TEXT_LENGTH = 1024;
 
 export function textUnits(text) {
-  const cacheKey = String(text ?? '');
+  const cacheKey = String(text ?? "");
   const cachedUnits = TEXT_UNITS_CACHE.get(cacheKey);
   if (cachedUnits !== undefined) return cachedUnits;
   const chars = Array.from(cacheKey);

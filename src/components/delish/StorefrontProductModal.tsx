@@ -4,7 +4,11 @@ import { useLang } from "@/lib/i18n";
 import { useDismissable } from "@/lib/a11y";
 import { formatJod } from "@/lib/currency";
 import { WHATSAPP } from "@/lib/menu";
-import { priceForSize, getProductFallbackImage, type StorefrontProduct } from "@/lib/storefront-content";
+import {
+  priceForSize,
+  getProductFallbackImage,
+  type StorefrontProduct,
+} from "@/lib/storefront-content";
 import { useBrandPalette } from "@/lib/brand-palette";
 import { SERVING_SIZE_OFFSETS, getServingSizeOffset } from "@/lib/order-pricing";
 import {
@@ -66,8 +70,15 @@ export function StorefrontProductModal({
   const [customization, setCustomization] = useState<Customization>(emptyCustomization);
   const [imgFailed, setImgFailed] = useState(false);
   const fallbackImg = useMemo(
-    () => (product ? getProductFallbackImage(product.slug, product.category, ar ? product.name_ar : product.name_en) : ""),
-    [product, ar]
+    () =>
+      product
+        ? getProductFallbackImage(
+            product.slug,
+            product.category,
+            ar ? product.name_ar : product.name_en,
+          )
+        : "",
+    [product, ar],
   );
   const [modalImgSrc, setModalImgSrc] = useState<string>("");
 
@@ -78,7 +89,9 @@ export function StorefrontProductModal({
       setSize(product.sizes[0]?.label ?? SERVING_SIZE_OFFSETS[0]!.label);
       setQuantity(1);
       setFlavor("VANILLA");
-      setFilling(product?.filling_ar?.trim() || (ar ? "وصفة الشيف الأصلية" : "Chef's Original Recipe"));
+      setFilling(
+        product?.filling_ar?.trim() || (ar ? "وصفة الشيف الأصلية" : "Chef's Original Recipe"),
+      );
       setInscription("");
       setNotes("");
       setShowExtras(false);
@@ -97,7 +110,8 @@ export function StorefrontProductModal({
   const name = ar ? product.name_ar : product.name_en;
   const description = ar
     ? product.description_ar || "كيك احتفالي فاخر مُحضر يدوياً طازجاً بأجود المكونات الطبيعية"
-    : product.description_en || "Handcrafted celebration cake baked fresh daily with finest ingredients";
+    : product.description_en ||
+      "Handcrafted celebration cake baked fresh daily with finest ingredients";
 
   const askUrl = `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(
     ar
@@ -105,10 +119,11 @@ export function StorefrontProductModal({
       : `Hello, I'd like to inquire about: ${product.name_en}`,
   )}`;
 
-  const resolvedImage = product.image_url || getProductFallbackImage(product.slug, product.category, name);
+  const resolvedImage =
+    product.image_url || getProductFallbackImage(product.slug, product.category, name);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs transition-opacity duration-300">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-3 backdrop-blur-xs transition-opacity duration-300 sm:p-4">
       {/* Background overlay click */}
       <button
         type="button"
@@ -125,12 +140,12 @@ export function StorefrontProductModal({
         aria-labelledby={titleId}
         dir={ar ? "rtl" : "ltr"}
         style={{ borderColor: palette.border }}
-        className="relative max-h-[92vh] w-full max-w-4xl overflow-hidden rounded-3xl bg-white shadow-2xl flex flex-col md:flex-row z-10 border"
+        className="relative z-10 flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl border bg-white shadow-2xl md:flex-row"
       >
         {/* VISUAL SHOWCASE COLUMN */}
         <div
           style={{ backgroundColor: palette.cardBg }}
-          className="relative w-full md:w-1/2 p-6 flex flex-col justify-center items-center min-h-[260px] md:min-h-[460px] shrink-0 transition-colors duration-300"
+          className="relative flex min-h-[260px] w-full shrink-0 flex-col items-center justify-center p-6 transition-colors duration-300 md:min-h-[460px] md:w-1/2"
         >
           <div className="relative my-auto flex h-full w-full items-center justify-center p-4">
             {!imgFailed ? (
@@ -144,7 +159,7 @@ export function StorefrontProductModal({
                     setImgFailed(true);
                   }
                 }}
-                className="max-h-56 md:max-h-80 max-w-full object-contain drop-shadow-xl transition-transform duration-300 hover:scale-105"
+                className="max-h-56 max-w-full object-contain drop-shadow-xl transition-transform duration-300 hover:scale-105 md:max-h-80"
               />
             ) : (
               <div className="flex flex-col items-center justify-center rounded-3xl border border-amber-200 bg-white/90 p-8 text-center shadow-inner">
@@ -157,12 +172,12 @@ export function StorefrontProductModal({
         </div>
 
         {/* SELECTION FORM COLUMN */}
-        <div className="w-full md:w-1/2 p-5 sm:p-7 flex flex-col justify-between overflow-y-auto space-y-4 max-h-[65vh] md:max-h-[90vh]">
+        <div className="flex max-h-[65vh] w-full flex-col justify-between space-y-4 overflow-y-auto p-5 sm:p-7 md:max-h-[90vh] md:w-1/2">
           {/* Header row: Badge & Close Button */}
           <div className="flex items-center justify-between border-b border-[#EFE8DC] pb-3">
             <span
               style={{ color: palette.main }}
-              className="text-[11px] font-bold uppercase tracking-wider"
+              className="text-[11px] font-bold tracking-wider uppercase"
             >
               {ar ? "كيك احتفالي فاخر" : "Artisan Celebration Cake"}
             </span>
@@ -170,7 +185,7 @@ export function StorefrontProductModal({
               type="button"
               onClick={onClose}
               aria-label={ar ? "إغلاق" : "Close"}
-              className="grid h-8 w-8 place-items-center rounded-full border border-[#EFE8DC] bg-white text-[#4A3B32] shadow-xs transition hover:bg-[#FEF7EB] active:scale-95 cursor-pointer"
+              className="grid h-11 w-11 cursor-pointer place-items-center rounded-full border border-[#EFE8DC] bg-white text-[#4A3B32] shadow-xs transition hover:bg-[#FEF7EB] active:scale-95"
             >
               <X className="h-4 w-4" aria-hidden />
             </button>
@@ -178,10 +193,10 @@ export function StorefrontProductModal({
 
           {/* Title & Description */}
           <div className="space-y-1">
-            <h2 id={titleId} className="font-sans text-2xl font-black text-[#26160F] leading-tight">
+            <h2 id={titleId} className="font-display text-2xl leading-tight font-black text-[#26160F]">
               {name}
             </h2>
-            <p className="text-xs font-medium text-[#4A3B32]/70 leading-relaxed">{description}</p>
+            <p className="text-sm leading-relaxed font-medium text-[#4A3B32]/80">{description}</p>
           </div>
 
           {product.price_on_request ? (
@@ -204,17 +219,17 @@ export function StorefrontProductModal({
             <div className="space-y-4">
               {/* Unit Price Display */}
               <div className="space-y-0.5">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#4A3B32]/60">
+                <span className="text-xs font-bold tracking-wider text-[#4A3B32]/70 uppercase">
                   {ar ? "سعر القطعة" : "Unit Price"}
                 </span>
-                <div className="text-2xl font-black text-[#26160F]">
+                <div className="font-display text-2xl font-black text-[#26160F]">
                   {formatJod(unitPrice, lang)}
                 </div>
               </div>
 
               {/* Servings Selector ("Serves up to" / "يكفي لـ") */}
               <div className="space-y-2">
-                <label className="text-xs font-bold text-[#26160F] block">
+                <label className="block text-sm font-bold text-[#26160F]">
                   {ar ? "الحجم وعدد الأشخاص:" : "Size & Servings:"}
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -232,9 +247,9 @@ export function StorefrontProductModal({
                               color: active ? "#ffffff" : undefined,
                               borderColor: active ? palette.btnBg : palette.border,
                             }}
-                            className={`rounded-xl px-3.5 py-2 text-xs font-bold transition-all cursor-pointer ${
+                            className={`cursor-pointer rounded-xl px-3.5 py-2 text-xs font-bold transition-all ${
                               active
-                                ? "shadow-xs scale-[1.02]"
+                                ? "scale-[1.02] shadow-xs"
                                 : "border bg-white text-[#4A3B32] hover:bg-[#FEF7EB]"
                             }`}
                           >
@@ -256,9 +271,9 @@ export function StorefrontProductModal({
                               color: active ? "#ffffff" : undefined,
                               borderColor: active ? palette.btnBg : palette.border,
                             }}
-                            className={`rounded-xl px-3.5 py-2 text-xs font-bold transition-all cursor-pointer ${
+                            className={`cursor-pointer rounded-xl px-3.5 py-2 text-xs font-bold transition-all ${
                               active
-                                ? "shadow-xs scale-[1.02]"
+                                ? "scale-[1.02] shadow-xs"
                                 : "border bg-white text-[#4A3B32] hover:bg-[#FEF7EB]"
                             }`}
                           >
@@ -275,14 +290,14 @@ export function StorefrontProductModal({
 
               {/* Cake Flavor Dropdown (نكهة الكيكة) */}
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-[#26160F] block">
+                <label className="block text-sm font-bold text-[#26160F]">
                   {ar ? "نكهة الكيكة الأساسية" : "Cake Flavor"}
                 </label>
                 <div className="relative">
                   <select
                     value={flavor}
                     onChange={(e) => setFlavor(e.target.value)}
-                    className="w-full appearance-none rounded-xl border border-[#EFE8DC] bg-white px-3.5 py-2.5 text-xs font-bold text-[#26160F] outline-none focus:border-[#B8801C] focus:ring-2 focus:ring-[#B8801C]/20"
+                    className="w-full appearance-none rounded-xl border border-[#EFE8DC] bg-white px-3.5 py-2.5 text-sm font-bold text-[#26160F] outline-none focus:border-[#B8801C] focus:ring-2 focus:ring-[#B8801C]/20"
                   >
                     {FLAVOR_OPTIONS.map((opt) => (
                       <option key={opt.value} value={opt.value}>
@@ -290,17 +305,19 @@ export function StorefrontProductModal({
                       </option>
                     ))}
                   </select>
-                  <ChevronDown className="pointer-events-none absolute top-1/2 end-3 h-4 w-4 -translate-y-1/2 text-[#4A3B32]/60" />
+                  <ChevronDown className="pointer-events-none absolute end-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#4A3B32]/60" />
                 </div>
               </div>
 
               {/* Filling Input with Quick Chips */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-[#26160F] block">
+                  <label className="block text-sm font-bold text-[#26160F]">
                     {ar ? "نوع الحشوة المفضلة" : "Cake Filling"}
                   </label>
-                  <span className="text-[11px] text-muted-foreground">{ar ? "اختياري" : "Optional"}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {ar ? "اختياري" : "Optional"}
+                  </span>
                 </div>
 
                 {/* Quick filling chips */}
@@ -313,7 +330,7 @@ export function StorefrontProductModal({
                         key={chip.en}
                         type="button"
                         onClick={() => setFilling(label)}
-                        className={`rounded-lg px-2 py-0.5 text-[11px] font-semibold transition cursor-pointer ${
+                        className={`cursor-pointer rounded-lg px-2 py-0.5 text-[11px] font-semibold transition ${
                           isSelected
                             ? "bg-[#8B4513] text-white"
                             : "border border-slate-200 bg-[#F9FBFC] text-[#5A4A42] hover:bg-amber-50"
@@ -329,14 +346,16 @@ export function StorefrontProductModal({
                   type="text"
                   value={filling}
                   onChange={(e) => setFilling(e.target.value)}
-                  placeholder={ar ? "أو اكتب نوع الحشوة المفضلة بالتفصيل..." : "Or type custom filling..."}
-                  className="w-full rounded-xl border border-[#EFE8DC] bg-white px-3.5 py-2 text-xs font-semibold text-[#26160F] outline-none focus:border-[#B8801C] focus:ring-2 focus:ring-[#B8801C]/20 placeholder:font-normal placeholder:text-[#4A3B32]/40"
+                  placeholder={
+                    ar ? "أو اكتب نوع الحشوة المفضلة بالتفصيل..." : "Or type custom filling..."
+                  }
+                  className="w-full rounded-xl border border-[#EFE8DC] bg-white px-3.5 py-2 text-xs font-semibold text-[#26160F] outline-none placeholder:font-normal placeholder:text-[#4A3B32]/40 focus:border-[#B8801C] focus:ring-2 focus:ring-[#B8801C]/20"
                 />
               </div>
 
               {/* Cake Writing Input (الكتابة على الكيك) */}
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-[#26160F] block">
+                <label className="block text-xs font-bold text-[#26160F]">
                   {ar ? "الكتابة على الكيك (إن وُجدت)" : "Cake Writing (Optional)"}
                 </label>
                 <input
@@ -344,7 +363,7 @@ export function StorefrontProductModal({
                   value={inscription}
                   onChange={(e) => setInscription(e.target.value)}
                   placeholder={ar ? "مثال: مبروك التخرج يا سارة 🎉" : "Happy Birthday Sarah 🎉"}
-                  className="w-full rounded-xl border border-[#EFE8DC] bg-white px-3.5 py-2.5 text-xs font-semibold text-[#26160F] outline-none focus:border-[#B8801C] focus:ring-2 focus:ring-[#B8801C]/20 placeholder:font-normal placeholder:text-[#4A3B32]/40"
+                  className="w-full rounded-xl border border-[#EFE8DC] bg-white px-3.5 py-2.5 text-xs font-semibold text-[#26160F] outline-none placeholder:font-normal placeholder:text-[#4A3B32]/40 focus:border-[#B8801C] focus:ring-2 focus:ring-[#B8801C]/20"
                 />
               </div>
 
@@ -358,7 +377,7 @@ export function StorefrontProductModal({
                     backgroundColor: palette.cardBg,
                     borderColor: palette.border,
                   }}
-                  className="flex w-full items-center justify-between rounded-xl border px-3.5 py-2.5 text-xs font-bold transition-colors hover:opacity-90 cursor-pointer"
+                  className="flex w-full cursor-pointer items-center justify-between rounded-xl border px-3.5 py-2.5 text-xs font-bold transition-colors hover:opacity-90"
                 >
                   <span className="flex items-center gap-1.5">
                     <Sparkles className="h-3.5 w-3.5" />
@@ -373,45 +392,43 @@ export function StorefrontProductModal({
                   />
                 </button>
                 {showExtras && (
-                  <div className="mt-3 pt-2 border-t border-[#EFE8DC]">
-                    <CakeCustomizationPanel
-                      value={customization}
-                      onChange={setCustomization}
-                    />
+                  <div className="mt-3 border-t border-[#EFE8DC] pt-2">
+                    <CakeCustomizationPanel value={customization} onChange={setCustomization} />
                   </div>
                 )}
               </div>
 
               {/* Sticky Modal Bottom Action Row */}
-              <div className="pt-3 border-t border-[#EFE8DC] flex items-center gap-3">
-                {/* Stepper [- 1 +] with guaranteed 44x44px touch targets */}
-                <div className="flex items-center gap-1 rounded-2xl border border-[#EFE8DC] bg-white p-0.5 shadow-2xs">
+              <div className="flex items-center gap-3 border-t border-[#EFE8DC] pt-3">
+                {/* Stepper [- 1 +] */}
+                <div className="flex items-center gap-1 rounded-xl border border-[#EFE8DC] bg-white px-1">
                   <button
                     type="button"
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
                     aria-label={ar ? "تقليل الكمية" : "Decrease quantity"}
-                    className="grid h-11 w-11 place-items-center rounded-xl text-[#6E3917] hover:bg-[#FEF7EB] active:scale-95 cursor-pointer transition-all"
+                    className="grid h-11 w-11 cursor-pointer place-items-center rounded-lg text-[#6E3917] hover:bg-[#FEF7EB] active:scale-95"
                   >
-                    <Minus className="h-4 w-4" aria-hidden />
+                    <Minus className="h-3.5 w-3.5" aria-hidden />
                   </button>
-                  <span className="min-w-7 text-center text-sm font-bold text-[#26160F]">
+                  <span className="min-w-6 text-center text-xs font-bold text-[#26160F]">
                     {quantity}
                   </span>
                   <button
                     type="button"
                     onClick={() => setQuantity(quantity + 1)}
                     aria-label={ar ? "زيادة الكمية" : "Increase quantity"}
-                    className="grid h-11 w-11 place-items-center rounded-xl text-[#6E3917] hover:bg-[#FEF7EB] active:scale-95 cursor-pointer transition-all"
+                    className="grid h-11 w-11 cursor-pointer place-items-center rounded-lg text-[#6E3917] hover:bg-[#FEF7EB] active:scale-95"
                   >
-                    <Plus className="h-4 w-4" aria-hidden />
+                    <Plus className="h-3.5 w-3.5" aria-hidden />
                   </button>
                 </div>
 
-                {/* Add to Cart CTA Button (min-h-12 / 48px) */}
+                {/* Add to Cart CTA Button */}
                 <button
                   type="button"
                   onClick={() => {
-                    const finalFilling = filling.trim() || (ar ? "وصفة الشيف الأصلية" : "Chef's Original Recipe");
+                    const finalFilling =
+                      filling.trim() || (ar ? "وصفة الشيف الأصلية" : "Chef's Original Recipe");
                     onAdd({
                       product,
                       size,
@@ -425,7 +442,7 @@ export function StorefrontProductModal({
                     });
                   }}
                   style={{ backgroundColor: palette.btnBg }}
-                  className="flex-1 inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl text-white text-sm font-bold shadow-md transition-all hover:opacity-90 active:scale-[0.98] cursor-pointer"
+                  className="inline-flex min-h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl text-xs font-bold text-white shadow-md transition-all hover:opacity-90 active:scale-[0.98]"
                 >
                   <ShoppingBag className="h-4 w-4" />
                   <span>{t("addToCart")}</span>

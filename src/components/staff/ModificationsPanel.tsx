@@ -121,11 +121,11 @@ export function ModificationsHistoryBox({
         <button
           type="button"
           onClick={() => setOpen((prev) => !prev)}
-          className="flex items-center gap-2 font-black text-amber-950 hover:underline cursor-pointer"
+          className="flex cursor-pointer items-center gap-2 font-black text-amber-950 hover:underline"
         >
           <History className="h-4 w-4 text-amber-700" />
           <span>سجل الطلب التعديلات والتدقيق ({modifications?.length ?? 0} سجلات)</span>
-          <span className="text-[10px] text-amber-800 bg-amber-200/80 px-2 py-0.5 rounded-full font-bold">
+          <span className="rounded-full bg-amber-200/80 px-2 py-0.5 text-[10px] font-bold text-amber-800">
             {open ? "إخفاء التفاصيل ▲" : "عرض التفاصيل ▼"}
           </span>
         </button>
@@ -146,14 +146,14 @@ export function ModificationsHistoryBox({
         <div className="mt-3 space-y-3">
           {/* ORIGINAL ORDER BASELINE BANNER */}
           {baselineMod && (
-            <div className="rounded-xl border border-amber-400 bg-amber-100/90 p-3 text-xs text-amber-950 shadow-2xs space-y-1.5">
-              <div className="flex items-center justify-between font-black text-amber-900 border-b border-amber-300/80 pb-1.5">
+            <div className="space-y-1.5 rounded-xl border border-amber-400 bg-amber-100/90 p-3 text-xs text-amber-950 shadow-2xs">
+              <div className="flex items-center justify-between border-b border-amber-300/80 pb-1.5 font-black text-amber-900">
                 <span className="flex items-center gap-1.5">
                   <span>📌</span>
                   <span>الطلب الأساسي الأصلي (عند الإنشاء من السوشيل ميديا / النظام):</span>
                 </span>
                 {baselineMod.updatedAt && (
-                  <span className="text-[10px] font-mono text-amber-800 shrink-0" dir="ltr">
+                  <span className="shrink-0 font-mono text-[10px] text-amber-800" dir="ltr">
                     {new Date(baselineMod.updatedAt).toLocaleTimeString("ar-JO", {
                       hour: "2-digit",
                       minute: "2-digit",
@@ -161,7 +161,7 @@ export function ModificationsHistoryBox({
                   </span>
                 )}
               </div>
-              <div className="whitespace-pre-line text-xs font-bold leading-relaxed text-amber-950 bg-white/70 p-2.5 rounded-lg border border-amber-200/90">
+              <div className="rounded-lg border border-amber-200/90 bg-white/70 p-2.5 text-xs leading-relaxed font-bold whitespace-pre-line text-amber-950">
                 {baselineMod.oldValue}
               </div>
             </div>
@@ -170,17 +170,17 @@ export function ModificationsHistoryBox({
           {/* SUBSEQUENT MODIFICATIONS LIST */}
           {regularMods.length > 0 ? (
             <div className="space-y-2 pt-1">
-              <div className="font-black text-xs text-amber-950 flex items-center gap-1">
+              <div className="flex items-center gap-1 text-xs font-black text-amber-950">
                 <span>📝</span>
                 <span>التعديلات والتغييرات التي جرت عليه ({regularMods.length}):</span>
               </div>
               <ul className="space-y-2 divide-y divide-amber-200/60">
                 {regularMods.map((mod, idx) => (
-                  <li key={idx} className="pt-2 first:pt-0 space-y-1">
+                  <li key={idx} className="space-y-1 pt-2 first:pt-0">
                     <div className="flex flex-wrap items-center justify-between gap-1">
-                      <span className="font-black text-amber-950 text-xs">{mod.field}</span>
+                      <span className="text-xs font-black text-amber-950">{mod.field}</span>
                       {mod.updatedAt && (
-                        <span className="text-[10px] text-amber-800 shrink-0 font-mono" dir="ltr">
+                        <span className="shrink-0 font-mono text-[10px] text-amber-800" dir="ltr">
                           {new Date(mod.updatedAt).toLocaleTimeString("ar-JO", {
                             hour: "2-digit",
                             minute: "2-digit",
@@ -188,18 +188,18 @@ export function ModificationsHistoryBox({
                         </span>
                       )}
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[11px]">
+                    <div className="grid grid-cols-1 gap-1.5 text-[11px] sm:grid-cols-2">
                       {mod.oldValue && (
-                        <div className="rounded-lg bg-rose-500/10 p-2 text-rose-900 border border-rose-400/30">
-                          <span className="font-bold block text-[10px] text-rose-700">
+                        <div className="rounded-lg border border-rose-400/30 bg-rose-500/10 p-2 text-rose-900">
+                          <span className="block text-[10px] font-bold text-rose-700">
                             ❌ القيمة الأصلية:
                           </span>
-                          <span className="line-through font-semibold">{mod.oldValue}</span>
+                          <span className="font-semibold line-through">{mod.oldValue}</span>
                         </div>
                       )}
                       {mod.newValue && (
-                        <div className="rounded-lg bg-emerald-500/10 p-2 text-emerald-950 font-black border border-emerald-400/30">
-                          <span className="font-bold block text-[10px] text-emerald-700">
+                        <div className="rounded-lg border border-emerald-400/30 bg-emerald-500/10 p-2 font-black text-emerald-950">
+                          <span className="block text-[10px] font-bold text-emerald-700">
                             ✨ القيمة المعدلة (الجديدة):
                           </span>
                           <span>{mod.newValue}</span>
@@ -405,7 +405,7 @@ export function ModificationsPanel({
   return (
     <div className="min-w-0 space-y-4" dir="rtl">
       {/* Studio Master Header Bar */}
-      <div className="rounded-3xl border border-border/80 bg-gradient-to-r from-card via-card/95 to-secondary/30 p-4 sm:p-5 shadow-sm">
+      <div className="rounded-3xl border border-border/80 bg-gradient-to-r from-card via-card/95 to-secondary/30 p-4 shadow-sm sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="grid h-12 w-12 place-items-center rounded-2xl bg-primary text-primary-foreground shadow-md shadow-primary/20">
@@ -413,7 +413,7 @@ export function ModificationsPanel({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="font-display text-lg sm:text-xl font-black text-foreground">
+                <h1 className="font-display text-lg font-black text-foreground sm:text-xl">
                   استوديو تعديل وتخصيص الطلبات
                 </h1>
                 <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-primary">
@@ -430,7 +430,7 @@ export function ModificationsPanel({
           {/* Quick Counter Chips */}
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-900">
-              <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+              <span className="h-2 w-2 animate-pulse rounded-full bg-amber-500" />
               <span>قيد الانتظار: {pendingCount}</span>
             </div>
             <div className="flex items-center gap-1.5 rounded-xl border border-purple-200 bg-purple-50 px-3 py-1.5 text-xs font-bold text-purple-900">
@@ -446,20 +446,20 @@ export function ModificationsPanel({
       </div>
 
       {/* Main Split Layout: Right Selector + Left Studio Workspace */}
-      <div className="grid gap-4 lg:grid-cols-12 min-w-0 items-start">
+      <div className="grid min-w-0 items-start gap-4 lg:grid-cols-12">
         {/* RIGHT COLUMN: Order Navigator (4 cols on lg) */}
         <aside
-          className={`space-y-3 lg:col-span-4 min-w-0 ${selected ? "hidden lg:block" : "block"}`}
+          className={`min-w-0 space-y-3 lg:col-span-4 ${selected ? "hidden lg:block" : "block"}`}
         >
-          <div className="rounded-3xl border border-border/80 bg-card p-3.5 sm:p-4 shadow-sm space-y-3">
+          <div className="space-y-3 rounded-3xl border border-border/80 bg-card p-3.5 shadow-sm sm:p-4">
             {/* Search Input */}
             <div className="relative">
-              <Search className="absolute start-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+              <Search className="pointer-events-none absolute start-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 value={term}
                 onChange={(e) => setTerm(e.target.value)}
                 placeholder="بحث: رقم الطلب · اسم العميل · هاتف · منطقة"
-                className="w-full rounded-2xl border border-input bg-background ps-10 pe-9 py-2.5 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+                className="w-full rounded-2xl border border-input bg-background py-2.5 ps-10 pe-9 text-xs text-foreground transition outline-none placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20 sm:text-sm"
               />
               {term && (
                 <button
@@ -477,7 +477,7 @@ export function ModificationsPanel({
               <button
                 type="button"
                 onClick={() => setStatusFilter("all")}
-                className={`rounded-full px-3 py-1 text-xs font-bold transition cursor-pointer ${
+                className={`cursor-pointer rounded-full px-3 py-1 text-xs font-bold transition ${
                   statusFilter === "all"
                     ? "bg-primary text-primary-foreground shadow-xs"
                     : "bg-muted/50 text-muted-foreground hover:bg-muted"
@@ -498,7 +498,7 @@ export function ModificationsPanel({
                   key={tab.key}
                   type="button"
                   onClick={() => setStatusFilter(tab.key)}
-                  className={`rounded-full px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
+                  className={`cursor-pointer rounded-full px-2.5 py-1 text-xs font-bold transition ${
                     statusFilter === tab.key
                       ? "bg-primary text-primary-foreground shadow-xs"
                       : "bg-muted/40 text-muted-foreground hover:bg-muted"
@@ -510,13 +510,13 @@ export function ModificationsPanel({
             </div>
 
             {/* Counter */}
-            <div className="flex items-center justify-between text-[11px] text-muted-foreground px-1 border-t border-border/50 pt-2">
+            <div className="flex items-center justify-between border-t border-border/50 px-1 pt-2 text-[11px] text-muted-foreground">
               <span>النتائج المعروضة: {filteredOrders.length} طلب</span>
               {selectedId && (
                 <button
                   type="button"
                   onClick={() => setSelectedId(null)}
-                  className="text-primary hover:underline font-bold"
+                  className="font-bold text-primary hover:underline"
                 >
                   إلغاء التحديد
                 </button>
@@ -524,7 +524,7 @@ export function ModificationsPanel({
             </div>
 
             {/* Orders Navigator List */}
-            <div className="space-y-2 max-h-[calc(100vh-280px)] overflow-y-auto pe-1">
+            <div className="max-h-[calc(100vh-280px)] space-y-2 overflow-y-auto pe-1">
               {filteredOrders.map((order) => {
                 const isSelected = order.id === selectedId;
                 const statusInfo = statusMeta[order.status];
@@ -535,15 +535,15 @@ export function ModificationsPanel({
                     key={order.id}
                     type="button"
                     onClick={() => setSelectedId(order.id)}
-                    className={`w-full text-start rounded-2xl border p-3.5 transition-all cursor-pointer relative overflow-hidden ${
+                    className={`relative w-full cursor-pointer overflow-hidden rounded-2xl border p-3.5 text-start transition-all ${
                       isSelected
-                        ? "border-primary bg-primary/5 ring-2 ring-primary/20 shadow-md"
+                        ? "border-primary bg-primary/5 shadow-md ring-2 ring-primary/20"
                         : "border-border/70 bg-card hover:border-primary/40 hover:bg-secondary/20"
                     }`}
                   >
                     {/* Active Accent Strip */}
                     {isSelected && (
-                      <div className="absolute top-0 bottom-0 start-0 w-1.5 bg-primary" />
+                      <div className="absolute start-0 top-0 bottom-0 w-1.5 bg-primary" />
                     )}
 
                     <div className="flex items-start justify-between gap-2">
@@ -553,12 +553,12 @@ export function ModificationsPanel({
                             {orderLabel(order.order_number, order.staff_code)}
                           </span>
                           <span
-                            className={`rounded-full px-2 py-0.5 text-[10px] font-bold border ${statusInfo.chip}`}
+                            className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${statusInfo.chip}`}
                           >
                             {statusInfo.ar}
                           </span>
                         </div>
-                        <p className="mt-1 font-bold text-xs text-foreground truncate">
+                        <p className="mt-1 truncate text-xs font-bold text-foreground">
                           {order.order_name?.trim() || order.customer_name}
                         </p>
                         <p className="text-[11px] text-muted-foreground" dir="ltr">
@@ -567,10 +567,10 @@ export function ModificationsPanel({
                       </div>
 
                       {/* Right Total & Balance */}
-                      <div className="text-end shrink-0">
+                      <div className="shrink-0 text-end">
                         <div className="text-xs font-black text-foreground">{jd(order.total)}</div>
                         {order.deposit_paid > order.total ? (
-                          <div className="text-[10px] font-black text-purple-600 bg-purple-500/10 px-1.5 py-0.5 rounded border border-purple-500/20">
+                          <div className="rounded border border-purple-500/20 bg-purple-500/10 px-1.5 py-0.5 text-[10px] font-black text-purple-600">
                             إرجاع: {jd(order.deposit_paid - order.total)} 🔄
                           </div>
                         ) : remaining > 0 ? (
@@ -586,11 +586,11 @@ export function ModificationsPanel({
                     </div>
 
                     {/* Footer Logistics Badge */}
-                    <div className="mt-2.5 pt-2 border-t border-border/50 flex items-center justify-between text-[11px] text-muted-foreground">
+                    <div className="mt-2.5 flex items-center justify-between border-t border-border/50 pt-2 text-[11px] text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
                         <span>{order.requested_date}</span>
-                        <Clock className="h-3 w-3 ms-1" />
+                        <Clock className="ms-1 h-3 w-3" />
                         <span>{order.requested_time.slice(0, 5)}</span>
                       </span>
 
@@ -614,7 +614,7 @@ export function ModificationsPanel({
 
               {filteredOrders.length === 0 && (
                 <div className="rounded-2xl border border-dashed border-border p-8 text-center text-xs text-muted-foreground">
-                  <Cake className="mx-auto h-8 w-8 text-muted-foreground/40 mb-2" />
+                  <Cake className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
                   <p className="font-bold">لا توجد طلبات مطابقة لمعايير البحث</p>
                   <p className="mt-1 text-[11px]">جرب البحث باسم أو رقم آخر أو أعد تعيين الفلتر</p>
                 </div>
@@ -624,7 +624,7 @@ export function ModificationsPanel({
         </aside>
 
         {/* LEFT COLUMN: Master Interactive Modification Studio (8 cols on lg) */}
-        <main className={`lg:col-span-8 min-w-0 ${selected ? "block" : "hidden lg:block"}`}>
+        <main className={`min-w-0 lg:col-span-8 ${selected ? "block" : "hidden lg:block"}`}>
           {selected ? (
             <MasterOrderEditor
               key={selected.id}
@@ -665,13 +665,13 @@ export function ModificationsPanel({
             />
           ) : (
             <div className="rounded-3xl border-2 border-dashed border-border bg-card/50 p-12 text-center">
-              <div className="mx-auto grid h-16 w-16 place-items-center rounded-3xl bg-primary/10 text-primary mb-4">
+              <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-3xl bg-primary/10 text-primary">
                 <Sparkles className="h-8 w-8" />
               </div>
               <h3 className="font-display text-lg font-bold text-foreground">
                 اختر طلباً من القائمة الجانبية لبدء التعديل
               </h3>
-              <p className="mx-auto mt-2 max-w-md text-xs text-muted-foreground leading-relaxed">
+              <p className="mx-auto mt-2 max-w-md text-xs leading-relaxed text-muted-foreground">
                 يمكنك البحث بأي رقم طلب، اسم عميل، أو رقم هاتف على اليمين لفتح استوديو التعديل
                 الشامل، وتعديل الحشوات، أرقام الشموع، البالونات، التسليم والمالية.
               </p>
@@ -989,7 +989,7 @@ function MasterOrderEditor({
     <div className="space-y-4 pb-20">
       {/* Concurrency Conflict Warning Banner */}
       {hasConcurrentConflict && (
-        <div className="rounded-2xl border-2 border-amber-500 bg-amber-50 dark:bg-amber-950/40 p-3.5 text-xs font-bold text-amber-900 dark:text-amber-200 flex flex-wrap items-center justify-between gap-3 shadow-md">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-amber-500 bg-amber-50 p-3.5 text-xs font-bold text-amber-900 shadow-md dark:bg-amber-950/40 dark:text-amber-200">
           <div className="flex items-center gap-2">
             <span className="text-base">⚠️</span>
             <span>
@@ -1006,7 +1006,7 @@ function MasterOrderEditor({
                   "تم تحديث مرجع النسخة مع الحفاظ على مدخلاتك الحالية، يمكنك المتابعة والحفظ الآن ✅",
                 );
               }}
-              className="rounded-xl bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 font-black text-xs cursor-pointer shadow-xs"
+              className="cursor-pointer rounded-xl bg-amber-600 px-3 py-1.5 text-xs font-black text-white shadow-xs hover:bg-amber-700"
             >
               مزامنة النسخة ومتابعة الحفظ
             </button>
@@ -1027,7 +1027,7 @@ function MasterOrderEditor({
                 setDeposit(String(order.deposit_paid));
                 toast.info("تمت إعادة تحميل بيانات الخادم ومسح المدخلات المحلية");
               }}
-              className="rounded-xl bg-background/80 hover:bg-background text-foreground border border-input px-3 py-1.5 font-bold text-xs cursor-pointer"
+              className="cursor-pointer rounded-xl border border-input bg-background/80 px-3 py-1.5 text-xs font-bold text-foreground hover:bg-background"
             >
               استرجاع بيانات الخادم
             </button>
@@ -1036,24 +1036,24 @@ function MasterOrderEditor({
       )}
 
       {/* Top Sticky Command Header */}
-      <div className="sticky top-2 z-20 rounded-3xl border border-primary/30 bg-card/95 backdrop-blur-md p-3.5 sm:p-4 shadow-lg">
+      <div className="sticky top-2 z-20 rounded-3xl border border-primary/30 bg-card/95 p-3.5 shadow-lg backdrop-blur-md sm:p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={onBackToList}
-              className="lg:hidden grid h-9 w-9 place-items-center rounded-full bg-secondary text-foreground hover:bg-secondary/80"
+              className="grid h-9 w-9 place-items-center rounded-full bg-secondary text-foreground hover:bg-secondary/80 lg:hidden"
               title="الرجوع للقائمة"
             >
               <ArrowRight className="h-5 w-5" />
             </button>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-display text-base sm:text-lg font-black text-foreground">
+                <span className="font-display text-base font-black text-foreground sm:text-lg">
                   {orderLabel(order.order_number, order.staff_code)}
                 </span>
                 <span
-                  className={`rounded-full px-2.5 py-0.5 text-xs font-bold border ${statusInfo.chip}`}
+                  className={`rounded-full border px-2.5 py-0.5 text-xs font-bold ${statusInfo.chip}`}
                 >
                   {statusInfo.ar}
                 </span>
@@ -1070,7 +1070,7 @@ function MasterOrderEditor({
             <button
               type="button"
               onClick={copyModification}
-              className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-rose-300 bg-rose-50 px-3 text-xs font-black text-rose-800 hover:bg-rose-100 transition cursor-pointer"
+              className="inline-flex min-h-10 cursor-pointer items-center gap-1.5 rounded-xl border border-rose-300 bg-rose-50 px-3 text-xs font-black text-rose-800 transition hover:bg-rose-100"
               title="نسخ مسج التعديل (🛑🛑🛑تعديل)"
             >
               <ClipboardCopy className="h-4 w-4 text-rose-600" />
@@ -1081,7 +1081,7 @@ function MasterOrderEditor({
             <button
               type="button"
               onClick={() => printReceipt(order)}
-              className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-border bg-background px-3 text-xs font-bold text-foreground hover:bg-secondary transition cursor-pointer"
+              className="inline-flex min-h-10 cursor-pointer items-center gap-1.5 rounded-xl border border-border bg-background px-3 text-xs font-bold text-foreground transition hover:bg-secondary"
               title="طباعة إيصال حراري"
             >
               <Printer className="h-4 w-4 text-muted-foreground" />
@@ -1093,7 +1093,7 @@ function MasterOrderEditor({
               href={`https://wa.me/${waNumber(order.customer_phone)}?text=${encodeURIComponent(modificationText)}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-emerald-300 bg-emerald-50 px-3 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition"
+              className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-emerald-300 bg-emerald-50 px-3 text-xs font-bold text-emerald-800 transition hover:bg-emerald-100"
               title="إرسال التعديل على واتساب"
             >
               <MessageCircle className="h-4 w-4 text-emerald-600" />
@@ -1105,7 +1105,7 @@ function MasterOrderEditor({
               type="button"
               onClick={handleFinish}
               disabled={busy || isFinishing}
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 sm:px-5 text-xs sm:text-sm font-extrabold text-white shadow-md hover:bg-emerald-700 active:scale-95 disabled:opacity-50 transition cursor-pointer"
+              className="inline-flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 text-xs font-extrabold text-white shadow-md transition hover:bg-emerald-700 active:scale-95 disabled:opacity-50 sm:px-5 sm:text-sm"
             >
               {busy || isFinishing ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -1119,7 +1119,7 @@ function MasterOrderEditor({
       </div>
 
       {/* SECTION 1: Customer Identity & Gifting */}
-      <div className="rounded-3xl border border-border/80 bg-card p-4 sm:p-5 shadow-xs space-y-4">
+      <div className="space-y-4 rounded-3xl border border-border/80 bg-card p-4 shadow-xs sm:p-5">
         <div className="flex items-center justify-between border-b border-border/60 pb-3">
           <div className="flex items-center gap-2">
             <div className="grid h-8 w-8 place-items-center rounded-xl bg-primary/10 text-primary">
@@ -1130,7 +1130,7 @@ function MasterOrderEditor({
             </h3>
           </div>
 
-          <label className="flex items-center gap-2 text-xs font-bold text-muted-foreground cursor-pointer select-none">
+          <label className="flex cursor-pointer items-center gap-2 text-xs font-bold text-muted-foreground select-none">
             <input
               type="checkbox"
               checked={isGift}
@@ -1178,7 +1178,7 @@ function MasterOrderEditor({
 
         {/* Gift / Alternate Recipient Fields */}
         {isGift && (
-          <div className="grid gap-3 sm:grid-cols-2 rounded-2xl border border-primary/20 bg-primary/5 p-3.5 animate-fadeIn">
+          <div className="animate-fadeIn grid gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-3.5 sm:grid-cols-2">
             <label className="block text-xs font-bold text-foreground">
               رقم هاتف المرسل · Sender Phone
               <input
@@ -1207,7 +1207,7 @@ function MasterOrderEditor({
       </div>
 
       {/* SECTION 2: Fulfillment & Logistics */}
-      <div className="rounded-3xl border border-border/80 bg-card p-4 sm:p-5 shadow-xs space-y-4">
+      <div className="space-y-4 rounded-3xl border border-border/80 bg-card p-4 shadow-xs sm:p-5">
         <div className="flex items-center gap-2 border-b border-border/60 pb-3">
           <div className="grid h-8 w-8 place-items-center rounded-xl bg-orange-100 text-orange-700">
             <Truck className="h-4 w-4" />
@@ -1222,7 +1222,7 @@ function MasterOrderEditor({
           <button
             type="button"
             onClick={() => onPatch({ method: "pickup", delivery_fee: 0 })}
-            className={`flex min-h-12 items-center justify-center gap-2 rounded-2xl border text-xs sm:text-sm font-bold transition cursor-pointer ${
+            className={`flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-2xl border text-xs font-bold transition sm:text-sm ${
               order.method === "pickup"
                 ? "border-primary bg-primary text-primary-foreground shadow-sm"
                 : "border-border bg-background text-foreground hover:bg-secondary"
@@ -1235,7 +1235,7 @@ function MasterOrderEditor({
           <button
             type="button"
             onClick={() => onPatch({ method: "delivery" })}
-            className={`flex min-h-12 items-center justify-center gap-2 rounded-2xl border text-xs sm:text-sm font-bold transition cursor-pointer ${
+            className={`flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-2xl border text-xs font-bold transition sm:text-sm ${
               order.method === "delivery"
                 ? "border-primary bg-primary text-primary-foreground shadow-sm"
                 : "border-border bg-background text-foreground hover:bg-secondary"
@@ -1257,21 +1257,21 @@ function MasterOrderEditor({
                 <button
                   type="button"
                   onClick={() => setQuickDate(0)}
-                  className="rounded-lg bg-secondary px-2 py-0.5 hover:bg-secondary/80 font-bold"
+                  className="rounded-lg bg-secondary px-2 py-0.5 font-bold hover:bg-secondary/80"
                 >
                   اليوم
                 </button>
                 <button
                   type="button"
                   onClick={() => setQuickDate(1)}
-                  className="rounded-lg bg-secondary px-2 py-0.5 hover:bg-secondary/80 font-bold"
+                  className="rounded-lg bg-secondary px-2 py-0.5 font-bold hover:bg-secondary/80"
                 >
                   غداً
                 </button>
                 <button
                   type="button"
                   onClick={() => setQuickDate(2)}
-                  className="rounded-lg bg-secondary px-2 py-0.5 hover:bg-secondary/80 font-bold"
+                  className="rounded-lg bg-secondary px-2 py-0.5 font-bold hover:bg-secondary/80"
                 >
                   بعد يومين
                 </button>
@@ -1296,7 +1296,7 @@ function MasterOrderEditor({
                     onClick={() => {
                       setTime(t);
                     }}
-                    className="rounded-lg bg-secondary px-2 py-0.5 hover:bg-secondary/80 font-bold"
+                    className="rounded-lg bg-secondary px-2 py-0.5 font-bold hover:bg-secondary/80"
                   >
                     {t}
                   </button>
@@ -1314,7 +1314,7 @@ function MasterOrderEditor({
 
         {/* Delivery Area & Address */}
         {order.method === "delivery" && (
-          <div className="grid gap-3 sm:grid-cols-2 rounded-2xl border border-orange-200 bg-orange-50/40 p-3.5 animate-fadeIn">
+          <div className="animate-fadeIn grid gap-3 rounded-2xl border border-orange-200 bg-orange-50/40 p-3.5 sm:grid-cols-2">
             <label className="block text-xs font-bold text-foreground">
               منطقة التوصيل وأجرتها · Delivery Zone
               <DeliveryZoneSelect
@@ -1342,7 +1342,7 @@ function MasterOrderEditor({
       </div>
 
       {/* SECTION 3: Cake Inscription & Notes */}
-      <div className="rounded-3xl border border-border/80 bg-card p-4 sm:p-5 shadow-xs space-y-4">
+      <div className="space-y-4 rounded-3xl border border-border/80 bg-card p-4 shadow-xs sm:p-5">
         <div className="flex items-center gap-2 border-b border-border/60 pb-3">
           <div className="grid h-8 w-8 place-items-center rounded-xl bg-amber-100 text-amber-700">
             <Sparkles className="h-4 w-4" />
@@ -1373,7 +1373,7 @@ function MasterOrderEditor({
                 onClick={() => {
                   setInscription(phrase);
                 }}
-                className="rounded-full border border-amber-300 bg-amber-50/80 px-2.5 py-1 text-[11px] font-bold text-amber-900 hover:bg-amber-100 transition cursor-pointer"
+                className="cursor-pointer rounded-full border border-amber-300 bg-amber-50/80 px-2.5 py-1 text-[11px] font-bold text-amber-900 transition hover:bg-amber-100"
               >
                 + {phrase}
               </button>
@@ -1383,7 +1383,7 @@ function MasterOrderEditor({
           {/* Golden Ribbon Preview */}
           {inscription && (
             <div className="rounded-2xl border border-amber-300 bg-gradient-to-r from-amber-50 via-amber-100/50 to-amber-50 p-3 text-center shadow-xs">
-              <span className="text-[10px] font-bold text-amber-700 block uppercase tracking-wider mb-1">
+              <span className="mb-1 block text-[10px] font-bold tracking-wider text-amber-700 uppercase">
                 معاينة النص على سطح الكيك
               </span>
               <p className="font-display text-base font-black text-amber-950">
@@ -1394,7 +1394,7 @@ function MasterOrderEditor({
         </div>
 
         {/* Card Note, Customer Notes, Staff Notes */}
-        <div className="grid gap-3 sm:grid-cols-3 pt-2">
+        <div className="grid gap-3 pt-2 sm:grid-cols-3">
           <label className="block text-xs font-bold text-foreground">
             الكتابة على الكرت · Card Note
             <textarea
@@ -1424,14 +1424,14 @@ function MasterOrderEditor({
               value={staffNotes}
               onChange={(e) => setStaffNotes(e.target.value)}
               placeholder="ملاحظات الموظفين (لا تطبع للعميل)..."
-              className={`${boxedTextarea} bg-amber-50/50 border-amber-300`}
+              className={`${boxedTextarea} border-amber-300 bg-amber-50/50`}
             />
           </label>
         </div>
       </div>
 
       {/* SECTION 4: Line Items & Add-ons Studio */}
-      <div className="rounded-3xl border border-border/80 bg-card p-4 sm:p-5 shadow-xs space-y-4">
+      <div className="space-y-4 rounded-3xl border border-border/80 bg-card p-4 shadow-xs sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-3">
           <div className="flex items-center gap-2">
             <div className="grid h-8 w-8 place-items-center rounded-xl bg-purple-100 text-purple-700">
@@ -1452,7 +1452,7 @@ function MasterOrderEditor({
             <button
               type="button"
               onClick={() => setItemsMode("cards")}
-              className={`rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
+              className={`cursor-pointer rounded-lg px-3 py-1.5 text-xs font-bold transition ${
                 itemsMode === "cards"
                   ? "bg-primary text-primary-foreground shadow-xs"
                   : "text-muted-foreground hover:text-foreground"
@@ -1463,7 +1463,7 @@ function MasterOrderEditor({
             <button
               type="button"
               onClick={() => setItemsMode("builder")}
-              className={`rounded-lg px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
+              className={`cursor-pointer rounded-lg px-3 py-1.5 text-xs font-bold transition ${
                 itemsMode === "builder"
                   ? "bg-primary text-primary-foreground shadow-xs"
                   : "text-muted-foreground hover:text-foreground"
@@ -1524,7 +1524,7 @@ function MasterOrderEditor({
                 setActiveSheetItem(null);
                 setIsSheetOpen(true);
               }}
-              className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-primary bg-primary/5 px-4 text-sm font-extrabold text-primary hover:bg-primary/10 transition cursor-pointer"
+              className="inline-flex min-h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-primary bg-primary/5 px-4 text-sm font-extrabold text-primary transition hover:bg-primary/10"
             >
               <Plus className="h-5 w-5" />
               <span>+ إضافة صنف أو كيكة جديدة للطلب · Add Item</span>
@@ -1576,7 +1576,7 @@ function MasterOrderEditor({
       </div>
 
       {/* SECTION 5: Financials, Discount & Payments */}
-      <div className="rounded-3xl border border-border/80 bg-card p-4 sm:p-5 shadow-xs space-y-4">
+      <div className="space-y-4 rounded-3xl border border-border/80 bg-card p-4 shadow-xs sm:p-5">
         <div className="flex items-center gap-2 border-b border-border/60 pb-3">
           <div className="grid h-8 w-8 place-items-center rounded-xl bg-emerald-100 text-emerald-700">
             <BadgeDollarSign className="h-4 w-4" />
@@ -1589,7 +1589,7 @@ function MasterOrderEditor({
         {/* Financial Summary Grid */}
         <div className="grid gap-3 sm:grid-cols-2">
           {/* Breakdown Card */}
-          <div className="rounded-2xl border border-border/70 bg-secondary/20 p-4 space-y-2 text-sm">
+          <div className="space-y-2 rounded-2xl border border-border/70 bg-secondary/20 p-4 text-sm">
             <div className="flex justify-between text-muted-foreground">
               <span>المجموع الفرعي للأصناف</span>
               <span className="font-bold text-foreground">{jd(order.subtotal)}</span>
@@ -1602,25 +1602,25 @@ function MasterOrderEditor({
             </div>
 
             {order.discount_amount > 0 && (
-              <div className="flex justify-between text-rose-600 font-bold">
+              <div className="flex justify-between font-bold text-rose-600">
                 <span>الخصم المطبق ({order.discount_percent}%)</span>
                 <span>− {jd(order.discount_amount)}</span>
               </div>
             )}
 
-            <div className="pt-2 border-t border-border flex justify-between text-base font-black text-foreground">
+            <div className="flex justify-between border-t border-border pt-2 text-base font-black text-foreground">
               <span>الإجمالي الكلي النهائي</span>
               <span>{jd(order.total)}</span>
             </div>
 
             {order.deposit_paid > order.total ? (
-              <div className="flex justify-between font-black text-xs pt-1 text-purple-600 bg-purple-500/10 p-2 rounded-lg border border-purple-500/20">
+              <div className="flex justify-between rounded-lg border border-purple-500/20 bg-purple-500/10 p-2 pt-1 text-xs font-black text-purple-600">
                 <span>مستحق إرجاع للزبون 🔄</span>
                 <span>{jd(order.deposit_paid - order.total)}</span>
               </div>
             ) : (
               <div
-                className={`flex justify-between font-black text-sm pt-1 ${
+                className={`flex justify-between pt-1 text-sm font-black ${
                   remaining > 0 ? "text-rose-600" : "text-emerald-600"
                 }`}
               >
@@ -1641,7 +1641,7 @@ function MasterOrderEditor({
                 value={deposit}
                 readOnly
                 disabled
-                className={`${inputClass} bg-muted cursor-not-allowed`}
+                className={`${inputClass} cursor-not-allowed bg-muted`}
               />
             </label>
 
@@ -1650,14 +1650,14 @@ function MasterOrderEditor({
               <button
                 type="button"
                 onClick={() => void handleQuickAddPayment(5, "remainder")}
-                className="rounded-lg bg-secondary px-2.5 py-1 text-xs font-bold hover:bg-secondary/80 cursor-pointer"
+                className="cursor-pointer rounded-lg bg-secondary px-2.5 py-1 text-xs font-bold hover:bg-secondary/80"
               >
                 + تسجيل 5 د.أ
               </button>
               <button
                 type="button"
                 onClick={() => void handleQuickAddPayment(10, "remainder")}
-                className="rounded-lg bg-secondary px-2.5 py-1 text-xs font-bold hover:bg-secondary/80 cursor-pointer"
+                className="cursor-pointer rounded-lg bg-secondary px-2.5 py-1 text-xs font-bold hover:bg-secondary/80"
               >
                 + تسجيل 10 د.أ
               </button>
@@ -1665,7 +1665,7 @@ function MasterOrderEditor({
                 <button
                   type="button"
                   onClick={() => void handleQuickAddPayment(remaining, "full")}
-                  className="rounded-lg bg-emerald-100 text-emerald-900 border border-emerald-300 px-2.5 py-1 text-xs font-bold hover:bg-emerald-200 cursor-pointer"
+                  className="cursor-pointer rounded-lg border border-emerald-300 bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-900 hover:bg-emerald-200"
                 >
                   تسجيل دفع المتبقي كاملاً ({jd(remaining)})
                 </button>
@@ -1673,18 +1673,18 @@ function MasterOrderEditor({
             </div>
 
             {/* Managerial Discount Box */}
-            <div className="rounded-2xl border border-dashed border-border p-3 space-y-2">
+            <div className="space-y-2 rounded-2xl border border-dashed border-border p-3">
               <div className="flex items-center justify-between text-xs font-bold">
                 <span className="flex items-center gap-1.5 text-foreground">
                   <Percent className="h-3.5 w-3.5 text-primary" />
                   <span>تطبيق خصم إداري خاص</span>
                 </span>
                 {mayDiscount ? (
-                  <span className="text-[10px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full font-bold">
+                  <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-600">
                     مصرح حتى {discountCap}%
                   </span>
                 ) : (
-                  <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
                     يتطلب صلاحية مدير
                   </span>
                 )}
@@ -1706,12 +1706,12 @@ function MasterOrderEditor({
                     value={discountReason}
                     onChange={(e) => setDiscountReason(e.target.value)}
                     placeholder="سبب الخصم..."
-                    className="h-10 sm:col-span-2 rounded-xl border border-input bg-background px-3 text-xs text-foreground"
+                    className="h-10 rounded-xl border border-input bg-background px-3 text-xs text-foreground sm:col-span-2"
                   />
                   <button
                     type="button"
                     onClick={() => handleDiscount(Number(discountPercent) || 0, discountReason)}
-                    className="sm:col-span-3 min-h-10 rounded-xl bg-primary px-3 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition cursor-pointer"
+                    className="min-h-10 cursor-pointer rounded-xl bg-primary px-3 text-xs font-bold text-primary-foreground transition hover:bg-primary/90 sm:col-span-3"
                   >
                     تطبيق الخصم على الطلب · Apply Discount
                   </button>
@@ -1727,7 +1727,7 @@ function MasterOrderEditor({
       </div>
 
       {/* Bottom Sticky Action Bar */}
-      <div className="sticky bottom-2 z-20 rounded-3xl border border-emerald-500/40 bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 p-4 shadow-2xl text-white">
+      <div className="sticky bottom-2 z-20 rounded-3xl border border-emerald-500/40 bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 p-4 text-white shadow-2xl">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <div className="text-xs font-bold opacity-90">
@@ -1742,7 +1742,7 @@ function MasterOrderEditor({
             type="button"
             onClick={handleFinish}
             disabled={busy || isFinishing}
-            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-white px-6 text-sm font-black text-emerald-950 shadow-md hover:bg-emerald-50 active:scale-95 disabled:opacity-50 transition cursor-pointer"
+            className="inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-2xl bg-white px-6 text-sm font-black text-emerald-950 shadow-md transition hover:bg-emerald-50 active:scale-95 disabled:opacity-50"
           >
             {busy || isFinishing ? (
               <Loader2 className="h-5 w-5 animate-spin" />
@@ -1818,7 +1818,7 @@ function InteractiveItemEditorCard({
   ];
 
   return (
-    <div className="rounded-2xl border border-border/80 bg-background p-4 shadow-2xs space-y-3">
+    <div className="space-y-3 rounded-2xl border border-border/80 bg-background p-4 shadow-2xs">
       {/* Item Title and Price Header */}
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
@@ -1829,12 +1829,12 @@ function InteractiveItemEditorCard({
               if (val && val !== item.name_ar) onItemPatch({ itemId: item.id, name: val });
             }}
             placeholder="اسم الصنف أو الكيكة..."
-            className="w-full font-display text-sm font-black text-foreground bg-transparent border-b border-dashed border-border/70 pb-1 outline-none focus:border-primary transition"
+            className="w-full border-b border-dashed border-border/70 bg-transparent pb-1 font-display text-sm font-black text-foreground transition outline-none focus:border-primary"
           />
         </div>
 
         {/* Quantity Stepper & Unit Price */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex shrink-0 items-center gap-2">
           {/* Stepper */}
           <div className="flex items-center rounded-xl border border-border bg-card">
             <button
@@ -1845,7 +1845,7 @@ function InteractiveItemEditorCard({
                 }
               }}
               disabled={item.quantity <= 1}
-              className="grid h-8 w-8 place-items-center text-xs font-bold text-muted-foreground hover:text-foreground disabled:opacity-30 cursor-pointer"
+              className="grid h-8 w-8 cursor-pointer place-items-center text-xs font-bold text-muted-foreground hover:text-foreground disabled:opacity-30"
             >
               −
             </button>
@@ -1857,7 +1857,7 @@ function InteractiveItemEditorCard({
               onClick={() => {
                 onItemPatch({ itemId: item.id, quantity: item.quantity + 1 });
               }}
-              className="grid h-8 w-8 place-items-center text-xs font-bold text-muted-foreground hover:text-foreground cursor-pointer"
+              className="grid h-8 w-8 cursor-pointer place-items-center text-xs font-bold text-muted-foreground hover:text-foreground"
             >
               +
             </button>
@@ -1891,7 +1891,7 @@ function InteractiveItemEditorCard({
             type="button"
             onClick={onDelete}
             title="حذف الصنف"
-            className="grid h-8 w-8 place-items-center rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 cursor-pointer transition"
+            className="grid h-8 w-8 cursor-pointer place-items-center rounded-xl border border-rose-200 text-rose-600 transition hover:bg-rose-50"
           >
             <Trash2 className="h-4 w-4" />
           </button>
@@ -1908,7 +1908,7 @@ function InteractiveItemEditorCard({
           }
         }}
         placeholder="ملاحظة خاصة على هذا الصنف (مثل: كتابة خاصة، بدون مكسرات...)"
-        className="w-full text-xs text-muted-foreground bg-secondary/30 rounded-xl px-3 py-1.5 border border-transparent focus:border-border outline-none transition"
+        className="w-full rounded-xl border border-transparent bg-secondary/30 px-3 py-1.5 text-xs text-muted-foreground transition outline-none focus:border-border"
       />
 
       {/* Active Options Tag Cloud */}
@@ -1923,7 +1923,7 @@ function InteractiveItemEditorCard({
               <button
                 type="button"
                 onClick={() => commitOptions(options.filter((_, i) => i !== idx))}
-                className="text-primary/70 hover:text-rose-600 cursor-pointer"
+                className="cursor-pointer text-primary/70 hover:text-rose-600"
                 title="إزالة الإضافة"
               >
                 <X className="h-3 w-3" />
@@ -1934,13 +1934,13 @@ function InteractiveItemEditorCard({
       )}
 
       {/* Quick Accessories & Fillings Pill Deck */}
-      <div className="pt-1 border-t border-border/50">
-        <div className="flex items-center justify-between text-[11px] font-bold text-muted-foreground mb-1.5">
+      <div className="border-t border-border/50 pt-1">
+        <div className="mb-1.5 flex items-center justify-between text-[11px] font-bold text-muted-foreground">
           <span>إضافات سريعة ونكهات (بنقرة واحدة):</span>
           <button
             type="button"
             onClick={onOpenSheet}
-            className="text-primary hover:underline flex items-center gap-1"
+            className="flex items-center gap-1 text-primary hover:underline"
           >
             <Pencil className="h-3 w-3" />
             <span>تخصيص متقدم</span>
@@ -1952,7 +1952,7 @@ function InteractiveItemEditorCard({
               key={acc.value}
               type="button"
               onClick={() => addOptionPill(acc.value)}
-              className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-bold text-foreground hover:bg-primary hover:text-primary-foreground transition cursor-pointer"
+              className="cursor-pointer rounded-full bg-secondary px-2.5 py-1 text-[11px] font-bold text-foreground transition hover:bg-primary hover:text-primary-foreground"
             >
               + {acc.label}
             </button>
@@ -1982,7 +1982,7 @@ function InteractiveItemEditorCard({
             commitOptions([...options, draft.trim()]);
             setDraft("");
           }}
-          className="grid h-9 w-9 place-items-center rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition cursor-pointer shrink-0"
+          className="grid h-9 w-9 shrink-0 cursor-pointer place-items-center rounded-xl bg-primary text-primary-foreground transition hover:bg-primary/90"
         >
           <Plus className="h-4 w-4" />
         </button>
@@ -1993,7 +1993,7 @@ function InteractiveItemEditorCard({
         <button
           type="button"
           onClick={() => setShowWebsiteOptions((prev) => !prev)}
-          className="text-[11px] font-bold text-primary hover:underline flex items-center gap-1 cursor-pointer"
+          className="flex cursor-pointer items-center gap-1 text-[11px] font-bold text-primary hover:underline"
         >
           <span>
             {showWebsiteOptions
@@ -2003,7 +2003,7 @@ function InteractiveItemEditorCard({
         </button>
 
         {showWebsiteOptions && (
-          <div className="mt-2 space-y-3 rounded-2xl border border-primary/20 bg-secondary/20 p-3 animate-fadeIn">
+          <div className="animate-fadeIn mt-2 space-y-3 rounded-2xl border border-primary/20 bg-secondary/20 p-3">
             <div className="grid gap-2 sm:grid-cols-2">
               <label className="block text-xs font-bold text-foreground">
                 المنتج من الموقع · Website Product
@@ -2084,7 +2084,7 @@ function InteractiveItemEditorCard({
               </label>
             </div>
 
-            <div dir="rtl" className="rounded-2xl bg-white p-2 border border-border/50">
+            <div dir="rtl" className="rounded-2xl border border-border/50 bg-white p-2">
               <CakeCustomizationPanel value={custom} onChange={setCustom} />
             </div>
 
@@ -2109,7 +2109,7 @@ function InteractiveItemEditorCard({
                 setCustom(emptyCustomization);
                 toast.success("تم تطبيق الخيارات على الصنف ✅");
               }}
-              className="min-h-10 w-full rounded-xl bg-primary px-4 text-xs font-bold text-primary-foreground hover:bg-primary/90 transition cursor-pointer"
+              className="min-h-10 w-full cursor-pointer rounded-xl bg-primary px-4 text-xs font-bold text-primary-foreground transition hover:bg-primary/90"
             >
               تطبيق خيارات الكستمايزيشن على الصنف ✅
             </button>

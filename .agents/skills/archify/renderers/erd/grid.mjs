@@ -3,7 +3,7 @@
  *  spec always produces the same coordinates. */
 
 export const DEFAULT_ER_GRID = {
-  mode: 'grid',
+  mode: "grid",
   // The top origin leaves room for a domain caption above the first band, and
   // the left origin starts the first column inside the page margin so the
   // canvas is not edge-to-edge. Row bands are taller than the generic rhythm
@@ -26,10 +26,12 @@ export function erGridLayout(er) {
   // Grid cells without a layout block mean the default grid, not absolute
   // coordinates that were never supplied.
   if (!raw) {
-    const gridPlaced = (er.entities || []).some((entity) => Number.isFinite(entity?.row) && Number.isFinite(entity?.col));
+    const gridPlaced = (er.entities || []).some(
+      (entity) => Number.isFinite(entity?.row) && Number.isFinite(entity?.col),
+    );
     return gridPlaced ? { ...DEFAULT_ER_GRID } : null;
   }
-  if (raw.mode !== 'grid') return null;
+  if (raw.mode !== "grid") return null;
   return { ...DEFAULT_ER_GRID, ...raw };
 }
 
@@ -65,7 +67,11 @@ export function bandedLayout(entities, grid, { columnGaps = null } = {}) {
   for (const entity of entities) {
     if (!Number.isInteger(entity.row) || !gridColumn(entity.col)) continue;
     maxCol = Math.max(maxCol, Math.ceil(entity.col));
-    if (Number.isInteger(entity.col)) widths.set(entity.col, Math.max(widths.get(entity.col) || 0, resolvedEntityWidth(entity, grid)));
+    if (Number.isInteger(entity.col))
+      widths.set(
+        entity.col,
+        Math.max(widths.get(entity.col) || 0, resolvedEntityWidth(entity, grid)),
+      );
     heights.set(entity.row, Math.max(heights.get(entity.row) || 0, entity.height));
   }
 
@@ -80,10 +86,14 @@ export function bandedLayout(entities, grid, { columnGaps = null } = {}) {
   // every grid box inside the left margin without changing integer-only grids.
   let leftInset = 0;
   for (const entity of entities) {
-    if (!Number.isInteger(entity.row) || !gridColumn(entity.col) || Number.isInteger(entity.col)) continue;
+    if (!Number.isInteger(entity.row) || !gridColumn(entity.col) || Number.isInteger(entity.col))
+      continue;
     const centre = (col) => columnX.get(col) + (widths.get(col) || 0) / 2;
     const midpoint = (centre(Math.floor(entity.col)) + centre(Math.ceil(entity.col))) / 2;
-    leftInset = Math.max(leftInset, grid.origin[0] - midpoint + resolvedEntityWidth(entity, grid) / 2);
+    leftInset = Math.max(
+      leftInset,
+      grid.origin[0] - midpoint + resolvedEntityWidth(entity, grid) / 2,
+    );
   }
   if (leftInset > 0) {
     for (const [col, column] of columnX) columnX.set(col, column + leftInset);
@@ -108,7 +118,8 @@ export function resolveEntityPos(entity, grid, bands) {
   if (!Number.isInteger(entity.col)) {
     const centre = (col) => bands.columnX.get(col) + (bands.widths.get(col) || 0) / 2;
     const [left, right] = [Math.floor(entity.col), Math.ceil(entity.col)];
-    if (![bands.columnX.get(left), bands.columnX.get(right), rowY].every(Number.isFinite)) return [NaN, NaN];
+    if (![bands.columnX.get(left), bands.columnX.get(right), rowY].every(Number.isFinite))
+      return [NaN, NaN];
     return [(centre(left) + centre(right)) / 2 - width / 2, rowY];
   }
   const columnX = bands.columnX.get(entity.col);
@@ -129,7 +140,9 @@ export function validateErGridPlacement(er, grid, bands, problems) {
     }
     if (hasPos) continue;
     if (!Number.isInteger(entity.row) || !Number.isInteger(entity.col)) {
-      problems.push(`Entity "${entity.id}" needs pos [x,y] or grid row/col when layout.mode is "grid".`);
+      problems.push(
+        `Entity "${entity.id}" needs pos [x,y] or grid row/col when layout.mode is "grid".`,
+      );
       continue;
     }
     if (entity.row < 0 || entity.col < 0) {
@@ -138,13 +151,17 @@ export function validateErGridPlacement(er, grid, bands, problems) {
     }
     const key = `${entity.row},${entity.col}`;
     if (seen.has(key)) {
-      problems.push(`Entities "${seen.get(key)}" and "${entity.id}" share grid cell row ${entity.row} col ${entity.col}.`);
+      problems.push(
+        `Entities "${seen.get(key)}" and "${entity.id}" share grid cell row ${entity.row} col ${entity.col}.`,
+      );
     } else {
       seen.set(key, entity.id);
     }
     const [x, y] = resolveEntityPos(entity, grid, bands);
     if (!Number.isFinite(x) || !Number.isFinite(y)) {
-      problems.push(`Entity "${entity.id}" could not be placed from row ${entity.row} col ${entity.col}.`);
+      problems.push(
+        `Entity "${entity.id}" could not be placed from row ${entity.row} col ${entity.col}.`,
+      );
     }
   }
 }

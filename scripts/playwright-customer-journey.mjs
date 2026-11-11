@@ -53,19 +53,20 @@ async function main() {
     console.log(`   ✅ Saved: ${discoverShotPath}`);
 
     // Check category pills
-    const categoryButtons = await page.$$eval("section[aria-label='Discover by category'] button", (btns) =>
-      btns.map((b) => b.textContent.trim())
+    const categoryButtons = await page.$$eval(
+      "section[aria-label='Discover by category'] button",
+      (btns) => btns.map((b) => b.textContent.trim()),
     );
     console.log(`   🏷️ Categories found (${categoryButtons.length}):`, categoryButtons);
 
     // Check product cards
     const productTitles = await page.$$eval("section[aria-label='Product Catalog'] h4", (els) =>
-      els.map((e) => e.textContent.trim())
+      els.map((e) => e.textContent.trim()),
     );
     console.log(`   🍰 Products listed (${productTitles.length}):`, productTitles);
 
     const cardImages = await page.$$eval("section[aria-label='Product Catalog'] img", (imgs) =>
-      imgs.map((i) => ({ src: i.src, naturalWidth: i.naturalWidth, complete: i.complete }))
+      imgs.map((i) => ({ src: i.src, naturalWidth: i.naturalWidth, complete: i.complete })),
     );
     console.log(`   🖼️ Card Images loaded (${cardImages.length}):`, cardImages);
 
@@ -137,7 +138,9 @@ async function main() {
 
     // Step 5: Add to Cart
     console.log("5. Adding product to Cart...");
-    const addToCartBtn = page.locator("div[role='dialog'] button:has-text('أضف إلى السلة')").first();
+    const addToCartBtn = page
+      .locator("div[role='dialog'] button:has-text('أضف إلى السلة')")
+      .first();
     await addToCartBtn.click();
     await page.waitForTimeout(1500);
 
@@ -147,10 +150,14 @@ async function main() {
     await page.screenshot({ path: cartShotPath });
     console.log(`   ✅ Saved: ${cartShotPath}`);
 
-    const cartItemCount = await page.locator(".cart-drawer-item, [data-testid='cart-item'], div:has-text('سعر القطعة')").count();
+    const cartItemCount = await page
+      .locator(".cart-drawer-item, [data-testid='cart-item'], div:has-text('سعر القطعة')")
+      .count();
     console.log(`   🛒 Cart active items detected.`);
 
-    console.log("\n================================================================================");
+    console.log(
+      "\n================================================================================",
+    );
     console.log("🏁 PLAYWRIGHT AUDIT COMPLETE: ALL STEPS VERIFIED SUCCESSFULLY!");
     console.log("================================================================================");
   } finally {

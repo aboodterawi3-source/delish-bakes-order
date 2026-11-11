@@ -105,9 +105,13 @@ export function setStoredPaletteId(id: string): void {
   window.dispatchEvent(new CustomEvent(PALETTE_EVENT_NAME, { detail: id }));
 }
 
+let lastAppliedPaletteId: string | null = null;
+
 /** Helper to update CSS custom properties on document element for site-wide styling. */
 function applyThemeCssVariables(palette: BrandPalette) {
   if (typeof document === "undefined") return;
+  if (lastAppliedPaletteId === palette.id) return;
+  lastAppliedPaletteId = palette.id;
   const root = document.documentElement;
   root.style.setProperty("--theme-primary", palette.main);
   root.style.setProperty("--theme-hover", palette.btnHoverBg);

@@ -238,7 +238,9 @@ export function TouchItemEditorSheet({
   const handleSave = () => {
     const res = compileSavePayload({
       tab,
-      productId: item ? item.product_id ?? selectedProduct?.id ?? null : selectedProduct?.id ?? null,
+      productId: item
+        ? (item.product_id ?? selectedProduct?.id ?? null)
+        : (selectedProduct?.id ?? null),
       productName: selectedProduct?.name_ar,
       customName,
       unitPrice,
@@ -276,15 +278,15 @@ export function TouchItemEditorSheet({
   return (
     <div
       dir="rtl"
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-xs p-0 sm:items-center sm:p-4 animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex animate-in items-end justify-center bg-black/60 p-0 backdrop-blur-xs duration-200 fade-in sm:items-center sm:p-4"
     >
       {/* Overlay Backdrop Click Dismiss */}
       <div className="absolute inset-0" onClick={onClose} />
 
       {/* Touch Sheet / Centered Modal Container */}
-      <div className="relative z-10 flex max-h-[92dvh] w-full max-w-2xl flex-col overflow-hidden rounded-t-3xl border border-border bg-card shadow-2xl sm:rounded-3xl animate-in slide-in-from-bottom-6 duration-200">
+      <div className="relative z-10 flex max-h-[92dvh] w-full max-w-2xl animate-in flex-col overflow-hidden rounded-t-3xl border border-border bg-card shadow-2xl duration-200 slide-in-from-bottom-6 sm:rounded-3xl">
         {/* Top Header */}
-        <header className="flex items-center justify-between border-b border-border px-5 py-4 bg-card">
+        <header className="flex items-center justify-between border-b border-border bg-card px-5 py-4">
           <div className="flex items-center gap-2">
             <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary/10 text-primary">
               <Cake className="h-5 w-5" />
@@ -300,7 +302,7 @@ export function TouchItemEditorSheet({
           <button
             type="button"
             onClick={onClose}
-            className="grid h-11 w-11 place-items-center rounded-full border border-border text-foreground hover:bg-secondary cursor-pointer"
+            className="grid h-11 w-11 cursor-pointer place-items-center rounded-full border border-border text-foreground hover:bg-secondary"
           >
             <X className="h-5 w-5" />
           </button>
@@ -308,12 +310,12 @@ export function TouchItemEditorSheet({
 
         {/* Segmented Mode Tabs (Only when adding a new item) */}
         {!item && (
-          <div className="px-5 pt-3 bg-card">
+          <div className="bg-card px-5 pt-3">
             <div className="grid grid-cols-2 gap-2 rounded-2xl bg-secondary/50 p-1">
               <button
                 type="button"
                 onClick={() => setTab("catalog")}
-                className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                className={`inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl text-xs font-bold transition-all ${
                   tab === "catalog"
                     ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-foreground hover:bg-background/50"
@@ -326,7 +328,7 @@ export function TouchItemEditorSheet({
               <button
                 type="button"
                 onClick={() => setTab("custom")}
-                className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                className={`inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl text-xs font-bold transition-all ${
                   tab === "custom"
                     ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-foreground hover:bg-background/50"
@@ -340,7 +342,7 @@ export function TouchItemEditorSheet({
         )}
 
         {/* Scrollable Form Body */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-5">
+        <div className="flex-1 space-y-5 overflow-y-auto p-5">
           {tab === "catalog" ? (
             <>
               {/* Product Search & Selector (Only when adding a new item; editing an existing item locks catalog identity to prevent K4 desync) */}
@@ -351,7 +353,9 @@ export function TouchItemEditorSheet({
                       <Cake className="h-5 w-5" />
                     </div>
                     <div>
-                      <span className="text-[11px] font-bold text-muted-foreground">صنف قيد التعديل (Existing Item)</span>
+                      <span className="text-[11px] font-bold text-muted-foreground">
+                        صنف قيد التعديل (Existing Item)
+                      </span>
                       <h4 className="text-sm font-extrabold text-foreground">{item.name_ar}</h4>
                     </div>
                   </div>
@@ -372,7 +376,7 @@ export function TouchItemEditorSheet({
                       placeholder="ابحث عن اسم الكيكة..."
                       className="min-h-12 w-full rounded-2xl border border-input bg-background px-4 text-xs font-bold text-foreground outline-none focus:border-primary"
                     />
-                    <Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground pointer-events-none" />
+                    <Search className="pointer-events-none absolute top-3.5 left-3 h-4 w-4 text-muted-foreground" />
                   </div>
 
                   {/* Filtered Product Selection Cards */}
@@ -384,7 +388,7 @@ export function TouchItemEditorSheet({
                           key={p.id}
                           type="button"
                           onClick={() => handleSelectProduct(p)}
-                          className={`flex shrink-0 min-h-14 items-center gap-2.5 rounded-2xl border px-3.5 py-2 text-start transition-all cursor-pointer ${
+                          className={`flex min-h-14 shrink-0 cursor-pointer items-center gap-2.5 rounded-2xl border px-3.5 py-2 text-start transition-all ${
                             isPicked
                               ? "border-primary bg-primary/10 font-bold text-primary ring-2 ring-primary/20"
                               : "border-border bg-background text-foreground hover:border-primary/50"
@@ -394,7 +398,7 @@ export function TouchItemEditorSheet({
                             <p className="text-xs font-bold">{p.name_ar}</p>
                             <p className="text-[11px] text-primary">{jd(p.price)}</p>
                           </div>
-                          {isPicked && <Check className="h-4 w-4 text-primary shrink-0" />}
+                          {isPicked && <Check className="h-4 w-4 shrink-0 text-primary" />}
                         </button>
                       );
                     })}
@@ -406,7 +410,7 @@ export function TouchItemEditorSheet({
               <div className="space-y-4 rounded-2xl border border-border bg-secondary/20 p-4">
                 {/* Size Chips */}
                 <div>
-                  <label className="block text-xs font-bold text-foreground mb-2">
+                  <label className="mb-2 block text-xs font-bold text-foreground">
                     الحجم (Size Chips)
                   </label>
                   <div className="flex flex-wrap gap-2">
@@ -417,7 +421,7 @@ export function TouchItemEditorSheet({
                           key={sz.label}
                           type="button"
                           onClick={() => handleSelectSize(sz.label, sz.extraFee)}
-                          className={`min-h-11 rounded-full px-4 text-xs font-bold transition-all cursor-pointer ${
+                          className={`min-h-11 cursor-pointer rounded-full px-4 text-xs font-bold transition-all ${
                             active
                               ? "bg-primary text-primary-foreground shadow-xs"
                               : "border border-border bg-background text-foreground hover:bg-secondary"
@@ -432,7 +436,7 @@ export function TouchItemEditorSheet({
 
                 {/* Flavor & Filling Input */}
                 <div>
-                  <div className="flex items-center justify-between mb-1.5">
+                  <div className="mb-1.5 flex items-center justify-between">
                     <label className="block text-xs font-bold text-foreground">
                       نوع الحشوة (Filling Flavor){" "}
                       {isFillingRequired ? (
@@ -466,7 +470,7 @@ export function TouchItemEditorSheet({
 
                 {/* Cake Writing */}
                 <div>
-                  <label className="block text-xs font-bold text-foreground mb-1">
+                  <label className="mb-1 block text-xs font-bold text-foreground">
                     الكتابة على الكيكة (Cake Writing)
                   </label>
                   <input
@@ -500,7 +504,7 @@ export function TouchItemEditorSheet({
                         <button
                           type="button"
                           onClick={() => updateExtraQty(ex.id, -1)}
-                          className="grid h-10 w-10 place-items-center rounded-lg border border-input bg-secondary text-foreground hover:bg-secondary/80 cursor-pointer"
+                          className="grid h-10 w-10 cursor-pointer place-items-center rounded-lg border border-input bg-secondary text-foreground hover:bg-secondary/80"
                         >
                           <Minus className="h-4 w-4" />
                         </button>
@@ -510,7 +514,7 @@ export function TouchItemEditorSheet({
                         <button
                           type="button"
                           onClick={() => updateExtraQty(ex.id, 1)}
-                          className="grid h-10 w-10 place-items-center rounded-lg border border-input bg-secondary text-foreground hover:bg-secondary/80 cursor-pointer"
+                          className="grid h-10 w-10 cursor-pointer place-items-center rounded-lg border border-input bg-secondary text-foreground hover:bg-secondary/80"
                         >
                           <Plus className="h-4 w-4" />
                         </button>
@@ -539,7 +543,7 @@ export function TouchItemEditorSheet({
                   <button
                     type="button"
                     onClick={addCustomExtra}
-                    className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground cursor-pointer"
+                    className="grid h-11 w-11 shrink-0 cursor-pointer place-items-center rounded-xl bg-primary text-primary-foreground"
                   >
                     <Plus className="h-4 w-4" />
                   </button>
@@ -591,7 +595,7 @@ export function TouchItemEditorSheet({
               <button
                 type="button"
                 onClick={() => setQuantity((q) => Math.max(q - 1, 1))}
-                className="grid h-12 w-12 place-items-center rounded-xl border border-input bg-background text-foreground shadow-xs hover:bg-secondary cursor-pointer"
+                className="grid h-12 w-12 cursor-pointer place-items-center rounded-xl border border-input bg-background text-foreground shadow-xs hover:bg-secondary"
               >
                 <Minus className="h-5 w-5" />
               </button>
@@ -601,7 +605,7 @@ export function TouchItemEditorSheet({
               <button
                 type="button"
                 onClick={() => setQuantity((q) => q + 1)}
-                className="grid h-12 w-12 place-items-center rounded-xl border border-input bg-background text-foreground shadow-xs hover:bg-secondary cursor-pointer"
+                className="grid h-12 w-12 cursor-pointer place-items-center rounded-xl border border-input bg-background text-foreground shadow-xs hover:bg-secondary"
               >
                 <Plus className="h-5 w-5" />
               </button>
@@ -621,7 +625,7 @@ export function TouchItemEditorSheet({
           <button
             type="button"
             onClick={handleSave}
-            className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-primary px-5 text-sm font-extrabold text-primary-foreground shadow-sm transition-all hover:bg-primary/95 cursor-pointer"
+            className="inline-flex min-h-12 flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl bg-primary px-5 text-sm font-extrabold text-primary-foreground shadow-sm transition-all hover:bg-primary/95"
           >
             <Check className="h-5 w-5" />
             <span>حفظ وتطبيق الصنف</span>
@@ -651,13 +655,13 @@ export function TouchItemSummaryCard({
       {/* Title & Line Total */}
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <h5 className="font-display text-base font-extrabold text-foreground break-words">
+          <h5 className="font-display text-base font-extrabold break-words text-foreground">
             {item.name_ar}
           </h5>
           <p className="text-xs text-muted-foreground">سعر الحبة: {jd(item.unit_price)}</p>
         </div>
 
-        <div className="text-end shrink-0">
+        <div className="shrink-0 text-end">
           <span className="block font-display text-base font-extrabold text-primary">
             {jd(lineTotal)}
           </span>
@@ -691,7 +695,7 @@ export function TouchItemSummaryCard({
             type="button"
             onClick={() => onQtyChange(Math.max(item.quantity - 1, 1))}
             disabled={item.quantity <= 1}
-            className="grid h-11 w-11 place-items-center rounded-lg bg-secondary text-foreground hover:bg-secondary/80 disabled:opacity-40 cursor-pointer"
+            className="grid h-11 w-11 cursor-pointer place-items-center rounded-lg bg-secondary text-foreground hover:bg-secondary/80 disabled:opacity-40"
             aria-label="إنقاص الكمية"
           >
             <Minus className="h-4 w-4" />
@@ -704,7 +708,7 @@ export function TouchItemSummaryCard({
           <button
             type="button"
             onClick={() => onQtyChange(item.quantity + 1)}
-            className="grid h-11 w-11 place-items-center rounded-lg bg-secondary text-foreground hover:bg-secondary/80 cursor-pointer"
+            className="grid h-11 w-11 cursor-pointer place-items-center rounded-lg bg-secondary text-foreground hover:bg-secondary/80"
             aria-label="زيادة الكمية"
           >
             <Plus className="h-4 w-4" />
@@ -716,7 +720,7 @@ export function TouchItemSummaryCard({
           <button
             type="button"
             onClick={onEdit}
-            className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-primary/30 bg-primary/10 px-4 text-xs font-bold text-primary transition-all hover:bg-primary hover:text-primary-foreground cursor-pointer"
+            className="inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-xl border border-primary/30 bg-primary/10 px-4 text-xs font-bold text-primary transition-all hover:bg-primary hover:text-primary-foreground"
           >
             <PenTool className="h-4 w-4" />
             <span>تعديل</span>
@@ -725,7 +729,7 @@ export function TouchItemSummaryCard({
           <button
             type="button"
             onClick={onDelete}
-            className="grid h-11 w-11 place-items-center rounded-xl border border-destructive/30 bg-destructive/10 text-destructive transition-all hover:bg-destructive hover:text-destructive-foreground cursor-pointer"
+            className="grid h-11 w-11 cursor-pointer place-items-center rounded-xl border border-destructive/30 bg-destructive/10 text-destructive transition-all hover:bg-destructive hover:text-destructive-foreground"
             aria-label="حذف الصنف"
           >
             <Trash2 className="h-4 w-4" />

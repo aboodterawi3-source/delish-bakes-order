@@ -1,4 +1,5 @@
 # Delish Cake & Bake — Deployment Runbook & Operating Guide
+
 # دليل تشغيل ونشر مشروع مخبز وحلويات ديليش
 
 هذا الدليل يوضح الخطوات المعتمدة لتأسيس وتشغيل مشروع ديليش كيك محلياً وعلى بيئات الإنتاج السحابية، وترتيب تشغيل ملفات قاعدة البيانات (PostgreSQL / Supabase).
@@ -17,14 +18,17 @@ flowchart TD
 ```
 
 ### الخطوة 1: المخطط الشامل والسياسات والدوال الذرية
+
 - **الملف:** [`supabase/standalone_complete_schema.sql`](./supabase/standalone_complete_schema.sql)
 - **الوظيفة:** ينشئ جميع الجداول (الطلبات، الأصناف، الدفعات، رموز التعديل، سجل التدقيق)، والأنواع (`app_role`, `order_status`)، وفهارس الأداء، ودوال التحقق، وسياسات الحماية على مستوى الصفوف (RLS)، ودوال العمليات الذرية المتزامنة (`create_storefront_order_atomic`, `update_order_item_atomic`, إلخ).
 
 ### الخطوة 2: بيانات المتجر الأولية والكتالوج الافتراضي
+
 - **الملف:** [`supabase/seed_initial_store.sql`](./supabase/seed_initial_store.sql)
 - **الوظيفة:** يملأ قاعدة البيانات ببانر المتجر الافتراضي، والتصنيفات الخمسة الأساسية، والأصناف الستة الأكثر مبيعاً مع الصور والأحجام والأسعار بالدينار الأردني (JOD).
 
 ### الخطوة 3: أذونات الـ Data API الصريحة ومبدأ الامتياز الأدنى (Least Privilege)
+
 - **الملف:** [`supabase/delish_api_permissions.sql`](./supabase/delish_api_permissions.sql)
 - **الوظيفة:** **يُنفّذ فوراً بعد ملف المخطط وملف البذور**. يضبط صلاحيات `GRANT` و `REVOKE` الدقيقة على مستوى PostgREST API:
   - يمنح الزوار غير المسجلين (`anon`) صلاحية قراءة الكتالوج والبانر والتصنيفات فقط (`SELECT` على `products`, `storefront_categories`, `storefront_banner`, `store_settings`).
@@ -39,6 +43,7 @@ flowchart TD
 2. أدخل البريد: `admin@delish.local` وكلمة مرور قوية.
 3. انسخ معرف المستخدم (UID) المولد.
 4. نفّذ الاستعلام التالي في **SQL Editor** لربط الحساب بدور المدير ورمز الموظف 1:
+
 ```sql
 INSERT INTO public.user_roles (user_id, role)
 VALUES ('PASTE_USER_UUID_HERE'::uuid, 'admin'::public.app_role)
@@ -58,6 +63,7 @@ ON CONFLICT (id) DO UPDATE SET admin_setup_completed_at = now();
 ## 3. إعداد البيئة المحلية (`.env`)
 
 انسخ محتوى `.env.example` إلى ملف `.env` واضبط القيم:
+
 ```env
 SUPABASE_URL="https://your-project-id.supabase.co"
 VITE_SUPABASE_URL="https://your-project-id.supabase.co"
@@ -69,6 +75,7 @@ PUBLIC_SITE_URL="http://localhost:3000"
 VITE_SITE_URL="http://localhost:3000"
 SUPABASE_SERVICE_ROLE_KEY="sb_secret_..."
 ```
+
 > [!IMPORTANT]
 > تأكد دائماً أن ملف `.env` مستثنى من Git في `.gitignore`، ولا ترفع المفتاح السري `SUPABASE_SERVICE_ROLE_KEY` إطلاقاً.
 
@@ -77,18 +84,21 @@ SUPABASE_SERVICE_ROLE_KEY="sb_secret_..."
 ## 4. التشغيل والبناء (Build & Run Commands)
 
 ### التشغيل المحلي للتطوير:
+
 ```cmd
 npm.cmd ci
 npm.cmd run dev -- --port 3000 --strictPort
 ```
 
 ### فحص سلامة الأنواع والاختبارات:
+
 ```cmd
 npx tsc --noEmit
 npm test
 ```
 
 ### البناء للإنتاج:
+
 - **نظام الحاويات / خوادم Node.js المستقلة (Docker / VPS):**
   ```cmd
   npm run build:node
@@ -98,7 +108,6 @@ npm test
   ```cmd
   npm run build
   ```
-
 
 ---
 
@@ -167,92 +176,8 @@ flowchart TD
     PlaywrightCLI -.->|"اختبار رحلة العميل نحو KDS"| Storefront
 ```
 
-### مخطط الكيانات والعلاقات لبيانات المتجر والمطبخ (Database ERD):
-
-```mermaid
-erDiagram
-    storefront_categories ||--o{ products : "تصنيف المنتجات"
-    orders ||--|{ order_items : "يحتوي بنوداً"
-    orders ||--o{ order_payments : "سجل الدفعات والاسترجاع"
-    orders ||--o{ audit_logs : "سجل التعديلات والتدقيق"
-
-    storefront_categories {
-        uuid id PK
-        string name_ar
-        string name_en
-        string icon
-        string image_url
-        int sort_order
-        boolean is_active
-    }
-
-    products {
-        uuid id PK
-        uuid category_id FK
-        string slug
-        string name_ar
-        string name_en
-        numeric price
-        jsonb sizes
-        boolean is_available
-    }
-
-    orders {
-        uuid id PK
-        string order_number UK
-        string customer_name
-        string customer_phone
-        order_method method
-        string area
-        string address
-        date requested_date
-        time requested_time
-        numeric subtotal
-        numeric delivery_fee
-        numeric total
-        numeric deposit_paid
-        order_status status
-        int version
-        string client_request_id UK
-    }
-
-    order_items {
-        uuid id PK
-        uuid order_id FK
-        uuid product_id FK
-        string name_ar
-        string name_en
-        numeric unit_price
-        int quantity
-        string[] options_ar
-        string notes
-    }
-
-    order_payments {
-        uuid id PK
-        uuid order_id FK
-        numeric amount
-        payment_method payment_method
-        string payment_type
-        string status
-        string idempotency_key UK
-        timestamp created_at
-    }
-
-    audit_logs {
-        uuid id PK
-        uuid order_id FK
-        string order_number
-        uuid staff_user_id FK
-        string action
-        numeric original_amount
-        numeric modified_amount
-        string reason
-        timestamp created_at
-    }
-```
-
 ### معايير الأمان والمعمارية المطبقة في هذا المخطط:
+
 1. **عزل الصلاحيات ومبدأ الامتياز الأدنى (Zero Trust / Least Privilege):**
    - العميل غير مسجل الدخول (`anon`) لا يستطيع القراءة المباشرة أو الكتابة المباشرة على جداول الطلبات أو الدفتر المالي عبر PostgREST.
    - عمليات إنشاء الطلبات تتم حصرياً عبر دالة `create_storefront_order_atomic()` التي تتحقق من سلامة الأسعار وحسابات المجموع الرياضي.
@@ -262,5 +187,3 @@ erDiagram
    - شاشة المطبخ تتصل بقناة Realtime مخصصة وتستمع فقط لتغييرات الطلبات النشطة اليومية دون إعادة جلب كل البيانات (`Re-fetch`).
 4. **حماية التواريخ ونوافذ الاستلام (Delivery Slots & Lead Time Engine):**
    - التحقق من زمن التحضير المطلوب (4 ساعات لقوالب الكيك الاحتفالية، ساعة للمخبوزات الجاهزة) داخل محرك `delivery-slots.ts`.
-5. **سلامة دفتر الدفعات المحمي (Append-Only Financial Ledger):**
-   - جدول `order_payments` لا يقبل التعديل المباشر أو الحذف إطلاقاً؛ عمليات الدفع والاسترجاع تسجل كقيود ذرية غير قابلة للإلغاء عبر `record_order_payment_atomic()`.

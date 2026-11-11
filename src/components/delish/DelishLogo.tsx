@@ -23,18 +23,18 @@ export function DelishLogo({ size = "md", className = "", showSubtitle = false }
   }[size];
 
   return (
-    <div className={`flex flex-col items-center select-none text-center ${className}`}>
+    <div className={`flex flex-col items-center text-center select-none ${className}`}>
       {/* Serif DELISH */}
       <span className={`font-serif font-bold text-gold uppercase ${sizeStyles.main}`}>DELISH</span>
       {/* Script Bakes */}
       <span
-        className={`font-script text-primary italic font-normal z-10 leading-none ${sizeStyles.script}`}
+        className={`z-10 font-script leading-none font-normal text-primary italic ${sizeStyles.script}`}
       >
         Bakes
       </span>
       {showSubtitle && (
         <span
-          className={`uppercase font-semibold tracking-[0.28em] text-gold mt-1 ${sizeStyles.sub}`}
+          className={`mt-1 font-semibold tracking-[0.28em] text-gold uppercase ${sizeStyles.sub}`}
         >
           Small Joys, Baked Daily
         </span>

@@ -85,10 +85,7 @@ await test("3. Lead time calculation assigns 4h for celebration cakes and 1h for
   ];
   assert.equal(calculateRequiredLeadTime(cakeItems), 4, "Custom cake requires 4 hours lead time");
 
-  const pastryItems = [
-    { name_ar: "كرواسون لوز فرنسي" },
-    { name_ar: "علبة ماكرون باريسي" },
-  ];
+  const pastryItems = [{ name_ar: "كرواسون لوز فرنسي" }, { name_ar: "علبة ماكرون باريسي" }];
   assert.equal(calculateRequiredLeadTime(pastryItems), 1, "Pastries require 1 hour lead time");
 });
 

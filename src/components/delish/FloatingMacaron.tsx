@@ -14,7 +14,7 @@ export function FloatingMacaron({
   priority = true,
 }: FloatingMacaronProps) {
   return (
-    <div className={`pointer-events-none absolute select-none drop-shadow-xl ${className}`}>
+    <div className={`pointer-events-none absolute drop-shadow-xl select-none ${className}`}>
       <img
         src={src}
         alt={alt}

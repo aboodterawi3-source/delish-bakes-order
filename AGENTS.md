@@ -33,6 +33,7 @@ All agents operating in this workspace must adhere to the structured execution l
 ### Priority 1: The Core Trio (Immediate & Mandatory)
 
 #### 1. Logic & Edge-Case Interrogation: `grill-me`
+
 - **Location:** `.agents/skills/grill-me/`
 - **Trigger:** Before writing any code for a new feature, table alteration, or critical order/KDS workflow.
 - **Protocol:**
@@ -45,6 +46,7 @@ All agents operating in this workspace must adhere to the structured execution l
   - **Rule:** Do not write code until all frontier questions are answered and edge cases are closed.
 
 #### 2. Engineering Constitution & Quality Gates: `superpowers`
+
 - **Location:** `.agents/skills/superpowers/` (supported by `obra/superpowers` and `addyosmani/agent-skills`)
 - **Trigger:** Before implementation and before staging any git commit.
 - **Protocol:**
@@ -57,6 +59,7 @@ All agents operating in this workspace must adhere to the structured execution l
     - `.dependency-cruiser.cjs` (architectural boundary and circular dependency verification).
 
 #### 3. Automated End-to-End Verification: `playwright-cli`
+
 - **Location:** `.agents/skills/playwright-cli/`
 - **Trigger:** After any modification to UI components, cart calculations, checkout flows, or kitchen order processing.
 - **Protocol:**
@@ -76,20 +79,24 @@ All agents operating in this workspace must adhere to the structured execution l
 These skills are activated modularly depending on the specific phase of work:
 
 #### A. Frontend & UI/UX Enhancement
-- **Installed Foundation:** `design-taste-frontend` (`.agents/skills/design-taste-frontend/`). *Note: Do not install `taste-skill` as it is already present under this name.*
+
+- **Installed Foundation:** `design-taste-frontend` (`.agents/skills/design-taste-frontend/`). _Note: Do not install `taste-skill` as it is already present under this name._
 - **Supporting Tooling:**
   - `pbakaus/impeccable` & `nextlevelbuilder/ui-ux-pro-max-skill`: Micro-interactions, typography rhythm, and mobile checkout fluidity.
   - `voltagent/awesome-design-md`: Maintaining and updating the project's standard `DESIGN.md` for boutique bakery aesthetics.
 
 #### B. Stack Best Practices
+
 - **Sources:** `vercel-labs/skills` and `anthropics/skills`.
 - **Scope:** Tailored for React 19, TypeScript, Vite, Supabase RPCs, and PostgreSQL Row-Level Security (RLS).
 - **Usage:** Consulted when authoring complex database queries, security policies, and client state optimizations.
 
 #### C. Codebase Graph & Architecture Documentation
+
 - **Sources:** `Egonex-AI/Understand-Anything`, `Graphify-Labs/graphify`, `tt-a1i/archify`, `cathrynlavery/diagram-design`.
 - **Scope:** Generating localized knowledge graphs between UI routes and Supabase tables (saving context tokens) and maintaining system flow diagrams in `DEPLOYMENT_RUNBOOK.md` (Storefront -> Supabase -> `metabase/`).
 
 #### D. Marketing, CRO & Natural Localization
+
 - **Sources:** `coreyhaines31/marketingskills` and `blader/humanizer`.
 - **Scope:** Optimizing storefront hero messaging, SEO, and checkout conversion rate (CRO), and refining `locales/ar.json` / `locales/en.json` bakery descriptions to eliminate robotic AI phrasing in favor of natural, appetizing artisan bakery copy.

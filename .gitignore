@@ -58,3 +58,6 @@ bun.lockb
 
 supabase/.temp/
 .stryker-tmp/
+.taste-skill/
+results_*.json
+scripts/independent-review-*.mjs

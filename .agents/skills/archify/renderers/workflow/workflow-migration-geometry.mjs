@@ -4,12 +4,19 @@ const TARGET_SCHEMA_VERSION = 2;
 // policy as the document whose coordinates will be mapped into that plan.
 // An authored canvas likewise keeps its established plan: draft-only optional
 // corridor growth must not consume space that a valid fixed canvas lacks.
-const absoluteGeometryPolicy = Symbol('workflow absolute geometry policy');
+const absoluteGeometryPolicy = Symbol("workflow absolute geometry policy");
 export function preservesWorkflowAbsoluteGeometry(workflow) {
-  return workflow[absoluteGeometryPolicy] ?? (Array.isArray(workflow.meta?.viewBox) || (workflow.edges || []).some((edge) => (
-    Array.isArray(edge.via) || Array.isArray(edge.labelAt)
-    || edge.channelX !== undefined || edge.channelY !== undefined
-  )));
+  return (
+    workflow[absoluteGeometryPolicy] ??
+    (Array.isArray(workflow.meta?.viewBox) ||
+      (workflow.edges || []).some(
+        (edge) =>
+          Array.isArray(edge.via) ||
+          Array.isArray(edge.labelAt) ||
+          edge.channelX !== undefined ||
+          edge.channelY !== undefined,
+      ))
+  );
 }
 
 function clone(value) {
@@ -38,17 +45,18 @@ export function intrinsicWorkflow(workflow) {
 export function planningWorkflow(workflow) {
   const planned = intrinsicWorkflow(workflow);
   planned.edges = planned.edges.flatMap((edge) => {
-    const hasRoutedGeometry = Array.isArray(edge.via)
-      || (edge.route && !['auto', 'straight'].includes(edge.route))
-      || edge.channelX !== undefined
-      || edge.channelY !== undefined;
+    const hasRoutedGeometry =
+      Array.isArray(edge.via) ||
+      (edge.route && !["auto", "straight"].includes(edge.route)) ||
+      edge.channelX !== undefined ||
+      edge.channelY !== undefined;
     if (hasRoutedGeometry) return [];
 
     const automatic = {};
-    for (const property of ['id', 'from', 'to', 'variant', 'role', 'width']) {
+    for (const property of ["id", "from", "to", "variant", "role", "width"]) {
       if (edge[property] !== undefined) automatic[property] = edge[property];
     }
-    if (edge.route === 'straight') automatic.route = 'straight';
+    if (edge.route === "straight") automatic.route = "straight";
     if (edge.labelAt === undefined && edge.label !== undefined) automatic.label = edge.label;
     return [automatic];
   });
@@ -59,10 +67,11 @@ export function planningWorkflow(workflow) {
 
   if (Array.isArray(planned.mainPath)) {
     const projectedPairs = new Set(planned.edges.map((edge) => `${edge.from}\u0000${edge.to}`));
-    const projectionBreaksMainPath = planned.mainPath.some((from, index) => (
-      index < planned.mainPath.length - 1
-      && !projectedPairs.has(`${from}\u0000${planned.mainPath[index + 1]}`)
-    ));
+    const projectionBreaksMainPath = planned.mainPath.some(
+      (from, index) =>
+        index < planned.mainPath.length - 1 &&
+        !projectedPairs.has(`${from}\u0000${planned.mainPath[index + 1]}`),
+    );
     if (projectionBreaksMainPath) delete planned.mainPath;
   }
 
@@ -81,23 +90,24 @@ function mappedNumber(value) {
  */
 export function createHorizontalRankMapper(oldColumns, newColumns) {
   if (
-    !Array.isArray(oldColumns)
-    || !Array.isArray(newColumns)
-    || oldColumns.length !== newColumns.length
-    || oldColumns.length < 2
-    || !oldColumns.every(Number.isFinite)
-    || !newColumns.every(Number.isFinite)
+    !Array.isArray(oldColumns) ||
+    !Array.isArray(newColumns) ||
+    oldColumns.length !== newColumns.length ||
+    oldColumns.length < 2 ||
+    !oldColumns.every(Number.isFinite) ||
+    !newColumns.every(Number.isFinite)
   ) {
-    throw new TypeError('Horizontal rank mapping requires matching finite column arrays.');
+    throw new TypeError("Horizontal rank mapping requires matching finite column arrays.");
   }
   for (let index = 1; index < oldColumns.length; index += 1) {
     if (oldColumns[index] <= oldColumns[index - 1] || newColumns[index] <= newColumns[index - 1]) {
-      throw new TypeError('Horizontal rank mapping requires strictly increasing columns.');
+      throw new TypeError("Horizontal rank mapping requires strictly increasing columns.");
     }
   }
 
   return (x) => {
-    if (!Number.isFinite(x)) throw new TypeError('Horizontal rank mapping requires a finite x coordinate.');
+    if (!Number.isFinite(x))
+      throw new TypeError("Horizontal rank mapping requires a finite x coordinate.");
     let segment = oldColumns.length - 2;
     if (x <= oldColumns[0]) {
       segment = 0;
@@ -142,7 +152,7 @@ export function mapExplicitCoordinates(workflow, mapX) {
       record(`/edges/${edgeIndex}/labelAt/0`, edge.labelAt, 0);
     }
     if (Number.isFinite(edge.channelX)) {
-      record(`/edges/${edgeIndex}/channelX`, edge, 'channelX');
+      record(`/edges/${edgeIndex}/channelX`, edge, "channelX");
     }
   }
   return changedCoordinates;

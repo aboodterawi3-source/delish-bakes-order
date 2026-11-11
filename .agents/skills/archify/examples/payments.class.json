@@ -18,12 +18,20 @@
       "sublabel": "Creates orders and starts payment",
       "row": 0,
       "col": 0,
-      "attributes": [
-        { "name": "gateway", "type": "PaymentGateway", "visibility": "private" }
-      ],
+      "attributes": [{ "name": "gateway", "type": "PaymentGateway", "visibility": "private" }],
       "methods": [
-        { "name": "createOrder", "parameters": "cart: Cart", "returns": "Order", "visibility": "public" },
-        { "name": "checkout", "parameters": "order: Order", "returns": "Receipt", "visibility": "public" }
+        {
+          "name": "createOrder",
+          "parameters": "cart: Cart",
+          "returns": "Order",
+          "visibility": "public"
+        },
+        {
+          "name": "checkout",
+          "parameters": "order: Order",
+          "returns": "Receipt",
+          "visibility": "public"
+        }
       ]
     },
     {
@@ -34,7 +42,13 @@
       "row": 0,
       "col": 1.5,
       "methods": [
-        { "name": "pay", "parameters": "amount: Money", "returns": "Result", "visibility": "public", "abstract": true }
+        {
+          "name": "pay",
+          "parameters": "amount: Money",
+          "returns": "Result",
+          "visibility": "public",
+          "abstract": true
+        }
       ]
     },
     {
@@ -49,9 +63,7 @@
         { "name": "amount", "type": "Money", "visibility": "public" },
         { "name": "status", "type": "OrderStatus", "visibility": "public" }
       ],
-      "methods": [
-        { "name": "markPaid", "returns": "void", "visibility": "public" }
-      ]
+      "methods": [{ "name": "markPaid", "returns": "void", "visibility": "public" }]
     },
     {
       "id": "card_gateway",
@@ -61,7 +73,12 @@
       "row": 1,
       "col": 1,
       "methods": [
-        { "name": "pay", "parameters": "amount: Money", "returns": "Result", "visibility": "public" }
+        {
+          "name": "pay",
+          "parameters": "amount: Money",
+          "returns": "Result",
+          "visibility": "public"
+        }
       ]
     },
     {
@@ -72,14 +89,41 @@
       "row": 1,
       "col": 2,
       "methods": [
-        { "name": "pay", "parameters": "amount: Money", "returns": "Result", "visibility": "public" }
+        {
+          "name": "pay",
+          "parameters": "amount: Money",
+          "returns": "Result",
+          "visibility": "public"
+        }
       ]
     }
   ],
   "relationships": [
-    { "id": "uses_gateway", "from": "order_service", "to": "payment_gateway", "kind": "dependency", "label": "pays through" },
-    { "id": "creates_order", "from": "order_service", "to": "order", "kind": "dependency", "label": "creates" },
-    { "id": "card_implements", "from": "card_gateway", "to": "payment_gateway", "kind": "realization" },
-    { "id": "wallet_implements", "from": "wallet_gateway", "to": "payment_gateway", "kind": "realization" }
+    {
+      "id": "uses_gateway",
+      "from": "order_service",
+      "to": "payment_gateway",
+      "kind": "dependency",
+      "label": "pays through"
+    },
+    {
+      "id": "creates_order",
+      "from": "order_service",
+      "to": "order",
+      "kind": "dependency",
+      "label": "creates"
+    },
+    {
+      "id": "card_implements",
+      "from": "card_gateway",
+      "to": "payment_gateway",
+      "kind": "realization"
+    },
+    {
+      "id": "wallet_implements",
+      "from": "wallet_gateway",
+      "to": "payment_gateway",
+      "kind": "realization"
+    }
   ]
 }

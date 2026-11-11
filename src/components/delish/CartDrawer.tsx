@@ -155,13 +155,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
     sendingRef.current = true;
     setSending(true);
 
-    const safetyTimer = setTimeout(() => {
-      isSubmittingRef.current = false;
-      sendingRef.current = false;
-    }, 1500);
-
     if (!validate()) {
-      clearTimeout(safetyTimer);
       isSubmittingRef.current = false;
       sendingRef.current = false;
       setSending(false);
@@ -215,7 +209,6 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
       toast.error(msg);
       return; // Early return: Cart stays intact!
     } finally {
-      clearTimeout(safetyTimer);
       isSubmittingRef.current = false;
       sendingRef.current = false;
       setSending(false);
@@ -245,7 +238,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex max-w-full justify-end overflow-x-hidden bg-slate-900/60 backdrop-blur-xs transition-opacity duration-300 ease-out">
+    <div className="fixed inset-0 z-50 flex max-w-full justify-end overflow-x-hidden bg-primary/80 transition-opacity">
       <button
         type="button"
         aria-label={lang === "ar" ? "إغلاق السلة" : "Close cart"}
@@ -257,10 +250,10 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative flex h-full w-full max-w-md min-w-0 flex-col overflow-x-hidden bg-background shadow-2xl transition-transform duration-300 ease-out will-change-transform"
+        className="relative flex h-full w-full max-w-md min-w-0 flex-col overflow-x-hidden bg-background shadow-[var(--shadow-soft)] transition-transform will-change-transform"
       >
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-b border-border px-4 py-4 sm:px-5">
-          <h2 id={titleId} className="min-w-0 break-words font-display text-lg font-semibold">
+          <h2 id={titleId} className="min-w-0 font-display text-lg font-semibold break-words">
             {stage === "done"
               ? lang === "ar"
                 ? "تم إرسال الطلب"
@@ -439,7 +432,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                         borderColor: form.method === m ? palette.main : undefined,
                         backgroundColor: form.method === m ? palette.cardBg : undefined,
                       }}
-                      className={`min-h-12 rounded-2xl border px-3 py-2.5 text-sm cursor-pointer transition-all ${
+                      className={`min-h-12 cursor-pointer rounded-2xl border px-3 py-2.5 text-sm transition-all ${
                         form.method === m
                           ? "font-semibold shadow-xs"
                           : "border-border text-foreground hover:bg-secondary/20"
@@ -466,7 +459,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                         borderColor: form.pay === option ? palette.main : undefined,
                         backgroundColor: form.pay === option ? palette.cardBg : undefined,
                       }}
-                      className={`min-h-12 rounded-2xl border px-3 py-2.5 text-sm cursor-pointer transition-all ${
+                      className={`min-h-12 cursor-pointer rounded-2xl border px-3 py-2.5 text-sm transition-all ${
                         form.pay === option
                           ? "font-semibold shadow-xs"
                           : "border-border text-foreground hover:bg-secondary/20"
@@ -485,9 +478,9 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                 {form.pay === "cliq" && (
                   <div
                     style={{ borderColor: palette.border, backgroundColor: palette.cardBg }}
-                    className="mt-2 rounded-2xl border p-3.5 space-y-2 text-xs transition-colors"
+                    className="mt-2 space-y-2 rounded-2xl border p-3.5 text-xs transition-colors"
                   >
-                    <p className="text-muted-foreground leading-relaxed">
+                    <p className="leading-relaxed text-muted-foreground">
                       {lang === "ar"
                         ? "الدفع عبر كليك · يرجى إرسال صورة إشعار التحويل عبر الواتساب بعد إتمام العملية لتأكيد طلبك."
                         : "CliQ transfer · Please share your transfer receipt on WhatsApp after completing the payment."}
@@ -572,7 +565,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                 <button
                   onClick={() => setStage("checkout")}
                   style={{ backgroundColor: palette.btnBg }}
-                  className="min-h-12 w-full rounded-full py-3.5 text-sm font-bold text-white shadow-md transition-all hover:opacity-90 active:scale-[0.98] cursor-pointer"
+                  className="min-h-12 w-full cursor-pointer rounded-full py-3.5 text-sm font-bold text-white shadow-md transition-all hover:opacity-90 active:scale-[0.98]"
                 >
                   {t("checkout")}
                 </button>

@@ -1,10 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "config:recommended",
-    ":dependencyDashboard",
-    ":semanticCommits"
-  ],
+  "extends": ["config:recommended", ":dependencyDashboard", ":semanticCommits"],
   "labels": ["dependencies", "automated"],
   "rangeStrategy": "pin",
   "vulnerabilityAlerts": {
@@ -21,22 +17,13 @@
     },
     {
       "description": "Lock Vite and Nitro build tools to verified stable releases",
-      "matchPackageNames": [
-        "vite",
-        "nitro",
-        "@lovable.dev/vite-tanstack-config"
-      ],
+      "matchPackageNames": ["vite", "nitro", "@lovable.dev/vite-tanstack-config"],
       "groupName": "build-toolchain",
       "automerge": false
     },
     {
       "description": "Automate patch updates for UI icons and helpers after CI passes",
-      "matchPackageNames": [
-        "lucide-react",
-        "clsx",
-        "tailwind-merge",
-        "date-fns"
-      ],
+      "matchPackageNames": ["lucide-react", "clsx", "tailwind-merge", "date-fns"],
       "matchUpdateTypes": ["patch"],
       "automerge": true
     }

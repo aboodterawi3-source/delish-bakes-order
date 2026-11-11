@@ -236,16 +236,16 @@ function StaffPortalPage() {
       dir="rtl"
       className="min-h-dvh w-full max-w-full overflow-x-hidden bg-[#F9FBFC] text-[#3E2723]"
     >
-      <div className="sticky top-0 z-30 border-b border-[#F1F5F9] bg-white/95 backdrop-blur-md shadow-xs">
+      <div className="sticky top-0 z-30 border-b border-[#F1F5F9] bg-white/95 shadow-xs backdrop-blur-md">
         <div className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-4 py-2.5 sm:flex sm:flex-wrap">
           <div className="flex min-w-0 items-center gap-2 sm:me-auto">
-            <span className="font-serif text-xl font-bold uppercase tracking-widest text-[#B8860B]">
+            <span className="font-serif text-xl font-bold tracking-widest text-[#B8860B] uppercase">
               DELISH
             </span>
-            <span className="-mt-1 font-script text-xl italic text-[#8B4513]">Bakes</span>
+            <span className="-mt-1 font-script text-xl text-[#8B4513] italic">Bakes</span>
           </div>
           <nav
-            className="no-scrollbar col-span-2 row-start-2 flex w-full max-w-full gap-2 overflow-x-auto overscroll-x-contain sm:order-none sm:w-auto sm:flex-wrap sm:overflow-visible"
+            className="col-span-2 row-start-2 no-scrollbar flex w-full max-w-full gap-2 overflow-x-auto overscroll-x-contain sm:order-none sm:w-auto sm:flex-wrap sm:overflow-visible"
             aria-label="أقسام بوابة الموظفين"
           >
             {allowed.map((tab) => {
@@ -260,7 +260,7 @@ function StaffPortalPage() {
                   type="button"
                   aria-current={on}
                   onClick={() => void navigate({ to: "/staff", search: { tab: tab.value } })}
-                  className={`inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-4 text-xs font-bold transition-all active:scale-95 cursor-pointer ${
+                  className={`inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-2 rounded-full px-4 text-xs font-bold whitespace-nowrap transition-all active:scale-95 ${
                     on
                       ? "bg-slate-900 text-white shadow-sm"
                       : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
@@ -270,7 +270,7 @@ function StaffPortalPage() {
                   <span className="relative inline-flex items-center gap-1.5">
                     {tab.ar}
                     {showBadge && (
-                      <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold text-white bg-red-600 rounded-full animate-pulse shadow-sm">
+                      <span className="inline-flex h-5 min-w-[20px] animate-pulse items-center justify-center rounded-full bg-red-600 px-1.5 text-xs font-bold text-white shadow-sm">
                         {unreadCount}
                       </span>
                     )}
@@ -283,7 +283,7 @@ function StaffPortalPage() {
             type="button"
             onClick={() => void signOut()}
             aria-label="تسجيل الخروج"
-            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-slate-200 text-slate-700 transition-all hover:bg-slate-50 active:scale-95 cursor-pointer"
+            className="inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-full border border-slate-200 text-slate-700 transition-all hover:bg-slate-50 active:scale-95"
           >
             <LogOut className="h-4 w-4" aria-hidden="true" />
           </button>

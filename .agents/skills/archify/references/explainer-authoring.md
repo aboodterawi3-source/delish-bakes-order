@@ -39,10 +39,10 @@ The browser and server must agree on keys before any request is sent: **one extr
 
 ## How does TLS 1.3 compare with 1.2? {#versions}
 
-| Criterion | TLS 1.2 | TLS 1.3 |
-| --- | --- | --- |
+| Criterion               | TLS 1.2              | TLS 1.3           |
+| ----------------------- | -------------------- | ----------------- |
 | Round trips before data | Two {caution:Slower} | One {good:Faster} |
-| Resumed connection | One | Zero {good:0-RTT} |
+| Resumed connection      | One                  | Zero {good:0-RTT} |
 ```
 
 Deliver it with the command under [Delivery](#delivery).
@@ -60,24 +60,24 @@ Deliver it with the command under [Delivery](#delivery).
 
 A diagram replaces the paragraph that would describe it. When the answer involves relationships, a flow, an exchange over time, a hierarchy, a history or a data model, draw it. A typical page has the conclusion, one diagram and one or two tables or step lists.
 
-| Shape of the information | Form |
-| --- | --- |
-| Messages between parties in order: protocols, request paths | `@sequence` |
-| A process with steps and branches: triage, rollout, approval | `@workflow` |
-| Parts of a system and how they connect | `@architecture` |
-| A hierarchy: directories, modules, taxonomies | `@tree` |
-| Events over time: incidents, releases | `@timeline` |
-| Entities with fields and relationships | `@erd` |
-| Options compared on several criteria | Markdown table with `{good:…}`, `{caution:…}`, `{bad:…}` cells |
-| Ordered actions, checks or stages | `@steps` |
-| Things the reader must do or verify | Task list, `- [ ] item` |
-| A warning, open question or key caveat | `@callout` |
-| A few labelled facts | `@facts` |
-| Numbers compared across items or over time, shares of a whole, a 2×2 priority, flows of quantity | ```` ```mermaid ```` chart fence |
-| One number against a limit | `@metric` |
-| Code that exists in a repository | `@code` |
-| A change to code | `@diff` or a ```` ```diff ```` fence |
-| A command, config or code that does not exist yet | Plain fence |
+| Shape of the information                                                                         | Form                                                           |
+| ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------- |
+| Messages between parties in order: protocols, request paths                                      | `@sequence`                                                    |
+| A process with steps and branches: triage, rollout, approval                                     | `@workflow`                                                    |
+| Parts of a system and how they connect                                                           | `@architecture`                                                |
+| A hierarchy: directories, modules, taxonomies                                                    | `@tree`                                                        |
+| Events over time: incidents, releases                                                            | `@timeline`                                                    |
+| Entities with fields and relationships                                                           | `@erd`                                                         |
+| Options compared on several criteria                                                             | Markdown table with `{good:…}`, `{caution:…}`, `{bad:…}` cells |
+| Ordered actions, checks or stages                                                                | `@steps`                                                       |
+| Things the reader must do or verify                                                              | Task list, `- [ ] item`                                        |
+| A warning, open question or key caveat                                                           | `@callout`                                                     |
+| A few labelled facts                                                                             | `@facts`                                                       |
+| Numbers compared across items or over time, shares of a whole, a 2×2 priority, flows of quantity | ` ```mermaid ` chart fence                                     |
+| One number against a limit                                                                       | `@metric`                                                      |
+| Code that exists in a repository                                                                 | `@code`                                                        |
+| A change to code                                                                                 | `@diff` or a ` ```diff ` fence                                 |
+| A command, config or code that does not exist yet                                                | Plain fence                                                    |
 
 Steps that walk through a diagram belong in the diagram's panel: the page reads them beside it, each step lighting its part, and the reader can step through them. Title each step with the label of the node it points at, so the text and the diagram match at a glance; the detail column says what to do there.
 
@@ -191,7 +191,7 @@ Other native types (`dataflow`, `lifecycle`, `class`, `waterfall`) and diagrams 
 
 ## Charts
 
-A ```` ```mermaid ```` fence draws a chart from numbers: `pie`, `xychart-beta` (bar and line), `quadrantChart`, `sankey-beta`, `radar-beta` or `venn-beta`. The page renders it to static SVG in the page theme. An optional `title="..."` becomes the caption.
+A ` ```mermaid ` fence draws a chart from numbers: `pie`, `xychart-beta` (bar and line), `quadrantChart`, `sankey-beta`, `radar-beta` or `venn-beta`. The page renders it to static SVG in the page theme. An optional `title="..."` becomes the caption.
 
 ````md
 ```mermaid title="Latency before and after the release (ms)"
@@ -211,28 +211,28 @@ A chart states where its numbers come from the same way text does: measured, fro
 
 ## Directive reference
 
-| Directive | Header arguments | Rows |
-| --- | --- | --- |
-| `@answer` | `scope="..."` | none |
-| `@meta` | `locale` (`en`, `zh-CN`, `zh-TW`, `es`, `ko`, `ar`), `quality_profile`, `style` (`clean`, `editorial`, `product`, `swiss`; readers can switch), `repo_url`, `repo_revision` | none |
-| `@source <id>` | `title`, `url`, or `path` with `lines=start:end` | none |
-| `@steps` | `id` | `id | title | detail? | diagram-id? | node? | from~to? | edge-ids?` (node and route are exclusive) |
-| `@callout` | `id`, `level=note|warning|open-question`, `title` | one cell per row; rows join into paragraphs |
-| `@facts` | `id` | `label | value` |
-| `@metric` | `id`, `label`, `value`, `limit`, `unit`, `note`, `typical=true` | none; `value` or `limit` required |
-| `@comparison` | `id`, `columns="A,B"`, `label` | `criterion | cell per option` |
-| `@prose` | `id`, `text` | one cell per row |
-| `@list` | `id`, `ordered=true` | one cell per row |
-| `@code` | `id`, `source=<source-id>`, `language` | none |
-| `@diff` | `id`, `caption` | a following ```` ```diff ```` fence |
-| `@image` | `id`, `path`, `alt`, `caption` | none |
-| `@chart` | `type` (`bar`, `line`, `pie`), `data` (`.csv` or `.json`), `x`, `y`, `unit`, `title`, `id` | none |
-| `@<diagram type>` | `id`, `title`, `changes` | compact rows above |
-| `@diagram <type>` | `id`, `source`, `title` | none |
+| Directive         | Header arguments                                                                                                                                                            | Rows                              |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
+| `@answer`         | `scope="..."`                                                                                                                                                               | none                              |
+| `@meta`           | `locale` (`en`, `zh-CN`, `zh-TW`, `es`, `ko`, `ar`), `quality_profile`, `style` (`clean`, `editorial`, `product`, `swiss`; readers can switch), `repo_url`, `repo_revision` | none                              |
+| `@source <id>`    | `title`, `url`, or `path` with `lines=start:end`                                                                                                                            | none                              |
+| `@steps`          | `id`                                                                                                                                                                        | `id                               | title                   | detail?                                     | diagram-id? | node? | from~to? | edge-ids?` (node and route are exclusive) |
+| `@callout`        | `id`, `level=note                                                                                                                                                           | warning                           | open-question`, `title` | one cell per row; rows join into paragraphs |
+| `@facts`          | `id`                                                                                                                                                                        | `label                            | value`                  |
+| `@metric`         | `id`, `label`, `value`, `limit`, `unit`, `note`, `typical=true`                                                                                                             | none; `value` or `limit` required |
+| `@comparison`     | `id`, `columns="A,B"`, `label`                                                                                                                                              | `criterion                        | cell per option`        |
+| `@prose`          | `id`, `text`                                                                                                                                                                | one cell per row                  |
+| `@list`           | `id`, `ordered=true`                                                                                                                                                        | one cell per row                  |
+| `@code`           | `id`, `source=<source-id>`, `language`                                                                                                                                      | none                              |
+| `@diff`           | `id`, `caption`                                                                                                                                                             | a following ` ```diff ` fence     |
+| `@image`          | `id`, `path`, `alt`, `caption`                                                                                                                                              | none                              |
+| `@chart`          | `type` (`bar`, `line`, `pie`), `data` (`.csv` or `.json`), `x`, `y`, `unit`, `title`, `id`                                                                                  | none                              |
+| `@<diagram type>` | `id`, `title`, `changes`                                                                                                                                                    | compact rows above                |
+| `@diagram <type>` | `id`, `source`, `title`                                                                                                                                                     | none                              |
 
 Plain paragraphs, flat lists and Markdown tables need no directive. A table's first header cell labels the row column; comparison cells may end with `{good:Label}`, `{caution:Label}` or `{bad:Label}`, and row labels with `{#row-id}`. Mark only the cells that decide the comparison, usually one or two per row; a badge in every cell reads as noise.
 
-A plain fence (```` ```bash title="Run the tests" ````) is a literal snippet with a copy button. `@code` obtains a real excerpt from the source's Git commit and line range; it accepts no authored code text. `@image` embeds a contained local PNG, JPEG, GIF or WebP.
+A plain fence (` ```bash title="Run the tests" `) is a literal snippet with a copy button. `@code` obtains a real excerpt from the source's Git commit and line range; it accepts no authored code text. `@image` embeds a contained local PNG, JPEG, GIF or WebP.
 
 ## Inline links and sources
 

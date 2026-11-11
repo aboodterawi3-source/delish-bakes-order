@@ -18,7 +18,13 @@ geometry instead of HTML.
   "meta": { "title": "Checkout request", "evidence": "illustrative", "unit": "ms" },
   "spans": [
     { "id": "request", "name": "POST /checkout", "start": 0, "end": 1200 },
-    { "id": "auth", "name": "Authenticate caller", "start": 0, "duration": 100, "parent": "request" }
+    {
+      "id": "auth",
+      "name": "Authenticate caller",
+      "start": 0,
+      "duration": 100,
+      "parent": "request"
+    }
   ]
 }
 ```
@@ -29,12 +35,12 @@ origin. `parent`, `status` (`ok`, `error`, `cancelled`, `incomplete`),
 `service`, `detail`, and `sources` are optional. `meta.evidence`
 (`measured` / `illustrative`) is required and drawn as a badge.
 
-| Code | Refused input |
-| --- | --- |
+| Code                       | Refused input                                                                                                                             |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | `waterfall/invalid-timing` | end before start, end and duration that disagree, or no end/duration on a span that is not `incomplete` (negative values fail the schema) |
-| `waterfall/missing-parent` | `parent` names an undeclared span |
-| `waterfall/cycle` | parent links that loop |
-| `waterfall/duplicate-id` | an id declared twice |
+| `waterfall/missing-parent` | `parent` names an undeclared span                                                                                                         |
+| `waterfall/cycle`          | parent links that loop                                                                                                                    |
+| `waterfall/duplicate-id`   | an id declared twice                                                                                                                      |
 
 An `incomplete` span without an end is drawn to the last recorded instant of
 the trace with a dashed body and an open edge, labelled `incomplete, ≥ X` — a

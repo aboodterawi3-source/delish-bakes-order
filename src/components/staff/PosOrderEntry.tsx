@@ -669,40 +669,40 @@ export function PosOrderEntry() {
   };
 
   return (
-    <div dir="rtl" className="min-h-screen w-full select-none font-sans">
+    <div dir="rtl" className="min-h-screen w-full font-sans select-none">
       {/* 1. MASTER WORKSTATION HEADER & MODE SWITCHER */}
-      <div className="mb-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 rounded-3xl border border-border/80 bg-card p-3 sm:p-4 shadow-xs">
+      <div className="mb-4 flex flex-col items-stretch justify-between gap-3 rounded-3xl border border-border/80 bg-card p-3 shadow-xs sm:flex-row sm:items-center sm:p-4">
         <div className="flex items-center gap-3">
-          <div className="grid h-12 w-12 place-items-center rounded-2xl bg-amber-500 text-white shadow-sm shrink-0">
+          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-amber-500 text-white shadow-sm">
             <Cake className="h-6 w-6" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="font-black text-lg text-foreground leading-none">
+              <h2 className="text-lg leading-none font-black text-foreground">
                 محطة المبيعات والكاشير المتكاملة
               </h2>
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-black text-emerald-600 border border-emerald-500/20">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-black text-emerald-600">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
                 الكاشير جاهز
               </span>
             </div>
-            <p className="text-xs font-bold text-muted-foreground mt-1">
+            <p className="mt-1 text-xs font-bold text-muted-foreground">
               إدخال فوري للطلبات • تفصيل وحجز الكيك • حساب أجور التوصيل تلقائياً
             </p>
           </div>
         </div>
 
         {/* 3 Dedicated Operational Modes */}
-        <div className="flex rounded-2xl bg-secondary/60 p-1.5 border border-border/70 self-center sm:self-auto w-full sm:w-auto justify-between sm:justify-start">
+        <div className="flex w-full justify-between self-center rounded-2xl border border-border/70 bg-secondary/60 p-1.5 sm:w-auto sm:justify-start sm:self-auto">
           <button
             type="button"
             onClick={() => {
               setStationMode("quick");
               setMethod("pickup");
             }}
-            className={`min-h-[44px] flex-1 sm:flex-initial px-4 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            className={`flex min-h-[44px] flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-xl px-4 text-xs font-black transition-all sm:flex-initial ${
               stationMode === "quick"
-                ? "bg-card text-foreground shadow-sm border border-border/80 scale-[1.02]"
+                ? "scale-[1.02] border border-border/80 bg-card text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -715,9 +715,9 @@ export function PosOrderEntry() {
             onClick={() => {
               setStationMode("preorder");
             }}
-            className={`min-h-[44px] flex-1 sm:flex-initial px-4 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            className={`flex min-h-[44px] flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-xl px-4 text-xs font-black transition-all sm:flex-initial ${
               stationMode === "preorder"
-                ? "bg-card text-primary shadow-sm border border-border/80 scale-[1.02]"
+                ? "scale-[1.02] border border-border/80 bg-card text-primary shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -731,9 +731,9 @@ export function PosOrderEntry() {
               setStationMode("delivery");
               setMethod("delivery");
             }}
-            className={`min-h-[44px] flex-1 sm:flex-initial px-4 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            className={`flex min-h-[44px] flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-xl px-4 text-xs font-black transition-all sm:flex-initial ${
               stationMode === "delivery"
-                ? "bg-card text-blue-600 shadow-sm border border-border/80 scale-[1.02]"
+                ? "scale-[1.02] border border-border/80 bg-card text-blue-600 shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -746,10 +746,10 @@ export function PosOrderEntry() {
       {/* 2. MAIN 2-COLUMN SPLIT WORKSPACE */}
       <div className="grid gap-4 lg:grid-cols-12">
         {/* RIGHT COLUMN (65%): Catalog & Interactive Cake Studio */}
-        <div className="min-w-0 lg:col-span-7 xl:col-span-8 space-y-4">
+        <div className="min-w-0 space-y-4 lg:col-span-7 xl:col-span-8">
           {/* If Station Mode is "preorder" or "delivery": Show Integrated Pre-order Studio Panel */}
           {stationMode !== "quick" && (
-            <div className="rounded-3xl border-2 border-amber-500/30 bg-card p-4 sm:p-5 shadow-sm space-y-4 animate-in fade-in duration-150">
+            <div className="animate-in space-y-4 rounded-3xl border-2 border-amber-500/30 bg-card p-4 shadow-sm duration-150 fade-in sm:p-5">
               <div className="flex items-center justify-between border-b border-border/70 pb-3">
                 <div className="flex items-center gap-2.5">
                   <div className="grid h-9 w-9 place-items-center rounded-xl bg-amber-500/10 text-amber-600">
@@ -760,7 +760,7 @@ export function PosOrderEntry() {
                     )}
                   </div>
                   <div>
-                    <h3 className="font-black text-sm text-foreground">
+                    <h3 className="text-sm font-black text-foreground">
                       {stationMode === "delivery"
                         ? "بيانات عنوان وموعد التوصيل"
                         : "استوديو تفصيل الكيك والحجز المسبق"}
@@ -772,7 +772,7 @@ export function PosOrderEntry() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-black text-amber-600 bg-amber-500/10 px-2.5 py-1 rounded-lg">
+                  <span className="rounded-lg bg-amber-500/10 px-2.5 py-1 text-[11px] font-black text-amber-600">
                     {effectiveMethod === "delivery" ? "توصيل منازل 🛵" : "استلام من المحل 🏪"}
                   </span>
                 </div>
@@ -781,7 +781,7 @@ export function PosOrderEntry() {
               {/* Grid 1: Customer Identity & Auto-Lookup */}
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="relative">
-                  <label className="block text-xs font-bold text-foreground mb-1">
+                  <label className="mb-1 block text-xs font-bold text-foreground">
                     رقم هاتف العميل *
                   </label>
                   <div className="relative">
@@ -794,7 +794,7 @@ export function PosOrderEntry() {
                       placeholder="079XXXXXXX"
                       className="min-h-[44px] w-full rounded-xl border border-input bg-background ps-3 pe-8 text-sm font-black text-foreground outline-none focus:border-primary"
                     />
-                    <Phone className="absolute end-2.5 top-3.5 h-4 w-4 text-muted-foreground pointer-events-none" />
+                    <Phone className="pointer-events-none absolute end-2.5 top-3.5 h-4 w-4 text-muted-foreground" />
                   </div>
 
                   {customerSuggestions.length > 0 && (
@@ -807,10 +807,10 @@ export function PosOrderEntry() {
                           key={sug.phone}
                           type="button"
                           onClick={() => selectCustomerSuggestion(sug)}
-                          className="flex w-full items-center justify-between rounded-xl px-2.5 py-2 text-xs hover:bg-secondary cursor-pointer"
+                          className="flex w-full cursor-pointer items-center justify-between rounded-xl px-2.5 py-2 text-xs hover:bg-secondary"
                         >
                           <span className="font-black text-foreground">{sug.name}</span>
-                          <span dir="ltr" className="text-muted-foreground font-bold">
+                          <span dir="ltr" className="font-bold text-muted-foreground">
                             {sug.phone}
                           </span>
                         </button>
@@ -820,7 +820,7 @@ export function PosOrderEntry() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-foreground mb-1">
+                  <label className="mb-1 block text-xs font-bold text-foreground">
                     اسم العميل *
                   </label>
                   <input
@@ -834,8 +834,8 @@ export function PosOrderEntry() {
               </div>
 
               {/* Gift Toggle Box */}
-              <div className="rounded-2xl bg-secondary/40 p-3 border border-border/80">
-                <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-black text-foreground">
+              <div className="rounded-2xl border border-border/80 bg-secondary/40 p-3">
+                <label className="flex cursor-pointer items-center gap-2 text-xs font-black text-foreground select-none">
                   <input
                     type="checkbox"
                     checked={isGift}
@@ -846,9 +846,9 @@ export function PosOrderEntry() {
                 </label>
 
                 {isGift && (
-                  <div className="mt-2.5 grid gap-2.5 sm:grid-cols-3 rounded-xl bg-card p-3 border border-border animate-in fade-in duration-150">
+                  <div className="mt-2.5 grid animate-in gap-2.5 rounded-xl border border-border bg-card p-3 duration-150 fade-in sm:grid-cols-3">
                     <div>
-                      <label className="block text-[11px] font-bold text-muted-foreground mb-1">
+                      <label className="mb-1 block text-[11px] font-bold text-muted-foreground">
                         اسم المستلم
                       </label>
                       <input
@@ -860,7 +860,7 @@ export function PosOrderEntry() {
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-muted-foreground mb-1">
+                      <label className="mb-1 block text-[11px] font-bold text-muted-foreground">
                         هاتف المستلم
                       </label>
                       <input
@@ -873,7 +873,7 @@ export function PosOrderEntry() {
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-muted-foreground mb-1">
+                      <label className="mb-1 block text-[11px] font-bold text-muted-foreground">
                         هاتف المشتري
                       </label>
                       <input
@@ -891,9 +891,9 @@ export function PosOrderEntry() {
 
               {/* Delivery Zone & Address (If Delivery Mode) */}
               {(stationMode === "delivery" || method === "delivery") && (
-                <div className="grid gap-3 sm:grid-cols-2 rounded-2xl bg-blue-500/5 p-3.5 border border-blue-500/20">
+                <div className="grid gap-3 rounded-2xl border border-blue-500/20 bg-blue-500/5 p-3.5 sm:grid-cols-2">
                   <div>
-                    <label className="block text-xs font-bold text-foreground mb-1">
+                    <label className="mb-1 block text-xs font-bold text-foreground">
                       منطقة التوصيل *
                     </label>
                     <DeliveryZoneSelect
@@ -906,7 +906,7 @@ export function PosOrderEntry() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-foreground mb-1">
+                    <label className="mb-1 block text-xs font-bold text-foreground">
                       العنوان التفصيلي
                     </label>
                     <input
@@ -921,9 +921,9 @@ export function PosOrderEntry() {
               )}
 
               {/* Schedule Dates & Time Slot */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
                 <div>
-                  <label className="block text-xs font-bold text-foreground mb-1">
+                  <label className="mb-1 block text-xs font-bold text-foreground">
                     تاريخ التسليم
                   </label>
                   <input
@@ -934,7 +934,7 @@ export function PosOrderEntry() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-foreground mb-1">
+                  <label className="mb-1 block text-xs font-bold text-foreground">
                     وقت التسليم
                   </label>
                   <input
@@ -945,7 +945,7 @@ export function PosOrderEntry() {
                   />
                 </div>
                 <div className="col-span-2 sm:col-span-1">
-                  <label className="block text-xs font-bold text-foreground mb-1">
+                  <label className="mb-1 block text-xs font-bold text-foreground">
                     اسم/مناسبة الطلب
                   </label>
                   <input
@@ -960,7 +960,7 @@ export function PosOrderEntry() {
 
               {/* Cake Inscription / Card Writing Field */}
               <div>
-                <label className="block text-xs font-bold text-foreground mb-1">
+                <label className="mb-1 block text-xs font-bold text-foreground">
                   ✍️ الكتابة المطلوبة على الكيكة / الكرت
                 </label>
                 <input
@@ -975,7 +975,7 @@ export function PosOrderEntry() {
               {/* Card Note, Design Image URL & Notes */}
               <div className="grid gap-2.5 sm:grid-cols-2">
                 <div>
-                  <label className="block text-xs font-bold text-foreground mb-1">
+                  <label className="mb-1 block text-xs font-bold text-foreground">
                     💌 عبارة كرت الإهداء
                   </label>
                   <input
@@ -987,7 +987,7 @@ export function PosOrderEntry() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-foreground mb-1">
+                  <label className="mb-1 block text-xs font-bold text-foreground">
                     🖼️ رابط صورة التصميم
                   </label>
                   <input
@@ -1002,7 +1002,7 @@ export function PosOrderEntry() {
 
               <div className="grid gap-2.5 sm:grid-cols-2">
                 <div>
-                  <label className="block text-xs font-bold text-foreground mb-1">
+                  <label className="mb-1 block text-xs font-bold text-foreground">
                     💬 ملاحظات العميل
                   </label>
                   <input
@@ -1014,7 +1014,7 @@ export function PosOrderEntry() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-foreground mb-1">
+                  <label className="mb-1 block text-xs font-bold text-foreground">
                     🔒 ملاحظات الفريق السرية
                   </label>
                   <input
@@ -1030,8 +1030,8 @@ export function PosOrderEntry() {
           )}
 
           {/* CATALOG TOUCH SEARCH & CATEGORY BAR */}
-          <div className="rounded-3xl border border-border/80 bg-card p-3.5 shadow-xs space-y-3">
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+          <div className="space-y-3 rounded-3xl border border-border/80 bg-card p-3.5 shadow-xs">
+            <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
               <div className="relative flex-1">
                 <input
                   type="search"
@@ -1039,14 +1039,14 @@ export function PosOrderEntry() {
                   value={catalogQuery}
                   onChange={(e) => setCatalogQuery(e.target.value)}
                   placeholder="ابحث عن كيكة، صنف، نكهة، أو قسم..."
-                  className="min-h-[46px] w-full rounded-2xl border border-input bg-background pe-10 ps-3.5 text-sm font-bold text-foreground outline-none focus:border-primary"
+                  className="min-h-[46px] w-full rounded-2xl border border-input bg-background ps-3.5 pe-10 text-sm font-bold text-foreground outline-none focus:border-primary"
                 />
-                <Search className="absolute end-3.5 top-3.5 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <Search className="pointer-events-none absolute end-3.5 top-3.5 h-4 w-4 text-muted-foreground" />
                 {catalogQuery && (
                   <button
                     type="button"
                     onClick={() => setCatalogQuery("")}
-                    className="absolute end-10 top-3 text-muted-foreground hover:text-foreground p-1 cursor-pointer"
+                    className="absolute end-10 top-3 cursor-pointer p-1 text-muted-foreground hover:text-foreground"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -1057,7 +1057,7 @@ export function PosOrderEntry() {
               <button
                 type="button"
                 onClick={() => setShowQuickCustomItem((v) => !v)}
-                className="min-h-[46px] px-4 rounded-2xl border border-primary/30 bg-primary/10 text-primary text-xs font-black hover:bg-primary/20 transition flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+                className="flex min-h-[46px] shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-2xl border border-primary/30 bg-primary/10 px-4 text-xs font-black text-primary transition hover:bg-primary/20"
               >
                 <Plus className="h-4 w-4" />
                 <span>+ بند مخصص سريع</span>
@@ -1066,7 +1066,7 @@ export function PosOrderEntry() {
 
             {/* Quick Custom Item Drawer */}
             {showQuickCustomItem && (
-              <div className="rounded-2xl border border-primary/30 bg-primary/5 p-3 animate-in fade-in duration-150 space-y-2">
+              <div className="animate-in space-y-2 rounded-2xl border border-primary/30 bg-primary/5 p-3 duration-150 fade-in">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black text-primary">
                     إضافة بند مخصص مباشر للسلة (كيك تفصيل، دفعة خاصة، رسوم إضافية):
@@ -1079,13 +1079,13 @@ export function PosOrderEntry() {
                     <X className="h-4 w-4" />
                   </button>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-12">
                   <input
                     type="text"
                     value={customItemName}
                     onChange={(e) => setCustomItemName(e.target.value)}
                     placeholder="اسم الصنف أو الكيك المخصص..."
-                    className="sm:col-span-7 min-h-[42px] rounded-xl border border-input bg-card px-3 text-xs font-bold text-foreground outline-none focus:border-primary"
+                    className="min-h-[42px] rounded-xl border border-input bg-card px-3 text-xs font-bold text-foreground outline-none focus:border-primary sm:col-span-7"
                   />
                   <input
                     type="number"
@@ -1094,12 +1094,12 @@ export function PosOrderEntry() {
                     value={customItemPrice}
                     onChange={(e) => setCustomItemPrice(e.target.value)}
                     placeholder="السعر (د.أ)..."
-                    className="sm:col-span-3 min-h-[42px] rounded-xl border border-input bg-card px-3 text-xs font-bold text-foreground outline-none focus:border-primary"
+                    className="min-h-[42px] rounded-xl border border-input bg-card px-3 text-xs font-bold text-foreground outline-none focus:border-primary sm:col-span-3"
                   />
                   <button
                     type="button"
                     onClick={addCustomItemToCart}
-                    className="sm:col-span-2 min-h-[42px] rounded-xl bg-primary text-primary-foreground text-xs font-black shadow-xs hover:opacity-90 cursor-pointer"
+                    className="min-h-[42px] cursor-pointer rounded-xl bg-primary text-xs font-black text-primary-foreground shadow-xs hover:opacity-90 sm:col-span-2"
                   >
                     إضافة للسلة ✓
                   </button>
@@ -1121,9 +1121,9 @@ export function PosOrderEntry() {
                     role="tab"
                     aria-selected={isActive}
                     onClick={() => setSelectedCategoryTab(cat.id)}
-                    className={`min-h-[42px] px-4 rounded-xl text-xs font-black shrink-0 whitespace-nowrap transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    className={`flex min-h-[42px] shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-xl px-4 text-xs font-black whitespace-nowrap transition-all ${
                       isActive
-                        ? "bg-primary text-primary-foreground shadow-sm scale-102"
+                        ? "scale-102 bg-primary text-primary-foreground shadow-sm"
                         : "border border-border/80 bg-background text-foreground hover:bg-secondary/70"
                     }`}
                   >
@@ -1148,8 +1148,8 @@ export function PosOrderEntry() {
           ) : filteredProducts.length === 0 ? (
             <div className="grid h-52 place-items-center rounded-3xl border border-border bg-card p-6 text-center">
               <div>
-                <Search className="mx-auto h-8 w-8 text-muted-foreground/40 mb-2" />
-                <p className="font-black text-sm text-muted-foreground">
+                <Search className="mx-auto mb-2 h-8 w-8 text-muted-foreground/40" />
+                <p className="text-sm font-black text-muted-foreground">
                   لا توجد أصناف مطابقة للبحث أو القسم المختار
                 </p>
                 <button
@@ -1158,14 +1158,14 @@ export function PosOrderEntry() {
                     setCatalogQuery("");
                     setSelectedCategoryTab("all");
                   }}
-                  className="mt-2 text-xs text-primary font-bold hover:underline cursor-pointer"
+                  className="mt-2 cursor-pointer text-xs font-bold text-primary hover:underline"
                 >
                   إعادة ضبط الفلتر
                 </button>
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
               {filteredProducts.map((prod) => {
                 const qty = getItemQtyInCart(prod.id);
                 return (
@@ -1173,43 +1173,43 @@ export function PosOrderEntry() {
                     key={prod.id}
                     type="button"
                     onClick={() => addToCart(prod)}
-                    className={`group relative min-h-[120px] rounded-3xl border p-3 text-start transition-all duration-150 flex flex-col justify-between cursor-pointer active:scale-96 ${
+                    className={`group relative flex min-h-[120px] cursor-pointer flex-col justify-between rounded-3xl border p-3 text-start transition-all duration-150 active:scale-96 ${
                       qty > 0
                         ? "border-primary bg-primary/5 shadow-xs"
-                        : "border-border/80 bg-card hover:border-primary/40 hover:bg-secondary/20 shadow-2xs"
+                        : "border-border/80 bg-card shadow-2xs hover:border-primary/40 hover:bg-secondary/20"
                     }`}
                   >
                     {qty > 0 && (
-                      <span className="absolute -top-2 -left-2 grid h-7 w-7 place-items-center rounded-full bg-primary text-xs font-black text-primary-foreground shadow-md animate-in zoom-in-50">
+                      <span className="absolute -top-2 -left-2 grid h-7 w-7 animate-in place-items-center rounded-full bg-primary text-xs font-black text-primary-foreground shadow-md zoom-in-50">
                         {qty}
                       </span>
                     )}
 
                     <div className="space-y-1">
                       <div className="flex items-start justify-between gap-1">
-                        <h3 className="font-black text-xs text-foreground line-clamp-2 leading-tight">
+                        <h3 className="line-clamp-2 text-xs leading-tight font-black text-foreground">
                           {prod.name_ar}
                         </h3>
                         {prod.image_url ? (
                           <img
                             src={prod.image_url}
                             alt={prod.name_ar}
-                            className="h-8 w-8 rounded-xl object-cover border border-border/60 shrink-0"
+                            className="h-8 w-8 shrink-0 rounded-xl border border-border/60 object-cover"
                           />
                         ) : (
-                          <span className="text-base shrink-0">🍰</span>
+                          <span className="shrink-0 text-base">🍰</span>
                         )}
                       </div>
                       {prod.filling_ar && (
-                        <p className="text-[10px] text-muted-foreground truncate">
+                        <p className="truncate text-[10px] text-muted-foreground">
                           حشوة: {prod.filling_ar}
                         </p>
                       )}
                     </div>
 
-                    <div className="mt-2 flex items-center justify-between pt-1.5 border-t border-border/40">
-                      <span className="font-black text-sm text-primary">{jd(prod.price || 0)}</span>
-                      <span className="grid h-8 w-8 place-items-center rounded-xl bg-secondary/80 text-foreground group-hover:bg-primary group-hover:text-primary-foreground transition-colors shadow-2xs">
+                    <div className="mt-2 flex items-center justify-between border-t border-border/40 pt-1.5">
+                      <span className="text-sm font-black text-primary">{jd(prod.price || 0)}</span>
+                      <span className="grid h-8 w-8 place-items-center rounded-xl bg-secondary/80 text-foreground shadow-2xs transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
                         <Plus className="h-4 w-4" />
                       </span>
                     </div>
@@ -1221,17 +1221,17 @@ export function PosOrderEntry() {
         </div>
 
         {/* LEFT COLUMN (35%): Sticky Cashier Checkout & Billing Station */}
-        <div className="hidden lg:block lg:col-span-5 xl:col-span-4">
-          <div className="sticky top-16 rounded-3xl border border-border/80 bg-card shadow-sm overflow-hidden flex flex-col justify-between min-h-[75vh]">
+        <div className="hidden lg:col-span-5 lg:block xl:col-span-4">
+          <div className="sticky top-16 flex min-h-[75vh] flex-col justify-between overflow-hidden rounded-3xl border border-border/80 bg-card shadow-sm">
             {/* Cashier Cart Header */}
-            <div className="border-b border-border/80 p-3.5 bg-card/60">
+            <div className="border-b border-border/80 bg-card/60 p-3.5">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <div className="grid h-8 w-8 place-items-center rounded-xl bg-primary/10 text-primary">
                     <ShoppingCart className="h-4 w-4" />
                   </div>
                   <div>
-                    <span className="font-black text-sm text-foreground flex items-center gap-1.5 leading-none">
+                    <span className="flex items-center gap-1.5 text-sm leading-none font-black text-foreground">
                       سلة الطلب والمحاسبة
                     </span>
                     <span className="text-[11px] font-bold text-muted-foreground">
@@ -1243,7 +1243,7 @@ export function PosOrderEntry() {
                   <button
                     type="button"
                     onClick={clearCart}
-                    className="text-xs text-rose-600 hover:text-rose-700 font-black inline-flex items-center gap-1 cursor-pointer py-1 px-2.5 rounded-lg hover:bg-rose-50 transition-colors"
+                    className="inline-flex cursor-pointer items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-black text-rose-600 transition-colors hover:bg-rose-50 hover:text-rose-700"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                     تفريغ
@@ -1252,7 +1252,7 @@ export function PosOrderEntry() {
               </div>
 
               {/* Mode Banner Indicator */}
-              <div className="mt-2.5 flex items-center justify-between rounded-xl bg-secondary/60 p-2 text-xs border border-border/60">
+              <div className="mt-2.5 flex items-center justify-between rounded-xl border border-border/60 bg-secondary/60 p-2 text-xs">
                 <span className="font-bold text-foreground">
                   الوضع الحالي:{" "}
                   <strong>
@@ -1263,22 +1263,22 @@ export function PosOrderEntry() {
                         : "حجز كيك مسبق 🎂"}
                   </strong>
                 </span>
-                <span className="text-[10px] text-muted-foreground font-bold">
+                <span className="text-[10px] font-bold text-muted-foreground">
                   {effectiveMethod === "delivery" ? area || "عمان" : "استلام بالمحل"}
                 </span>
               </div>
             </div>
 
             {/* Cart Line Items */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-2 max-h-[35vh]">
+            <div className="max-h-[35vh] flex-1 space-y-2 overflow-y-auto p-3">
               {cart.length === 0 ? (
-                <div className="grid h-40 place-items-center text-center p-4">
+                <div className="grid h-40 place-items-center p-4 text-center">
                   <div>
-                    <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-secondary/80 text-muted-foreground/50 mb-2">
+                    <div className="mx-auto mb-2 grid h-12 w-12 place-items-center rounded-2xl bg-secondary/80 text-muted-foreground/50">
                       <ShoppingBag className="h-6 w-6" />
                     </div>
                     <p className="text-xs font-black text-foreground">السلة فارغة حالياً</p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">
                       المس أي صنف من القائمة لإضافته بنقرة واحدة
                     </p>
                   </div>
@@ -1287,42 +1287,42 @@ export function PosOrderEntry() {
                 cart.map((item) => (
                   <div
                     key={item.id}
-                    className="flex items-center justify-between gap-2 rounded-2xl border border-border/80 bg-card p-2.5 shadow-2xs hover:border-primary/40 transition-all"
+                    className="flex items-center justify-between gap-2 rounded-2xl border border-border/80 bg-card p-2.5 shadow-2xs transition-all hover:border-primary/40"
                   >
                     <div className="min-w-0 flex-1">
-                      <h4 className="font-black text-xs text-foreground truncate leading-tight">
+                      <h4 className="truncate text-xs leading-tight font-black text-foreground">
                         {item.name}
                       </h4>
-                      <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-0.5">
+                      <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
                         <span className="font-bold text-primary">{jd(item.unitPrice)}</span>
                         <span>
                           • الإجمالي: <strong>{jd(item.unitPrice * item.quantity)}</strong>
                         </span>
                       </div>
                       {item.options.length > 0 && (
-                        <p className="text-[10px] text-muted-foreground/80 truncate mt-0.5">
+                        <p className="mt-0.5 truncate text-[10px] text-muted-foreground/80">
                           {item.options.join(" • ")}
                         </p>
                       )}
                     </div>
 
-                    <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="flex shrink-0 items-center gap-1.5">
                       <button
                         type="button"
                         onClick={() => updateCartItemQuantity(item.id, -1)}
                         aria-label="إنقاص"
-                        className="grid h-9 w-9 place-items-center rounded-xl border border-border bg-secondary/60 text-foreground hover:bg-secondary active:scale-90 transition cursor-pointer"
+                        className="grid h-9 w-9 cursor-pointer place-items-center rounded-xl border border-border bg-secondary/60 text-foreground transition hover:bg-secondary active:scale-90"
                       >
                         <Minus className="h-3.5 w-3.5" />
                       </button>
-                      <span className="w-6 text-center font-black text-sm text-foreground">
+                      <span className="w-6 text-center text-sm font-black text-foreground">
                         {item.quantity}
                       </span>
                       <button
                         type="button"
                         onClick={() => updateCartItemQuantity(item.id, 1)}
                         aria-label="زيادة"
-                        className="grid h-9 w-9 place-items-center rounded-xl bg-primary/10 text-primary hover:bg-primary/20 active:scale-90 transition cursor-pointer font-black"
+                        className="grid h-9 w-9 cursor-pointer place-items-center rounded-xl bg-primary/10 font-black text-primary transition hover:bg-primary/20 active:scale-90"
                       >
                         <Plus className="h-3.5 w-3.5" />
                       </button>
@@ -1330,7 +1330,7 @@ export function PosOrderEntry() {
                         type="button"
                         onClick={() => removeCartItem(item.id)}
                         aria-label="حذف"
-                        className="grid h-9 w-8 place-items-center rounded-xl text-rose-500 hover:bg-rose-50 active:scale-90 transition cursor-pointer"
+                        className="grid h-9 w-8 cursor-pointer place-items-center rounded-xl text-rose-500 transition hover:bg-rose-50 active:scale-90"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -1341,12 +1341,12 @@ export function PosOrderEntry() {
             </div>
 
             {/* Financials & Billing Terminal */}
-            <div className="border-t border-border/80 bg-card p-3.5 space-y-3">
+            <div className="space-y-3 border-t border-border/80 bg-card p-3.5">
               {/* Discount & Deposit Controls */}
-              <div className="rounded-2xl bg-secondary/40 p-2.5 border border-border/80 space-y-2">
+              <div className="space-y-2 rounded-2xl border border-border/80 bg-secondary/40 p-2.5">
                 {/* Discount Pills */}
                 <div className="flex items-center justify-between gap-1">
-                  <span className="text-[11px] font-bold text-muted-foreground shrink-0 flex items-center gap-1">
+                  <span className="flex shrink-0 items-center gap-1 text-[11px] font-bold text-muted-foreground">
                     <Percent className="h-3 w-3 text-primary" />
                     الخصم:
                   </span>
@@ -1356,10 +1356,10 @@ export function PosOrderEntry() {
                         key={pct}
                         type="button"
                         onClick={() => setDiscountPercent(pct)}
-                        className={`min-h-[28px] px-2 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                        className={`min-h-[28px] cursor-pointer rounded-lg px-2 text-[11px] font-bold transition-all ${
                           discountPercent === pct
-                            ? "bg-primary text-primary-foreground shadow-2xs font-black"
-                            : "bg-card border border-border text-foreground hover:bg-secondary"
+                            ? "bg-primary font-black text-primary-foreground shadow-2xs"
+                            : "border border-border bg-card text-foreground hover:bg-secondary"
                         }`}
                       >
                         {pct}%
@@ -1378,8 +1378,8 @@ export function PosOrderEntry() {
                 </div>
 
                 {/* Deposit / Paid Amount */}
-                <div className="flex items-center justify-between pt-1.5 border-t border-border/50">
-                  <span className="text-[11px] font-bold text-muted-foreground flex items-center gap-1">
+                <div className="flex items-center justify-between border-t border-border/50 pt-1.5">
+                  <span className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground">
                     <Coins className="h-3 w-3 text-amber-500" />
                     المدفوع / العربون:
                   </span>
@@ -1393,37 +1393,37 @@ export function PosOrderEntry() {
                       placeholder="0"
                       className="h-7 w-20 rounded-lg border border-input bg-card px-2 text-start text-xs font-black text-foreground"
                     />
-                    <span className="text-[11px] text-muted-foreground font-bold">د.أ</span>
+                    <span className="text-[11px] font-bold text-muted-foreground">د.أ</span>
                   </div>
                 </div>
 
                 {/* Quick Bills Shortcuts */}
-                <div className="flex items-center justify-end gap-1 pt-1 border-t border-border/40">
+                <div className="flex items-center justify-end gap-1 border-t border-border/40 pt-1">
                   <button
                     type="button"
                     onClick={() => handleQuickCash(grandTotal)}
-                    className="text-[10px] font-black px-2 py-0.5 rounded-md bg-card border border-border hover:bg-primary/10 hover:text-primary transition-colors cursor-pointer"
+                    className="cursor-pointer rounded-md border border-border bg-card px-2 py-0.5 text-[10px] font-black transition-colors hover:bg-primary/10 hover:text-primary"
                   >
                     مطابق ({jd(grandTotal)})
                   </button>
                   <button
                     type="button"
                     onClick={() => handleQuickCash(10)}
-                    className="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-card border border-border hover:bg-secondary cursor-pointer"
+                    className="cursor-pointer rounded-md border border-border bg-card px-1.5 py-0.5 text-[10px] font-black hover:bg-secondary"
                   >
                     10 د.أ
                   </button>
                   <button
                     type="button"
                     onClick={() => handleQuickCash(20)}
-                    className="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-card border border-border hover:bg-secondary cursor-pointer"
+                    className="cursor-pointer rounded-md border border-border bg-card px-1.5 py-0.5 text-[10px] font-black hover:bg-secondary"
                   >
                     20 د.أ
                   </button>
                   <button
                     type="button"
                     onClick={() => handleQuickCash(50)}
-                    className="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-card border border-border hover:bg-secondary cursor-pointer"
+                    className="cursor-pointer rounded-md border border-border bg-card px-1.5 py-0.5 text-[10px] font-black hover:bg-secondary"
                   >
                     50 د.أ
                   </button>
@@ -1437,23 +1437,23 @@ export function PosOrderEntry() {
                   <span className="font-bold text-foreground">{jd(subtotal)}</span>
                 </div>
                 {deliveryFee > 0 && (
-                  <div className="flex justify-between text-blue-600 font-bold">
+                  <div className="flex justify-between font-bold text-blue-600">
                     <span>أجور التوصيل:</span>
                     <span>+{jd(deliveryFee)}</span>
                   </div>
                 )}
                 {discountAmount > 0 && (
-                  <div className="flex justify-between text-emerald-600 font-bold">
+                  <div className="flex justify-between font-bold text-emerald-600">
                     <span>الخصم ({discountPercent}%):</span>
                     <span>- {jd(discountAmount)}</span>
                   </div>
                 )}
                 <div className="flex items-center justify-between border-t border-border/80 pt-1.5 text-base font-black text-foreground">
                   <span>الإجمالي النهائي:</span>
-                  <span className="text-primary text-xl font-black">{jd(grandTotal)}</span>
+                  <span className="text-xl font-black text-primary">{jd(grandTotal)}</span>
                 </div>
                 {depositVal > 0 && depositVal < grandTotal && (
-                  <div className="flex justify-between text-xs text-rose-600 font-black pt-0.5">
+                  <div className="flex justify-between pt-0.5 text-xs font-black text-rose-600">
                     <span>المتبقي عند الاستلام:</span>
                     <span>{jd(remainingBalance)}</span>
                   </div>
@@ -1465,10 +1465,10 @@ export function PosOrderEntry() {
                 <button
                   type="button"
                   onClick={() => setPaymentMethod("cash")}
-                  className={`min-h-[46px] rounded-xl font-black text-xs transition-all flex items-center justify-center gap-2 cursor-pointer border ${
+                  className={`flex min-h-[46px] cursor-pointer items-center justify-center gap-2 rounded-xl border text-xs font-black transition-all ${
                     paymentMethod === "cash"
-                      ? "bg-emerald-600 text-white border-emerald-700 shadow-sm"
-                      : "bg-background border-border text-foreground hover:bg-secondary/60"
+                      ? "border-emerald-700 bg-emerald-600 text-white shadow-sm"
+                      : "border-border bg-background text-foreground hover:bg-secondary/60"
                   }`}
                 >
                   <Store className="h-4 w-4" />
@@ -1481,10 +1481,10 @@ export function PosOrderEntry() {
                     setPaymentMethod("cliq");
                     setDepositPaid(String(grandTotal));
                   }}
-                  className={`min-h-[46px] rounded-xl font-black text-xs transition-all flex items-center justify-center gap-2 cursor-pointer border ${
+                  className={`flex min-h-[46px] cursor-pointer items-center justify-center gap-2 rounded-xl border text-xs font-black transition-all ${
                     paymentMethod === "cliq" || paymentMethod === "visa"
-                      ? "bg-blue-600 text-white border-blue-700 shadow-sm"
-                      : "bg-background border-border text-foreground hover:bg-secondary/60"
+                      ? "border-blue-700 bg-blue-600 text-white shadow-sm"
+                      : "border-border bg-background text-foreground hover:bg-secondary/60"
                   }`}
                 >
                   <CreditCard className="h-4 w-4" />
@@ -1501,7 +1501,7 @@ export function PosOrderEntry() {
                   type="button"
                   disabled={cart.length === 0 || createOrder.isPending}
                   onClick={() => handleSubmitOrder(true)}
-                  className="w-full min-h-[50px] rounded-2xl bg-primary text-primary-foreground font-black text-sm shadow-md hover:opacity-95 active:scale-98 transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-40"
+                  className="flex min-h-[50px] w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-primary text-sm font-black text-primary-foreground shadow-md transition hover:opacity-95 active:scale-98 disabled:opacity-40"
                 >
                   {createOrder.isPending ? (
                     <Loader2 className="h-5 w-5 animate-spin" />
@@ -1516,7 +1516,7 @@ export function PosOrderEntry() {
                     type="button"
                     disabled={cart.length === 0 || createOrder.isPending}
                     onClick={() => handleSubmitOrder(false)}
-                    className="flex-1 min-h-[46px] rounded-xl border border-border bg-card text-foreground font-bold text-xs hover:bg-secondary/60 active:scale-98 transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40"
+                    className="flex min-h-[46px] flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-border bg-card text-xs font-bold text-foreground transition hover:bg-secondary/60 active:scale-98 disabled:opacity-40"
                   >
                     <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                     تأكيد فقط
@@ -1526,7 +1526,7 @@ export function PosOrderEntry() {
                     disabled={cart.length === 0}
                     onClick={printKitchenSlipCurrent}
                     title="طباعة بون المطبخ"
-                    className="min-h-[46px] px-3.5 rounded-xl border border-border bg-card text-foreground font-bold text-xs hover:bg-secondary/60 active:scale-98 transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40"
+                    className="flex min-h-[46px] cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-3.5 text-xs font-bold text-foreground transition hover:bg-secondary/60 active:scale-98 disabled:opacity-40"
                   >
                     <FileText className="h-4 w-4 text-amber-600" />
                     بون مطبخ
@@ -1539,11 +1539,11 @@ export function PosOrderEntry() {
       </div>
 
       {/* 3. MOBILE BOTTOM STICKY BAR */}
-      <div className="lg:hidden fixed bottom-0 inset-x-0 z-30 border-t border-border bg-card/95 backdrop-blur-md p-3 shadow-2xl pb-safe">
+      <div className="pb-safe fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 p-3 shadow-2xl backdrop-blur-md lg:hidden">
         <button
           type="button"
           onClick={() => setShowMobileCheckout(true)}
-          className="w-full min-h-[52px] rounded-2xl bg-primary text-primary-foreground font-black text-sm shadow-lg flex items-center justify-between px-4 active:scale-98 transition cursor-pointer"
+          className="flex min-h-[52px] w-full cursor-pointer items-center justify-between rounded-2xl bg-primary px-4 text-sm font-black text-primary-foreground shadow-lg transition active:scale-98"
         >
           <div className="flex items-center gap-2">
             <ShoppingCart className="h-5 w-5" />
@@ -1559,24 +1559,24 @@ export function PosOrderEntry() {
 
       {/* 4. MOBILE SLIDE-UP CHECKOUT SHEET */}
       {showMobileCheckout && (
-        <div className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end bg-black/60 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex animate-in flex-col justify-end bg-black/60 duration-200 fade-in lg:hidden">
           <div className="fixed inset-0" onClick={() => setShowMobileCheckout(false)} />
-          <div className="relative z-10 max-h-[88vh] w-full rounded-t-3xl border-t border-border bg-card shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-250">
-            <div className="flex items-center justify-between p-3.5 border-b border-border">
+          <div className="relative z-10 flex max-h-[88vh] w-full animate-in flex-col overflow-hidden rounded-t-3xl border-t border-border bg-card shadow-2xl duration-250 slide-in-from-bottom">
+            <div className="flex items-center justify-between border-b border-border p-3.5">
               <div className="flex items-center gap-2">
                 <ShoppingCart className="h-5 w-5 text-primary" />
-                <span className="font-black text-sm text-foreground">سلة الطلب والدفع</span>
+                <span className="text-sm font-black text-foreground">سلة الطلب والدفع</span>
               </div>
               <button
                 type="button"
                 onClick={() => setShowMobileCheckout(false)}
-                className="grid h-10 w-10 place-items-center rounded-full border border-border text-foreground hover:bg-secondary cursor-pointer"
+                className="grid h-10 w-10 cursor-pointer place-items-center rounded-full border border-border text-foreground hover:bg-secondary"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-3 space-y-3">
+            <div className="flex-1 space-y-3 overflow-y-auto p-3">
               {/* Mobile cart list */}
               <div className="space-y-2">
                 {cart.map((item) => (
@@ -1585,7 +1585,7 @@ export function PosOrderEntry() {
                     className="flex items-center justify-between gap-2 rounded-2xl border border-border/80 bg-secondary/30 p-2.5"
                   >
                     <div className="min-w-0 flex-1">
-                      <h4 className="font-black text-xs text-foreground truncate">{item.name}</h4>
+                      <h4 className="truncate text-xs font-black text-foreground">{item.name}</h4>
                       <p className="text-[11px] font-bold text-primary">
                         {jd(item.unitPrice * item.quantity)}
                       </p>
@@ -1594,15 +1594,15 @@ export function PosOrderEntry() {
                       <button
                         type="button"
                         onClick={() => updateCartItemQuantity(item.id, -1)}
-                        className="h-8 w-8 grid place-items-center rounded-lg bg-card border border-border"
+                        className="grid h-8 w-8 place-items-center rounded-lg border border-border bg-card"
                       >
                         <Minus className="h-3.5 w-3.5" />
                       </button>
-                      <span className="w-5 text-center font-black text-xs">{item.quantity}</span>
+                      <span className="w-5 text-center text-xs font-black">{item.quantity}</span>
                       <button
                         type="button"
                         onClick={() => updateCartItemQuantity(item.id, 1)}
-                        className="h-8 w-8 grid place-items-center rounded-lg bg-primary/20 text-primary"
+                        className="grid h-8 w-8 place-items-center rounded-lg bg-primary/20 text-primary"
                       >
                         <Plus className="h-3.5 w-3.5" />
                       </button>
@@ -1612,18 +1612,18 @@ export function PosOrderEntry() {
               </div>
 
               {/* Financials in mobile sheet */}
-              <div className="rounded-2xl bg-secondary/40 p-3 space-y-2 border border-border/80 text-xs">
+              <div className="space-y-2 rounded-2xl border border-border/80 bg-secondary/40 p-3 text-xs">
                 <div className="flex justify-between">
                   <span>المجموع:</span>
                   <span className="font-bold">{jd(subtotal)}</span>
                 </div>
                 {deliveryFee > 0 && (
-                  <div className="flex justify-between text-blue-600 font-bold">
+                  <div className="flex justify-between font-bold text-blue-600">
                     <span>أجور التوصيل:</span>
                     <span>+{jd(deliveryFee)}</span>
                   </div>
                 )}
-                <div className="flex justify-between font-black text-base border-t border-border pt-2 text-foreground">
+                <div className="flex justify-between border-t border-border pt-2 text-base font-black text-foreground">
                   <span>الإجمالي:</span>
                   <span className="text-primary">{jd(grandTotal)}</span>
                 </div>
@@ -1634,7 +1634,7 @@ export function PosOrderEntry() {
                 type="button"
                 disabled={cart.length === 0 || createOrder.isPending}
                 onClick={() => handleSubmitOrder(true)}
-                className="w-full min-h-[50px] rounded-2xl bg-primary text-primary-foreground font-black text-sm shadow-md flex items-center justify-center gap-2"
+                className="flex min-h-[50px] w-full items-center justify-center gap-2 rounded-2xl bg-primary text-sm font-black text-primary-foreground shadow-md"
               >
                 <Printer className="h-5 w-5" />
                 <span>تأكيد وطباعة الفاتورة 🖨️</span>

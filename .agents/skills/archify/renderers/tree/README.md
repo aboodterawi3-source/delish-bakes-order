@@ -34,12 +34,12 @@ the first slice has no cross-branch relationships.
 The hierarchy is exactly what the author declared; nothing is attached or
 inferred.
 
-| Code | Refused input |
-| --- | --- |
-| `tree/missing-parent` | `parent` names an undeclared node |
-| `tree/root-count` | zero or more than one node without `parent` |
-| `tree/cycle` | a parent chain that loops; every node beneath the loop is unreachable, so this one diagnostic covers them |
-| `tree/duplicate-id` | an id declared twice |
+| Code                  | Refused input                                                                                             |
+| --------------------- | --------------------------------------------------------------------------------------------------------- |
+| `tree/missing-parent` | `parent` names an undeclared node                                                                         |
+| `tree/root-count`     | zero or more than one node without `parent`                                                               |
+| `tree/cycle`          | a parent chain that loops; every node beneath the loop is unreachable, so this one diagnostic covers them |
+| `tree/duplicate-id`   | an id declared twice                                                                                      |
 
 ## Layout
 

@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
-import crypto from 'node:crypto';
-import { constants as fsConstants } from 'node:fs';
-import fs from 'node:fs/promises';
-import os from 'node:os';
-import path from 'node:path';
-import { performance } from 'node:perf_hooks';
-import { fileURLToPath } from 'node:url';
+import crypto from "node:crypto";
+import { constants as fsConstants } from "node:fs";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import { performance } from "node:perf_hooks";
+import { fileURLToPath } from "node:url";
 
 import {
   DEFAULT_MANIFEST_URL,
@@ -19,14 +19,14 @@ import {
   validateReleaseNotesUrl,
   validateReleaseSummary,
   validateStableUpdateManifest,
-} from './update-contract.mjs';
-import { sameEntry } from '../renderers/shared/path-semantics.mjs';
+} from "./update-contract.mjs";
+import { sameEntry } from "../renderers/shared/path-semantics.mjs";
 
-const OPERATION_STATE_FILE = 'state.json';
-const OPERATION_OWNER_FILE = 'owner.json';
-const ACTIVE_CLAIM_DIRECTORY = 'active-claim';
+const OPERATION_STATE_FILE = "state.json";
+const OPERATION_OWNER_FILE = "owner.json";
+const ACTIVE_CLAIM_DIRECTORY = "active-claim";
 const OPERATION_NAME = /^(reserved|pending|committed|fenced|cancelled)-(\d{1,20})$/;
-const MAX_OPERATION_GENERATION = (10n ** 20n) - 1n;
+const MAX_OPERATION_GENERATION = 10n ** 20n - 1n;
 const CHECK_TTL_MS = 24 * 60 * 60 * 1_000;
 const MAX_CACHE_HORIZON_MS = Math.ceil(CHECK_TTL_MS * 1.2);
 const FIRST_FAILURE_DELAY_MS = 6 * 60 * 60 * 1_000;
@@ -36,27 +36,27 @@ const MAX_RESPONSE_BYTES = 32 * 1_024;
 const MAX_LOCAL_RELEASE_BYTES = 4 * 1_024;
 const MAX_CACHE_STATE_BYTES = 64 * 1_024;
 const MAX_CLAIM_OWNER_BYTES = 1_024;
-const LONGEST_ISO_TIMESTAMP = '+275760-09-13T00:00:00.000Z';
+const LONGEST_ISO_TIMESTAMP = "+275760-09-13T00:00:00.000Z";
 const LOCK_STALE_MS = 30_000;
 const PREFERENCE_LOCK_WAIT_MS = 1_200;
 const LOCK_RETRY_DELAY_MS = 20;
 const DIGEST_PATTERN = /^sha256:[a-f0-9]{64}$/;
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
-const defaultReleasePath = path.resolve(scriptDirectory, '..', 'skill-release.json');
+const defaultReleasePath = path.resolve(scriptDirectory, "..", "skill-release.json");
 
 class FileIdentityChangedError extends Error {}
 class ManifestWithdrawnError extends Error {}
 
 function silent(reason) {
-  return { status: 'silent', reason };
+  return { status: "silent", reason };
 }
 
 function updatesDisabled() {
-  return process.env.ARCHIFY_UPDATE_CHECK_DISABLED === '1';
+  return process.env.ARCHIFY_UPDATE_CHECK_DISABLED === "1";
 }
 
 function isPlainObject(value) {
-  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
 function hasOnlyKeys(value, allowed) {
@@ -75,17 +75,25 @@ function validateManifest(value) {
 }
 
 function validateCachedCandidate(value) {
-  if (!isPlainObject(value)
-    || !hasOnlyKeys(value, new Set([
-      'version', 'targetDigest', 'severity', 'releaseNotes', 'checkedAt', 'summary',
-    ]))) return null;
+  if (
+    !isPlainObject(value) ||
+    !hasOnlyKeys(
+      value,
+      new Set(["version", "targetDigest", "severity", "releaseNotes", "checkedAt", "summary"]),
+    )
+  )
+    return null;
   try {
     if (!isStableCoreVersion(value.version)) return null;
-    if (!DIGEST_PATTERN.test(value.targetDigest)
-      || !['normal', 'security'].includes(value.severity)) return null;
+    if (
+      !DIGEST_PATTERN.test(value.targetDigest) ||
+      !["normal", "security"].includes(value.severity)
+    )
+      return null;
     validateReleaseNotesUrl(value.releaseNotes, value.version);
-    if (Object.hasOwn(value, 'summary')) validateReleaseSummary(value.summary);
-    if (typeof value.checkedAt !== 'string' || !Number.isFinite(Date.parse(value.checkedAt))) return null;
+    if (Object.hasOwn(value, "summary")) validateReleaseSummary(value.summary);
+    if (typeof value.checkedAt !== "string" || !Number.isFinite(Date.parse(value.checkedAt)))
+      return null;
     return { ...value };
   } catch {
     return null;
@@ -106,17 +114,20 @@ function emptyState(installedVersion = null) {
 }
 
 function validPreference(value) {
-  return isPlainObject(value)
-    && hasOnlyKeys(value, new Set(['targetDigest', 'version', 'mode', 'until']))
-    && DIGEST_PATTERN.test(value.targetDigest)
-    && isStableCoreVersion(value.version)
-    && ['ignore', 'snooze'].includes(value.mode)
-    && (value.mode === 'ignore' ? value.until === null
-      : typeof value.until === 'string' && Number.isFinite(Date.parse(value.until)));
+  return (
+    isPlainObject(value) &&
+    hasOnlyKeys(value, new Set(["targetDigest", "version", "mode", "until"])) &&
+    DIGEST_PATTERN.test(value.targetDigest) &&
+    isStableCoreVersion(value.version) &&
+    ["ignore", "snooze"].includes(value.mode) &&
+    (value.mode === "ignore"
+      ? value.until === null
+      : typeof value.until === "string" && Number.isFinite(Date.parse(value.until)))
+  );
 }
 
 function encodeBoundedState(state) {
-  const encoded = Buffer.from(`${JSON.stringify(state)}\n`, 'utf8');
+  const encoded = Buffer.from(`${JSON.stringify(state)}\n`, "utf8");
   return encoded.length <= MAX_CACHE_STATE_BYTES ? encoded : null;
 }
 
@@ -132,26 +143,33 @@ function stateWithFailureCheck(state, nextCheckAt, consecutiveFailures, withdraw
 // A committed state must leave room for its own failure backoff.
 function encodeRecoverableState(state) {
   const encoded = encodeBoundedState(state);
-  if (!encoded || !encodeBoundedState(stateWithFailureCheck(state, LONGEST_ISO_TIMESTAMP, 2))) return null;
+  if (!encoded || !encodeBoundedState(stateWithFailureCheck(state, LONGEST_ISO_TIMESTAMP, 2)))
+    return null;
   return encoded;
 }
 
 function versionCacheDirectory(cacheDirectory, installedVersion) {
-  const partition = crypto.createHash('sha256').update(installedVersion).digest('hex').slice(0, 24);
+  const partition = crypto.createHash("sha256").update(installedVersion).digest("hex").slice(0, 24);
   return path.join(cacheDirectory, `version-${partition}`);
 }
 
 function normalizeState(value, installedVersion) {
   const effectiveInstalledVersion = installedVersion ?? value?.installedVersion ?? null;
-  if (!isPlainObject(value) || value.schemaVersion !== 2 || value.skillId !== SKILL_ID
-    || (installedVersion !== null && value.installedVersion !== installedVersion)
-    || (value.installedVersion !== null && typeof value.installedVersion !== 'string')
-    || !isPlainObject(value.check)
-    || !(value.check.nextCheckAt === null || typeof value.check.nextCheckAt === 'string')
-    || !Number.isSafeInteger(value.check.consecutiveFailures)
-    || value.check.consecutiveFailures < 0
-    || !Array.isArray(value.preferences) || value.preferences.length > 32
-    || value.preferences.some((preference) => !validPreference(preference))) return null;
+  if (
+    !isPlainObject(value) ||
+    value.schemaVersion !== 2 ||
+    value.skillId !== SKILL_ID ||
+    (installedVersion !== null && value.installedVersion !== installedVersion) ||
+    (value.installedVersion !== null && typeof value.installedVersion !== "string") ||
+    !isPlainObject(value.check) ||
+    !(value.check.nextCheckAt === null || typeof value.check.nextCheckAt === "string") ||
+    !Number.isSafeInteger(value.check.consecutiveFailures) ||
+    value.check.consecutiveFailures < 0 ||
+    !Array.isArray(value.preferences) ||
+    value.preferences.length > 32 ||
+    value.preferences.some((preference) => !validPreference(preference))
+  )
+    return null;
   if (effectiveInstalledVersion !== null) {
     try {
       parseSemver(effectiveInstalledVersion);
@@ -164,7 +182,7 @@ function normalizeState(value, installedVersion) {
   state.check.nextCheckAt = value.check.nextCheckAt;
   state.check.consecutiveFailures = value.check.consecutiveFailures;
   state.preferences = value.preferences.map((preference) => ({ ...preference }));
-  const hasCandidate = Object.hasOwn(value, 'candidate');
+  const hasCandidate = Object.hasOwn(value, "candidate");
   const candidate = validateCachedCandidate(value.candidate);
   if (hasCandidate && !candidate) return null;
   if (candidate) state.candidate = candidate;
@@ -175,49 +193,47 @@ function isSameFile(left, right) {
   if (left.dev !== right.dev || left.ino !== right.ino) return false;
   if (left.ino !== 0n) return true;
   if (left.birthtimeNs === 0n || right.birthtimeNs === 0n) return false;
-  return left.birthtimeNs === right.birthtimeNs
-    && left.mode === right.mode;
+  return left.birthtimeNs === right.birthtimeNs && left.mode === right.mode;
 }
 
 function assertBoundedRegularFile(metadata, maxBytes) {
-  if (!metadata.isFile()
-    || metadata.isSymbolicLink()
-    || metadata.size > BigInt(maxBytes)) {
-    throw new Error('unsafe JSON file');
+  if (!metadata.isFile() || metadata.isSymbolicLink() || metadata.size > BigInt(maxBytes)) {
+    throw new Error("unsafe JSON file");
   }
 }
 
 async function readJsonFile(target, maxBytes, expectedMetadata = null) {
   const pathMetadata = await fs.lstat(target, { bigint: true });
   if (expectedMetadata && !isSameFile(expectedMetadata, pathMetadata)) {
-    throw new FileIdentityChangedError('JSON file identity changed');
+    throw new FileIdentityChangedError("JSON file identity changed");
   }
   assertBoundedRegularFile(pathMetadata, maxBytes);
-  const flags = fsConstants.O_RDONLY
-    | (fsConstants.O_NOFOLLOW ?? 0)
-    | (fsConstants.O_NONBLOCK ?? 0);
+  const flags =
+    fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0) | (fsConstants.O_NONBLOCK ?? 0);
   const handle = await fs.open(target, flags);
   try {
     const handleMetadata = await handle.stat({ bigint: true });
     const currentPathMetadata = await fs.lstat(target, { bigint: true });
     assertBoundedRegularFile(handleMetadata, maxBytes);
     assertBoundedRegularFile(currentPathMetadata, maxBytes);
-    if (!isSameFile(pathMetadata, handleMetadata)
-      || !isSameFile(currentPathMetadata, handleMetadata)) {
-      throw new FileIdentityChangedError('JSON file changed while opening');
+    if (
+      !isSameFile(pathMetadata, handleMetadata) ||
+      !isSameFile(currentPathMetadata, handleMetadata)
+    ) {
+      throw new FileIdentityChangedError("JSON file changed while opening");
     }
 
     const chunks = [];
     let size = 0;
     while (size <= maxBytes) {
-      const chunk = Buffer.allocUnsafe(Math.min(8 * 1_024, (maxBytes + 1) - size));
+      const chunk = Buffer.allocUnsafe(Math.min(8 * 1_024, maxBytes + 1 - size));
       const { bytesRead } = await handle.read(chunk, 0, chunk.length, size);
       if (bytesRead === 0) break;
       chunks.push(chunk.subarray(0, bytesRead));
       size += bytesRead;
     }
-    if (size > maxBytes) throw new Error('JSON file is too large');
-    return JSON.parse(Buffer.concat(chunks, size).toString('utf8'));
+    if (size > maxBytes) throw new Error("JSON file is too large");
+    return JSON.parse(Buffer.concat(chunks, size).toString("utf8"));
   } finally {
     await handle.close();
   }
@@ -225,9 +241,11 @@ async function readJsonFile(target, maxBytes, expectedMetadata = null) {
 
 function isWithinDirectory(directory, target) {
   const relative = path.relative(directory, target);
-  return relative === ''
+  return (
+    relative === "" ||
     // path-contract-allow: lexical-capability -- No-follow snapshots bind this mutation boundary.
-    || (!path.isAbsolute(relative) && relative !== '..' && !relative.startsWith(`..${path.sep}`));
+    (!path.isAbsolute(relative) && relative !== ".." && !relative.startsWith(`..${path.sep}`))
+  );
 }
 
 async function physicalDirectorySuffix(directory, target) {
@@ -238,23 +256,23 @@ async function physicalDirectorySuffix(directory, target) {
   for (let index = 0; index < segments.length; index += 1) {
     prefix = path.join(prefix, segments[index]);
     const relation = sameEntry(directory, prefix);
-    if (relation.status === 'match') {
+    if (relation.status === "match") {
       const metadata = await fs.lstat(prefix, { bigint: true });
       if (metadata.isSymbolicLink()) {
         throw new Error(`trusted cache prefix is a symbolic link or junction: ${prefix}`);
       }
       return segments.slice(index + 1);
     }
-    if (relation.status === 'unknown' && relation.reason.code === 'entry-missing') break;
+    if (relation.status === "unknown" && relation.reason.code === "entry-missing") break;
   }
   return null;
 }
 
 async function canonicalizeTrustedDirectoryPrefix(target) {
   const absoluteTarget = path.resolve(target);
-  const trustedDirectories = [...new Set([os.homedir(), os.tmpdir()].map((directory) => (
-    path.resolve(directory)
-  )))].sort((left, right) => right.length - left.length);
+  const trustedDirectories = [
+    ...new Set([os.homedir(), os.tmpdir()].map((directory) => path.resolve(directory))),
+  ].sort((left, right) => right.length - left.length);
   for (const trustedDirectory of trustedDirectories) {
     const suffix = await physicalDirectorySuffix(trustedDirectory, absoluteTarget);
     if (suffix === null) continue;
@@ -270,7 +288,7 @@ async function canonicalizeTrustedDirectoryPrefix(target) {
 
 function assertSafeDirectory(metadata) {
   if (!metadata.isDirectory() || metadata.isSymbolicLink()) {
-    throw new Error('unsafe cache directory');
+    throw new Error("unsafe cache directory");
   }
 }
 
@@ -289,7 +307,7 @@ function invalidateCacheToken(token, message, cause) {
 }
 
 async function verifyDirectorySnapshots(token, snapshots, description) {
-  if (!token.trusted) throw new CachePathChangedError('cache directory is no longer trusted');
+  if (!token.trusted) throw new CachePathChangedError("cache directory is no longer trusted");
   try {
     for (const snapshot of snapshots) {
       const metadata = await fs.lstat(snapshot.directory, { bigint: true });
@@ -304,7 +322,7 @@ async function verifyDirectorySnapshots(token, snapshots, description) {
 }
 
 async function verifyCacheToken(token) {
-  await verifyDirectorySnapshots(token, token.ancestorSnapshots, 'cache directory');
+  await verifyDirectorySnapshots(token, token.ancestorSnapshots, "cache directory");
 }
 
 async function guardedCacheRead(token, read) {
@@ -323,7 +341,7 @@ async function guardedCacheRead(token, read) {
 function cacheTokenFor(cacheDirectory) {
   const token = preparedCacheDirectories.get(path.resolve(cacheDirectory));
   if (!token || !token.trusted) {
-    throw new CachePathChangedError('cache directory has not been prepared safely');
+    throw new CachePathChangedError("cache directory has not been prepared safely");
   }
   return token;
 }
@@ -334,8 +352,8 @@ function resolveCacheTarget(token, target) {
   // This is a lexical capability check, not a physical-containment query. The
   // async lstat snapshots below bind the prepared directory and every mutation
   // parent across awaits; following a link here would weaken that no-link rule.
-  if (relative === '' || !isWithinDirectory(token.directory, resolved)) {
-    throw invalidateCacheToken(token, 'cache mutation escaped its prepared directory');
+  if (relative === "" || !isWithinDirectory(token.directory, resolved)) {
+    throw invalidateCacheToken(token, "cache mutation escaped its prepared directory");
   }
   return resolved;
 }
@@ -357,7 +375,7 @@ async function captureMutationParentSnapshots(token, targets) {
       }
     }
   } catch (error) {
-    throw invalidateCacheToken(token, 'cache mutation parent changed', error);
+    throw invalidateCacheToken(token, "cache mutation parent changed", error);
   }
   const captured = [...snapshots.values()];
   await verifyMutationParentSnapshots(token, captured);
@@ -371,11 +389,11 @@ async function verifyMutationParentSnapshots(token, snapshots) {
       const metadata = await fs.lstat(snapshot.directory, { bigint: true });
       assertSafeDirectory(metadata);
       if (!isSameFile(snapshot.metadata, metadata)) {
-        throw new Error('cache mutation parent changed');
+        throw new Error("cache mutation parent changed");
       }
     }
   } catch (error) {
-    const raced = new CacheOperationRaceError('cache mutation parent changed');
+    const raced = new CacheOperationRaceError("cache mutation parent changed");
     raced.cause = error;
     throw raced;
   }
@@ -389,19 +407,19 @@ async function verifyMutationContext(token, parentSnapshots) {
 
 function assertSafeCacheEntry(metadata) {
   if (metadata.isSymbolicLink() || (!metadata.isDirectory() && !metadata.isFile())) {
-    throw new Error('unsafe cache entry');
+    throw new Error("unsafe cache entry");
   }
 }
 
 function assertSafeRegularFile(metadata) {
   if (!metadata.isFile() || metadata.isSymbolicLink()) {
-    throw new Error('unsafe cache file');
+    throw new Error("unsafe cache file");
   }
 }
 
 function assertRenameableCacheEntry(metadata) {
   if (!metadata.isDirectory() && !metadata.isFile() && !metadata.isSymbolicLink()) {
-    throw new Error('unsafe cache rename entry');
+    throw new Error("unsafe cache rename entry");
   }
 }
 
@@ -417,39 +435,26 @@ async function stableCacheEntry(
     const first = await fs.lstat(resolved, { bigint: true });
     validate(first);
     if (expectedMetadata && !isSameFile(expectedMetadata, first)) {
-      throw new Error('cache entry identity changed');
+      throw new Error("cache entry identity changed");
     }
     await verifyCacheToken(token);
     const second = await fs.lstat(resolved, { bigint: true });
     validate(second);
-    if (!isSameFile(first, second)
-      || (expectedMetadata && !isSameFile(expectedMetadata, second))) {
-      throw new Error('cache entry identity changed');
+    if (!isSameFile(first, second) || (expectedMetadata && !isSameFile(expectedMetadata, second))) {
+      throw new Error("cache entry identity changed");
     }
     return second;
   } catch (error) {
-    if (missingIsOperationRace && error?.code === 'ENOENT') {
+    if (missingIsOperationRace && error?.code === "ENOENT") {
       await verifyCacheToken(token);
       throw error;
     }
-    throw invalidateCacheToken(token, 'cache mutation produced an untrusted object', error);
+    throw invalidateCacheToken(token, "cache mutation produced an untrusted object", error);
   }
 }
 
-async function guardedCacheEntryRead(
-  token,
-  target,
-  validate,
-  read,
-  expectedMetadata = null,
-) {
-  const metadata = await stableCacheEntry(
-    token,
-    target,
-    validate,
-    expectedMetadata,
-    true,
-  );
+async function guardedCacheEntryRead(token, target, validate, read, expectedMetadata = null) {
+  const metadata = await stableCacheEntry(token, target, validate, expectedMetadata, true);
   let result;
   try {
     result = await read(metadata);
@@ -468,10 +473,10 @@ async function stablePreparedDirectory(token, target) {
     await verifyCacheToken(token);
     const second = await fs.lstat(target, { bigint: true });
     assertSafeDirectory(second);
-    if (!isSameFile(first, second)) throw new Error('prepared directory identity changed');
+    if (!isSameFile(first, second)) throw new Error("prepared directory identity changed");
     return second;
   } catch (error) {
-    throw invalidateCacheToken(token, 'prepared directory could not be verified', error);
+    throw invalidateCacheToken(token, "prepared directory could not be verified", error);
   }
 }
 
@@ -480,17 +485,17 @@ async function assertCacheTargetAbsent(token, target) {
   try {
     await fs.lstat(resolved, { bigint: true });
   } catch (error) {
-    if (error?.code === 'ENOENT') return;
-    throw invalidateCacheToken(token, 'cache mutation target could not be verified', error);
+    if (error?.code === "ENOENT") return;
+    throw invalidateCacheToken(token, "cache mutation target could not be verified", error);
   }
-  throw invalidateCacheToken(token, 'cache mutation left an unexpected object');
+  throw invalidateCacheToken(token, "cache mutation left an unexpected object");
 }
 
-async function guardedCacheMutation(token, parentSnapshots, {
-  mutate,
-  verifyBefore = null,
-  verifyAfter,
-}) {
+async function guardedCacheMutation(
+  token,
+  parentSnapshots,
+  { mutate, verifyBefore = null, verifyAfter },
+) {
   await verifyMutationContext(token, parentSnapshots);
   if (verifyBefore) await verifyBefore();
   let result;
@@ -507,18 +512,19 @@ async function guardedCacheMutation(token, parentSnapshots, {
     return verified ?? result;
   } catch (error) {
     if (error instanceof CacheOperationRaceError) throw error;
-    throw invalidateCacheToken(token, 'cache mutation could not be verified', error);
+    throw invalidateCacheToken(token, "cache mutation could not be verified", error);
   }
 }
 
 async function cacheMkdirWithToken(token, target, options, parentSnapshots = null) {
   const resolved = path.resolve(target);
-  const parents = parentSnapshots ?? await captureMutationParentSnapshots(token, [resolved]);
+  const parents = parentSnapshots ?? (await captureMutationParentSnapshots(token, [resolved]));
   return guardedCacheMutation(token, parents, {
     mutate: () => fs.mkdir(resolved, options),
-    verifyAfter: () => (parentSnapshots === null
-      ? stableCacheEntry(token, resolved, assertSafeDirectory)
-      : stablePreparedDirectory(token, resolved)),
+    verifyAfter: () =>
+      parentSnapshots === null
+        ? stableCacheEntry(token, resolved, assertSafeDirectory)
+        : stablePreparedDirectory(token, resolved),
   });
 }
 
@@ -527,43 +533,52 @@ async function cacheMkdir(cacheDirectory, target, options) {
 }
 
 async function cacheWriteFile(cacheDirectory, target, data, options) {
-  if (options?.flag !== 'wx') {
-    throw new Error('cache files must be created exclusively');
+  if (options?.flag !== "wx") {
+    throw new Error("cache files must be created exclusively");
   }
   const token = cacheTokenFor(cacheDirectory);
   const resolved = resolveCacheTarget(token, target);
   const parents = await captureMutationParentSnapshots(token, [resolved]);
   return guardedCacheMutation(token, parents, {
     mutate: async () => {
-      const flags = fsConstants.O_WRONLY
-        | fsConstants.O_CREAT
-        | fsConstants.O_EXCL
-        | (fsConstants.O_NOFOLLOW ?? 0);
+      const flags =
+        fsConstants.O_WRONLY |
+        fsConstants.O_CREAT |
+        fsConstants.O_EXCL |
+        (fsConstants.O_NOFOLLOW ?? 0);
       const handle = await fs.open(resolved, flags, options.mode);
       try {
         const openedMetadata = await handle.stat({ bigint: true });
         if (!openedMetadata.isFile() || openedMetadata.isSymbolicLink()) {
-          throw new Error('cache write did not open a regular file');
+          throw new Error("cache write did not open a regular file");
         }
         await handle.writeFile(data, options.encoding ? { encoding: options.encoding } : undefined);
         const writtenMetadata = await handle.stat({ bigint: true });
         const expectedBytes = Buffer.isBuffer(data)
           ? data.length
-          : Buffer.byteLength(data, options.encoding || 'utf8');
-        if (!isSameFile(openedMetadata, writtenMetadata)
-          || writtenMetadata.size !== BigInt(expectedBytes)) {
-          throw new Error('cache write did not preserve the opened file identity and size');
+          : Buffer.byteLength(data, options.encoding || "utf8");
+        if (
+          !isSameFile(openedMetadata, writtenMetadata) ||
+          writtenMetadata.size !== BigInt(expectedBytes)
+        ) {
+          throw new Error("cache write did not preserve the opened file identity and size");
         }
         return writtenMetadata;
       } finally {
         await handle.close();
       }
     },
-    verifyAfter: (writtenMetadata) => stableCacheEntry(token, resolved, (metadata) => {
-      if (!metadata.isFile() || metadata.isSymbolicLink()) {
-        throw new Error('cache write did not create a regular file');
-      }
-    }, writtenMetadata),
+    verifyAfter: (writtenMetadata) =>
+      stableCacheEntry(
+        token,
+        resolved,
+        (metadata) => {
+          if (!metadata.isFile() || metadata.isSymbolicLink()) {
+            throw new Error("cache write did not create a regular file");
+          }
+        },
+        writtenMetadata,
+      ),
   });
 }
 
@@ -574,16 +589,16 @@ async function cacheRename(
   validate,
   expectedSourceMetadata = null,
 ) {
-  if (typeof validate !== 'function') {
-    throw new TypeError('cache rename requires an explicit entry validator');
+  if (typeof validate !== "function") {
+    throw new TypeError("cache rename requires an explicit entry validator");
   }
   const token = cacheTokenFor(cacheDirectory);
   const resolvedSource = resolveCacheTarget(token, source);
   const resolvedDestination = resolveCacheTarget(token, destination);
-  const parents = await captureMutationParentSnapshots(
-    token,
-    [resolvedSource, resolvedDestination],
-  );
+  const parents = await captureMutationParentSnapshots(token, [
+    resolvedSource,
+    resolvedDestination,
+  ]);
   const sourceMetadata = await stableCacheEntry(
     token,
     resolvedSource,
@@ -592,29 +607,18 @@ async function cacheRename(
     true,
   );
   return guardedCacheMutation(token, parents, {
-    verifyBefore: () => stableCacheEntry(
-      token,
-      resolvedSource,
-      validate,
-      sourceMetadata,
-      true,
-    ),
+    verifyBefore: () => stableCacheEntry(token, resolvedSource, validate, sourceMetadata, true),
     mutate: () => fs.rename(resolvedSource, resolvedDestination),
     verifyAfter: async () => {
       await assertCacheTargetAbsent(token, resolvedSource);
-      return stableCacheEntry(
-        token,
-        resolvedDestination,
-        validate,
-        sourceMetadata,
-      );
+      return stableCacheEntry(token, resolvedDestination, validate, sourceMetadata);
     },
   });
 }
 
 async function cacheRm(cacheDirectory, target, options) {
   if (options?.recursive) {
-    throw new Error('recursive cache removal is not allowed');
+    throw new Error("recursive cache removal is not allowed");
   }
   const token = cacheTokenFor(cacheDirectory);
   const resolved = resolveCacheTarget(token, target);
@@ -623,7 +627,7 @@ async function cacheRm(cacheDirectory, target, options) {
   try {
     initialMetadata = await fs.lstat(resolved, { bigint: true });
   } catch (error) {
-    if (error?.code === 'ENOENT' && options?.force) {
+    if (error?.code === "ENOENT" && options?.force) {
       await verifyMutationContext(token, parents);
       return;
     }
@@ -632,7 +636,7 @@ async function cacheRm(cacheDirectory, target, options) {
   try {
     assertSafeCacheEntry(initialMetadata);
   } catch (error) {
-    throw invalidateCacheToken(token, 'cache removal target is unsafe', error);
+    throw invalidateCacheToken(token, "cache removal target is unsafe", error);
   }
   const targetMetadata = await stableCacheEntry(
     token,
@@ -641,12 +645,7 @@ async function cacheRm(cacheDirectory, target, options) {
     initialMetadata,
   );
   return guardedCacheMutation(token, parents, {
-    verifyBefore: () => stableCacheEntry(
-      token,
-      resolved,
-      assertSafeCacheEntry,
-      targetMetadata,
-    ),
+    verifyBefore: () => stableCacheEntry(token, resolved, assertSafeCacheEntry, targetMetadata),
     mutate: () => fs.rm(resolved, options),
     verifyAfter: () => assertCacheTargetAbsent(token, resolved),
   });
@@ -670,11 +669,11 @@ async function prepareCacheDirectory(cacheDirectory) {
     try {
       metadata = await fs.lstat(current, { bigint: true });
     } catch (error) {
-      if (error?.code !== 'ENOENT') throw error;
+      if (error?.code !== "ENOENT") throw error;
       try {
         await cacheMkdirWithToken(token, current, { mode: 0o700 }, []);
       } catch (mkdirError) {
-        if (mkdirError?.code !== 'EEXIST') throw mkdirError;
+        if (mkdirError?.code !== "EEXIST") throw mkdirError;
       }
       metadata = await fs.lstat(current, { bigint: true });
     }
@@ -688,7 +687,7 @@ async function prepareCacheDirectory(cacheDirectory) {
 }
 
 function operationName(kind, generation) {
-  return `${kind}-${generation.toString().padStart(20, '0')}`;
+  return `${kind}-${generation.toString().padStart(20, "0")}`;
 }
 
 function parseOperationName(name) {
@@ -713,7 +712,7 @@ async function listOperations(cacheDirectory, token = cacheTokenFor(cacheDirecto
         return [{ ...parsed, name: entry.name, directory: path.join(cacheDirectory, entry.name) }];
       });
     } catch (error) {
-      if (error?.code === 'ENOENT') return [];
+      if (error?.code === "ENOENT") return [];
       throw error;
     }
   });
@@ -723,7 +722,7 @@ async function readState(cacheDirectory, installedVersion = null) {
   const token = cacheTokenFor(cacheDirectory);
   return guardedCacheRead(token, async () => {
     const operations = (await listOperations(cacheDirectory, token))
-      .filter((operation) => operation.kind === 'committed')
+      .filter((operation) => operation.kind === "committed")
       .sort((left, right) => (left.generation > right.generation ? -1 : 1));
     for (const operation of operations) {
       try {
@@ -731,19 +730,23 @@ async function readState(cacheDirectory, installedVersion = null) {
           token,
           operation.directory,
           assertSafeDirectory,
-          async () => normalizeState(
-            await readJsonFile(
-              path.join(operation.directory, OPERATION_STATE_FILE),
-              MAX_CACHE_STATE_BYTES,
+          async () =>
+            normalizeState(
+              await readJsonFile(
+                path.join(operation.directory, OPERATION_STATE_FILE),
+                MAX_CACHE_STATE_BYTES,
+              ),
+              installedVersion,
             ),
-            installedVersion,
-          ),
         );
         if (state) return state;
       } catch (error) {
-        if (error instanceof FileIdentityChangedError
-          || error instanceof CachePathChangedError
-          || error instanceof CacheOperationRaceError) throw error;
+        if (
+          error instanceof FileIdentityChangedError ||
+          error instanceof CachePathChangedError ||
+          error instanceof CacheOperationRaceError
+        )
+          throw error;
         // An incomplete or corrupt generation is ignored in favor of the previous commit.
       }
     }
@@ -751,11 +754,7 @@ async function readState(cacheDirectory, installedVersion = null) {
   });
 }
 
-async function operationIsActive(
-  cacheDirectory,
-  operation,
-  token = cacheTokenFor(cacheDirectory),
-) {
+async function operationIsActive(cacheDirectory, operation, token = cacheTokenFor(cacheDirectory)) {
   try {
     return await guardedCacheEntryRead(
       token,
@@ -783,13 +782,13 @@ async function operationIsActive(
           }
           return metadataIsWithinLease(ownerMetadata);
         } catch (error) {
-          if (error?.code !== 'ENOENT') throw error;
+          if (error?.code !== "ENOENT") throw error;
           return metadataIsWithinLease(directoryMetadata);
         }
       },
     );
   } catch (error) {
-    if (error?.code === 'ENOENT') return false;
+    if (error?.code === "ENOENT") return false;
     throw error;
   }
 }
@@ -799,25 +798,28 @@ function processIsGone(pid) {
     process.kill(pid, 0);
     return false;
   } catch (error) {
-    return error?.code === 'ESRCH';
+    return error?.code === "ESRCH";
   }
 }
 
 function validateClaimOwner(value) {
-  if (!isPlainObject(value)
-    || !hasOnlyKeys(value, new Set(['pid', 'token', 'generation']))
-    || !Number.isSafeInteger(value.pid)
-    || value.pid <= 0
-    || typeof value.token !== 'string'
-    || !/^[a-f0-9]{32}$/.test(value.token)
-    || typeof value.generation !== 'string'
-    || !/^[1-9]\d*$/.test(value.generation)) return null;
+  if (
+    !isPlainObject(value) ||
+    !hasOnlyKeys(value, new Set(["pid", "token", "generation"])) ||
+    !Number.isSafeInteger(value.pid) ||
+    value.pid <= 0 ||
+    typeof value.token !== "string" ||
+    !/^[a-f0-9]{32}$/.test(value.token) ||
+    typeof value.generation !== "string" ||
+    !/^[1-9]\d*$/.test(value.generation)
+  )
+    return null;
   return { ...value, generation: BigInt(value.generation) };
 }
 
 function metadataIsWithinLease(metadata) {
-  if (typeof metadata.mtimeNs === 'bigint') {
-    const ageNs = (BigInt(Date.now()) * 1_000_000n) - metadata.mtimeNs;
+  if (typeof metadata.mtimeNs === "bigint") {
+    const ageNs = BigInt(Date.now()) * 1_000_000n - metadata.mtimeNs;
     const absoluteAgeNs = ageNs < 0n ? -ageNs : ageNs;
     return absoluteAgeNs <= BigInt(LOCK_STALE_MS) * 1_000_000n;
   }
@@ -826,21 +828,24 @@ function metadataIsWithinLease(metadata) {
 
 function corruptClaimStatus(directory, directoryMetadata, ownerMetadata = directoryMetadata) {
   if (metadataIsWithinLease(ownerMetadata)) {
-    return { state: 'busy', directory, metadata: directoryMetadata, owner: null };
+    return { state: "busy", directory, metadata: directoryMetadata, owner: null };
   }
-  const fingerprint = crypto.createHash('sha256')
-    .update(JSON.stringify({
-      directory: {
-        dev: directoryMetadata.dev.toString(),
-        ino: directoryMetadata.ino.toString(),
-        mode: directoryMetadata.mode.toString(),
-        birthtimeNs: directoryMetadata.birthtimeNs.toString(),
-      },
-    }))
-    .digest('hex')
+  const fingerprint = crypto
+    .createHash("sha256")
+    .update(
+      JSON.stringify({
+        directory: {
+          dev: directoryMetadata.dev.toString(),
+          ino: directoryMetadata.ino.toString(),
+          mode: directoryMetadata.mode.toString(),
+          birthtimeNs: directoryMetadata.birthtimeNs.toString(),
+        },
+      }),
+    )
+    .digest("hex")
     .slice(0, 24);
   return {
-    state: 'releasable',
+    state: "releasable",
     directory,
     metadata: directoryMetadata,
     key: `corrupt-${fingerprint}`,
@@ -856,7 +861,7 @@ async function inspectActiveClaim(cacheDirectory) {
     try {
       directoryMetadata = await fs.lstat(directory, { bigint: true });
     } catch (error) {
-      if (error?.code === 'ENOENT') return { state: 'absent', directory };
+      if (error?.code === "ENOENT") return { state: "absent", directory };
       throw error;
     }
     if (!directoryMetadata.isDirectory() || directoryMetadata.isSymbolicLink()) {
@@ -872,16 +877,14 @@ async function inspectActiveClaim(cacheDirectory) {
         let owner = null;
         try {
           ownerMetadata = await fs.lstat(ownerPath, { bigint: true });
-          if (!ownerMetadata.isFile()
-            || ownerMetadata.isSymbolicLink()
-            || ownerMetadata.size > BigInt(MAX_CLAIM_OWNER_BYTES)) {
+          if (
+            !ownerMetadata.isFile() ||
+            ownerMetadata.isSymbolicLink() ||
+            ownerMetadata.size > BigInt(MAX_CLAIM_OWNER_BYTES)
+          ) {
             return corruptClaimStatus(directory, stableDirectoryMetadata, ownerMetadata);
           }
-          const ownerSource = await readJsonFile(
-            ownerPath,
-            MAX_CLAIM_OWNER_BYTES,
-            ownerMetadata,
-          );
+          const ownerSource = await readJsonFile(ownerPath, MAX_CLAIM_OWNER_BYTES, ownerMetadata);
           owner = validateClaimOwner(ownerSource);
         } catch (error) {
           if (error instanceof FileIdentityChangedError) throw error;
@@ -890,29 +893,36 @@ async function inspectActiveClaim(cacheDirectory) {
 
         if (owner) {
           const operations = await listOperations(cacheDirectory, token);
-          if (operations.some((operation) => operation.generation === owner.generation
-            && ['committed', 'fenced', 'cancelled'].includes(operation.kind))) {
+          if (
+            operations.some(
+              (operation) =>
+                operation.generation === owner.generation &&
+                ["committed", "fenced", "cancelled"].includes(operation.kind),
+            )
+          ) {
             return {
-              state: 'releasable',
+              state: "releasable",
               directory,
               metadata: stableDirectoryMetadata,
               key: owner.generation.toString(),
               owner,
             };
           }
-          const pending = operations.find((operation) => operation.kind === 'pending'
-            && operation.generation === owner.generation);
+          const pending = operations.find(
+            (operation) =>
+              operation.kind === "pending" && operation.generation === owner.generation,
+          );
           if (pending) {
             if (await operationIsActive(cacheDirectory, pending, token)) {
               return {
-                state: 'busy',
+                state: "busy",
                 directory,
                 metadata: stableDirectoryMetadata,
                 owner,
               };
             }
             return {
-              state: 'releasable',
+              state: "releasable",
               directory,
               metadata: stableDirectoryMetadata,
               key: owner.generation.toString(),
@@ -931,14 +941,14 @@ async function inspectActiveClaim(cacheDirectory) {
 async function retireActiveClaim(cacheDirectory, claim) {
   const retirement = path.join(cacheDirectory, `retired-claim-${claim.key}`);
   await cacheMkdir(cacheDirectory, retirement, { mode: 0o700 }).catch((error) => {
-    if (error?.code !== 'EEXIST') throw error;
+    if (error?.code !== "EEXIST") throw error;
   });
   try {
     const retirementMetadata = await fs.lstat(retirement);
     if (!retirementMetadata.isDirectory() || retirementMetadata.isSymbolicLink()) return false;
   } catch (error) {
     if (error instanceof CacheOperationRaceError) return false;
-    if (error?.code === 'ENOENT') return false;
+    if (error?.code === "ENOENT") return false;
     throw error;
   }
   try {
@@ -946,36 +956,36 @@ async function retireActiveClaim(cacheDirectory, claim) {
     if (metadata.isDirectory() && !metadata.isSymbolicLink()) {
       await cacheWriteFile(
         cacheDirectory,
-        path.join(claim.directory, '.retirement-guard'),
+        path.join(claim.directory, ".retirement-guard"),
         `${claim.key}\n`,
-        { encoding: 'utf8', flag: 'wx', mode: 0o600 },
+        { encoding: "utf8", flag: "wx", mode: 0o600 },
       ).catch((error) => {
-        if (error?.code !== 'EEXIST') throw error;
+        if (error?.code !== "EEXIST") throw error;
       });
     }
   } catch (error) {
     if (error instanceof CacheOperationRaceError) return false;
-    if (error?.code === 'ENOENT') return false;
+    if (error?.code === "ENOENT") return false;
     throw error;
   }
   try {
     await cacheRename(
       cacheDirectory,
       claim.directory,
-      path.join(retirement, 'active'),
+      path.join(retirement, "active"),
       assertRenameableCacheEntry,
       claim.metadata,
     );
     return true;
   } catch (error) {
     if (error instanceof CacheOperationRaceError) return false;
-    if (['ENOENT', 'EEXIST', 'ENOTEMPTY', 'EPERM'].includes(error?.code)) return false;
+    if (["ENOENT", "EEXIST", "ENOTEMPTY", "EPERM"].includes(error?.code)) return false;
     throw error;
   }
 }
 
 async function prepareOperationClaim(cacheDirectory, operation) {
-  const directory = path.join(cacheDirectory, operationName('claim', operation.generation));
+  const directory = path.join(cacheDirectory, operationName("claim", operation.generation));
   await cacheMkdir(cacheDirectory, directory, { mode: 0o700 });
   await cacheWriteFile(
     cacheDirectory,
@@ -985,7 +995,7 @@ async function prepareOperationClaim(cacheDirectory, operation) {
       token: operation.token,
       generation: operation.generation.toString(),
     })}\n`,
-    { encoding: 'utf8', flag: 'wx', mode: 0o600 },
+    { encoding: "utf8", flag: "wx", mode: 0o600 },
   );
   operation.preparedClaimDirectory = directory;
 }
@@ -994,7 +1004,7 @@ async function discardPreparedClaim(cacheDirectory, operation) {
   if (!operation.preparedClaimDirectory) return;
   const discarded = path.join(
     cacheDirectory,
-    `discarded-claim-${operation.generation.toString().padStart(20, '0')}-${operation.token}`,
+    `discarded-claim-${operation.generation.toString().padStart(20, "0")}-${operation.token}`,
   );
   try {
     await cacheRename(
@@ -1004,7 +1014,7 @@ async function discardPreparedClaim(cacheDirectory, operation) {
       assertSafeDirectory,
     );
   } catch (error) {
-    if (error?.code !== 'ENOENT') throw error;
+    if (error?.code !== "ENOENT") throw error;
   }
   delete operation.preparedClaimDirectory;
 }
@@ -1018,11 +1028,11 @@ async function promoteOperationClaim(cacheDirectory, operation) {
       return false;
     }
     const active = await inspectActiveClaim(cacheDirectory);
-    if (active.state === 'busy') {
+    if (active.state === "busy") {
       await discardPreparedClaim(cacheDirectory, operation);
       return false;
     }
-    if (active.state === 'releasable') {
+    if (active.state === "releasable") {
       if (active.owner?.generation > operation.generation) {
         await discardPreparedClaim(cacheDirectory, operation);
         return false;
@@ -1038,12 +1048,12 @@ async function promoteOperationClaim(cacheDirectory, operation) {
         assertSafeDirectory,
       );
       delete operation.preparedClaimDirectory;
-      if (!await operationIsActive(cacheDirectory, operation)) return false;
+      if (!(await operationIsActive(cacheDirectory, operation))) return false;
       return true;
     } catch (promotionError) {
       const raced = await inspectActiveClaim(cacheDirectory);
-      if (raced.state === 'absent') {
-        if (['EEXIST', 'ENOTEMPTY', 'EPERM'].includes(promotionError?.code)) continue;
+      if (raced.state === "absent") {
+        if (["EEXIST", "ENOTEMPTY", "EPERM"].includes(promotionError?.code)) continue;
         await discardPreparedClaim(cacheDirectory, operation);
         throw promotionError;
       }
@@ -1056,19 +1066,24 @@ async function promoteOperationClaim(cacheDirectory, operation) {
 
 async function operationOwnsActiveClaim(cacheDirectory, operation) {
   const active = await inspectActiveClaim(cacheDirectory);
-  return active.state === 'busy'
-    && active.owner?.generation === operation.generation
-    && active.owner.token === operation.token;
+  return (
+    active.state === "busy" &&
+    active.owner?.generation === operation.generation &&
+    active.owner.token === operation.token
+  );
 }
 
 async function hasActivePendingOperation(cacheDirectory) {
   const token = cacheTokenFor(cacheDirectory);
   return guardedCacheRead(token, async () => {
-    const pending = (await listOperations(cacheDirectory, token))
-      .filter((operation) => operation.kind === 'pending');
-    return (await Promise.all(pending.map(
-      (operation) => operationIsActive(cacheDirectory, operation, token),
-    ))).some(Boolean);
+    const pending = (await listOperations(cacheDirectory, token)).filter(
+      (operation) => operation.kind === "pending",
+    );
+    return (
+      await Promise.all(
+        pending.map((operation) => operationIsActive(cacheDirectory, operation, token)),
+      )
+    ).some(Boolean);
   });
 }
 
@@ -1079,22 +1094,23 @@ async function reserveOperation(cacheDirectory) {
   let generation = 1n;
   while (true) {
     while (occupied.has(generation.toString())) generation += 1n;
-    if (generation > MAX_OPERATION_GENERATION) throw new Error('operation generation space exhausted');
-    const reservation = path.join(cacheDirectory, operationName('reserved', generation));
+    if (generation > MAX_OPERATION_GENERATION)
+      throw new Error("operation generation space exhausted");
+    const reservation = path.join(cacheDirectory, operationName("reserved", generation));
     try {
       await cacheMkdir(cacheDirectory, reservation, { mode: 0o700 });
     } catch (error) {
-      if (error?.code !== 'EEXIST') throw error;
+      if (error?.code !== "EEXIST") throw error;
       occupied.add(generation.toString());
       generation += 1n;
       continue;
     }
-    const directory = path.join(cacheDirectory, operationName('pending', generation));
+    const directory = path.join(cacheDirectory, operationName("pending", generation));
     try {
       await cacheMkdir(cacheDirectory, directory, { mode: 0o700 });
       const operation = {
         generation,
-        token: crypto.randomBytes(16).toString('hex'),
+        token: crypto.randomBytes(16).toString("hex"),
         directory,
       };
       try {
@@ -1102,25 +1118,25 @@ async function reserveOperation(cacheDirectory) {
           cacheDirectory,
           path.join(directory, OPERATION_OWNER_FILE),
           `${JSON.stringify({ pid: process.pid, token: operation.token })}\n`,
-          { encoding: 'utf8', flag: 'wx', mode: 0o600 },
+          { encoding: "utf8", flag: "wx", mode: 0o600 },
         );
       } catch (error) {
         if (await operationWasFenced(cacheDirectory, operation)) {
-          const fencedError = new OperationFencedError('operation was fenced while reserving');
+          const fencedError = new OperationFencedError("operation was fenced while reserving");
           fencedError.cause = error;
           throw fencedError;
         }
         await cacheRename(
           cacheDirectory,
           directory,
-          path.join(cacheDirectory, operationName('cancelled', generation)),
+          path.join(cacheDirectory, operationName("cancelled", generation)),
           assertSafeDirectory,
         ).catch(() => {});
         throw error;
       }
       return operation;
     } catch (error) {
-      if (error?.code !== 'EEXIST') throw error;
+      if (error?.code !== "EEXIST") throw error;
       occupied.add(generation.toString());
       generation += 1n;
     }
@@ -1128,8 +1144,9 @@ async function reserveOperation(cacheDirectory) {
 }
 
 async function operationIsSuperseded(cacheDirectory, operation) {
-  return (await listOperations(cacheDirectory))
-    .some((candidate) => candidate.generation > operation.generation);
+  return (await listOperations(cacheDirectory)).some(
+    (candidate) => candidate.generation > operation.generation,
+  );
 }
 
 async function operationWasFenced(cacheDirectory, operation) {
@@ -1139,23 +1156,17 @@ async function operationWasFenced(cacheDirectory, operation) {
       await fs.lstat(operation.directory, { bigint: true });
       return false;
     } catch (error) {
-      if (error?.code !== 'ENOENT') throw error;
+      if (error?.code !== "ENOENT") throw error;
     }
     const fencedDirectory = path.join(
       cacheDirectory,
-      operationName('fenced', operation.generation),
+      operationName("fenced", operation.generation),
     );
     try {
-      await stableCacheEntry(
-        token,
-        fencedDirectory,
-        assertSafeDirectory,
-        null,
-        true,
-      );
+      await stableCacheEntry(token, fencedDirectory, assertSafeDirectory, null, true);
       return true;
     } catch (error) {
-      if (error?.code === 'ENOENT') return false;
+      if (error?.code === "ENOENT") return false;
       throw error;
     }
   });
@@ -1168,16 +1179,16 @@ async function transitionOperation(cacheDirectory, operation, kind) {
 
 async function cancelOperation(cacheDirectory, operation) {
   try {
-    await transitionOperation(cacheDirectory, operation, 'cancelled');
+    await transitionOperation(cacheDirectory, operation, "cancelled");
   } catch (error) {
     // A higher generation may already have fenced this unique pending directory.
-    if (error?.code !== 'ENOENT') throw error;
+    if (error?.code !== "ENOENT") throw error;
   }
 }
 
 async function acquireOperation(cacheDirectory) {
   cacheDirectory = await prepareCacheDirectory(cacheDirectory);
-  if ((await inspectActiveClaim(cacheDirectory)).state === 'busy') return null;
+  if ((await inspectActiveClaim(cacheDirectory)).state === "busy") return null;
   if (await hasActivePendingOperation(cacheDirectory)) return null;
   let operation;
   try {
@@ -1186,40 +1197,44 @@ async function acquireOperation(cacheDirectory) {
     if (error instanceof OperationFencedError) return null;
     throw error;
   }
-  if (!await operationIsSuperseded(cacheDirectory, operation)
-    && await promoteOperationClaim(cacheDirectory, operation)) return operation;
+  if (
+    !(await operationIsSuperseded(cacheDirectory, operation)) &&
+    (await promoteOperationClaim(cacheDirectory, operation))
+  )
+    return operation;
   await cancelOperation(cacheDirectory, operation);
   return null;
 }
 
 async function fenceLowerOperations(cacheDirectory, operation) {
   const lower = (await listOperations(cacheDirectory))
-    .filter((candidate) => candidate.kind === 'pending'
-      && candidate.generation < operation.generation)
+    .filter(
+      (candidate) => candidate.kind === "pending" && candidate.generation < operation.generation,
+    )
     .sort((left, right) => (left.generation < right.generation ? -1 : 1));
   for (const candidate of lower) {
     try {
       await cacheRename(
         cacheDirectory,
         candidate.directory,
-        path.join(cacheDirectory, operationName('fenced', candidate.generation)),
+        path.join(cacheDirectory, operationName("fenced", candidate.generation)),
         assertSafeDirectory,
       );
     } catch (error) {
-      if (error?.code !== 'ENOENT') throw error;
+      if (error?.code !== "ENOENT") throw error;
     }
   }
 }
 
 async function commitOperation(cacheDirectory, operation, installedVersion, mutate) {
-  if (!await operationOwnsActiveClaim(cacheDirectory, operation)) {
+  if (!(await operationOwnsActiveClaim(cacheDirectory, operation))) {
     await cancelOperation(cacheDirectory, operation);
-    return { fenced: true, result: silent('check-in-progress') };
+    return { fenced: true, result: silent("check-in-progress") };
   }
   await fenceLowerOperations(cacheDirectory, operation);
-  if (!await operationOwnsActiveClaim(cacheDirectory, operation)) {
+  if (!(await operationOwnsActiveClaim(cacheDirectory, operation))) {
     await cancelOperation(cacheDirectory, operation);
-    return { fenced: true, result: silent('check-in-progress') };
+    return { fenced: true, result: silent("check-in-progress") };
   }
   const state = await readState(cacheDirectory, installedVersion);
   const decision = mutate(state);
@@ -1237,15 +1252,15 @@ async function commitOperation(cacheDirectory, operation, installedVersion, muta
   }
   if (!encodedState) {
     await cancelOperation(cacheDirectory, operation);
-    return { fenced: false, result: silent('cache-unavailable') };
+    return { fenced: false, result: silent("cache-unavailable") };
   }
   const temporary = path.join(
     operation.directory,
-    `.state.${process.pid}.${crypto.randomBytes(8).toString('hex')}.tmp`,
+    `.state.${process.pid}.${crypto.randomBytes(8).toString("hex")}.tmp`,
   );
   try {
     await cacheWriteFile(cacheDirectory, temporary, encodedState, {
-      flag: 'wx',
+      flag: "wx",
       mode: 0o600,
     });
     await cacheRename(
@@ -1254,11 +1269,11 @@ async function commitOperation(cacheDirectory, operation, installedVersion, muta
       path.join(operation.directory, OPERATION_STATE_FILE),
       assertSafeRegularFile,
     );
-    await transitionOperation(cacheDirectory, operation, 'committed');
+    await transitionOperation(cacheDirectory, operation, "committed");
     return { fenced: false, result: committedResult };
   } catch (error) {
     if (await operationWasFenced(cacheDirectory, operation)) {
-      return { fenced: true, result: silent('check-in-progress') };
+      return { fenced: true, result: silent("check-in-progress") };
     }
     await cacheRm(cacheDirectory, temporary, { force: true }).catch(() => {});
     throw error;
@@ -1267,7 +1282,7 @@ async function commitOperation(cacheDirectory, operation, installedVersion, muta
 
 function nextSuccessfulCheck(nowMs, random) {
   const boundedRandom = Math.min(1, Math.max(0, Number(random()) || 0));
-  const multiplier = 0.8 + (boundedRandom * 0.4);
+  const multiplier = 0.8 + boundedRandom * 0.4;
   return new Date(nowMs + Math.round(CHECK_TTL_MS * multiplier)).toISOString();
 }
 
@@ -1292,14 +1307,14 @@ function eventKeyForDigest(targetDigest) {
 
 function digestForEventKey(eventKey) {
   const prefix = `${SKILL_ID}@`;
-  if (typeof eventKey !== 'string' || !eventKey.startsWith(prefix)) return null;
+  if (typeof eventKey !== "string" || !eventKey.startsWith(prefix)) return null;
   const digest = eventKey.slice(prefix.length);
   return DIGEST_PATTERN.test(digest) ? digest : null;
 }
 
 function notification(localRelease, candidate, source) {
   return {
-    status: 'update_available',
+    status: "update_available",
     eventKey: eventKeyForDigest(candidate.targetDigest),
     installedVersion: localRelease.version,
     latestVersion: candidate.version,
@@ -1313,34 +1328,43 @@ function notification(localRelease, candidate, source) {
   };
 }
 
-function resultForCandidate(localRelease, state, { source = 'cache', nowMs = Date.now() } = {}) {
+function resultForCandidate(localRelease, state, { source = "cache", nowMs = Date.now() } = {}) {
   const { candidate } = state;
-  if (!candidate) return silent('cache-valid');
+  if (!candidate) return silent("cache-valid");
   if (compareSemver(candidate.version, localRelease.version) <= 0) {
     return {
-      status: 'current', installedVersion: localRelease.version,
-      availableVersion: candidate.version, checkedAt: candidate.checkedAt,
-      source, noticeRequired: false,
+      status: "current",
+      installedVersion: localRelease.version,
+      availableVersion: candidate.version,
+      checkedAt: candidate.checkedAt,
+      source,
+      noticeRequired: false,
     };
   }
   const result = notification(localRelease, candidate, source);
-  const preference = state.preferences?.find((entry) => entry.targetDigest === candidate.targetDigest
-    && entry.version === candidate.version);
-  if (preference?.mode === 'ignore') return { ...result, noticeRequired: false, reason: 'ignored' };
-  if (preference?.mode === 'snooze' && Date.parse(preference.until) > nowMs) {
-    return { ...result, noticeRequired: false, reason: 'snoozed', suppressedUntil: preference.until };
+  const preference = state.preferences?.find(
+    (entry) => entry.targetDigest === candidate.targetDigest && entry.version === candidate.version,
+  );
+  if (preference?.mode === "ignore") return { ...result, noticeRequired: false, reason: "ignored" };
+  if (preference?.mode === "snooze" && Date.parse(preference.until) > nowMs) {
+    return {
+      ...result,
+      noticeRequired: false,
+      reason: "snoozed",
+      suppressedUntil: preference.until,
+    };
   }
   return result;
 }
 
 async function readBoundedBody(response) {
-  const contentLength = Number(response.headers.get('content-length'));
+  const contentLength = Number(response.headers.get("content-length"));
   if (Number.isFinite(contentLength) && contentLength > MAX_RESPONSE_BYTES) {
     await cancelResponseBody(response);
-    throw new UpdateContractError('manifest response is too large');
+    throw new UpdateContractError("manifest response is too large");
   }
-  if (!response.body || typeof response.body.getReader !== 'function') {
-    throw new UpdateContractError('manifest response has no bounded stream');
+  if (!response.body || typeof response.body.getReader !== "function") {
+    throw new UpdateContractError("manifest response has no bounded stream");
   }
   const reader = response.body.getReader();
   const chunks = [];
@@ -1352,7 +1376,7 @@ async function readBoundedBody(response) {
       size += value.byteLength;
       if (size > MAX_RESPONSE_BYTES) {
         await reader.cancel().catch(() => {});
-        throw new UpdateContractError('manifest response is too large');
+        throw new UpdateContractError("manifest response is too large");
       }
       chunks.push(value);
     }
@@ -1366,15 +1390,15 @@ async function readBoundedBody(response) {
     offset += chunk.byteLength;
   }
   try {
-    return new TextDecoder('utf-8', { fatal: true }).decode(joined);
+    return new TextDecoder("utf-8", { fatal: true }).decode(joined);
   } catch {
-    throw new UpdateContractError('manifest is not valid UTF-8');
+    throw new UpdateContractError("manifest is not valid UTF-8");
   }
 }
 
 async function cancelResponseBody(response) {
   try {
-    if (response.body && typeof response.body.cancel === 'function') {
+    if (response.body && typeof response.body.cancel === "function") {
       await response.body.cancel();
     }
   } catch {
@@ -1383,41 +1407,42 @@ async function cancelResponseBody(response) {
 }
 
 async function fetchCandidate({ fetchImpl, manifestUrl, timeoutMs }) {
-  if (manifestUrl !== DEFAULT_MANIFEST_URL) throw new UpdateContractError('unexpected manifest URL');
+  if (manifestUrl !== DEFAULT_MANIFEST_URL)
+    throw new UpdateContractError("unexpected manifest URL");
   const controller = new AbortController();
   let timer;
   const timeout = new Promise((_resolve, reject) => {
     timer = setTimeout(() => {
       controller.abort();
-      reject(new Error('update check timed out'));
+      reject(new Error("update check timed out"));
     }, timeoutMs);
   });
   const request = (async () => {
-    const headers = { accept: 'application/json' };
+    const headers = { accept: "application/json" };
     const response = await fetchImpl(manifestUrl, {
-      method: 'GET',
+      method: "GET",
       headers,
-      redirect: 'error',
+      redirect: "error",
       signal: controller.signal,
     });
     if (response.status !== 200) {
       await cancelResponseBody(response);
       if (response.status === 404 || response.status === 410) {
-        throw new ManifestWithdrawnError('manifest was withdrawn');
+        throw new ManifestWithdrawnError("manifest was withdrawn");
       }
       throw new Error(`manifest returned HTTP ${response.status}`);
     }
-    const mediaType = response.headers.get('content-type')?.split(';', 1)[0].trim().toLowerCase();
-    if (mediaType !== 'application/json') {
+    const mediaType = response.headers.get("content-type")?.split(";", 1)[0].trim().toLowerCase();
+    if (mediaType !== "application/json") {
       await cancelResponseBody(response);
-      throw new UpdateContractError('manifest is not JSON');
+      throw new UpdateContractError("manifest is not JSON");
     }
     const source = await readBoundedBody(response);
     let decoded;
     try {
       decoded = JSON.parse(source);
     } catch {
-      throw new UpdateContractError('manifest is not valid bounded JSON');
+      throw new UpdateContractError("manifest is not valid bounded JSON");
     }
     return { candidate: validateManifest(decoded) };
   })();
@@ -1430,19 +1455,31 @@ async function fetchCandidate({ fetchImpl, manifestUrl, timeoutMs }) {
 
 function defaultCacheDirectory() {
   const homeDirectory = os.homedir();
-  if (process.platform === 'win32') {
+  if (process.platform === "win32") {
     const localData = process.env.LOCALAPPDATA;
-    return path.join(localData && path.isAbsolute(localData) ? localData : path.join(homeDirectory, 'AppData', 'Local'), 'archify-skill');
+    return path.join(
+      localData && path.isAbsolute(localData)
+        ? localData
+        : path.join(homeDirectory, "AppData", "Local"),
+      "archify-skill",
+    );
   }
-  if (process.platform === 'darwin') return path.join(homeDirectory, 'Library', 'Caches', 'archify-skill');
+  if (process.platform === "darwin")
+    return path.join(homeDirectory, "Library", "Caches", "archify-skill");
   const xdgCache = process.env.XDG_CACHE_HOME;
-  return path.join(xdgCache && path.isAbsolute(xdgCache) ? xdgCache : path.join(homeDirectory, '.cache'), 'archify-skill');
+  return path.join(
+    xdgCache && path.isAbsolute(xdgCache) ? xdgCache : path.join(homeDirectory, ".cache"),
+    "archify-skill",
+  );
 }
 
 function freshStateResult(localRelease, state, nowMs) {
-  const nextCheckAt = Date.parse(state.check.nextCheckAt || '');
-  if (Number.isFinite(nextCheckAt) && nextCheckAt > nowMs
-    && nextCheckAt <= nowMs + MAX_CACHE_HORIZON_MS) {
+  const nextCheckAt = Date.parse(state.check.nextCheckAt || "");
+  if (
+    Number.isFinite(nextCheckAt) &&
+    nextCheckAt > nowMs &&
+    nextCheckAt <= nowMs + MAX_CACHE_HORIZON_MS
+  ) {
     return resultForCandidate(localRelease, state, { nowMs });
   }
   return null;
@@ -1451,7 +1488,9 @@ function freshStateResult(localRelease, state, nowMs) {
 async function resultAfterLosingOperation(cacheDirectory, operation, localRelease, nowMs) {
   await cancelOperation(cacheDirectory, operation);
   const cached = await readState(cacheDirectory, localRelease.version);
-  return cached.candidate ? resultForCandidate(localRelease, cached, { nowMs }) : silent('check-in-progress');
+  return cached.candidate
+    ? resultForCandidate(localRelease, cached, { nowMs })
+    : silent("check-in-progress");
 }
 
 async function waitUntilRetry(deadline, monotonicNow) {
@@ -1462,10 +1501,7 @@ async function waitUntilRetry(deadline, monotonicNow) {
     return false;
   }
   if (!Number.isFinite(remaining) || remaining <= 0) return false;
-  await new Promise((resolve) => setTimeout(
-    resolve,
-    Math.min(LOCK_RETRY_DELAY_MS, remaining),
-  ));
+  await new Promise((resolve) => setTimeout(resolve, Math.min(LOCK_RETRY_DELAY_MS, remaining)));
   return true;
 }
 
@@ -1478,24 +1514,24 @@ export async function checkForUpdate({
   timeoutMs = DEFAULT_TIMEOUT_MS,
   fetchDeadlineNs,
 } = {}) {
-  if (updatesDisabled()) return silent('disabled');
-  if (typeof fetchImpl !== 'function') return silent('runtime-unavailable');
+  if (updatesDisabled()) return silent("disabled");
+  if (typeof fetchImpl !== "function") return silent("runtime-unavailable");
   let localRelease;
   try {
     localRelease = validateLocalRelease(await readJsonFile(releasePath, MAX_LOCAL_RELEASE_BYTES));
   } catch {
-    return silent('invalid-local-release');
+    return silent("invalid-local-release");
   }
 
   const nowMs = Number(now());
-  if (!Number.isFinite(nowMs)) return silent('invalid-clock');
+  if (!Number.isFinite(nowMs)) return silent("invalid-clock");
   let stateDirectory = versionCacheDirectory(cacheDirectory, localRelease.version);
   let state;
   try {
     stateDirectory = await prepareCacheDirectory(stateDirectory);
     state = await readState(stateDirectory, localRelease.version);
   } catch {
-    return silent('cache-unavailable');
+    return silent("cache-unavailable");
   }
   const cachedResult = freshStateResult(localRelease, state, nowMs);
   if (cachedResult) return cachedResult;
@@ -1504,14 +1540,16 @@ export async function checkForUpdate({
   try {
     operation = await acquireOperation(stateDirectory);
   } catch {
-    return silent('cache-unavailable');
+    return silent("cache-unavailable");
   }
   if (!operation) {
     try {
       const cached = await readState(stateDirectory, localRelease.version);
-      return cached.candidate ? resultForCandidate(localRelease, cached, { nowMs }) : silent('check-in-progress');
+      return cached.candidate
+        ? resultForCandidate(localRelease, cached, { nowMs })
+        : silent("check-in-progress");
     } catch {
-      return silent('cache-unavailable');
+      return silent("cache-unavailable");
     }
   }
 
@@ -1523,19 +1561,22 @@ export async function checkForUpdate({
       return racedResult;
     }
 
-    if (!await operationOwnsActiveClaim(stateDirectory, operation)) {
+    if (!(await operationOwnsActiveClaim(stateDirectory, operation))) {
       return await resultAfterLosingOperation(stateDirectory, operation, localRelease, nowMs);
     }
 
     await verifyCacheToken(cacheTokenFor(stateDirectory));
-    if (!await operationOwnsActiveClaim(stateDirectory, operation)) {
+    if (!(await operationOwnsActiveClaim(stateDirectory, operation))) {
       return await resultAfterLosingOperation(stateDirectory, operation, localRelease, nowMs);
     }
     let fetched;
     try {
-      const remainingFetchMs = fetchDeadlineNs === undefined ? timeoutMs
-        : Math.min(timeoutMs, Number(fetchDeadlineNs - process.hrtime.bigint()) / 1_000_000);
-      if (remainingFetchMs <= 0) throw new Error('update fetch deadline expired during cache preparation');
+      const remainingFetchMs =
+        fetchDeadlineNs === undefined
+          ? timeoutMs
+          : Math.min(timeoutMs, Number(fetchDeadlineNs - process.hrtime.bigint()) / 1_000_000);
+      if (remainingFetchMs <= 0)
+        throw new Error("update fetch deadline expired during cache preparation");
       fetched = await fetchCandidate({
         fetchImpl,
         manifestUrl: localRelease.updateManifestUrl,
@@ -1543,11 +1584,16 @@ export async function checkForUpdate({
       });
     } catch (error) {
       const withdrawn = error instanceof ManifestWithdrawnError;
-      const reason = withdrawn ? 'withdrawn'
-        : error instanceof UpdateContractError ? 'invalid-manifest' : 'check-failed';
+      const reason = withdrawn
+        ? "withdrawn"
+        : error instanceof UpdateContractError
+          ? "invalid-manifest"
+          : "check-failed";
       // Offline or invalid checks keep repeating the last validated candidate.
-      const failedResult = (known) => (!withdrawn && known.candidate
-        ? resultForCandidate(localRelease, known, { nowMs }) : silent(reason));
+      const failedResult = (known) =>
+        !withdrawn && known.candidate
+          ? resultForCandidate(localRelease, known, { nowMs })
+          : silent(reason);
       try {
         const committed = await commitOperation(
           stateDirectory,
@@ -1583,7 +1629,7 @@ export async function checkForUpdate({
               consecutiveFailures: 0,
             },
           };
-          const result = resultForCandidate(localRelease, next, { source: 'network', nowMs });
+          const result = resultForCandidate(localRelease, next, { source: "network", nowMs });
           return {
             state: next,
             result,
@@ -1597,11 +1643,15 @@ export async function checkForUpdate({
       return committed.result;
     } catch {
       await cancelOperation(stateDirectory, operation).catch(() => {});
-      return resultForCandidate(localRelease, { ...state, candidate }, { source: 'network', nowMs });
+      return resultForCandidate(
+        localRelease,
+        { ...state, candidate },
+        { source: "network", nowMs },
+      );
     }
   } catch {
     await cancelOperation(stateDirectory, operation).catch(() => {});
-    return silent('cache-unavailable');
+    return silent("cache-unavailable");
   }
 }
 
@@ -1615,48 +1665,60 @@ export async function setUpdatePreference({
   monotonicNow = () => performance.now(),
 } = {}) {
   const targetDigest = digestForEventKey(eventKey);
-  if (!targetDigest || !['snooze', 'ignore'].includes(mode)
-    || (mode === 'snooze' && (!Number.isInteger(days) || days < 1 || days > 365))) {
-    return silent('invalid-preference');
+  if (
+    !targetDigest ||
+    !["snooze", "ignore"].includes(mode) ||
+    (mode === "snooze" && (!Number.isInteger(days) || days < 1 || days > 365))
+  ) {
+    return silent("invalid-preference");
   }
   let localRelease;
   try {
     localRelease = validateLocalRelease(await readJsonFile(releasePath, MAX_LOCAL_RELEASE_BYTES));
   } catch {
-    return silent('invalid-local-release');
+    return silent("invalid-local-release");
   }
   let stateDirectory = versionCacheDirectory(cacheDirectory, localRelease.version);
   try {
     stateDirectory = await prepareCacheDirectory(stateDirectory);
   } catch {
-    return silent('cache-unavailable');
+    return silent("cache-unavailable");
   }
   const nowMs = Number(now());
-  if (!Number.isFinite(nowMs)) return silent('invalid-clock');
+  if (!Number.isFinite(nowMs)) return silent("invalid-clock");
   const deadline = Number(monotonicNow()) + PREFERENCE_LOCK_WAIT_MS;
   while (Number(monotonicNow()) < deadline) {
     let operation;
     try {
       operation = await acquireOperation(stateDirectory);
     } catch {
-      return silent('cache-unavailable');
+      return silent("cache-unavailable");
     }
     if (!operation) {
-      if (!await waitUntilRetry(deadline, monotonicNow)) break;
+      if (!(await waitUntilRetry(deadline, monotonicNow))) break;
       continue;
     }
     try {
       const committed = await commitOperation(
-        stateDirectory, operation, localRelease.version, (state) => {
-          if (!state.candidate || state.candidate.targetDigest !== targetDigest
-            || compareSemver(state.candidate.version, localRelease.version) <= 0) {
-            return { state: null, result: silent('invalid-preference') };
+        stateDirectory,
+        operation,
+        localRelease.version,
+        (state) => {
+          if (
+            !state.candidate ||
+            state.candidate.targetDigest !== targetDigest ||
+            compareSemver(state.candidate.version, localRelease.version) <= 0
+          ) {
+            return { state: null, result: silent("invalid-preference") };
           }
           const preference = {
             targetDigest,
             version: state.candidate.version,
             mode,
-            until: mode === 'snooze' ? new Date(nowMs + days * 24 * 60 * 60 * 1_000).toISOString() : null,
+            until:
+              mode === "snooze"
+                ? new Date(nowMs + days * 24 * 60 * 60 * 1_000).toISOString()
+                : null,
           };
           const preferences = (state.preferences || [])
             .filter((entry) => entry.targetDigest !== targetDigest)
@@ -1664,34 +1726,37 @@ export async function setUpdatePreference({
           preferences.push(preference);
           return {
             state: { ...state, preferences },
-            result: { status: mode === 'snooze' ? 'snoozed' : 'ignored', eventKey,
-              ...(preference.until ? { suppressedUntil: preference.until } : {}) },
+            result: {
+              status: mode === "snooze" ? "snoozed" : "ignored",
+              eventKey,
+              ...(preference.until ? { suppressedUntil: preference.until } : {}),
+            },
           };
         },
       );
       if (!committed.fenced) return committed.result;
     } catch {
       await cancelOperation(stateDirectory, operation).catch(() => {});
-      return silent('cache-unavailable');
+      return silent("cache-unavailable");
     }
   }
-  return silent('check-in-progress');
+  return silent("check-in-progress");
 }
 
 async function runCli() {
-  if (updatesDisabled()) return silent('disabled');
+  if (updatesDisabled()) return silent("disabled");
   const argumentsList = process.argv.slice(2);
   if (argumentsList.length === 0) return checkForUpdate();
-  if (argumentsList.length === 2 && argumentsList[0] === '--ack') {
-    return silent('legacy-ack-no-op');
+  if (argumentsList.length === 2 && argumentsList[0] === "--ack") {
+    return silent("legacy-ack-no-op");
   }
-  if (argumentsList.length === 2 && argumentsList[0] === '--snooze') {
-    return setUpdatePreference({ eventKey: argumentsList[1], mode: 'snooze' });
+  if (argumentsList.length === 2 && argumentsList[0] === "--snooze") {
+    return setUpdatePreference({ eventKey: argumentsList[1], mode: "snooze" });
   }
-  if (argumentsList.length === 2 && argumentsList[0] === '--ignore') {
-    return setUpdatePreference({ eventKey: argumentsList[1], mode: 'ignore' });
+  if (argumentsList.length === 2 && argumentsList[0] === "--ignore") {
+    return setUpdatePreference({ eventKey: argumentsList[1], mode: "ignore" });
   }
-  return silent('invalid-arguments');
+  return silent("invalid-arguments");
 }
 
 export function isMainModule({
@@ -1700,7 +1765,7 @@ export function isMainModule({
 } = {}) {
   if (!argvPath) return false;
   try {
-    return sameEntry(argvPath, modulePath).status === 'match';
+    return sameEntry(argvPath, modulePath).status === "match";
   } catch {
     return false;
   }
@@ -1711,7 +1776,7 @@ if (isMainModule()) {
   try {
     result = await runCli();
   } catch {
-    result = silent('check-failed');
+    result = silent("check-failed");
   }
   process.stdout.write(`${JSON.stringify(result)}\n`);
 }

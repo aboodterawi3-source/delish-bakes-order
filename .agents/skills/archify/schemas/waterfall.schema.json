@@ -4,12 +4,7 @@
   "title": "Archify Execution Waterfall",
   "type": "object",
   "additionalProperties": false,
-  "required": [
-    "schema_version",
-    "diagram_type",
-    "meta",
-    "spans"
-  ],
+  "required": ["schema_version", "diagram_type", "meta", "spans"],
   "properties": {
     "schema_version": {
       "const": 1
@@ -20,10 +15,7 @@
     "meta": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "title",
-        "evidence"
-      ],
+      "required": ["title", "evidence"],
       "properties": {
         "title": {
           "type": "string",
@@ -57,18 +49,11 @@
           "$ref": "common.schema.json#/$defs/guidedViews"
         },
         "evidence": {
-          "enum": [
-            "measured",
-            "illustrative"
-          ],
+          "enum": ["measured", "illustrative"],
           "description": "Whether span timing is recorded measurement or illustrative input; drawn on the canvas."
         },
         "unit": {
-          "enum": [
-            "us",
-            "ms",
-            "s"
-          ],
+          "enum": ["us", "ms", "s"],
           "description": "Unit of every start, end, and duration; defaults to ms."
         }
       }
@@ -90,11 +75,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "id",
-          "name",
-          "start"
-        ],
+        "required": ["id", "name", "start"],
         "properties": {
           "id": {
             "$ref": "common.schema.json#/$defs/id"
@@ -120,12 +101,7 @@
             "$ref": "common.schema.json#/$defs/id"
           },
           "status": {
-            "enum": [
-              "ok",
-              "error",
-              "cancelled",
-              "incomplete"
-            ]
+            "enum": ["ok", "error", "cancelled", "incomplete"]
           },
           "service": {
             "type": "string",

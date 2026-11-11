@@ -23,7 +23,9 @@ export function entityBox(e) {
     y: Math.round(e.y),
     width: e.width,
     height: e.height,
-    attributes: (Array.isArray(e.attributes) ? e.attributes : []).map((attribute) => attribute.name),
+    attributes: (Array.isArray(e.attributes) ? e.attributes : []).map(
+      (attribute) => attribute.name,
+    ),
     ...(Number.isInteger(e.row) ? { row: e.row } : {}),
     ...(Number.isInteger(e.col) ? { col: e.col } : {}),
     ...(Array.isArray(e.pos) ? { pos: e.pos.map(Math.round) } : {}),
@@ -47,8 +49,8 @@ export function connectionPath(conn, routed, labelAt) {
     from: conn.from,
     to: conn.to,
     label: conn.label ?? null,
-    variant: conn.variant ?? 'default',
-    route: conn.route ?? 'auto',
+    variant: conn.variant ?? "default",
+    route: conn.route ?? "auto",
     // These points are repair inputs: rounding a fractional port makes a
     // reused waypoint diagonal relative to the actual endpoint.
     points: routed.points.map(([x, y]) => [x, y]),

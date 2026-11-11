@@ -29,7 +29,9 @@ export interface ParsedItemOptionsResult {
  * Regex to parse extra formatted string:
  * e.g. "🕯️ شموع أرقام (2 × 0.75 د.أ)" or "✨ شموع أرقام (1 × 4.00 د.أ)" or "بالونات هيليوم (3 × 1.00 JD)"
  */
-export function parseExtraString(str: string): { icon: string; name: string; qty: number; price: number } | null {
+export function parseExtraString(
+  str: string,
+): { icon: string; name: string; qty: number; price: number } | null {
   const match = str.match(
     /^(?:([\p{Extended_Pictographic}\p{Emoji}\uFE0F]+)\s*)?(.+?)\s*\(\s*(\d+)\s*[×xX*]\s*([\d.]+)(?:\s*(?:د\.أ|JD|JOD))?\s*\)$/u,
   );
@@ -84,7 +86,9 @@ export function parseOptionsAndExtras(
     const parsedExtra = parseExtraString(opt);
     if (parsedExtra) {
       const hasExplicitPrice =
-        typeof parsedExtra.price === "number" && !isNaN(parsedExtra.price) && parsedExtra.price >= 0;
+        typeof parsedExtra.price === "number" &&
+        !isNaN(parsedExtra.price) &&
+        parsedExtra.price >= 0;
 
       // Look for exact icon match first
       let matchingDefault = defaultExtrasList.find(
@@ -227,7 +231,8 @@ export interface CompilePayloadResult {
  * Pure compiler for TouchItemEditor save payload with K1, K2, K3, K4 integrity guarantees.
  */
 export function compileSavePayload(input: CompilePayloadInput): CompilePayloadResult {
-  const name = (input.tab === "catalog" ? input.productName || input.customName : input.customName) || "";
+  const name =
+    (input.tab === "catalog" ? input.productName || input.customName : input.customName) || "";
   if (!name.trim()) {
     return { success: false, error: "يرجى اختيار منتج أو كتابة اسم الصنف" };
   }

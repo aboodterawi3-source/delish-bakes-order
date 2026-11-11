@@ -83,7 +83,7 @@ function EditOrderPage() {
 
   // stepper UI (simple text) – could be replaced with a full stepper component later
   const Stepper = () => (
-    <ol className="flex gap-2 text-sm mb-4 justify-center">
+    <ol className="mb-4 flex justify-center gap-2 text-sm">
       <li className="font-bold text-[#B8860B]">1️⃣ اختيار التاريخ</li>
       <li className="font-bold text-[#B8860B]">2️⃣ اختيار الوقت</li>
       <li className="font-bold text-[#B8860B]">3️⃣ حفظ</li>
@@ -94,10 +94,10 @@ function EditOrderPage() {
     <main dir="rtl" lang="ar" className="min-h-dvh w-full bg-[#F9FBFC] px-4 py-10 text-[#3E2723]">
       <div className="mx-auto w-full max-w-md">
         {/* Header with logo and optional greeting */}
-        <div className="flex flex-col items-center mb-6">
+        <div className="mb-6 flex flex-col items-center">
           <DelishLogo size="lg" showSubtitle />
           {orderQuery.data?.order && (
-            <header className="text-center mt-4">
+            <header className="mt-4 text-center">
               <h1 className="font-display text-xl font-bold text-[#3E2723]">
                 طلب{" "}
                 <span dir="ltr">
@@ -124,7 +124,7 @@ function EditOrderPage() {
             </p>
           )}
           {apiError && (
-            <p className="rounded-2xl bg-red-100 p-4 text-sm font-bold text-red-800 flex items-center gap-2">
+            <p className="flex items-center gap-2 rounded-2xl bg-red-100 p-4 text-sm font-bold text-red-800">
               <AlertCircle className="h-4 w-4" aria-hidden="true" />
               {apiError}
             </p>
@@ -192,7 +192,7 @@ function EditOrderPage() {
                   {saveMutation.isPending ? (
                     <>
                       {" "}
-                      <Loader2 className="inline h-4 w-4 animate-spin mr-2" /> جارٍ الحفظ…
+                      <Loader2 className="mr-2 inline h-4 w-4 animate-spin" /> جارٍ الحفظ…
                     </>
                   ) : (
                     "حفظ التعديلات"

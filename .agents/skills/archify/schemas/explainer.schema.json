@@ -4,14 +4,7 @@
   "title": "Archify Explainer v1",
   "type": "object",
   "additionalProperties": false,
-  "required": [
-    "schema_version",
-    "diagram_type",
-    "meta",
-    "answer",
-    "panels",
-    "sources"
-  ],
+  "required": ["schema_version", "diagram_type", "meta", "answer", "panels", "sources"],
   "properties": {
     "schema_version": {
       "const": 1
@@ -22,10 +15,7 @@
     "meta": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "id",
-        "title"
-      ],
+      "required": ["id", "title"],
       "properties": {
         "id": {
           "$ref": "#/$defs/id"
@@ -43,12 +33,7 @@
           "$ref": "common.schema.json#/$defs/qualityProfile"
         },
         "style": {
-          "enum": [
-            "clean",
-            "editorial",
-            "product",
-            "swiss"
-          ]
+          "enum": ["clean", "editorial", "product", "swiss"]
         },
         "repository": {
           "$ref": "common.schema.json#/$defs/repository"
@@ -58,9 +43,7 @@
     "answer": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "summary"
-      ],
+      "required": ["summary"],
       "properties": {
         "summary": {
           "$ref": "#/$defs/text"
@@ -82,11 +65,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "id",
-          "title",
-          "blocks"
-        ],
+        "required": ["id", "title", "blocks"],
         "properties": {
           "id": {
             "$ref": "#/$defs/id"
@@ -146,11 +125,7 @@
     "prose": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "id",
-        "type",
-        "text"
-      ],
+      "required": ["id", "type", "text"],
       "properties": {
         "id": {
           "$ref": "#/$defs/id"
@@ -166,11 +141,7 @@
     "list": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "id",
-        "type",
-        "items"
-      ],
+      "required": ["id", "type", "items"],
       "properties": {
         "id": {
           "$ref": "#/$defs/id"
@@ -197,12 +168,7 @@
     "callout": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "id",
-        "type",
-        "level",
-        "text"
-      ],
+      "required": ["id", "type", "level", "text"],
       "properties": {
         "id": {
           "$ref": "#/$defs/id"
@@ -211,11 +177,7 @@
           "const": "callout"
         },
         "level": {
-          "enum": [
-            "note",
-            "warning",
-            "open-question"
-          ]
+          "enum": ["note", "warning", "open-question"]
         },
         "title": {
           "$ref": "#/$defs/short"
@@ -228,12 +190,7 @@
     "comparison": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "id",
-        "type",
-        "columns",
-        "rows"
-      ],
+      "required": ["id", "type", "columns", "rows"],
       "properties": {
         "id": {
           "$ref": "#/$defs/id"
@@ -257,11 +214,7 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": [
-              "id",
-              "label",
-              "cells"
-            ],
+            "required": ["id", "label", "cells"],
             "properties": {
               "id": {
                 "$ref": "#/$defs/id"
@@ -274,19 +227,13 @@
                 "items": {
                   "type": "object",
                   "additionalProperties": false,
-                  "required": [
-                    "text"
-                  ],
+                  "required": ["text"],
                   "properties": {
                     "text": {
                       "$ref": "#/$defs/text"
                     },
                     "assessment": {
-                      "enum": [
-                        "good",
-                        "caution",
-                        "bad"
-                      ]
+                      "enum": ["good", "caution", "bad"]
                     },
                     "verdict": {
                       "$ref": "#/$defs/short"
@@ -306,11 +253,7 @@
     "facts": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "id",
-        "type",
-        "entries"
-      ],
+      "required": ["id", "type", "entries"],
       "properties": {
         "id": {
           "$ref": "#/$defs/id"
@@ -323,10 +266,7 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": [
-              "key",
-              "value"
-            ],
+            "required": ["key", "value"],
             "properties": {
               "key": {
                 "$ref": "#/$defs/short"
@@ -344,11 +284,7 @@
     "metric": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "id",
-        "type",
-        "label"
-      ],
+      "required": ["id", "type", "label"],
       "properties": {
         "id": {
           "$ref": "#/$defs/id"
@@ -380,11 +316,7 @@
     "steps": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "id",
-        "type",
-        "items"
-      ],
+      "required": ["id", "type", "items"],
       "properties": {
         "id": {
           "$ref": "#/$defs/id"
@@ -397,10 +329,7 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": [
-              "id",
-              "text"
-            ],
+            "required": ["id", "text"],
             "properties": {
               "id": {
                 "$ref": "#/$defs/id"
@@ -414,9 +343,7 @@
               "target": {
                 "type": "object",
                 "additionalProperties": false,
-                "required": [
-                  "diagram"
-                ],
+                "required": ["diagram"],
                 "properties": {
                   "diagram": {
                     "$ref": "#/$defs/id"
@@ -453,11 +380,7 @@
     "diagram": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "id",
-        "type",
-        "diagramType"
-      ],
+      "required": ["id", "type", "diagramType"],
       "properties": {
         "id": {
           "$ref": "#/$defs/id"
@@ -500,20 +423,13 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": [
-              "target",
-              "change"
-            ],
+            "required": ["target", "change"],
             "properties": {
               "target": {
                 "$ref": "#/$defs/id"
               },
               "change": {
-                "enum": [
-                  "added",
-                  "removed",
-                  "modified"
-                ]
+                "enum": ["added", "removed", "modified"]
               }
             }
           },
@@ -526,28 +442,20 @@
           "properties": {
             "spec": {}
           },
-          "required": [
-            "spec"
-          ]
+          "required": ["spec"]
         },
         {
           "properties": {
             "source": {}
           },
-          "required": [
-            "source"
-          ]
+          "required": ["source"]
         }
       ]
     },
     "code": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "id",
-        "type",
-        "source"
-      ],
+      "required": ["id", "type", "source"],
       "properties": {
         "id": {
           "$ref": "#/$defs/id"
@@ -566,11 +474,7 @@
     "snippet": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "id",
-        "type",
-        "text"
-      ],
+      "required": ["id", "type", "text"],
       "properties": {
         "id": {
           "$ref": "#/$defs/id"
@@ -592,11 +496,7 @@
     "diff": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "id",
-        "type",
-        "text"
-      ],
+      "required": ["id", "type", "text"],
       "properties": {
         "id": {
           "$ref": "#/$defs/id"
@@ -615,12 +515,7 @@
     "image": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "id",
-        "type",
-        "path",
-        "alt"
-      ],
+      "required": ["id", "type", "path", "alt"],
       "properties": {
         "id": {
           "$ref": "#/$defs/id"
@@ -641,9 +536,7 @@
     },
     "block": {
       "type": "object",
-      "required": [
-        "type"
-      ],
+      "required": ["type"],
       "properties": {
         "type": {
           "enum": [
@@ -825,10 +718,7 @@
     "source": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "id",
-        "title"
-      ],
+      "required": ["id", "title"],
       "properties": {
         "id": {
           "$ref": "#/$defs/id"
@@ -868,10 +758,7 @@
     "chart": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "id",
-        "type"
-      ],
+      "required": ["id", "type"],
       "properties": {
         "id": {
           "$ref": "#/$defs/id"
@@ -888,22 +775,13 @@
         "data": {
           "type": "object",
           "additionalProperties": false,
-          "required": [
-            "path",
-            "kind",
-            "x",
-            "y"
-          ],
+          "required": ["path", "kind", "x", "y"],
           "properties": {
             "path": {
               "$ref": "#/$defs/short"
             },
             "kind": {
-              "enum": [
-                "bar",
-                "line",
-                "pie"
-              ]
+              "enum": ["bar", "line", "pie"]
             },
             "x": {
               "$ref": "#/$defs/short"

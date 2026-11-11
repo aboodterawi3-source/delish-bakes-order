@@ -96,7 +96,7 @@ export function CmsPanel() {
             role="tab"
             aria-selected={tab === item.value}
             onClick={() => setTab(item.value)}
-            className={`min-h-11 shrink-0 whitespace-nowrap rounded-full px-5 text-xs font-bold transition ${
+            className={`min-h-11 shrink-0 rounded-full px-5 text-xs font-bold whitespace-nowrap transition ${
               tab === item.value
                 ? "bg-primary text-primary-foreground shadow-sm"
                 : "border border-border bg-card text-foreground hover:bg-secondary/40"
@@ -318,7 +318,7 @@ function BannerEditor({
 
   return (
     <form
-      className="space-y-5 rounded-3xl border border-border bg-card p-5 sm:p-6 shadow-xs"
+      className="space-y-5 rounded-3xl border border-border bg-card p-5 shadow-xs sm:p-6"
       onSubmit={(event) => {
         event.preventDefault();
         save.mutate();
@@ -326,18 +326,18 @@ function BannerEditor({
     >
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
         <div>
-          <h3 className="font-display text-base sm:text-lg font-bold text-foreground flex items-center gap-2">
+          <h3 className="flex items-center gap-2 font-display text-base font-bold text-foreground sm:text-lg">
             <Sparkles className="h-5 w-5 text-primary" />
             إدارة البانر العلوي للمتجر (Hero Banner Management)
           </h3>
-          <p className="text-xs text-muted-foreground mt-0.5">
+          <p className="mt-0.5 text-xs text-muted-foreground">
             التحكم في عنوان ووصف وصورة البانر الرئيسي في أعلى الصفحة الرئيسية للمتجر.
           </p>
         </div>
         <button
           type="submit"
           disabled={save.isPending}
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-primary px-6 text-xs sm:text-sm font-bold text-primary-foreground shadow-sm transition hover:opacity-90 disabled:opacity-60 cursor-pointer"
+          className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-full bg-primary px-6 text-xs font-bold text-primary-foreground shadow-sm transition hover:opacity-90 disabled:opacity-60 sm:text-sm"
         >
           {save.isPending ? (
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
@@ -368,7 +368,7 @@ function BannerEditor({
             value={form.subtitle}
             onChange={(e) => setForm({ ...form, subtitle: e.target.value })}
             placeholder="مثال: سواء كان حفل تخرج، عيد ميلاد، أو ذكرى مميزة.."
-            className="w-full rounded-2xl border border-input bg-background p-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="w-full rounded-2xl border border-input bg-background p-3 text-sm text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
             required
           />
         </label>
@@ -382,11 +382,11 @@ function BannerEditor({
         note="اختر صورة عالية الجودة للبانر من جهازك (سيتم تحويلها لـ WebP وتأطيرها تلقائياً)."
       />
 
-      <div className="pt-2 flex items-center justify-end border-t border-border/50">
+      <div className="flex items-center justify-end border-t border-border/50 pt-2">
         <button
           type="submit"
           disabled={save.isPending}
-          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-primary px-7 text-sm font-bold text-primary-foreground shadow-md transition hover:opacity-90 disabled:opacity-60 cursor-pointer"
+          className="inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-full bg-primary px-7 text-sm font-bold text-primary-foreground shadow-md transition hover:opacity-90 disabled:opacity-60"
         >
           {save.isPending ? (
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
@@ -795,7 +795,7 @@ function ProductsEditor({
               )}
             </div>
             <div className="min-w-0 sm:me-auto">
-              <p className="break-words text-sm font-bold text-foreground">
+              <p className="text-sm font-bold break-words text-foreground">
                 {product.name_ar} · {product.name_en}
               </p>
               <p className="flex min-w-0 flex-wrap items-center gap-2 text-[11px] text-muted-foreground">

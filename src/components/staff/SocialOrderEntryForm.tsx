@@ -609,12 +609,12 @@ export function SocialOrderEntryForm({
       {done ? (
         <div
           role="status"
-          className="rounded-2xl bg-gradient-to-r from-amber-50 to-amber-100/70 border-2 border-amber-300 p-4 text-sm font-bold text-amber-950 shadow-md flex flex-wrap items-center justify-between gap-3 animate-in fade-in"
+          className="flex animate-in flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-amber-300 bg-gradient-to-r from-amber-50 to-amber-100/70 p-4 text-sm font-bold text-amber-950 shadow-md fade-in"
         >
           <div className="flex items-center gap-3">
             <span className="text-2xl">✨</span>
             <div>
-              <p className="font-black text-base text-[#5D2E17]">
+              <p className="text-base font-black text-[#5D2E17]">
                 تم تثبيت الطلب بنجاح ✨ (رقم الأوردر: {done})
               </p>
               <p className="text-xs text-[#7A6458]">تم حفظ الطلب وإرساله فوراً للمطبخ والمبيعات</p>
@@ -625,7 +625,7 @@ export function SocialOrderEntryForm({
             <button
               type="button"
               onClick={() => void copy(savedMessage || confirmationPreview, "confirmation")}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-white border border-amber-300 px-3.5 py-2 text-xs font-black text-[#5D2E17] hover:bg-amber-50 shadow-2xs transition cursor-pointer"
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-amber-300 bg-white px-3.5 py-2 text-xs font-black text-[#5D2E17] shadow-2xs transition hover:bg-amber-50"
             >
               {copied === "confirmation" ? (
                 <Check className="h-3.5 w-3.5 text-emerald-600" />
@@ -642,7 +642,7 @@ export function SocialOrderEntryForm({
             <button
               type="button"
               onClick={() => void copy(modificationPreview, "modification")}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-rose-50 border border-rose-300 px-3 py-2 text-xs font-black text-rose-800 hover:bg-rose-100 shadow-2xs transition cursor-pointer"
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-rose-300 bg-rose-50 px-3 py-2 text-xs font-black text-rose-800 shadow-2xs transition hover:bg-rose-100"
             >
               {copied === "modification" ? (
                 <Check className="h-3.5 w-3.5 text-emerald-600" />
@@ -658,7 +658,7 @@ export function SocialOrderEntryForm({
               href={whatsappUrl(savedMessage || confirmationPreview)}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-xl bg-[#25D366] px-3.5 py-2 text-xs font-black text-white hover:brightness-95 shadow-2xs transition"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-[#25D366] px-3.5 py-2 text-xs font-black text-white shadow-2xs transition hover:brightness-95"
             >
               <MessageCircle className="h-3.5 w-3.5" />
               <span>إرسال واتساب</span>
@@ -670,7 +670,7 @@ export function SocialOrderEntryForm({
       {error ? (
         <div
           role="alert"
-          className="rounded-2xl bg-red-50 border border-red-200 p-4 text-sm font-bold text-red-900 shadow-xs"
+          className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-900 shadow-xs"
         >
           ⚠️ {error}
         </div>
@@ -682,15 +682,15 @@ export function SocialOrderEntryForm({
       >
         {/* HEADER & SOURCE SELECTOR */}
         <div className="border-b border-slate-100 pb-4">
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-            <h2 className="font-serif text-lg font-bold text-[#3E2723] flex items-center gap-2">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="flex items-center gap-2 font-serif text-lg font-bold text-[#3E2723]">
               <Sparkles className="h-5 w-5 text-[#B8860B]" />
               {title}
             </h2>
 
             {/* Communication Source Pills */}
-            <div className="flex items-center gap-1.5 bg-[#F9FBFC] p-1 rounded-2xl border border-slate-200">
-              <span className="text-xs font-bold text-[#7A6458] px-2 hidden sm:inline">
+            <div className="flex items-center gap-1.5 rounded-2xl border border-slate-200 bg-[#F9FBFC] p-1">
+              <span className="hidden px-2 text-xs font-bold text-[#7A6458] sm:inline">
                 طريقة التواصل:
               </span>
               {(Object.keys(CHANNEL_CONFIG) as OrderSource[]).map((src) => {
@@ -723,7 +723,7 @@ export function SocialOrderEntryForm({
         <div className="rounded-2xl border border-[#B8860B]/30 bg-[#FFFDF9] p-3.5 shadow-2xs">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <span className="text-xs font-black text-[#5D2E17] block">
+              <span className="block text-xs font-black text-[#5D2E17]">
                 نوع الطلب · Order Type
               </span>
               <p className="text-[11px] text-[#7A6458]">
@@ -733,7 +733,7 @@ export function SocialOrderEntryForm({
               </p>
             </div>
 
-            <div className="flex rounded-xl bg-slate-100 p-1 border border-slate-200">
+            <div className="flex rounded-xl border border-slate-200 bg-slate-100 p-1">
               <button
                 type="button"
                 onClick={() => set("is_gift", false)}
@@ -765,7 +765,7 @@ export function SocialOrderEntryForm({
         {/* CUSTOMER / SENDER / RECIPIENT FIELDS */}
         {!form.is_gift ? (
           /* NORMAL ORDER: JUST 1 PHONE NUMBER! */
-          <div className="grid gap-4 sm:grid-cols-2 bg-[#F9FBFC] p-4 rounded-2xl border border-slate-200">
+          <div className="grid gap-4 rounded-2xl border border-slate-200 bg-[#F9FBFC] p-4 sm:grid-cols-2">
             <label className="block text-sm font-bold text-[#3E2723]">
               اسم العميل · Customer name
               <input
@@ -773,7 +773,7 @@ export function SocialOrderEntryForm({
                 value={form.customer_name}
                 onChange={(event) => set("customer_name", event.target.value)}
                 placeholder="مثال: رنا العبدالله"
-                className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm focus:ring-2 focus:ring-[#B8860B] focus:outline-none"
               />
             </label>
 
@@ -786,7 +786,7 @@ export function SocialOrderEntryForm({
                 value={form.customer_phone}
                 onChange={(event) => set("customer_phone", event.target.value)}
                 placeholder="07XXXXXXXX"
-                className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm focus:ring-2 focus:ring-[#B8860B] focus:outline-none"
               />
             </label>
 
@@ -796,14 +796,14 @@ export function SocialOrderEntryForm({
                 value={form.order_name}
                 onChange={(event) => set("order_name", event.target.value)}
                 placeholder="مثال: كيكة شوكولاتة لعيد ميلاد"
-                className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm focus:ring-2 focus:ring-[#B8860B] focus:outline-none"
               />
             </label>
           </div>
         ) : (
           /* GIFT ORDER: SENDER & RECIPIENT SEPARATED */
-          <div className="grid gap-4 sm:grid-cols-2 bg-rose-50/40 p-4 rounded-2xl border border-rose-200/80">
-            <div className="sm:col-span-2 flex items-center gap-2 pb-1 text-xs font-black text-rose-900 border-b border-rose-200">
+          <div className="grid gap-4 rounded-2xl border border-rose-200/80 bg-rose-50/40 p-4 sm:grid-cols-2">
+            <div className="flex items-center gap-2 border-b border-rose-200 pb-1 text-xs font-black text-rose-900 sm:col-span-2">
               <Gift className="h-4 w-4 text-rose-600" />
               <span>بيانات إرسال الهدية (المرسل والمستلم)</span>
             </div>
@@ -815,7 +815,7 @@ export function SocialOrderEntryForm({
                 value={form.sender_name}
                 onChange={(event) => set("sender_name", event.target.value)}
                 placeholder="مثال: أحمد خالد"
-                className="mt-1 min-h-12 w-full rounded-xl border border-rose-200 bg-white px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                className="mt-1 min-h-12 w-full rounded-xl border border-rose-200 bg-white px-3.5 text-sm focus:ring-2 focus:ring-[#B8860B] focus:outline-none"
               />
             </label>
 
@@ -828,7 +828,7 @@ export function SocialOrderEntryForm({
                 value={form.sender_phone}
                 onChange={(event) => set("sender_phone", event.target.value)}
                 placeholder="07XXXXXXXX"
-                className="mt-1 min-h-12 w-full rounded-xl border border-rose-200 bg-white px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                className="mt-1 min-h-12 w-full rounded-xl border border-rose-200 bg-white px-3.5 text-sm focus:ring-2 focus:ring-[#B8860B] focus:outline-none"
               />
             </label>
 
@@ -839,7 +839,7 @@ export function SocialOrderEntryForm({
                 value={form.recipient_name}
                 onChange={(event) => set("recipient_name", event.target.value)}
                 placeholder="مثال: ريم السالم"
-                className="mt-1 min-h-12 w-full rounded-xl border border-rose-200 bg-white px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                className="mt-1 min-h-12 w-full rounded-xl border border-rose-200 bg-white px-3.5 text-sm focus:ring-2 focus:ring-[#B8860B] focus:outline-none"
               />
             </label>
 
@@ -852,7 +852,7 @@ export function SocialOrderEntryForm({
                 value={form.recipient_phone}
                 onChange={(event) => set("recipient_phone", event.target.value)}
                 placeholder="07XXXXXXXX"
-                className="mt-1 min-h-12 w-full rounded-xl border border-rose-200 bg-white px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                className="mt-1 min-h-12 w-full rounded-xl border border-rose-200 bg-white px-3.5 text-sm focus:ring-2 focus:ring-[#B8860B] focus:outline-none"
               />
             </label>
 
@@ -862,7 +862,7 @@ export function SocialOrderEntryForm({
                 value={form.order_name}
                 onChange={(event) => set("order_name", event.target.value)}
                 placeholder="مثال: هدية كيكة وزهور لريم"
-                className="mt-1 min-h-12 w-full rounded-xl border border-rose-200 bg-white px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                className="mt-1 min-h-12 w-full rounded-xl border border-rose-200 bg-white px-3.5 text-sm focus:ring-2 focus:ring-[#B8860B] focus:outline-none"
               />
             </label>
           </div>
@@ -877,7 +877,7 @@ export function SocialOrderEntryForm({
         />
 
         {/* STOREFRONT MENU / CATALOG SELECTOR */}
-        <div className="rounded-2xl border border-[#B8860B]/30 bg-[#FFFDF9] p-3.5 space-y-3 shadow-xs">
+        <div className="space-y-3 rounded-2xl border border-[#B8860B]/30 bg-[#FFFDF9] p-3.5 shadow-xs">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#B8860B]/20 pb-2">
             <div className="flex items-center gap-2">
               <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#8B4513] text-white">
@@ -895,7 +895,7 @@ export function SocialOrderEntryForm({
             <button
               type="button"
               onClick={() => setShowMenuPicker((v) => !v)}
-              className="rounded-full bg-white px-3.5 py-1.5 text-xs font-bold text-[#8B4513] border border-[#B8860B]/40 hover:bg-[#FDE2CF]/30 transition shadow-2xs"
+              className="rounded-full border border-[#B8860B]/40 bg-white px-3.5 py-1.5 text-xs font-bold text-[#8B4513] shadow-2xs transition hover:bg-[#FDE2CF]/30"
             >
               {showMenuPicker ? "إخفاء المنيو ▲" : "عرض منيو المنتجات ▼"}
             </button>
@@ -904,18 +904,18 @@ export function SocialOrderEntryForm({
           {showMenuPicker && (
             <div className="space-y-3 pt-1">
               <div className="flex flex-wrap items-center gap-2">
-                <div className="relative flex-1 min-w-[200px]">
-                  <Search className="absolute right-3 top-2.5 h-4 w-4 text-slate-400" />
+                <div className="relative min-w-[200px] flex-1">
+                  <Search className="absolute top-2.5 right-3 h-4 w-4 text-slate-400" />
                   <input
                     type="text"
                     value={menuSearch}
                     onChange={(e) => setMenuSearch(e.target.value)}
                     placeholder="بحث بالاسم أو الحشوة في المنيو…"
-                    className="w-full rounded-xl border border-slate-200 bg-white pr-9 pl-3 py-2 text-xs font-semibold text-[#3E2723] focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                    className="w-full rounded-xl border border-slate-200 bg-white py-2 pr-9 pl-3 text-xs font-semibold text-[#3E2723] focus:ring-2 focus:ring-[#B8860B] focus:outline-none"
                   />
                 </div>
 
-                <div className="no-scrollbar flex gap-1 overflow-x-auto max-w-full py-1">
+                <div className="no-scrollbar flex max-w-full gap-1 overflow-x-auto py-1">
                   {categoriesList.map((cat) => (
                     <button
                       key={cat}
@@ -924,7 +924,7 @@ export function SocialOrderEntryForm({
                       className={`rounded-full px-3 py-1 text-xs font-bold whitespace-nowrap transition-all ${
                         menuCategory === cat
                           ? "bg-[#8B4513] text-white shadow-xs"
-                          : "bg-white text-[#5D2E17] border border-slate-200 hover:bg-slate-100"
+                          : "border border-slate-200 bg-white text-[#5D2E17] hover:bg-slate-100"
                       }`}
                     >
                       {cat === "all" ? "الكل" : cat}
@@ -935,55 +935,55 @@ export function SocialOrderEntryForm({
 
               {storefront.isLoading ? (
                 <div className="flex items-center justify-center py-6 text-xs text-[#7A6458]">
-                  <Loader2 className="h-4 w-4 animate-spin ml-2 text-[#8B4513]" />
+                  <Loader2 className="ml-2 h-4 w-4 animate-spin text-[#8B4513]" />
                   جاري تحميل المنيو…
                 </div>
               ) : filteredMenuProducts.length === 0 ? (
-                <div className="text-center py-4 text-xs font-bold text-[#7A6458]">
+                <div className="py-4 text-center text-xs font-bold text-[#7A6458]">
                   لا توجد نتائج مطابقة في المنيو
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-72 overflow-y-auto pr-1">
+                <div className="grid max-h-72 grid-cols-1 gap-2.5 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-3">
                   {filteredMenuProducts.map((prod) => (
                     <div
                       key={prod.id}
-                      className="group flex flex-col justify-between rounded-xl bg-white p-2.5 border border-slate-200 shadow-xs hover:border-[#B8860B] transition-all"
+                      className="group flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-2.5 shadow-xs transition-all hover:border-[#B8860B]"
                     >
                       <div className="flex items-start gap-2">
                         {prod.image_url ? (
                           <img
                             src={prod.image_url}
                             alt={prod.name_ar}
-                            className="h-12 w-12 rounded-lg object-cover shrink-0 border border-slate-100"
+                            className="h-12 w-12 shrink-0 rounded-lg border border-slate-100 object-cover"
                           />
                         ) : (
-                          <div className="h-12 w-12 rounded-lg bg-[#FDE2CF]/40 flex items-center justify-center shrink-0 text-[#8B4513]">
+                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[#FDE2CF]/40 text-[#8B4513]">
                             <Utensils className="h-5 w-5" />
                           </div>
                         )}
                         <div className="min-w-0 flex-1">
-                          <h4 className="text-xs font-bold text-[#3E2723] leading-snug truncate">
+                          <h4 className="truncate text-xs leading-snug font-bold text-[#3E2723]">
                             {prod.name_ar}
                           </h4>
-                          <p className="text-[11px] font-extrabold text-[#8B4513] mt-0.5">
+                          <p className="mt-0.5 text-[11px] font-extrabold text-[#8B4513]">
                             {prod.price_on_request ? "حسب الطلب" : `${prod.price.toFixed(2)} د.أ`}
                           </p>
                           {prod.filling_ar && (
-                            <span className="inline-block mt-1 text-[10px] font-bold text-[#7B3F00] bg-[#FDE2CF]/50 px-1.5 py-0.5 rounded">
+                            <span className="mt-1 inline-block rounded bg-[#FDE2CF]/50 px-1.5 py-0.5 text-[10px] font-bold text-[#7B3F00]">
                               حشوة: {prod.filling_ar}
                             </span>
                           )}
                         </div>
                       </div>
 
-                      <div className="mt-2 pt-1 border-t border-slate-100 flex flex-wrap gap-1">
+                      <div className="mt-2 flex flex-wrap gap-1 border-t border-slate-100 pt-1">
                         {prod.sizes && prod.sizes.length > 0 ? (
                           prod.sizes.map((sz) => (
                             <button
                               key={sz.label}
                               type="button"
                               onClick={() => selectProductFromMenu(prod, sz)}
-                              className="flex-1 min-w-[60px] rounded-lg bg-[#F9FBFC] hover:bg-[#8B4513] hover:text-white px-1.5 py-1 text-[10px] font-bold border border-slate-200 transition-all text-center"
+                              className="min-w-[60px] flex-1 rounded-lg border border-slate-200 bg-[#F9FBFC] px-1.5 py-1 text-center text-[10px] font-bold transition-all hover:bg-[#8B4513] hover:text-white"
                             >
                               {sz.label} ({sz.price} د.أ)
                             </button>
@@ -992,7 +992,7 @@ export function SocialOrderEntryForm({
                           <button
                             type="button"
                             onClick={() => selectProductFromMenu(prod)}
-                            className="w-full rounded-lg bg-[#8B4513] hover:bg-[#5D2E17] text-white px-2 py-1 text-xs font-bold shadow-xs transition-all flex items-center justify-center gap-1"
+                            className="flex w-full items-center justify-center gap-1 rounded-lg bg-[#8B4513] px-2 py-1 text-xs font-bold text-white shadow-xs transition-all hover:bg-[#5D2E17]"
                           >
                             <PlusCircle className="h-3.5 w-3.5" />
                             اختيار المنتج
@@ -1017,7 +1017,7 @@ export function SocialOrderEntryForm({
             value={form.order_details}
             onChange={(event) => set("order_details", event.target.value)}
             placeholder="اكتب تفاصيل الطلب كاملة أو اختر صنفاً من منيو الموقع أعلاه…"
-            className="mt-1 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] p-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+            className="mt-1 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] p-3.5 text-sm focus:ring-2 focus:ring-[#B8860B] focus:outline-none"
           />
         </label>
 
@@ -1032,7 +1032,7 @@ export function SocialOrderEntryForm({
               required
               value={form.quantity}
               onChange={(event) => set("quantity", Math.max(1, Number(event.target.value) || 1))}
-              className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+              className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:ring-2 focus:ring-[#B8860B] focus:outline-none"
             />
           </label>
           <label className="block text-sm font-bold text-[#3E2723]">
@@ -1044,7 +1044,7 @@ export function SocialOrderEntryForm({
               value={form.unit_price}
               onChange={(event) => set("unit_price", event.target.value)}
               placeholder="0.00"
-              className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+              className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:ring-2 focus:ring-[#B8860B] focus:outline-none"
             />
           </label>
         </div>
@@ -1091,7 +1091,7 @@ export function SocialOrderEntryForm({
         </fieldset>
 
         {form.method === "delivery" ? (
-          <div className="space-y-3.5 bg-blue-50/30 p-4 rounded-2xl border border-blue-200/60">
+          <div className="space-y-3.5 rounded-2xl border border-blue-200/60 bg-blue-50/30 p-4">
             <label className="block text-sm font-bold text-[#3E2723]">
               عنوان التوصيل · Delivery Address
               <input
@@ -1104,7 +1104,7 @@ export function SocialOrderEntryForm({
                   set("area", val);
                 }}
                 placeholder="اسم المنطقة، الشارع، البناية، رقم الشقة أو علامة مميزة..."
-                className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm focus:ring-2 focus:ring-[#B8860B] focus:outline-none"
               />
             </label>
 
@@ -1117,7 +1117,7 @@ export function SocialOrderEntryForm({
                 value={form.delivery_fee}
                 onChange={(event) => set("delivery_fee", event.target.value)}
                 placeholder="مثال: 3.00"
-                className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm focus:ring-2 focus:ring-[#B8860B] focus:outline-none"
               />
             </label>
           </div>
@@ -1131,7 +1131,7 @@ export function SocialOrderEntryForm({
               type="button"
               onClick={() => set("payment_option", "cash")}
               aria-pressed={form.payment_option === "cash"}
-              className={`min-h-11 rounded-xl px-4 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              className={`flex min-h-11 cursor-pointer items-center justify-center gap-1.5 rounded-xl px-4 text-xs font-bold transition-all ${
                 form.payment_option === "cash"
                   ? "bg-[#8B4513] text-white shadow-sm"
                   : "border border-slate-200 bg-white text-[#5D2E17] hover:bg-slate-50"
@@ -1149,7 +1149,7 @@ export function SocialOrderEntryForm({
                 }
               }}
               aria-pressed={form.payment_option !== "cash"}
-              className={`min-h-11 rounded-xl px-4 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              className={`flex min-h-11 cursor-pointer items-center justify-center gap-1.5 rounded-xl px-4 text-xs font-bold transition-all ${
                 form.payment_option !== "cash"
                   ? "bg-[#8B4513] text-white shadow-sm ring-2 ring-[#B8860B]/40"
                   : "border border-slate-200 bg-white text-[#5D2E17] hover:bg-slate-50"
@@ -1165,19 +1165,19 @@ export function SocialOrderEntryForm({
 
           {/* CLIQ SUB-CARD WITH DROPDOWN OPTIONS */}
           {form.payment_option !== "cash" && (
-            <div className="mt-3 rounded-2xl border-2 border-[#B8860B]/40 bg-[#FFFDF7] p-3.5 space-y-3.5 shadow-sm animate-in fade-in slide-in-from-top-2">
-              <div className="flex items-center justify-between pb-1 border-b border-amber-100">
-                <span className="text-xs font-black text-[#5D2E17] flex items-center gap-1.5">
+            <div className="mt-3 animate-in space-y-3.5 rounded-2xl border-2 border-[#B8860B]/40 bg-[#FFFDF7] p-3.5 shadow-sm fade-in slide-in-from-top-2">
+              <div className="flex items-center justify-between border-b border-amber-100 pb-1">
+                <span className="flex items-center gap-1.5 text-xs font-black text-[#5D2E17]">
                   ⚡ تفاصيل وخيارات كليك · CliQ Options
                 </span>
-                <span className="text-[11px] font-bold text-[#8B4513] bg-[#FDE2CF]/70 px-2.5 py-0.5 rounded-full border border-amber-200">
+                <span className="rounded-full border border-amber-200 bg-[#FDE2CF]/70 px-2.5 py-0.5 text-[11px] font-bold text-[#8B4513]">
                   {cliqAccountText}
                 </span>
               </div>
 
               {/* 1. قائمة نوع دفع كليك */}
               <div>
-                <label className="block text-xs font-bold text-[#5D2E17] mb-1">
+                <label className="mb-1 block text-xs font-bold text-[#5D2E17]">
                   نوع عملية كليك · CliQ Payment Type
                 </label>
                 <select
@@ -1185,7 +1185,7 @@ export function SocialOrderEntryForm({
                   onChange={(e) =>
                     set("payment_option", e.target.value as "cliq_full" | "cliq_deposit")
                   }
-                  className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-[#3E2723] focus:outline-none focus:ring-2 focus:ring-[#B8860B] cursor-pointer"
+                  className="min-h-11 w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-[#3E2723] focus:ring-2 focus:ring-[#B8860B] focus:outline-none"
                 >
                   <option value="cliq_full">💳 كليك دفع كامل (سداد كامل المبلغ)</option>
                   <option value="cliq_deposit">🪙 عربون عبر كليك (دفعة مقدمة / عربون)</option>
@@ -1194,13 +1194,13 @@ export function SocialOrderEntryForm({
 
               {/* 2. قائمة حساب كليك المستلم */}
               <div>
-                <label className="block text-xs font-bold text-[#5D2E17] mb-1">
+                <label className="mb-1 block text-xs font-bold text-[#5D2E17]">
                   حساب كليك المستلم · CliQ Account Destination
                 </label>
                 <select
                   value={form.cliq_account}
                   onChange={(e) => set("cliq_account", e.target.value as CliqAccount)}
-                  className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-[#3E2723] focus:outline-none focus:ring-2 focus:ring-[#B8860B] cursor-pointer"
+                  className="min-h-11 w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-[#3E2723] focus:ring-2 focus:ring-[#B8860B] focus:outline-none"
                 >
                   {cliqAccounts.map((acc) => (
                     <option key={acc.id} value={acc.id}>
@@ -1212,7 +1212,7 @@ export function SocialOrderEntryForm({
 
               {/* If "Staff Member" CliQ is selected: input for employee name */}
               {form.cliq_account === "staff" && (
-                <div className="pt-0.5 animate-in fade-in">
+                <div className="animate-in pt-0.5 fade-in">
                   <label className="block text-xs font-bold text-[#5D2E17]">
                     اسم الموظفة / كود الحساب
                     <input
@@ -1221,7 +1221,7 @@ export function SocialOrderEntryForm({
                       value={form.cliq_staff_name}
                       onChange={(e) => set("cliq_staff_name", e.target.value)}
                       placeholder="اكتب اسم الموظفة (مثال: ريم، سارة...)"
-                      className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-[#3E2723] focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                      className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-[#3E2723] focus:ring-2 focus:ring-[#B8860B] focus:outline-none"
                     />
                   </label>
                 </div>
@@ -1229,7 +1229,7 @@ export function SocialOrderEntryForm({
 
               {/* 3. المبلغ المدفوع عبر كليك */}
               <label className="block text-xs font-bold text-[#3E2723]">
-                <div className="flex items-center justify-between mb-1">
+                <div className="mb-1 flex items-center justify-between">
                   <span>
                     {form.payment_option === "cliq_full"
                       ? "المبلغ الكامل المدفوع عبر كليك (د.أ)"
@@ -1239,7 +1239,7 @@ export function SocialOrderEntryForm({
                     <button
                       type="button"
                       onClick={() => set("deposit_paid", grandTotal.toFixed(2))}
-                      className="text-[10px] font-bold text-[#8B4513] hover:underline cursor-pointer"
+                      className="cursor-pointer text-[10px] font-bold text-[#8B4513] hover:underline"
                     >
                       تعبئة كامل المبلغ ({grandTotal.toFixed(2)} د.أ)
                     </button>
@@ -1253,23 +1253,23 @@ export function SocialOrderEntryForm({
                   value={form.deposit_paid}
                   onChange={(event) => set("deposit_paid", event.target.value)}
                   placeholder="0.00"
-                  className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+                  className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm focus:ring-2 focus:ring-[#B8860B] focus:outline-none"
                 />
               </label>
 
               {/* 4. رفع صورة حوالة كليك (إجباري عند اختيار كليك) */}
               <div
                 id="cliq-receipt-upload-section"
-                className="pt-2.5 border-t border-amber-200/70 space-y-2"
+                className="space-y-2 border-t border-amber-200/70 pt-2.5"
               >
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-black text-[#5D2E17] flex items-center gap-1.5">
+                  <label className="flex items-center gap-1.5 text-xs font-black text-[#5D2E17]">
                     <Camera className="h-4 w-4 text-[#8B4513]" />
                     <span>صورة إشعار / حوالة كليك (إجبارية) · CliQ Receipt</span>
-                    <span className="text-red-500 font-black text-sm">*</span>
+                    <span className="text-sm font-black text-red-500">*</span>
                   </label>
                   {receiptUrl && (
-                    <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <span className="flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
                       <Check className="h-3 w-3" /> تم الإرفاق
                     </span>
                   )}
@@ -1287,26 +1287,26 @@ export function SocialOrderEntryForm({
                 />
 
                 {receiptUrl ? (
-                  <div className="flex items-center gap-3 p-3 rounded-xl bg-white border border-emerald-300 shadow-2xs">
+                  <div className="flex items-center gap-3 rounded-xl border border-emerald-300 bg-white p-3 shadow-2xs">
                     <img
                       src={receiptUrl}
                       alt="إشعار حوالة كليك"
-                      className="h-16 w-16 rounded-lg object-cover border border-slate-200 cursor-pointer hover:opacity-90 transition shrink-0"
+                      className="h-16 w-16 shrink-0 cursor-pointer rounded-lg border border-slate-200 object-cover transition hover:opacity-90"
                       onClick={() => window.open(receiptUrl, "_blank")}
                       title="اضغط لفتح الصورة بحجم كامل"
                     />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold text-slate-800 truncate">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs font-bold text-slate-800">
                         صورة الحوالة مرفقة بنجاح ✅
                       </p>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">
                         سواء كان كليك كامل أو عربون
                       </p>
-                      <div className="flex items-center gap-2 mt-1.5">
+                      <div className="mt-1.5 flex items-center gap-2">
                         <button
                           type="button"
                           onClick={() => receiptFileRef.current?.click()}
-                          className="text-[11px] font-bold text-primary hover:underline cursor-pointer"
+                          className="cursor-pointer text-[11px] font-bold text-primary hover:underline"
                         >
                           تغيير الصورة
                         </button>
@@ -1314,7 +1314,7 @@ export function SocialOrderEntryForm({
                         <button
                           type="button"
                           onClick={() => setReceiptUrl(null)}
-                          className="text-[11px] font-bold text-rose-600 hover:underline cursor-pointer flex items-center gap-1"
+                          className="flex cursor-pointer items-center gap-1 text-[11px] font-bold text-rose-600 hover:underline"
                         >
                           <Trash2 className="h-3 w-3" /> حذف
                         </button>
@@ -1335,9 +1335,9 @@ export function SocialOrderEntryForm({
                         if (!uploadingReceipt) receiptFileRef.current?.click();
                       }
                     }}
-                    className={`group relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-4 text-center cursor-pointer transition-all ${
+                    className={`group relative flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-4 text-center transition-all ${
                       uploadingReceipt
-                        ? "border-amber-300 bg-amber-50/50 cursor-wait"
+                        ? "cursor-wait border-amber-300 bg-amber-50/50"
                         : "border-amber-300/80 bg-white/80 hover:border-[#8B4513] hover:bg-amber-50/40"
                     }`}
                   >
@@ -1350,7 +1350,7 @@ export function SocialOrderEntryForm({
                       </div>
                     ) : (
                       <>
-                        <div className="grid h-10 w-10 place-items-center rounded-xl bg-amber-100/70 text-[#8B4513] group-hover:scale-110 transition">
+                        <div className="grid h-10 w-10 place-items-center rounded-xl bg-amber-100/70 text-[#8B4513] transition group-hover:scale-110">
                           <UploadCloud className="h-5 w-5" />
                         </div>
                         <p className="mt-2 text-xs font-black text-[#5D2E17]">
@@ -1365,7 +1365,7 @@ export function SocialOrderEntryForm({
                 )}
 
                 {receiptError && (
-                  <p className="mt-1 text-xs font-bold text-rose-600 flex items-center gap-1">
+                  <p className="mt-1 flex items-center gap-1 text-xs font-bold text-rose-600">
                     <AlertTriangle className="h-3.5 w-3.5" />
                     <span>{receiptError}</span>
                   </p>
@@ -1384,7 +1384,7 @@ export function SocialOrderEntryForm({
               required
               value={form.requested_date}
               onChange={(event) => set("requested_date", event.target.value)}
-              className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+              className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:ring-2 focus:ring-[#B8860B] focus:outline-none"
             />
           </label>
 
@@ -1395,7 +1395,7 @@ export function SocialOrderEntryForm({
               required
               value={form.requested_time}
               onChange={(event) => set("requested_time", event.target.value)}
-              className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+              className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:ring-2 focus:ring-[#B8860B] focus:outline-none"
             />
           </label>
         </div>
@@ -1409,7 +1409,7 @@ export function SocialOrderEntryForm({
             className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-5 text-xs font-bold transition-all ${
               form.is_urgent
                 ? "bg-red-600 text-white shadow-sm"
-                : "border border-red-300 text-red-700 bg-red-50/50 hover:bg-red-50"
+                : "border border-red-300 bg-red-50/50 text-red-700 hover:bg-red-50"
             }`}
           >
             <AlertTriangle className="h-4 w-4" aria-hidden="true" /> 🚨 مستعجل · Urgent
@@ -1425,7 +1425,7 @@ export function SocialOrderEntryForm({
             value={form.card_note}
             onChange={(event) => set("card_note", event.target.value)}
             placeholder="مثال: كل عام وأنتِ بخير يا أغلى الناس..."
-            className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+            className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] px-3.5 text-sm focus:ring-2 focus:ring-[#B8860B] focus:outline-none"
           />
         </label>
 
@@ -1466,7 +1466,7 @@ export function SocialOrderEntryForm({
             value={form.staff_notes}
             onChange={(event) => set("staff_notes", event.target.value)}
             placeholder="ملاحظات سرية للإدارة والمبيعات فقط..."
-            className="mt-1 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#B8860B]"
+            className="mt-1 w-full rounded-xl border border-slate-200 bg-[#F9FBFC] p-3 text-sm focus:ring-2 focus:ring-[#B8860B] focus:outline-none"
           />
         </label>
 
@@ -1475,7 +1475,7 @@ export function SocialOrderEntryForm({
           <button
             type="submit"
             disabled={submit.isPending || isSubmittingRef.current}
-            className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[#8B4513] px-6 text-center text-sm font-bold text-white shadow-sm hover:bg-[#5D2E17] disabled:opacity-60 transition cursor-pointer"
+            className="inline-flex min-h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-[#8B4513] px-6 text-center text-sm font-bold text-white shadow-sm transition hover:bg-[#5D2E17] disabled:opacity-60"
           >
             {submit.isPending || isSubmittingRef.current ? (
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -1498,11 +1498,11 @@ export function SocialOrderEntryForm({
           </div>
 
           {/* Toggle between Confirmation and Modification templates */}
-          <div className="flex items-center gap-1 rounded-2xl bg-secondary/70 p-1 border border-border">
+          <div className="flex items-center gap-1 rounded-2xl border border-border bg-secondary/70 p-1">
             <button
               type="button"
               onClick={() => setPreviewTab("confirmation")}
-              className={`rounded-xl px-3.5 py-1.5 text-xs font-black transition-all cursor-pointer ${
+              className={`cursor-pointer rounded-xl px-3.5 py-1.5 text-xs font-black transition-all ${
                 previewTab === "confirmation"
                   ? "bg-[#8B4513] text-white shadow-xs"
                   : "text-muted-foreground hover:text-foreground"
@@ -1513,7 +1513,7 @@ export function SocialOrderEntryForm({
             <button
               type="button"
               onClick={() => setPreviewTab("modification")}
-              className={`rounded-xl px-3.5 py-1.5 text-xs font-black transition-all cursor-pointer ${
+              className={`cursor-pointer rounded-xl px-3.5 py-1.5 text-xs font-black transition-all ${
                 previewTab === "modification"
                   ? "bg-rose-600 text-white shadow-xs"
                   : "text-muted-foreground hover:text-foreground"
@@ -1529,7 +1529,7 @@ export function SocialOrderEntryForm({
           <button
             type="button"
             onClick={() => void copy(activePreviewText, previewTab)}
-            className="inline-flex min-h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-full border border-[#B8860B] bg-white px-4 text-sm font-bold text-[#8B4513] hover:bg-[#FDE2CF]/30 transition shadow-2xs cursor-pointer"
+            className="inline-flex min-h-12 min-w-0 flex-1 cursor-pointer items-center justify-center gap-2 rounded-full border border-[#B8860B] bg-white px-4 text-sm font-bold text-[#8B4513] shadow-2xs transition hover:bg-[#FDE2CF]/30"
           >
             {copied === previewTab ? (
               <Check className="h-4 w-4 text-emerald-600" aria-hidden="true" />
@@ -1548,13 +1548,13 @@ export function SocialOrderEntryForm({
             rel="noopener noreferrer"
             aria-label="إرسال على واتساب"
             title="إرسال على واتساب"
-            className="inline-flex min-h-12 min-w-12 items-center justify-center rounded-full bg-[#25D366] text-white shadow-sm hover:brightness-95 transition"
+            className="inline-flex min-h-12 min-w-12 items-center justify-center rounded-full bg-[#25D366] text-white shadow-sm transition hover:brightness-95"
           >
             <MessageCircle className="h-5 w-5" aria-hidden="true" />
           </a>
         </div>
 
-        <pre className="mt-3.5 max-h-96 overflow-y-auto whitespace-pre-wrap break-words rounded-2xl bg-secondary/40 border border-border/80 p-4 text-xs sm:text-sm text-foreground leading-relaxed font-sans">
+        <pre className="mt-3.5 max-h-96 overflow-y-auto rounded-2xl border border-border/80 bg-secondary/40 p-4 font-sans text-xs leading-relaxed break-words whitespace-pre-wrap text-foreground sm:text-sm">
           {activePreviewText}
         </pre>
       </section>

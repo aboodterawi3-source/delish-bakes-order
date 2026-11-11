@@ -4,12 +4,7 @@
   "title": "Archify Class and Interface Diagram",
   "type": "object",
   "additionalProperties": false,
-  "required": [
-    "schema_version",
-    "diagram_type",
-    "meta",
-    "types"
-  ],
+  "required": ["schema_version", "diagram_type", "meta", "types"],
   "properties": {
     "schema_version": {
       "const": 1
@@ -20,9 +15,7 @@
     "meta": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "title"
-      ],
+      "required": ["title"],
       "properties": {
         "title": {
           "type": "string",
@@ -109,14 +102,10 @@
     "layout": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "mode"
-      ],
+      "required": ["mode"],
       "properties": {
         "mode": {
-          "enum": [
-            "grid"
-          ]
+          "enum": ["grid"]
         },
         "origin": {
           "$ref": "common.schema.json#/$defs/point"
@@ -145,11 +134,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "id",
-          "label",
-          "kind"
-        ],
+        "required": ["id", "label", "kind"],
         "properties": {
           "id": {
             "$ref": "common.schema.json#/$defs/id"
@@ -159,13 +144,7 @@
             "minLength": 1
           },
           "kind": {
-            "enum": [
-              "class",
-              "abstract",
-              "interface",
-              "enum",
-              "record"
-            ]
+            "enum": ["class", "abstract", "interface", "enum", "record"]
           },
           "sublabel": {
             "type": "string"
@@ -212,11 +191,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "from",
-          "to",
-          "kind"
-        ],
+        "required": ["from", "to", "kind"],
         "properties": {
           "id": {
             "$ref": "common.schema.json#/$defs/id"
@@ -247,12 +222,7 @@
             "$ref": "common.schema.json#/$defs/side"
           },
           "route": {
-            "enum": [
-              "auto",
-              "straight",
-              "orthogonal-h",
-              "orthogonal-v"
-            ]
+            "enum": ["auto", "straight", "orthogonal-h", "orthogonal-v"]
           },
           "via": {
             "type": "array",
@@ -282,19 +252,12 @@
   },
   "$defs": {
     "visibility": {
-      "enum": [
-        "public",
-        "protected",
-        "package",
-        "private"
-      ]
+      "enum": ["public", "protected", "package", "private"]
     },
     "attribute": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "name"
-      ],
+      "required": ["name"],
       "properties": {
         "name": {
           "type": "string",
@@ -315,9 +278,7 @@
     "method": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "name"
-      ],
+      "required": ["name"],
       "properties": {
         "name": {
           "type": "string",

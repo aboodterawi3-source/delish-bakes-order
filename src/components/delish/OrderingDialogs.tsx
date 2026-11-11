@@ -163,7 +163,7 @@ function QuickShop({ onCart }: { onCart: () => void }) {
       <button
         type="button"
         onClick={onCart}
-        className="sm:col-span-2 lg:col-span-3 inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-primary font-bold text-primary"
+        className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-primary font-bold text-primary sm:col-span-2 lg:col-span-3"
       >
         <ShoppingBag className="h-4 w-4" /> {t("cart")}
       </button>
