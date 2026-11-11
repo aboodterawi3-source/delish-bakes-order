@@ -53,6 +53,7 @@ import type { SalesOrder, SalesStatus } from "@/lib/sales.functions";
 import { PRIORITY_META, type PriorityColor } from "@/lib/priority";
 import { formatTimeSlotArabic, printKitchenTicket } from "@/lib/receipt-templates";
 import { orderLabel } from "@/lib/order-label";
+import { isKitchenRelevantModification, consolidateModifications } from "@/lib/order-modifications";
 import { isoDay, matchesDateFilter, type CustomRange, type DateFilterKey } from "@/lib/date-filter";
 import { formatArabicDate } from "@/lib/confirmation-message";
 
@@ -313,54 +314,7 @@ function getPriorityStyles(color: PriorityColor) {
   }
 }
 
-/**
- * Checks if a modification is relevant to kitchen / cake preparation staff.
- * Strictly filters out financial, billing, payment, and channel metadata changes.
- */
-function isKitchenRelevantModification(mod: OrderModification): boolean {
-  const f = (mod.field || "").toLowerCase();
-  const irrelevant = [
-    "عربون",
-    "العربون",
-    "مبلغ",
-    "المبلغ",
-    "إجمالي",
-    "الاجمالي",
-    "دفع",
-    "الدفع",
-    "كليك",
-    "حوالة",
-    "سعر",
-    "رسوم",
-    "توصيل_fee",
-    "مصدر",
-    "المصدر",
-    "واتساب",
-    "انستغرام",
-    "هاتف",
-    "موبايل",
-    "تواصل",
-    "total",
-    "deposit",
-    "payment",
-    "price",
-    "fee",
-    "source",
-    "phone",
-    "الطلب الأساسي",
-    "النسخة الأصلية",
-    "حالة الطلب",
-    "موظفين",
-    "staff_notes",
-  ];
-  // Also filter records where both values are generic/empty noise
-  const isGenericNoise =
-    (mod.newValue ?? "").includes("تم حفظ وتحديث") ||
-    (mod.newValue ?? "").includes("تم إجراء أول تعديل") ||
-    (mod.oldValue ?? "").includes("البيانات السابقة للطلب");
-  if (isGenericNoise) return false;
-  return !irrelevant.some((kw) => f.includes(kw));
-}
+
 
 const KdsCleanCard = memo(function KdsCleanCard({
   order,
@@ -396,7 +350,7 @@ const KdsCleanCard = memo(function KdsCleanCard({
 
   // Filter modifications to only include kitchen preparation relevant changes
   const kitchenMods = useMemo(() => {
-    return (order.modifications ?? []).filter(isKitchenRelevantModification);
+    return consolidateModifications(order.modifications, { isKitchen: true });
   }, [order.modifications]);
 
   const unackMods = kitchenMods.filter((m) => !m.acknowledgedAt);
@@ -757,7 +711,7 @@ function KitchenOrderDetailsModal({
 }) {
   const stage = stageOf(order.status);
   const kitchenMods = useMemo(() => {
-    return (order.modifications ?? []).filter(isKitchenRelevantModification);
+    return consolidateModifications(order.modifications, { isKitchen: true });
   }, [order.modifications]);
   const packagingKeywords = [
     "شمعة",
@@ -844,41 +798,6 @@ function KitchenOrderDetailsModal({
               </span>
             </div>
           </div>
-
-          {/* Modifications Notice (if any) */}
-          {kitchenMods.length > 0 && (
-            <div className="space-y-2 rounded-2xl border border-amber-400 bg-amber-500/10 p-3.5 text-xs">
-              <span className="flex items-center gap-1.5 font-black text-amber-950 dark:text-amber-200">
-                <span>📝</span>
-                <span>تعديلات الطلب المعتمدة للتجهيز بالمطبخ:</span>
-              </span>
-              <div className="space-y-1.5">
-                {kitchenMods.map((mod, idx) => (
-                  <div
-                    key={idx}
-                    className="flex flex-wrap items-center gap-1.5 font-bold text-foreground"
-                  >
-                    <span className="font-black text-amber-900 dark:text-amber-300">
-                      • {mod.field}:
-                    </span>
-                    {mod.oldValue && (
-                      <span className="rounded bg-secondary/80 px-1.5 py-0.5 text-[11px] text-muted-foreground line-through">
-                        {mod.oldValue}
-                      </span>
-                    )}
-                    {mod.oldValue && mod.newValue && (
-                      <span className="font-black text-amber-700 dark:text-amber-400">⬅️</span>
-                    )}
-                    {mod.newValue && (
-                      <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/15 px-2 py-0.5 font-black text-emerald-800 dark:text-emerald-300">
-                        {mod.newValue}
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* 2. Items & Preparation Specs List */}
           <div className="space-y-3 rounded-2xl border border-border bg-secondary/30 p-4">
@@ -1007,6 +926,41 @@ function KitchenOrderDetailsModal({
             <div className="rounded-2xl border border-border/70 bg-secondary/30 p-3 text-xs">
               <span className="mb-0.5 block font-black text-foreground">💬 ملاحظات العميل:</span>
               <span className="font-bold text-muted-foreground">{order.notes}</span>
+            </div>
+          )}
+
+          {/* 7. Modifications List (at the bottom, new value only) */}
+          {kitchenMods.length > 0 && (
+            <div className="space-y-2 rounded-2xl border border-border/80 bg-secondary/20 p-3.5 text-xs shadow-2xs">
+              <div className="flex items-center justify-between border-b border-border/60 pb-1.5">
+                <span className="flex items-center gap-1.5 font-black text-foreground">
+                  <span>📋</span>
+                  <span>التعديلات</span>
+                </span>
+              </div>
+              <div className="space-y-1.5">
+                {kitchenMods.map((mod, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between gap-2 rounded-xl border border-border/60 bg-card p-2 text-xs"
+                  >
+                    <div className="flex items-center gap-1.5 font-bold text-foreground">
+                      <span className="font-black text-primary">• {mod.field}:</span>
+                      <span className="rounded-md border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 font-black text-emerald-800 dark:text-emerald-300">
+                        {mod.newValue}
+                      </span>
+                    </div>
+                    {mod.updatedAt && (
+                      <span className="font-mono text-[10px] text-muted-foreground" dir="ltr">
+                        {new Date(mod.updatedAt).toLocaleTimeString("ar-JO", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>

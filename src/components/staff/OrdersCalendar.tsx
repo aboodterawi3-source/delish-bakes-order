@@ -31,6 +31,7 @@ import { printCustomerReceipt } from "@/lib/receipt-templates";
 import { todayIso } from "@/lib/date-filter";
 import { getWhatsAppChatUrl } from "@/lib/whatsapp";
 import { OrderStatusBadge } from "@/components/staff/OrderStatusBadge";
+import { consolidateModifications } from "@/lib/order-modifications";
 
 export type CalendarViewMode = "month" | "day";
 
@@ -282,6 +283,23 @@ export const OrdersCalendar = memo(function OrdersCalendar({
   const [statusFilter, setStatusFilter] = useState<SalesStatus | "all">("all");
   const [selectedOrder, setSelectedOrder] = useState<SalesOrder | null>(null);
   const [zoomImage, setZoomImage] = useState<string | null>(null);
+
+  const cleanModifications = useMemo(() => {
+    if (!selectedOrder) return [];
+    const baseMods = [...(selectedOrder.modifications || [])];
+    if (
+      selectedOrder.schedule_updated_at &&
+      !baseMods.some((m) => m.field?.includes("موعد") || m.field?.includes("تاريخ"))
+    ) {
+      baseMods.push({
+        field: "موعد التسليم",
+        oldValue: "",
+        newValue: `${selectedOrder.requested_date} ⏰ ${selectedOrder.requested_time?.slice(0, 5) || ""}`,
+        updatedAt: selectedOrder.schedule_updated_at,
+      });
+    }
+    return consolidateModifications(baseMods, { isKitchen });
+  }, [selectedOrder, isKitchen]);
 
   // Touch Long-Press Dragging State
   const [dragging, setDragging] = useState<{
@@ -1196,20 +1214,13 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                 </div>
               ) : null}
 
-              {/* تفاصيل البنود التي تم تعديلها */}
-              {(selectedOrder.modifications && selectedOrder.modifications.length > 0) ||
-              selectedOrder.last_edited_at ||
-              selectedOrder.schedule_updated_at ? (
-                <div className="space-y-3 rounded-2xl border-2 border-amber-500/80 bg-gradient-to-b from-amber-500/10 via-amber-500/5 to-amber-500/15 p-4 shadow-xs">
-                  <div className="flex items-center justify-between border-b border-amber-500/30 pb-2">
-                    <span className="flex items-center gap-1.5 text-xs font-black text-amber-900 dark:text-amber-200">
-                      <span>📝</span>
-                      <span>
-                        تفاصيل البنود التي تم تعديلها{" "}
-                        {selectedOrder.modifications && selectedOrder.modifications.length > 0
-                          ? `(${selectedOrder.modifications.length} تفاصيل)`
-                          : "⚠️"}
-                      </span>
+              {/* 📋 قائمة التعديلات المعتمدة (في أسفل النافذة، الخيار الجديد فقط وبدون مربعات سابقة) */}
+              {cleanModifications.length > 0 ? (
+                <div className="space-y-2 rounded-2xl border border-border/80 bg-secondary/20 p-3.5 shadow-2xs">
+                  <div className="flex items-center justify-between border-b border-border/60 pb-2">
+                    <span className="flex items-center gap-1.5 text-xs font-black text-foreground">
+                      <span>📋</span>
+                      <span>التعديلات</span>
                     </span>
                     {(selectedOrder.last_edited_at || selectedOrder.schedule_updated_at) && (
                       <span className="font-mono text-[10px] text-muted-foreground" dir="ltr">
@@ -1222,101 +1233,28 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                     )}
                   </div>
 
-                  {/* Detailed changes list */}
-                  <div className="space-y-2">
-                    {selectedOrder.modifications &&
-                    selectedOrder.modifications.filter(
-                      (m) =>
-                        !m.field.includes("الطلب الأساسي") && !m.field.includes("النسخة الأصلية"),
-                    ).length > 0 ? (
-                      selectedOrder.modifications
-                        .filter(
-                          (m) =>
-                            !m.field.includes("الطلب الأساسي") &&
-                            !m.field.includes("النسخة الأصلية"),
-                        )
-                        .map((mod, idx) => (
-                          <div
-                            key={idx}
-                            className="space-y-1.5 rounded-xl border border-amber-300/60 bg-card p-2.5 shadow-2xs dark:border-amber-700/60"
-                          >
-                            <div className="flex items-center justify-between text-xs font-black text-foreground">
-                              <span className="flex items-center gap-1 text-primary">
-                                <span>🔹</span>
-                                <span>{mod.field}</span>
-                              </span>
-                              {mod.updatedAt && (
-                                <span
-                                  className="font-mono text-[10px] text-muted-foreground"
-                                  dir="ltr"
-                                >
-                                  {new Date(mod.updatedAt).toLocaleTimeString("ar-JO", {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  })}
-                                </span>
-                              )}
-                            </div>
-                            <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
-                              {mod.oldValue && (
-                                <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-2 text-red-950 dark:text-red-200">
-                                  <span className="mb-0.5 block text-[10px] font-bold text-red-700 dark:text-red-400">
-                                    ❌ السابق:
-                                  </span>
-                                  <span className="font-bold break-words line-through">
-                                    {mod.oldValue}
-                                  </span>
-                                </div>
-                              )}
-                              {mod.newValue && (
-                                <div className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 p-2 text-emerald-950 dark:text-emerald-200">
-                                  <span className="mb-0.5 block text-[10px] font-black text-emerald-700 dark:text-emerald-400">
-                                    ✅ الجديد:
-                                  </span>
-                                  <span className="font-black break-words">{mod.newValue}</span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ))
-                    ) : (
-                      /* Fallback when modifications array is empty but order is flagged as edited */
-                      <div className="space-y-2 rounded-xl border border-amber-300/60 bg-card p-3 shadow-2xs dark:border-amber-700/60">
-                        <div className="flex items-center justify-between text-xs font-black text-foreground">
-                          <span className="flex items-center gap-1 text-primary">
-                            <span>🔹</span>
-                            <span>
-                              {selectedOrder.schedule_updated_at
-                                ? "تعديل موعد التسليم (عبر رابط العميل)"
-                                : "تعديل مواصفات الطلب بمكتب المبيعات"}
-                            </span>
+                  <div className="space-y-1.5">
+                    {cleanModifications.map((mod, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between gap-2 rounded-xl border border-border/60 bg-card p-2 text-xs"
+                      >
+                        <div className="flex items-center gap-1.5 font-bold text-foreground">
+                          <span className="font-black text-primary">• {mod.field}:</span>
+                          <span className="rounded-md border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 font-black text-emerald-800 dark:text-emerald-300">
+                            {mod.newValue}
                           </span>
                         </div>
-                        <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
-                          <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-2 text-red-950 dark:text-red-200">
-                            <span className="mb-0.5 block text-[10px] font-bold text-red-700 dark:text-red-400">
-                              ❌ الحالة:
-                            </span>
-                            <span className="font-bold break-words">
-                              {selectedOrder.schedule_updated_at
-                                ? "تم تعديل موعد الاستلام/التوصيل من قبل الزبون"
-                                : "تم تعديل تفاصيل ومواصفات الطلب بمكتب المبيعات"}
-                            </span>
-                          </div>
-                          <div className="rounded-lg border border-emerald-500/25 bg-emerald-500/10 p-2 text-emerald-950 dark:text-emerald-200">
-                            <span className="mb-0.5 block text-[10px] font-black text-emerald-700 dark:text-emerald-400">
-                              ✅ المعتمد حالياً للتجهيز:
-                            </span>
-                            <span className="font-black break-words">
-                              {selectedOrder.requested_date} ⏰{" "}
-                              {selectedOrder.requested_time
-                                ? selectedOrder.requested_time.slice(0, 5)
-                                : ""}
-                            </span>
-                          </div>
-                        </div>
+                        {mod.updatedAt && (
+                          <span className="font-mono text-[10px] text-muted-foreground" dir="ltr">
+                            {new Date(mod.updatedAt).toLocaleTimeString("ar-JO", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        )}
                       </div>
-                    )}
+                    ))}
                   </div>
                 </div>
               ) : null}
