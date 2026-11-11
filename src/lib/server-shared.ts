@@ -39,6 +39,7 @@ export const MAX_EXTRA_LENGTH = 160;
  * supporting Node/Serverless runtimes and Vite browser environments.
  */
 export function getSupabaseStorageBaseUrl(): string {
+  const DEFAULT_URL = "https://dmvwdkxcltnomigoqtue.supabase.co";
   const envUrl =
     (typeof process !== "undefined" &&
       (process.env?.["SUPABASE_URL"] ||
@@ -46,8 +47,8 @@ export function getSupabaseStorageBaseUrl(): string {
         process.env?.["NEXT_PUBLIC_SUPABASE_URL"])) ||
     (typeof import.meta !== "undefined" &&
       ((import.meta as any)?.env?.VITE_SUPABASE_URL || (import.meta as any)?.env?.SUPABASE_URL)) ||
-    "";
-  return envUrl ? String(envUrl).replace(/\/+$/, "") : "";
+    DEFAULT_URL;
+  return envUrl ? String(envUrl).replace(/\/+$/, "") : DEFAULT_URL;
 }
 
 /**

@@ -35,22 +35,16 @@ function createSupabaseClient() {
   const DEFAULT_SUPABASE_URL = "https://dmvwdkxcltnomigoqtue.supabase.co";
   const DEFAULT_SUPABASE_KEY = "sb_publishable_4o-FrhbFZSg-sCqYdA9s6g_qBDFmxNj";
 
-  const SUPABASE_URL =
-    import.meta.env["VITE_SUPABASE_URL"] || process.env["SUPABASE_URL"] || DEFAULT_SUPABASE_URL;
-  const SUPABASE_PUBLISHABLE_KEY =
-    import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"] ||
-    process.env["SUPABASE_PUBLISHABLE_KEY"] ||
-    DEFAULT_SUPABASE_KEY;
+  const rawUrl =
+    (typeof import.meta !== "undefined" && (import.meta as any).env?.["VITE_SUPABASE_URL"]) ||
+    (typeof process !== "undefined" && process.env?.["SUPABASE_URL"]);
+  const SUPABASE_URL = rawUrl && String(rawUrl).trim() !== "" ? String(rawUrl).trim() : DEFAULT_SUPABASE_URL;
 
-  if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
-    const missing = [
-      ...(!SUPABASE_URL ? ["SUPABASE_URL"] : []),
-      ...(!SUPABASE_PUBLISHABLE_KEY ? ["SUPABASE_PUBLISHABLE_KEY"] : []),
-    ];
-    const message = `Missing Supabase environment variable(s): ${missing.join(", ")}. Please configure your Supabase variables in .env`;
-    console.error(`[Supabase] ${message}`);
-    throw new Error(message);
-  }
+  const rawKey =
+    (typeof import.meta !== "undefined" && (import.meta as any).env?.["VITE_SUPABASE_PUBLISHABLE_KEY"]) ||
+    (typeof process !== "undefined" && process.env?.["SUPABASE_PUBLISHABLE_KEY"]);
+  const SUPABASE_PUBLISHABLE_KEY =
+    rawKey && String(rawKey).trim() !== "" ? String(rawKey).trim() : DEFAULT_SUPABASE_KEY;
 
   return createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     global: {

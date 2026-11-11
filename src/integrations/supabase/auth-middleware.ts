@@ -46,19 +46,11 @@ export const requireSupabaseAuth = createMiddleware({ type: "function" })
   .server(async ({ next }) => {
     const DEFAULT_SUPABASE_URL = "https://dmvwdkxcltnomigoqtue.supabase.co";
     const DEFAULT_SUPABASE_KEY = "sb_publishable_4o-FrhbFZSg-sCqYdA9s6g_qBDFmxNj";
-    const SUPABASE_URL = process.env["SUPABASE_URL"] || DEFAULT_SUPABASE_URL;
+    const rawUrl = process.env["SUPABASE_URL"];
+    const SUPABASE_URL = rawUrl && rawUrl.trim() !== "" ? rawUrl.trim() : DEFAULT_SUPABASE_URL;
+    const rawKey = process.env["SUPABASE_PUBLISHABLE_KEY"];
     const SUPABASE_PUBLISHABLE_KEY =
-      process.env["SUPABASE_PUBLISHABLE_KEY"] || DEFAULT_SUPABASE_KEY;
-
-    if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
-      const missing = [
-        ...(!SUPABASE_URL ? ["SUPABASE_URL"] : []),
-        ...(!SUPABASE_PUBLISHABLE_KEY ? ["SUPABASE_PUBLISHABLE_KEY"] : []),
-      ];
-      const message = `Missing Supabase environment variable(s): ${missing.join(", ")}. Please configure your Supabase variables in .env`;
-      console.error(`[Supabase] ${message}`);
-      throw new Error(message);
-    }
+      rawKey && rawKey.trim() !== "" ? rawKey.trim() : DEFAULT_SUPABASE_KEY;
 
     const request = getRequest();
 

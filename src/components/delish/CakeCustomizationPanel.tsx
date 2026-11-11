@@ -891,17 +891,57 @@ export function DesignPhotoSection({
           ? sessionStorage.getItem(`delish_photo_token_${value.designImageUrl}`)
           : undefined;
 
-      const saved = await upload({
-        data: {
-          data_url: converted.dataUrl,
-          previous_url: value.designImageUrl || null,
-          previous_deleteToken: previousToken || null,
-        },
-      });
-      if (typeof window !== "undefined" && saved.deleteToken) {
-        sessionStorage.setItem(`delish_photo_token_${saved.url}`, saved.deleteToken);
+      let savedUrl: string | null = null;
+      let deleteToken: string | null = null;
+
+      // When staff is logged in, try direct authenticated storage upload first for instant response:
+      if (typeof window !== "undefined") {
+        try {
+          const { supabase } = await import("@/integrations/supabase/client");
+          const session = (await supabase.auth.getSession()).data.session;
+          if (session?.access_token) {
+            const path = `${new Date().toISOString().slice(0, 10)}/${crypto.randomUUID()}.webp`;
+            const parts = converted.dataUrl.split(",");
+            const bstr = atob(parts[1] || "");
+            const u8arr = new Uint8Array(bstr.length);
+            for (let i = 0; i < bstr.length; i++) {
+              u8arr[i] = bstr.charCodeAt(i);
+            }
+            const blob = new Blob([u8arr], { type: "image/webp" });
+            const { data: uploadResult, error: uploadErr } = await supabase.storage
+              .from("order-designs")
+              .upload(path, blob, { contentType: "image/webp", upsert: false });
+
+            if (!uploadErr && uploadResult?.path) {
+              const { data: signed } = await supabase.storage
+                .from("order-designs")
+                .createSignedUrl(uploadResult.path, 60 * 60 * 24 * 365 * 5);
+              if (signed?.signedUrl) {
+                savedUrl = signed.signedUrl;
+              }
+            }
+          }
+        } catch {
+          // Fall through to server upload
+        }
       }
-      onChange({ ...value, designImageUrl: saved.url });
+
+      if (!savedUrl) {
+        const saved = await upload({
+          data: {
+            data_url: converted.dataUrl,
+            previous_url: value.designImageUrl || null,
+            previous_deleteToken: previousToken || null,
+          },
+        });
+        savedUrl = saved.url;
+        deleteToken = saved.deleteToken;
+      }
+
+      if (typeof window !== "undefined" && deleteToken && savedUrl) {
+        sessionStorage.setItem(`delish_photo_token_${savedUrl}`, deleteToken);
+      }
+      onChange({ ...value, designImageUrl: savedUrl });
       setSavedSize({ before: converted.originalBytes, after: converted.bytes });
       clear("photo");
     } catch (error) {
