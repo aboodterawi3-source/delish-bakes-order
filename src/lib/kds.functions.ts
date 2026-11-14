@@ -29,7 +29,7 @@ const stripPhonesAndPrices = (text: string | null): string | null =>
 
 import type { OrderModification } from "@/lib/server-shared";
 export type { OrderModification };
-import { isValidStorageUrl } from "@/lib/server-shared";
+import { serializeValidStorageUrls } from "@/lib/server-shared";
 
 export type KdsItem = {
   id: string;
@@ -252,7 +252,7 @@ export const getKitchenOrders = createServerFn({ method: "GET" })
         status: order.status,
         inscription: stripPhones(order.inscription),
         card_note: stripPhones(order.card_note ?? null),
-        design_image_url: isValidStorageUrl(order.design_image_url) ? order.design_image_url : null,
+        design_image_url: serializeValidStorageUrls(order.design_image_url, false, 10),
         notes: stripPhones(order.notes),
         schedule_updated_at: order.schedule_updated_at,
         last_edited_at: order.last_edited_at ?? null,

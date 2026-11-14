@@ -6,6 +6,7 @@ import { jordanDay } from "@/lib/date-filter";
 import {
   getStaffCodeForUser,
   isValidStorageUrl,
+  serializeValidStorageUrls,
   STORAGE_URL,
   extraList,
 } from "@/lib/server-shared";
@@ -126,11 +127,7 @@ export const createSocialOrder = createServerFn({ method: "POST" })
     const paymentMethod = data.payment_option === "cash" ? "cash" : "cliq";
     const extrasAr = extraList(data.extras_ar);
     const extrasEn = extraList(data.extras_en);
-    const designImage =
-      typeof data.design_image_url === "string" &&
-      (isValidStorageUrl(data.design_image_url) || STORAGE_URL.test(data.design_image_url.trim()))
-        ? data.design_image_url.trim()
-        : null;
+    const designImage = serializeValidStorageUrls(data.design_image_url, true, 10);
     const receiptImage =
       typeof data.receipt_image_url === "string" &&
       (isValidStorageUrl(data.receipt_image_url) || STORAGE_URL.test(data.receipt_image_url.trim()))

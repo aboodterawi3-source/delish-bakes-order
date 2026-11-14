@@ -32,6 +32,7 @@ import { todayIso } from "@/lib/date-filter";
 import { getWhatsAppChatUrl } from "@/lib/whatsapp";
 import { OrderStatusBadge } from "@/components/staff/OrderStatusBadge";
 import { consolidateModifications } from "@/lib/order-modifications";
+import { parseDesignImageUrls } from "@/lib/utils";
 
 export type CalendarViewMode = "month" | "day";
 
@@ -1147,19 +1148,30 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                       {selectedOrder.notes}
                     </p>
                   ) : null}
-                  {selectedOrder.design_image_url ? (
-                    <div>
-                      <span className="mb-1 block text-[11px] font-bold text-muted-foreground">
-                        صورة التصميم المرفقة:
-                      </span>
-                      <img
-                        src={selectedOrder.design_image_url}
-                        alt="Design Reference"
-                        onClick={() => setZoomImage(selectedOrder.design_image_url)}
-                        className="h-28 w-28 cursor-pointer rounded-xl border border-border object-cover transition-opacity hover:opacity-90"
-                      />
-                    </div>
-                  ) : null}
+                  {(() => {
+                    const designImages = parseDesignImageUrls(selectedOrder.design_image_url);
+                    if (designImages.length === 0) return null;
+                    return (
+                      <div>
+                        <span className="mb-1.5 block text-[11px] font-bold text-muted-foreground">
+                          {designImages.length > 1
+                            ? `صور التصميم المرفقة (${designImages.length}):`
+                            : "صورة التصميم المرفقة:"}
+                        </span>
+                        <div className="flex flex-wrap gap-2">
+                          {designImages.map((imgUrl, idx) => (
+                            <img
+                              key={imgUrl}
+                              src={imgUrl}
+                              alt={`Design Reference ${idx + 1}`}
+                              onClick={() => setZoomImage(imgUrl)}
+                              className="h-28 w-28 cursor-pointer rounded-xl border border-border object-cover transition-opacity hover:opacity-90"
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               ) : null}
 

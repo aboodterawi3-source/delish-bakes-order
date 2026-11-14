@@ -76,21 +76,29 @@ function validate(input: StorefrontOrderRequest) {
 
   let designImage: string | null = null;
   if (typeof input?.design_image === "string" && input.design_image.trim()) {
-    const raw = input.design_image.trim();
-    // Strictly reject long Base64 strings or Data URLs in design_image_url
-    if (raw.startsWith("data:") || raw.includes(";base64,")) {
-      throw new Error(
-        "يُحظر إرسال صور Base64 مباشرة، يجب رفع الصورة إلى مساحة التخزين أولاً · Base64 image payloads are not allowed; upload to storage first",
-      );
+    const parts = input.design_image
+      .split(/[\r\n]+/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .slice(0, 10);
+    const validated: string[] = [];
+    for (const raw of parts) {
+      // Strictly reject long Base64 strings or Data URLs in design_image_url
+      if (raw.startsWith("data:") || raw.includes(";base64,")) {
+        throw new Error(
+          "يُحظر إرسال صور Base64 مباشرة، يجب رفع الصورة إلى مساحة التخزين أولاً · Base64 image payloads are not allowed; upload to storage first",
+        );
+      }
+      if (raw.length > 2500) {
+        throw new Error("رابط صورة التصميم طويل جداً · Design image URL exceeds maximum length");
+      }
+      // Only Storage objects of our own project are accepted; the old `https?://` fallback allowed any host.
+      if (!isValidStorageUrl(raw)) {
+        throw new Error("رابط صورة التصميم غير صالح · Invalid design image URL");
+      }
+      if (!validated.includes(raw)) validated.push(raw);
     }
-    if (raw.length > 2500) {
-      throw new Error("رابط صورة التصميم طويل جداً · Design image URL exceeds maximum length");
-    }
-    // Only Storage objects of our own project are accepted; the old `https?://` fallback allowed any host.
-    if (!isValidStorageUrl(raw)) {
-      throw new Error("رابط صورة التصميم غير صالح · Invalid design image URL");
-    }
-    designImage = raw;
+    designImage = validated.length > 0 ? validated.join("\n") : null;
   }
 
   const rawLines = Array.isArray(input?.lines) ? input.lines : [];

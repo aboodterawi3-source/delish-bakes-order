@@ -2,7 +2,11 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertRole, getRoles, type StaffRoleName } from "@/lib/role-guard";
 import { feeForArea } from "@/lib/delivery-zones";
-import { getStaffCodeForUser, type OrderModification } from "@/lib/server-shared";
+import {
+  getStaffCodeForUser,
+  serializeValidStorageUrls,
+  type OrderModification,
+} from "@/lib/server-shared";
 import { roundJod } from "@/lib/currency";
 import { logServerError } from "@/lib/server-log";
 
@@ -284,7 +288,7 @@ export const createSalesOrder = createServerFn({ method: "POST" })
           staff_notes: data.staff_notes?.trim() || null,
           inscription: data.inscription?.trim() || null,
           card_note: data.card_note?.trim() || null,
-          design_image_url: data.design_image_url || null,
+          design_image_url: serializeValidStorageUrls(data.design_image_url, true, 10),
           payment_method: data.payment_method || null,
           deposit_paid: finalDeposit,
           subtotal,

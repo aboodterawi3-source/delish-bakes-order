@@ -53,6 +53,7 @@ import type { SalesOrder, SalesStatus } from "@/lib/sales.functions";
 import { PRIORITY_META, type PriorityColor } from "@/lib/priority";
 import { formatTimeSlotArabic, printKitchenTicket } from "@/lib/receipt-templates";
 import { orderLabel } from "@/lib/order-label";
+import { parseDesignImageUrls } from "@/lib/utils";
 import { isKitchenRelevantModification, consolidateModifications } from "@/lib/order-modifications";
 import { isoDay, matchesDateFilter, type CustomRange, type DateFilterKey } from "@/lib/date-filter";
 import { formatArabicDate } from "@/lib/confirmation-message";
@@ -531,33 +532,62 @@ const KdsCleanCard = memo(function KdsCleanCard({
             </div>
           )}
 
-          {/* REFERENCE DESIGN IMAGE THUMBNAIL */}
-          {order.design_image_url && (
-            <div className="flex items-center justify-between gap-2 rounded-2xl border border-border bg-card p-2.5 shadow-2xs">
-              <button
-                type="button"
-                onClick={() => onZoom(order.design_image_url as string)}
-                className="flex min-h-[46px] cursor-pointer items-center gap-2.5 text-xs font-black text-primary hover:underline"
-              >
-                <img
-                  src={order.design_image_url}
-                  alt="تصميم الكيك"
-                  className="h-11 w-11 shrink-0 rounded-xl border border-border object-cover shadow-xs"
-                />
-                <span>صورة التصميم المرجعية (عرض وتكبير كامل) 🔍</span>
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  void downloadDesignImage(order.design_image_url as string, order.order_number)
-                }
-                title="تنزيل للطباعة الغذائية"
-                className="grid h-11 w-11 cursor-pointer place-items-center rounded-xl border border-border text-foreground hover:bg-secondary"
-              >
-                <Download className="h-4 w-4" />
-              </button>
-            </div>
-          )}
+          {/* REFERENCE DESIGN IMAGE THUMBNAILS */}
+          {(() => {
+            const designImages = parseDesignImageUrls(order.design_image_url);
+            if (designImages.length === 0) return null;
+            return (
+              <div className="space-y-1.5 rounded-2xl border border-border bg-card p-2.5 shadow-2xs">
+                <div className="flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onZoom(designImages[0]!)}
+                    className="flex min-h-[46px] cursor-pointer items-center gap-2.5 text-xs font-black text-primary hover:underline"
+                  >
+                    <img
+                      src={designImages[0]!}
+                      alt="تصميم الكيك"
+                      className="h-11 w-11 shrink-0 rounded-xl border border-border object-cover shadow-xs"
+                    />
+                    <span>
+                      {designImages.length > 1
+                        ? `صور التصميم المرجعية (${designImages.length} صور) 🔍`
+                        : "صورة التصميم المرجعية (عرض وتكبير كامل) 🔍"}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void downloadDesignImage(designImages[0]!, order.order_number)}
+                    title="تنزيل للطباعة الغذائية"
+                    className="grid h-11 w-11 cursor-pointer place-items-center rounded-xl border border-border text-foreground hover:bg-secondary"
+                  >
+                    <Download className="h-4 w-4" />
+                  </button>
+                </div>
+                {designImages.length > 1 && (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {designImages.map((imgUrl, idx) => (
+                      <button
+                        key={imgUrl}
+                        type="button"
+                        onClick={() => onZoom(imgUrl)}
+                        className="relative cursor-pointer overflow-hidden rounded-lg border border-border hover:ring-2 hover:ring-primary"
+                      >
+                        <img
+                          src={imgUrl}
+                          alt={`تصميم ${idx + 1}`}
+                          className="h-12 w-12 object-cover"
+                        />
+                        <span className="absolute top-0.5 right-0.5 rounded bg-black/65 px-1 text-[9px] font-bold text-white">
+                          {idx + 1}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {order.notes && (
             <div className="rounded-xl border border-border/60 bg-secondary/40 p-2.5 text-xs text-muted-foreground">
@@ -887,39 +917,48 @@ function KitchenOrderDetailsModal({
             </div>
           )}
 
-          {/* 5. Reference Design Image */}
-          {order.design_image_url && (
-            <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-card p-3">
-              <div
-                onClick={() => onZoom(order.design_image_url as string)}
-                className="group flex cursor-pointer items-center gap-3"
-              >
-                <img
-                  src={order.design_image_url}
-                  alt="تصميم الكيك"
-                  className="h-16 w-16 rounded-xl border border-border object-cover shadow-xs transition group-hover:scale-105"
-                />
-                <div>
-                  <span className="block text-xs font-black text-primary group-hover:underline">
-                    صورة التصميم المرجعية (اضغط للتكبير) 🔍
+          {/* 5. Reference Design Images */}
+          {(() => {
+            const designImages = parseDesignImageUrls(order.design_image_url);
+            if (designImages.length === 0) return null;
+            return (
+              <div className="space-y-2.5 rounded-2xl border border-border bg-card p-3">
+                <div className="flex items-center justify-between">
+                  <span className="block text-xs font-black text-primary">
+                    {designImages.length > 1
+                      ? `صور التصميم المرجعية (${designImages.length} صور — اضغط للتكبير) 🔍`
+                      : "صورة التصميم المرجعية (اضغط للتكبير) 🔍"}
                   </span>
                   <span className="text-[11px] font-bold text-muted-foreground">
                     معاينة الشكل والديكور المعتمد
                   </span>
                 </div>
+                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+                  {designImages.map((imgUrl, idx) => (
+                    <div
+                      key={imgUrl}
+                      className="relative overflow-hidden rounded-xl border border-border bg-slate-50"
+                    >
+                      <img
+                        src={imgUrl}
+                        alt={`تصميم الكيك ${idx + 1}`}
+                        onClick={() => onZoom(imgUrl)}
+                        className="h-28 w-full cursor-pointer object-cover transition hover:opacity-95"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => void downloadDesignImage(imgUrl, `${order.order_number}-${idx + 1}`)}
+                        className="absolute bottom-1.5 left-1.5 grid h-8 w-8 cursor-pointer place-items-center rounded-lg border border-border bg-white/95 text-foreground shadow-xs hover:bg-secondary"
+                        title="تنزيل للطباعة"
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={() =>
-                  void downloadDesignImage(order.design_image_url as string, order.order_number)
-                }
-                className="grid h-10 w-10 cursor-pointer place-items-center rounded-xl border border-border text-foreground hover:bg-secondary"
-                title="تنزيل للطباعة"
-              >
-                <Download className="h-4 w-4" />
-              </button>
-            </div>
-          )}
+            );
+          })()}
 
           {/* 6. Customer Notes */}
           {order.notes && (

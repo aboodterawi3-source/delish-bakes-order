@@ -14,6 +14,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { convertToWebp, formatBytes } from "@/lib/image-webp";
 import { IMAGE_ACCEPT } from "@/lib/image-validation";
 import { deleteDesignImage, uploadDesignImage } from "@/lib/design-upload.functions";
+import { parseDesignImageUrls, serializeDesignImageUrls } from "@/lib/utils";
 import { useLang } from "@/lib/i18n";
 
 /** One balloon colour with its own count; several may be combined. */
@@ -857,92 +858,126 @@ export function DesignPhotoSection({
   const upload = useServerFn(uploadDesignImage);
   const deleteImage = useServerFn(deleteDesignImage);
 
-  const [photoMode, setPhotoMode] = useState<"none" | "yes">(value.designImageUrl ? "yes" : "none");
+  const imageUrls = parseDesignImageUrls(value.designImageUrl);
+  const [photoMode, setPhotoMode] = useState<"none" | "yes">(imageUrls.length > 0 ? "yes" : "none");
 
   useEffect(() => {
-    setPhotoMode(value.designImageUrl ? "yes" : "none");
-  }, [value.designImageUrl]);
+    setPhotoMode(imageUrls.length > 0 ? "yes" : "none");
+  }, [imageUrls.length]);
 
-  const removePhoto = () => {
-    if (value.designImageUrl) {
-      const token =
-        typeof window !== "undefined"
-          ? sessionStorage.getItem(`delish_photo_token_${value.designImageUrl}`)
-          : null;
-      void deleteImage({ data: { url: value.designImageUrl, deleteToken: token } }).catch(() => {});
+  const deleteStoredUrl = (url: string) => {
+    const token =
+      typeof window !== "undefined" ? sessionStorage.getItem(`delish_photo_token_${url}`) : null;
+    void deleteImage({ data: { url, deleteToken: token } }).catch(() => {});
+  };
+
+  const removeAllPhotos = () => {
+    for (const url of imageUrls) {
+      deleteStoredUrl(url);
     }
     onChange({ ...value, designImageUrl: null });
     setSavedSize(null);
     clear("photo");
   };
 
-  const handleFile = async (file: File | undefined) => {
-    if (!file) return;
+  const removePhotoAt = (index: number) => {
+    const targetUrl = imageUrls[index];
+    if (targetUrl) deleteStoredUrl(targetUrl);
+    const nextUrls = imageUrls.filter((_, idx) => idx !== index);
+    onChange({ ...value, designImageUrl: serializeDesignImageUrls(nextUrls) });
+    if (nextUrls.length === 0) setSavedSize(null);
+    clear("photo");
+  };
+
+  const uploadSingleFile = async (file: File): Promise<{ url: string; before: number; after: number }> => {
+    const converted = await convertToWebp(file, {
+      kind: "cake",
+      maxDimension: 800,
+      quality: 0.8,
+    });
+
+    let savedUrl: string | null = null;
+    let deleteToken: string | null = null;
+
+    // When staff is logged in, try direct authenticated storage upload first for instant response:
+    if (typeof window !== "undefined") {
+      try {
+        const { supabase } = await import("@/integrations/supabase/client");
+        const session = (await supabase.auth.getSession()).data.session;
+        if (session?.access_token) {
+          const path = `${new Date().toISOString().slice(0, 10)}/${crypto.randomUUID()}.webp`;
+          const parts = converted.dataUrl.split(",");
+          const bstr = atob(parts[1] || "");
+          const u8arr = new Uint8Array(bstr.length);
+          for (let i = 0; i < bstr.length; i++) {
+            u8arr[i] = bstr.charCodeAt(i);
+          }
+          const blob = new Blob([u8arr], { type: "image/webp" });
+          const { data: uploadResult, error: uploadErr } = await supabase.storage
+            .from("order-designs")
+            .upload(path, blob, { contentType: "image/webp", upsert: false });
+
+          if (!uploadErr && uploadResult?.path) {
+            const { data: signed } = await supabase.storage
+              .from("order-designs")
+              .createSignedUrl(uploadResult.path, 60 * 60 * 24 * 365 * 5);
+            if (signed?.signedUrl) {
+              savedUrl = signed.signedUrl;
+            }
+          }
+        }
+      } catch {
+        // Fall through to server upload
+      }
+    }
+
+    if (!savedUrl) {
+      const saved = await upload({
+        data: {
+          data_url: converted.dataUrl,
+          previous_url: null,
+          previous_deleteToken: null,
+        },
+      });
+      savedUrl = saved.url;
+      deleteToken = saved.deleteToken;
+    }
+
+    if (typeof window !== "undefined" && deleteToken && savedUrl) {
+      sessionStorage.setItem(`delish_photo_token_${savedUrl}`, deleteToken);
+    }
+    return {
+      url: savedUrl,
+      before: converted.originalBytes,
+      after: converted.bytes,
+    };
+  };
+
+  const handleFiles = async (fileList: FileList | null) => {
+    if (!fileList || fileList.length === 0) return;
+    const remainingSlots = Math.max(0, 10 - imageUrls.length);
+    if (remainingSlots === 0) {
+      setUploadError(
+        ar ? "الحد الأقصى هو 10 صور للطلب الواحد" : "Maximum 10 photos per order",
+      );
+      return;
+    }
+
+    const files = Array.from(fileList).slice(0, remainingSlots);
     setUploadError(null);
     setUploading(true);
     try {
-      const converted = await convertToWebp(file, {
-        kind: "cake",
-        maxDimension: 800,
-        quality: 0.8,
-      });
-      const previousToken =
-        value.designImageUrl && typeof window !== "undefined"
-          ? sessionStorage.getItem(`delish_photo_token_${value.designImageUrl}`)
-          : undefined;
-
-      let savedUrl: string | null = null;
-      let deleteToken: string | null = null;
-
-      // When staff is logged in, try direct authenticated storage upload first for instant response:
-      if (typeof window !== "undefined") {
-        try {
-          const { supabase } = await import("@/integrations/supabase/client");
-          const session = (await supabase.auth.getSession()).data.session;
-          if (session?.access_token) {
-            const path = `${new Date().toISOString().slice(0, 10)}/${crypto.randomUUID()}.webp`;
-            const parts = converted.dataUrl.split(",");
-            const bstr = atob(parts[1] || "");
-            const u8arr = new Uint8Array(bstr.length);
-            for (let i = 0; i < bstr.length; i++) {
-              u8arr[i] = bstr.charCodeAt(i);
-            }
-            const blob = new Blob([u8arr], { type: "image/webp" });
-            const { data: uploadResult, error: uploadErr } = await supabase.storage
-              .from("order-designs")
-              .upload(path, blob, { contentType: "image/webp", upsert: false });
-
-            if (!uploadErr && uploadResult?.path) {
-              const { data: signed } = await supabase.storage
-                .from("order-designs")
-                .createSignedUrl(uploadResult.path, 60 * 60 * 24 * 365 * 5);
-              if (signed?.signedUrl) {
-                savedUrl = signed.signedUrl;
-              }
-            }
-          }
-        } catch {
-          // Fall through to server upload
-        }
+      const nextUrls = [...imageUrls];
+      let totalBefore = 0;
+      let totalAfter = 0;
+      for (const file of files) {
+        const uploaded = await uploadSingleFile(file);
+        nextUrls.push(uploaded.url);
+        totalBefore += uploaded.before;
+        totalAfter += uploaded.after;
       }
-
-      if (!savedUrl) {
-        const saved = await upload({
-          data: {
-            data_url: converted.dataUrl,
-            previous_url: value.designImageUrl || null,
-            previous_deleteToken: previousToken || null,
-          },
-        });
-        savedUrl = saved.url;
-        deleteToken = saved.deleteToken;
-      }
-
-      if (typeof window !== "undefined" && deleteToken && savedUrl) {
-        sessionStorage.setItem(`delish_photo_token_${savedUrl}`, deleteToken);
-      }
-      onChange({ ...value, designImageUrl: savedUrl });
-      setSavedSize({ before: converted.originalBytes, after: converted.bytes });
+      onChange({ ...value, designImageUrl: serializeDesignImageUrls(nextUrls) });
+      setSavedSize({ before: totalBefore, after: totalAfter });
       clear("photo");
     } catch (error) {
       setUploadError(
@@ -963,9 +998,17 @@ export function DesignPhotoSection({
     >
       <div className="mb-2 flex items-center justify-between">
         <label className="block text-xs font-bold text-[#3E2723]">
-          {ar ? "صورة مرجعية للتصميم" : "Reference Design Photo"}
+          {ar ? "صور مرجعية للتصميم" : "Reference Design Photos"}
         </label>
-        <span className="text-[11px] text-muted-foreground">{ar ? "اختياري" : "Optional"}</span>
+        <span className="text-[11px] text-muted-foreground">
+          {imageUrls.length > 0
+            ? ar
+              ? `${imageUrls.length} / 10 صور مرفقة`
+              : `${imageUrls.length} / 10 attached`
+            : ar
+              ? "اختياري (يدعم عدة صور)"
+              : "Optional (multiple allowed)"}
+        </span>
       </div>
 
       <div className="mb-2 grid grid-cols-2 gap-2">
@@ -973,7 +1016,7 @@ export function DesignPhotoSection({
           type="button"
           onClick={() => {
             setPhotoMode("none");
-            removePhoto();
+            removeAllPhotos();
           }}
           className={`min-h-11 cursor-pointer rounded-xl px-3 py-1.5 text-xs font-bold transition ${
             photoMode === "none"
@@ -994,7 +1037,7 @@ export function DesignPhotoSection({
               : "border border-slate-200 bg-[#F9FBFC] text-[#5D2E17] hover:bg-amber-50"
           }`}
         >
-          {ar ? "📷 إرفاق صورة خاصة" : "📷 Upload Photo"}
+          {ar ? "📷 إرفاق صور خاصة" : "📷 Upload Photos"}
         </button>
       </div>
 
@@ -1008,31 +1051,76 @@ export function DesignPhotoSection({
             ref={fileRef}
             type="file"
             accept={IMAGE_ACCEPT}
+            multiple
             className="sr-only"
-            onChange={(e) => void handleFile(e.target.files?.[0])}
+            onChange={(e) => void handleFiles(e.target.files)}
           />
-          {value.designImageUrl ? (
-            <div className="space-y-2">
-              <img
-                src={value.designImageUrl}
-                alt={ar ? "التصميم المرجعي" : "Reference design"}
-                className="max-h-52 w-full rounded-xl border border-amber-200 object-cover"
-              />
+          {imageUrls.length > 0 ? (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+                {imageUrls.map((url, idx) => (
+                  <div
+                    key={url}
+                    className="group relative overflow-hidden rounded-xl border border-amber-200 bg-white shadow-2xs"
+                  >
+                    <img
+                      src={url}
+                      alt={ar ? `التصميم المرجعي ${idx + 1}` : `Reference design ${idx + 1}`}
+                      className="h-32 w-full object-cover"
+                    />
+                    <span className="absolute top-1.5 right-1.5 rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                      {idx + 1}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removePhotoAt(idx)}
+                      title={ar ? "إزالة هذه الصورة" : "Remove this photo"}
+                      className="absolute bottom-1.5 left-1.5 inline-flex cursor-pointer items-center gap-1 rounded-lg border border-red-200 bg-white/95 px-2 py-1 text-[11px] font-bold text-red-600 shadow-xs hover:bg-red-50"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                      {ar ? "حذف" : "Remove"}
+                    </button>
+                  </div>
+                ))}
+              </div>
               {savedSize && (
                 <p className="text-[11px] text-[#5A4A42]">
                   {ar
-                    ? `تم تحسين الصورة: ${formatBytes(savedSize.before)} ← ${formatBytes(savedSize.after)} WebP`
+                    ? `تم تحسين الصور: ${formatBytes(savedSize.before)} ← ${formatBytes(savedSize.after)} WebP`
                     : `Optimized: ${formatBytes(savedSize.before)} → ${formatBytes(savedSize.after)} WebP`}
                 </p>
               )}
-              <button
-                type="button"
-                onClick={removePhoto}
-                className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-50"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                {ar ? "إزالة الصورة" : "Remove Photo"}
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                {imageUrls.length < 10 && (
+                  <button
+                    type="button"
+                    onClick={() => fileRef.current?.click()}
+                    disabled={uploading}
+                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-[#B8860B] bg-white px-3 py-1.5 text-xs font-bold text-[#7B3F00] hover:bg-amber-50 disabled:opacity-60"
+                  >
+                    {uploading ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Plus className="h-3.5 w-3.5" />
+                    )}
+                    {uploading
+                      ? ar
+                        ? "جاري رفع الصور..."
+                        : "Uploading..."
+                      : ar
+                        ? "إضافة صور أخرى"
+                        : "Add more photos"}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={removeAllPhotos}
+                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-50"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  {ar ? "إزالة الكل" : "Remove All"}
+                </button>
+              </div>
             </div>
           ) : (
             <button
@@ -1049,11 +1137,11 @@ export function DesignPhotoSection({
               <span className="text-xs font-bold">
                 {uploading
                   ? ar
-                    ? "جاري تحسين ورفع الصورة..."
+                    ? "جاري تحسين ورفع الصور..."
                     : "Optimizing & uploading..."
                   : ar
-                    ? "اضغط هنا لاختيار صورة الكيكة المطلوبة (JPG, PNG, WebP)"
-                    : "Click to select cake design photo"}
+                    ? "اضغط هنا لاختيار صورة أو أكثر للكيكة المطلوبة (JPG, PNG, WebP)"
+                    : "Click to select one or more cake design photos"}
               </span>
             </button>
           )}

@@ -50,3 +50,37 @@ export function attachReceiptImageUrl(
   if (!url) return cleaned;
   return [cleaned, `[صورة الحوالة: ${url.trim()}]`].filter(Boolean).join(" ").trim();
 }
+
+/**
+ * Splits a stored `design_image_url` field (single URL or newline-separated URLs)
+ * into a deduplicated array of image URLs.
+ */
+export function parseDesignImageUrls(raw?: string | null): string[] {
+  if (!raw || typeof raw !== "string") return [];
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const part of raw.split(/[\r\n]+/)) {
+    const trimmed = part.trim();
+    if (trimmed && !seen.has(trimmed)) {
+      seen.add(trimmed);
+      result.push(trimmed);
+    }
+  }
+  return result;
+}
+
+/**
+ * Serializes one or more design image URLs into a single `design_image_url` string.
+ */
+export function serializeDesignImageUrls(urls: readonly string[]): string | null {
+  const seen = new Set<string>();
+  const cleaned: string[] = [];
+  for (const url of urls) {
+    const trimmed = typeof url === "string" ? url.trim() : "";
+    if (trimmed && !seen.has(trimmed)) {
+      seen.add(trimmed);
+      cleaned.push(trimmed);
+    }
+  }
+  return cleaned.length > 0 ? cleaned.join("\n") : null;
+}

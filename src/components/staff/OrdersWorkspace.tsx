@@ -65,6 +65,7 @@ import { buildConfirmationMessage } from "@/lib/confirmation-message";
 import { esc, printDocument } from "@/lib/print";
 import { printCustomerReceipt } from "@/lib/receipt-templates";
 import { orderLabel } from "@/lib/order-label";
+import { parseDesignImageUrls } from "@/lib/utils";
 import {
   applyOrderDiscount,
   createOrderEditLink,
@@ -1815,28 +1816,49 @@ ${collectionText}
               </div>
             )}
 
-            {order.design_image_url && (
-              <div className="space-y-2 rounded-2xl border border-border bg-card p-3">
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-1.5 text-xs font-black text-foreground">
-                    🖼️ الصورة المرفقة بالطلب (تصميم / إشعار حوالة)
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => onZoom(order.design_image_url as string)}
-                    className="cursor-pointer text-xs font-bold text-primary hover:underline"
+            {(() => {
+              const designImages = parseDesignImageUrls(order.design_image_url);
+              if (designImages.length === 0) return null;
+              return (
+                <div className="space-y-2 rounded-2xl border border-border bg-card p-3">
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 text-xs font-black text-foreground">
+                      🖼️ {designImages.length > 1
+                        ? `الصور المرفقة بالطلب (${designImages.length})`
+                        : "الصورة المرفقة بالطلب (تصميم / إشعار حوالة)"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => onZoom(designImages[0]!)}
+                      className="cursor-pointer text-xs font-bold text-primary hover:underline"
+                    >
+                      تكبير 🔍
+                    </button>
+                  </div>
+                  <div
+                    className={
+                      designImages.length > 1
+                        ? "grid grid-cols-2 gap-2 sm:grid-cols-3"
+                        : "block"
+                    }
                   >
-                    تكبير 🔍
-                  </button>
+                    {designImages.map((imgUrl, idx) => (
+                      <img
+                        key={imgUrl}
+                        src={imgUrl}
+                        alt={`مرفق الطلب ${idx + 1}`}
+                        onClick={() => onZoom(imgUrl)}
+                        className={
+                          designImages.length > 1
+                            ? "h-32 w-full cursor-pointer rounded-xl border border-slate-200 bg-slate-50 object-cover transition hover:opacity-95"
+                            : "max-h-48 w-full cursor-pointer rounded-xl border border-slate-200 bg-slate-50 object-contain transition hover:opacity-95"
+                        }
+                      />
+                    ))}
+                  </div>
                 </div>
-                <img
-                  src={order.design_image_url}
-                  alt="مرفق الطلب"
-                  onClick={() => onZoom(order.design_image_url as string)}
-                  className="max-h-48 w-full cursor-pointer rounded-xl border border-slate-200 bg-slate-50 object-contain transition hover:opacity-95"
-                />
-              </div>
-            )}
+              );
+            })()}
           </div>
 
           {/* Delivery & Driver Dispatch */}

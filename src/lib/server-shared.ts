@@ -93,6 +93,48 @@ export function isValidStorageUrl(url: unknown): boolean {
   return STORAGE_PATH.test(parsed.pathname);
 }
 
+/**
+ * Parses and validates one or more newline-separated storage URLs (up to `maxCount`),
+ * returning only valid deduplicated URLs.
+ */
+export function parseValidStorageUrls(
+  raw: unknown,
+  allowAnyStorageHost = false,
+  maxCount = 10,
+): string[] {
+  const items = Array.isArray(raw)
+    ? raw
+    : typeof raw === "string"
+      ? raw.split(/[\r\n]+/)
+      : [];
+  const seen = new Set<string>();
+  const valid: string[] = [];
+  for (const item of items) {
+    if (typeof item !== "string") continue;
+    const trimmed = item.trim();
+    if (!trimmed || seen.has(trimmed)) continue;
+    if (isValidStorageUrl(trimmed) || (allowAnyStorageHost && STORAGE_URL.test(trimmed))) {
+      seen.add(trimmed);
+      valid.push(trimmed);
+      if (valid.length >= maxCount) break;
+    }
+  }
+  return valid;
+}
+
+/**
+ * Validates and serializes one or more storage URLs into a newline-separated string
+ * compatible with the `design_image_url` text column.
+ */
+export function serializeValidStorageUrls(
+  raw: unknown,
+  allowAnyStorageHost = false,
+  maxCount = 10,
+): string | null {
+  const valid = parseValidStorageUrls(raw, allowAnyStorageHost, maxCount);
+  return valid.length > 0 ? valid.join("\n") : null;
+}
+
 /** Extras are plain labels; keep them short, single-line and bounded. */
 export const sanitizeExtraList = (value: unknown): string[] => {
   if (!Array.isArray(value)) return [];
