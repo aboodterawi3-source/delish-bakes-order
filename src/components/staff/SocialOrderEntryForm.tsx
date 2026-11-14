@@ -1198,6 +1198,8 @@ export function SocialOrderEntryForm({
                     set("payment_option", nextOpt);
                     if (nextOpt === "cliq_pending") {
                       set("deposit_paid", "");
+                      setReceiptUrl(null);
+                      setReceiptError(null);
                     }
                   }}
                   className="min-h-11 w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-[#3E2723] focus:ring-2 focus:ring-[#B8860B] focus:outline-none"
@@ -1278,14 +1280,12 @@ export function SocialOrderEntryForm({
                       className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm focus:ring-2 focus:ring-[#B8860B] focus:outline-none"
                     />
                   </label>
-                </>
-              )}
 
-              {/* 4. رفع صورة حوالة كليك (اختياري عند الإنشاء — يمكن إرفاقها لاحقاً عند الدفع) */}
-              <div
-                id="cliq-receipt-upload-section"
-                className="space-y-2 border-t border-amber-200/70 pt-2.5"
-              >
+                  {/* 4. رفع صورة حوالة كليك (اختياري عند الإنشاء — يمكن إرفاقها لاحقاً عند الدفع) */}
+                  <div
+                    id="cliq-receipt-upload-section"
+                    className="space-y-2 border-t border-amber-200/70 pt-2.5"
+                  >
                 <div className="flex items-center justify-between">
                   <label className="flex items-center gap-1.5 text-xs font-black text-[#5D2E17]">
                     <Camera className="h-4 w-4 text-[#8B4513]" />
@@ -1394,6 +1394,8 @@ export function SocialOrderEntryForm({
                   </p>
                 )}
               </div>
+                </>
+              )}
             </div>
           )}
         </fieldset>
