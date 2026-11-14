@@ -1547,6 +1547,19 @@ function StoreOperationsPanel() {
   const [phone, setPhone] = useState("+962 7 9000 0000");
   const [wiping, setWiping] = useState(false);
 
+  useEffect(() => {
+    void supabase
+      .from("store_settings")
+      .select("store_name, contact_phone")
+      .eq("singleton", true)
+      .maybeSingle()
+      .then(({ data }) => {
+        const row = data as { store_name?: string; contact_phone?: string } | null;
+        if (row?.store_name?.trim()) setAddress(row.store_name.trim());
+        if (row?.contact_phone?.trim()) setPhone(row.contact_phone.trim());
+      });
+  }, []);
+
   // CliQ accounts management
   const {
     accounts: cliqAccounts,
@@ -1602,21 +1615,37 @@ function StoreOperationsPanel() {
     });
   };
 
-  const handleSaveZones = () => {
-    saveDeliveryZones(localZones);
-    toast.success("تم حفظ أسعار ومناطق التوصيل بنجاح وستُطبَّق على الطلبات الجديدة 🚗");
-  };
-
-  const handleResetZones = () => {
-    if (window.confirm("هل تريد استعادة أسعار التوصيل الافتراضية؟")) {
-      resetZones();
-      // The useEffect will catch the update from store and update local state automatically
-      toast.success("تمت استعادة أسعار التوصيل الافتراضية 🔄");
+  const handleSaveZones = async () => {
+    try {
+      await saveDeliveryZones(localZones);
+      toast.success("تم حفظ أسعار ومناطق التوصيل في قاعدة البيانات بنجاح 🚗");
+    } catch {
+      toast.error("تعذّر حفظ مناطق التوصيل في قاعدة البيانات");
     }
   };
 
-  const handleSaveSettings = () => {
-    toast.success("تم حفظ بيانات الفرع الرئيسي بنجاح 🌸");
+  const handleResetZones = async () => {
+    if (window.confirm("هل تريد استعادة أسعار التوصيل الافتراضية؟")) {
+      try {
+        await resetZones();
+        toast.success("تمت استعادة أسعار التوصيل الافتراضية 🔄");
+      } catch {
+        toast.error("تعذّر استعادة أسعار التوصيل الافتراضية");
+      }
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    try {
+      const { error } = await supabase
+        .from("store_settings")
+        .update({ store_name: address.trim(), contact_phone: phone.trim() } as never)
+        .eq("singleton", true);
+      if (error) throw error;
+      toast.success("تم حفظ بيانات الفرع الرئيسي في قاعدة البيانات بنجاح 🌸");
+    } catch {
+      toast.error("تعذّر حفظ بيانات الفرع الرئيسي في قاعدة البيانات");
+    }
   };
 
   const handleWipeAllOrders = async () => {

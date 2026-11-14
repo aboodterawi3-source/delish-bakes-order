@@ -37,15 +37,69 @@ function mergeWithDefaults(parsed: unknown): CliqAccountConfig[] | null {
   });
 }
 
-function parseCliqAliasJson(raw: unknown): CliqAccountConfig[] | null {
-  if (typeof raw !== "string") return null;
+export interface StoreSettingsConfigEnvelope {
+  cliqAccounts?: CliqAccountConfig[];
+  deliveryZones?: unknown[];
+}
+
+export function parseStoreSettingsEnvelope(raw: unknown): StoreSettingsConfigEnvelope {
+  if (typeof raw !== "string") return {};
   const trimmed = raw.trim();
-  if (!trimmed.startsWith("[")) return null;
+  if (!trimmed) return {};
   try {
-    return mergeWithDefaults(JSON.parse(trimmed));
+    const parsed = JSON.parse(trimmed);
+    if (Array.isArray(parsed)) {
+      const merged = mergeWithDefaults(parsed);
+      return merged ? { cliqAccounts: merged } : {};
+    }
+    if (parsed && typeof parsed === "object") {
+      return parsed as StoreSettingsConfigEnvelope;
+    }
   } catch {
-    return null;
+    // Plain text alias (e.g. "DELISHBAKES") -> return empty envelope
   }
+  return {};
+}
+
+export async function persistStoreSettingsEnvelopeField<K extends keyof StoreSettingsConfigEnvelope>(
+  field: K,
+  value: StoreSettingsConfigEnvelope[K],
+): Promise<void> {
+  const { data: currentRow } = await supabase
+    .from("store_settings")
+    .select("cliq_alias")
+    .eq("singleton", true)
+    .maybeSingle();
+
+  const existing = parseStoreSettingsEnvelope(
+    (currentRow as { cliq_alias?: string } | null)?.cliq_alias,
+  );
+  const nextEnvelope: StoreSettingsConfigEnvelope = {
+    ...existing,
+    [field]: value,
+  };
+  const payload = JSON.stringify(nextEnvelope);
+
+  const { data: updatedRows, error: updateErr } = await supabase
+    .from("store_settings")
+    .update({ cliq_alias: payload } as never)
+    .eq("singleton", true)
+    .select("cliq_alias");
+
+  let error = updateErr;
+  if (!error && (!updatedRows || updatedRows.length === 0)) {
+    const { error: insertErr } = await supabase
+      .from("store_settings")
+      .insert({ singleton: true, cliq_alias: payload } as never);
+    error = insertErr;
+  }
+
+  if (error) throw error;
+}
+
+function parseCliqAliasJson(raw: unknown): CliqAccountConfig[] | null {
+  const envelope = parseStoreSettingsEnvelope(raw);
+  return mergeWithDefaults(envelope.cliqAccounts);
 }
 
 export function getStoredCliqAccounts(): CliqAccountConfig[] {
@@ -133,22 +187,9 @@ export function useCliqAccounts() {
     saveStoredCliqAccounts(normalized);
     queryClient.setQueryData(CLIQ_SETTINGS_QUERY_KEY, normalized);
 
-    const payload = JSON.stringify(normalized);
-    const { data: updatedRows, error: updateErr } = await supabase
-      .from("store_settings")
-      .update({ cliq_alias: payload } as never)
-      .eq("singleton", true)
-      .select("cliq_alias");
-
-    let error = updateErr;
-    if (!error && (!updatedRows || updatedRows.length === 0)) {
-      const { error: insertErr } = await supabase
-        .from("store_settings")
-        .insert({ singleton: true, cliq_alias: payload } as never);
-      error = insertErr;
-    }
-
-    if (error) {
+    try {
+      await persistStoreSettingsEnvelopeField("cliqAccounts", normalized);
+    } catch (error) {
       console.error("[store_settings] failed to save cliq_alias:", error);
       await queryClient.invalidateQueries({ queryKey: CLIQ_SETTINGS_QUERY_KEY });
       throw error;
@@ -167,22 +208,9 @@ export function useCliqAccounts() {
     resetStoredCliqAccounts();
     queryClient.setQueryData(CLIQ_SETTINGS_QUERY_KEY, DEFAULT_CLIQ_ACCOUNTS);
 
-    const payload = JSON.stringify(DEFAULT_CLIQ_ACCOUNTS);
-    const { data: updatedRows, error: updateErr } = await supabase
-      .from("store_settings")
-      .update({ cliq_alias: payload } as never)
-      .eq("singleton", true)
-      .select("cliq_alias");
-
-    let error = updateErr;
-    if (!error && (!updatedRows || updatedRows.length === 0)) {
-      const { error: insertErr } = await supabase
-        .from("store_settings")
-        .insert({ singleton: true, cliq_alias: payload } as never);
-      error = insertErr;
-    }
-
-    if (error) {
+    try {
+      await persistStoreSettingsEnvelopeField("cliqAccounts", DEFAULT_CLIQ_ACCOUNTS);
+    } catch (error) {
       console.error("[store_settings] failed to reset cliq_alias:", error);
       await queryClient.invalidateQueries({ queryKey: CLIQ_SETTINGS_QUERY_KEY });
       throw error;
