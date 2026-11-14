@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface CliqAccountConfig {
   id: string;
@@ -15,29 +17,44 @@ export const DEFAULT_CLIQ_ACCOUNTS: CliqAccountConfig[] = [
 
 const CLIQ_STORAGE_KEY = "delish_cliq_accounts_v1";
 const CLIQ_CHANGE_EVENT = "delish_cliq_accounts_changed";
+export const CLIQ_SETTINGS_QUERY_KEY = ["store_settings_cliq_accounts"] as const;
+
+function mergeWithDefaults(parsed: unknown): CliqAccountConfig[] | null {
+  if (!Array.isArray(parsed) || parsed.length === 0) return null;
+  return DEFAULT_CLIQ_ACCOUNTS.map((def) => {
+    const found = parsed.find((p: any) => p && p.id === def.id);
+    return found
+      ? {
+          ...def,
+          label:
+            typeof found.label === "string" && found.label.trim()
+              ? found.label.trim()
+              : def.label,
+          icon:
+            typeof found.icon === "string" && found.icon.trim() ? found.icon.trim() : def.icon,
+        }
+      : def;
+  });
+}
+
+function parseCliqAliasJson(raw: unknown): CliqAccountConfig[] | null {
+  if (typeof raw !== "string") return null;
+  const trimmed = raw.trim();
+  if (!trimmed.startsWith("[")) return null;
+  try {
+    return mergeWithDefaults(JSON.parse(trimmed));
+  } catch {
+    return null;
+  }
+}
 
 export function getStoredCliqAccounts(): CliqAccountConfig[] {
   if (typeof window === "undefined") return DEFAULT_CLIQ_ACCOUNTS;
   try {
     const raw = localStorage.getItem(CLIQ_STORAGE_KEY);
     if (!raw) return DEFAULT_CLIQ_ACCOUNTS;
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      return DEFAULT_CLIQ_ACCOUNTS.map((def) => {
-        const found = parsed.find((p: any) => p && p.id === def.id);
-        return found
-          ? {
-              ...def,
-              label:
-                typeof found.label === "string" && found.label.trim()
-                  ? found.label.trim()
-                  : def.label,
-              icon:
-                typeof found.icon === "string" && found.icon.trim() ? found.icon.trim() : def.icon,
-            }
-          : def;
-      });
-    }
+    const merged = mergeWithDefaults(JSON.parse(raw));
+    if (merged) return merged;
   } catch (e) {
     console.error("Failed to parse cliq accounts config:", e);
   }
@@ -65,11 +82,38 @@ export function resetStoredCliqAccounts(): void {
 }
 
 export function useCliqAccounts() {
-  const [accounts, setAccounts] = useState<CliqAccountConfig[]>(getStoredCliqAccounts);
+  const queryClient = useQueryClient();
+  const [localAccounts, setLocalAccounts] = useState<CliqAccountConfig[]>(getStoredCliqAccounts);
+
+  const { data: dbAccounts } = useQuery({
+    queryKey: CLIQ_SETTINGS_QUERY_KEY,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("store_settings")
+        .select("cliq_alias")
+        .eq("singleton", true)
+        .maybeSingle();
+
+      if (error) {
+        console.warn("[store_settings] error fetching cliq_alias:", error);
+        return null;
+      }
+      return parseCliqAliasJson((data as { cliq_alias?: string } | null)?.cliq_alias);
+    },
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
+
+  useEffect(() => {
+    if (dbAccounts) {
+      setLocalAccounts(dbAccounts);
+      saveStoredCliqAccounts(dbAccounts);
+    }
+  }, [dbAccounts]);
 
   useEffect(() => {
     const handleSync = () => {
-      setAccounts(getStoredCliqAccounts());
+      setLocalAccounts(getStoredCliqAccounts());
     };
 
     window.addEventListener(CLIQ_CHANGE_EVENT, handleSync);
@@ -80,20 +124,54 @@ export function useCliqAccounts() {
     };
   }, []);
 
-  const updateAccountLabel = (id: string, newLabel: string) => {
+  const accounts = dbAccounts ?? localAccounts;
+
+  const saveAll = async (newAccounts: CliqAccountConfig[]) => {
+    const normalized = mergeWithDefaults(newAccounts) ?? DEFAULT_CLIQ_ACCOUNTS;
+    setLocalAccounts(normalized);
+    saveStoredCliqAccounts(normalized);
+    queryClient.setQueryData(CLIQ_SETTINGS_QUERY_KEY, normalized);
+
+    const { error } = await supabase
+      .from("store_settings")
+      .upsert(
+        { singleton: true, cliq_alias: JSON.stringify(normalized) } as never,
+        { onConflict: "singleton" },
+      );
+
+    if (error) {
+      console.error("[store_settings] failed to save cliq_alias:", error);
+      await queryClient.invalidateQueries({ queryKey: CLIQ_SETTINGS_QUERY_KEY });
+      throw error;
+    }
+
+    await queryClient.invalidateQueries({ queryKey: CLIQ_SETTINGS_QUERY_KEY });
+  };
+
+  const updateAccountLabel = async (id: string, newLabel: string) => {
     const updated = accounts.map((acc) => (acc.id === id ? { ...acc, label: newLabel } : acc));
-    setAccounts(updated);
-    saveStoredCliqAccounts(updated);
+    await saveAll(updated);
   };
 
-  const saveAll = (newAccounts: CliqAccountConfig[]) => {
-    setAccounts(newAccounts);
-    saveStoredCliqAccounts(newAccounts);
-  };
-
-  const resetAll = () => {
-    setAccounts(DEFAULT_CLIQ_ACCOUNTS);
+  const resetAll = async () => {
+    setLocalAccounts(DEFAULT_CLIQ_ACCOUNTS);
     resetStoredCliqAccounts();
+    queryClient.setQueryData(CLIQ_SETTINGS_QUERY_KEY, DEFAULT_CLIQ_ACCOUNTS);
+
+    const { error } = await supabase
+      .from("store_settings")
+      .upsert(
+        { singleton: true, cliq_alias: JSON.stringify(DEFAULT_CLIQ_ACCOUNTS) } as never,
+        { onConflict: "singleton" },
+      );
+
+    if (error) {
+      console.error("[store_settings] failed to reset cliq_alias:", error);
+      await queryClient.invalidateQueries({ queryKey: CLIQ_SETTINGS_QUERY_KEY });
+      throw error;
+    }
+
+    await queryClient.invalidateQueries({ queryKey: CLIQ_SETTINGS_QUERY_KEY });
   };
 
   return {

@@ -1565,16 +1565,24 @@ function StoreOperationsPanel() {
     );
   };
 
-  const handleSaveCliq = () => {
-    saveCliqAccounts(localCliqAccounts);
-    toast.success("تم حفظ أسماء خيارات كليك بنجاح وستظهر في شاشة إنشاء الطلب ✅");
+  const handleSaveCliq = async () => {
+    try {
+      await saveCliqAccounts(localCliqAccounts);
+      toast.success("تم حفظ أسماء خيارات كليك بنجاح على جميع الأجهزة والموظفين ✅");
+    } catch {
+      toast.error("تعذّر حفظ أسماء خيارات كليك في قاعدة البيانات");
+    }
   };
 
-  const handleResetCliq = () => {
+  const handleResetCliq = async () => {
     if (window.confirm("هل تريد استعادة الأسماء الافتراضية لحسابات كليك؟")) {
-      resetCliqAccounts();
-      setLocalCliqAccounts(DEFAULT_CLIQ_ACCOUNTS);
-      toast.success("تمت استعادة الأسماء الافتراضية لحسابات كليك 🔄");
+      try {
+        await resetCliqAccounts();
+        setLocalCliqAccounts(DEFAULT_CLIQ_ACCOUNTS);
+        toast.success("تمت استعادة الأسماء الافتراضية لحسابات كليك 🔄");
+      } catch {
+        toast.error("تعذّر استعادة الأسماء الافتراضية لحسابات كليك");
+      }
     }
   };
 
