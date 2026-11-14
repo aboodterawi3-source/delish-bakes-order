@@ -40,8 +40,8 @@ export type SocialOrderInput = {
   address?: string | null;
   /** Custom delivery fee entered manually by staff */
   delivery_fee?: number | null;
-  /** Cash on delivery, fully paid via CliQ, or a deposit via CliQ. */
-  payment_option: "cash" | "cliq_full" | "cliq_deposit";
+  /** Cash on delivery, fully paid via CliQ, a deposit via CliQ, or awaiting CliQ transfer. */
+  payment_option: "cash" | "cliq_full" | "cliq_deposit" | "cliq_pending";
   /** Amount already collected via CliQ (full payment or deposit). */
   deposit_paid?: number | null;
   requested_date: string;
@@ -94,7 +94,7 @@ export const createSocialOrder = createServerFn({ method: "POST" })
     if (!input?.requested_date || !input?.requested_time)
       throw new Error("تاريخ ووقت التسليم مطلوب");
     if (!Number.isFinite(input.quantity) || input.quantity < 1) throw new Error("الكمية غير صحيحة");
-    if (!["cash", "cliq_full", "cliq_deposit"].includes(input?.payment_option as string)) {
+    if (!["cash", "cliq_full", "cliq_deposit", "cliq_pending"].includes(input?.payment_option as string)) {
       throw new Error("طريقة الدفع مطلوبة · Payment method is required");
     }
     if (input.method === "delivery" && !input.area?.trim() && !input.address?.trim()) {
@@ -123,7 +123,9 @@ export const createSocialOrder = createServerFn({ method: "POST" })
         : 0;
     // A paid amount is stored for deposits and for CliQ payments alike.
     const deposit =
-      data.payment_option === "cash" ? 0 : roundJod(Math.max(0, Number(data.deposit_paid) || 0));
+      data.payment_option === "cash" || data.payment_option === "cliq_pending"
+        ? 0
+        : roundJod(Math.max(0, Number(data.deposit_paid) || 0));
     const paymentMethod = data.payment_option === "cash" ? "cash" : "cliq";
     const extrasAr = extraList(data.extras_ar);
     const extrasEn = extraList(data.extras_en);

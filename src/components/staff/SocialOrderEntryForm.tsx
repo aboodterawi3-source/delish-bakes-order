@@ -76,7 +76,7 @@ const emptyForm = {
   address: "",
   delivery_fee: "",
   // Payment
-  payment_option: "cash" as "cash" | "cliq_full" | "cliq_deposit",
+  payment_option: "cash" as "cash" | "cliq_full" | "cliq_deposit" | "cliq_pending",
   cliq_account: "mahmoud" as CliqAccount,
   cliq_staff_name: "",
   deposit_paid: "",
@@ -253,6 +253,9 @@ export function SocialOrderEntryForm({
   const paymentLabel = useMemo(() => {
     if (form.payment_option === "cash") return "كاش عند الاستلام";
     const cliqDetail = `(${cliqAccountText})`;
+    if (form.payment_option === "cliq_pending") {
+      return `بانتظار الكليك ${cliqDetail}`;
+    }
     if (form.payment_option === "cliq_full") {
       return `كليك دفع كامل ${cliqDetail}: ${(Number(form.deposit_paid) || 0).toFixed(2)} د.أ`;
     }
@@ -263,7 +266,9 @@ export function SocialOrderEntryForm({
   const unitPrice = Math.max(Number(form.unit_price) || 0, 0);
   const originalPrice = unitPrice * form.quantity;
   const paidAmount =
-    form.payment_option === "cash" ? 0 : Math.max(Number(form.deposit_paid) || 0, 0);
+    form.payment_option === "cash" || form.payment_option === "cliq_pending"
+      ? 0
+      : Math.max(Number(form.deposit_paid) || 0, 0);
   const grandTotal = originalPrice + deliveryFee;
   const remaining = remainingBalance(grandTotal, paidAmount);
 
@@ -533,7 +538,12 @@ export function SocialOrderEntryForm({
     }
 
     // Staff notes enriched with channel & cliq details
-    const cliqTag = form.payment_option !== "cash" ? `[كليك: ${cliqAccountText}]` : "";
+    const cliqTag =
+      form.payment_option === "cliq_pending"
+        ? `[كليك: ${cliqAccountText} · بانتظار التحويل ⏳]`
+        : form.payment_option !== "cash"
+          ? `[كليك: ${cliqAccountText}]`
+          : "";
     const cliqReceiptTag = receiptUrl ? `[صورة الحوالة: ${receiptUrl}]` : "";
     const sourceTag = `[المصدر: ${CHANNEL_CONFIG[form.order_source].ar}]`;
     const giftTag = form.is_gift
@@ -573,7 +583,10 @@ export function SocialOrderEntryForm({
         address: form.method === "delivery" ? form.address.trim() || form.area || null : null,
         delivery_fee: form.method === "delivery" ? deliveryFee : 0,
         payment_option: form.payment_option,
-        deposit_paid: form.payment_option === "cash" ? 0 : Number(form.deposit_paid) || 0,
+        deposit_paid:
+          form.payment_option === "cash" || form.payment_option === "cliq_pending"
+            ? 0
+            : Number(form.deposit_paid) || 0,
         requested_date: form.requested_date,
         requested_time: form.requested_time,
         event_date: null,
@@ -1177,13 +1190,21 @@ export function SocialOrderEntryForm({
                 </label>
                 <select
                   value={form.payment_option}
-                  onChange={(e) =>
-                    set("payment_option", e.target.value as "cliq_full" | "cliq_deposit")
-                  }
+                  onChange={(e) => {
+                    const nextOpt = e.target.value as
+                      | "cliq_full"
+                      | "cliq_deposit"
+                      | "cliq_pending";
+                    set("payment_option", nextOpt);
+                    if (nextOpt === "cliq_pending") {
+                      set("deposit_paid", "");
+                    }
+                  }}
                   className="min-h-11 w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-[#3E2723] focus:ring-2 focus:ring-[#B8860B] focus:outline-none"
                 >
                   <option value="cliq_full">💳 كليك دفع كامل (سداد كامل المبلغ)</option>
                   <option value="cliq_deposit">🪙 عربون عبر كليك (دفعة مقدمة / عربون)</option>
+                  <option value="cliq_pending">⏳ بانتظار الكليك (لم يتم التحويل بعد)</option>
                 </select>
               </div>
 
@@ -1222,35 +1243,43 @@ export function SocialOrderEntryForm({
                 </div>
               )}
 
-              {/* 3. المبلغ المدفوع عبر كليك */}
-              <label className="block text-xs font-bold text-[#3E2723]">
-                <div className="mb-1 flex items-center justify-between">
-                  <span>
-                    {form.payment_option === "cliq_full"
-                      ? "المبلغ الكامل المدفوع عبر كليك (د.أ)"
-                      : "قيمة العربون المدفوع عبر كليك (د.أ)"}
-                  </span>
-                  {grandTotal > 0 && form.payment_option === "cliq_full" && (
-                    <button
-                      type="button"
-                      onClick={() => set("deposit_paid", grandTotal.toFixed(2))}
-                      className="cursor-pointer text-[10px] font-bold text-[#8B4513] hover:underline"
-                    >
-                      تعبئة كامل المبلغ ({grandTotal.toFixed(2)} د.أ)
-                    </button>
-                  )}
+              {form.payment_option === "cliq_pending" ? (
+                <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-xs font-bold text-amber-900">
+                  ⏳ تم تحديد الطلب كـ «بانتظار الكليك» — سيتم تسجيل المبلغ وإرفاق صورة الحوالة لاحقاً من شاشة الطلبات فور استلام التحويل.
                 </div>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  dir="ltr"
-                  value={form.deposit_paid}
-                  onChange={(event) => set("deposit_paid", event.target.value)}
-                  placeholder="0.00"
-                  className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm focus:ring-2 focus:ring-[#B8860B] focus:outline-none"
-                />
-              </label>
+              ) : (
+                <>
+                  {/* 3. المبلغ المدفوع عبر كليك */}
+                  <label className="block text-xs font-bold text-[#3E2723]">
+                    <div className="mb-1 flex items-center justify-between">
+                      <span>
+                        {form.payment_option === "cliq_full"
+                          ? "المبلغ الكامل المدفوع عبر كليك (د.أ)"
+                          : "قيمة العربون المدفوع عبر كليك (د.أ)"}
+                      </span>
+                      {grandTotal > 0 && form.payment_option === "cliq_full" && (
+                        <button
+                          type="button"
+                          onClick={() => set("deposit_paid", grandTotal.toFixed(2))}
+                          className="cursor-pointer text-[10px] font-bold text-[#8B4513] hover:underline"
+                        >
+                          تعبئة كامل المبلغ ({grandTotal.toFixed(2)} د.أ)
+                        </button>
+                      )}
+                    </div>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      dir="ltr"
+                      value={form.deposit_paid}
+                      onChange={(event) => set("deposit_paid", event.target.value)}
+                      placeholder="0.00"
+                      className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm focus:ring-2 focus:ring-[#B8860B] focus:outline-none"
+                    />
+                  </label>
+                </>
+              )}
 
               {/* 4. رفع صورة حوالة كليك (اختياري عند الإنشاء — يمكن إرفاقها لاحقاً عند الدفع) */}
               <div
