@@ -8,6 +8,7 @@ import {
   Bike,
   Cake,
   Calendar,
+  Camera,
   CheckCircle2,
   ClipboardCopy,
   Clock,
@@ -63,6 +64,10 @@ import {
 } from "@/lib/sales.functions";
 import { applyOrderDiscount, getMyAuthorization } from "@/lib/authorization.functions";
 import { DELIVERY_ZONES, OTHER_GOVERNORATES_AREA, feeForArea } from "@/lib/delivery-zones";
+import { uploadPaymentReceipt } from "@/lib/receipt-upload.functions";
+import { convertToWebp } from "@/lib/image-webp";
+import { IMAGE_ACCEPT } from "@/lib/image-validation";
+import { extractReceiptImageUrl, attachReceiptImageUrl } from "@/lib/utils";
 import { DeliveryZoneSelect } from "@/components/delish/DeliveryZoneSelect";
 import { useStorefrontContent } from "@/hooks/use-storefront-content";
 import type { StorefrontProduct } from "@/lib/storefront-content";
@@ -745,6 +750,30 @@ function MasterOrderEditor({
   const quickPaymentIdempotencyKeyRef = useRef<string>(crypto.randomUUID());
 
   const recordPaymentServer = useServerFn(recordOrderPayment);
+  const uploadReceiptFn = useServerFn(uploadPaymentReceipt);
+  const [uploadingReceipt, setUploadingReceipt] = useState(false);
+  const receiptInputRef = useRef<HTMLInputElement>(null);
+  const receiptUrl = extractReceiptImageUrl(order.staff_notes);
+
+  const handleUploadReceipt = async (file: File | undefined) => {
+    if (!file) return;
+    setUploadingReceipt(true);
+    try {
+      const converted = await convertToWebp(file, {
+        kind: "cake",
+        maxDimension: 800,
+        quality: 0.8,
+      });
+      const saved = await uploadReceiptFn({ data: { data_url: converted.dataUrl } });
+      await handlePatch({ staff_notes: attachReceiptImageUrl(order.staff_notes, saved.url) });
+      toast.success("تم رفع وإرفاق صورة حوالة كليك بنجاح ✅");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "تعذّر رفع صورة الحوالة");
+    } finally {
+      setUploadingReceipt(false);
+      if (receiptInputRef.current) receiptInputRef.current.value = "";
+    }
+  };
   const handleQuickAddPayment = async (
     amount: number,
     type: "deposit" | "remainder" | "full" = "remainder",
@@ -1668,6 +1697,79 @@ function MasterOrderEditor({
                   className="cursor-pointer rounded-lg border border-emerald-300 bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-900 hover:bg-emerald-200"
                 >
                   تسجيل دفع المتبقي كاملاً ({jd(remaining)})
+                </button>
+              )}
+            </div>
+
+            {/* CliQ Receipt Upload / Preview */}
+            <div className="space-y-2 rounded-2xl border border-amber-200/80 bg-amber-50/40 p-3 dark:border-amber-800/40 dark:bg-amber-950/20">
+              <div className="flex items-center justify-between text-xs font-bold">
+                <span className="flex items-center gap-1.5 text-foreground">
+                  <Camera className="h-3.5 w-3.5 text-amber-700" />
+                  <span>صورة إشعار حوالة كليك · CliQ Receipt</span>
+                </span>
+                {receiptUrl && (
+                  <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                    مرفقة ✅
+                  </span>
+                )}
+              </div>
+
+              <input
+                ref={receiptInputRef}
+                type="file"
+                accept={IMAGE_ACCEPT}
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) void handleUploadReceipt(file);
+                }}
+              />
+
+              {receiptUrl ? (
+                <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-card p-2">
+                  <img
+                    src={receiptUrl}
+                    alt="صورة حوالة كليك"
+                    onClick={() => window.open(receiptUrl, "_blank")}
+                    className="h-14 w-14 shrink-0 cursor-pointer rounded-lg border border-border object-cover"
+                    title="اضغط لفتح الصورة"
+                  />
+                  <div className="flex flex-1 items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => window.open(receiptUrl, "_blank")}
+                      className="cursor-pointer text-xs font-bold text-primary hover:underline"
+                    >
+                      عرض الصورة 🔍
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => receiptInputRef.current?.click()}
+                      disabled={uploadingReceipt}
+                      className="cursor-pointer rounded-lg border border-border bg-secondary px-2.5 py-1 text-[11px] font-bold hover:bg-secondary/80"
+                    >
+                      {uploadingReceipt ? "جاري الرفع..." : "تغيير الصورة"}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => receiptInputRef.current?.click()}
+                  disabled={uploadingReceipt}
+                  className="flex min-h-10 w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-dashed border-amber-400 bg-background px-3 text-xs font-bold text-amber-900 hover:bg-amber-50 dark:text-amber-200"
+                >
+                  {uploadingReceipt ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Camera className="h-4 w-4" />
+                  )}
+                  <span>
+                    {uploadingReceipt
+                      ? "جاري رفع صورة الحوالة..."
+                      : "📸 تحميل صورة إشعار حوالة كليك"}
+                  </span>
                 </button>
               )}
             </div>

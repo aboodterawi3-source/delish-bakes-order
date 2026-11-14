@@ -532,22 +532,9 @@ export function SocialOrderEntryForm({
       return;
     }
 
-    // Validation for Mandatory CliQ Receipt Photo
-    if (form.payment_option !== "cash" && !receiptUrl) {
-      isSubmittingRef.current = false;
-      setError(
-        "⚠️ يرجى تحميل صورة إشعار أو حوالة كليك لإتمام الطلب (خانة إجبارية عند اختيار كليك).",
-      );
-      const targetElem = document.getElementById("cliq-receipt-upload-section");
-      if (targetElem) {
-        targetElem.scrollIntoView({ behavior: "smooth", block: "center" });
-      }
-      return;
-    }
-
     // Staff notes enriched with channel & cliq details
     const cliqTag = form.payment_option !== "cash" ? `[كليك: ${cliqAccountText}]` : "";
-    const cliqReceiptTag = receiptUrl ? "[صورة الحوالة مرفقة 📄]" : "";
+    const cliqReceiptTag = receiptUrl ? `[صورة الحوالة: ${receiptUrl}]` : "";
     const sourceTag = `[المصدر: ${CHANNEL_CONFIG[form.order_source].ar}]`;
     const giftTag = form.is_gift
       ? `[طلب هدية - المرسل: ${form.sender_name || effectiveCustomerName} (${effectiveSenderPhone}) / المستلم: ${form.recipient_name || "—"} (${effectiveRecipientPhone || "—"})]`
@@ -1265,7 +1252,7 @@ export function SocialOrderEntryForm({
                 />
               </label>
 
-              {/* 4. رفع صورة حوالة كليك (إجباري عند اختيار كليك) */}
+              {/* 4. رفع صورة حوالة كليك (اختياري عند الإنشاء — يمكن إرفاقها لاحقاً عند الدفع) */}
               <div
                 id="cliq-receipt-upload-section"
                 className="space-y-2 border-t border-amber-200/70 pt-2.5"
@@ -1273,8 +1260,7 @@ export function SocialOrderEntryForm({
                 <div className="flex items-center justify-between">
                   <label className="flex items-center gap-1.5 text-xs font-black text-[#5D2E17]">
                     <Camera className="h-4 w-4 text-[#8B4513]" />
-                    <span>صورة إشعار / حوالة كليك (إجبارية) · CliQ Receipt</span>
-                    <span className="text-sm font-black text-red-500">*</span>
+                    <span>صورة إشعار / حوالة كليك (اختياري — تُرفع عند الدفع) · CliQ Receipt</span>
                   </label>
                   {receiptUrl && (
                     <span className="flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700">

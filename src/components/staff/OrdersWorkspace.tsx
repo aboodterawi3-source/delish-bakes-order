@@ -9,6 +9,8 @@ import {
   Bike,
   Calendar,
   CalendarClock,
+  Camera,
+  Check,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
@@ -80,7 +82,10 @@ import { jd } from "@/lib/currency";
 import { todayIso } from "@/lib/date-filter";
 import { ORDER_STATUS_META } from "@/lib/order-status";
 import { waNumber } from "@/lib/whatsapp";
-import { formatStaffNotes } from "@/lib/utils";
+import { formatStaffNotes, extractReceiptImageUrl, attachReceiptImageUrl } from "@/lib/utils";
+import { uploadPaymentReceipt } from "@/lib/receipt-upload.functions";
+import { convertToWebp } from "@/lib/image-webp";
+import { IMAGE_ACCEPT } from "@/lib/image-validation";
 
 export const ORDERS_KEY = ["sales-orders"] as const;
 
@@ -1313,9 +1318,83 @@ ${collectionText}
 
   const queryClient = useQueryClient();
   const recordPaymentServer = useServerFn(recordOrderPayment);
+  const uploadReceiptFn = useServerFn(uploadPaymentReceipt);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [showCliqPayPanel, setShowCliqPayPanel] = useState(false);
+  const [cliqAmountInput, setCliqAmountInput] = useState(() =>
+    remaining > 0 ? remaining.toFixed(2) : "0",
+  );
+  const [uploadingReceipt, setUploadingReceipt] = useState(false);
+  const [receiptPreviewUrl, setReceiptPreviewUrl] = useState<string | null>(() =>
+    extractReceiptImageUrl(order.staff_notes),
+  );
+  const receiptInputRef = useRef<HTMLInputElement>(null);
   const paymentIdempotencyKeyRef = useRef<string>(crypto.randomUUID());
   const refundIdempotencyKeyRef = useRef<string>(crypto.randomUUID());
+
+  useEffect(() => {
+    setReceiptPreviewUrl(extractReceiptImageUrl(order.staff_notes));
+    setCliqAmountInput(remaining > 0 ? remaining.toFixed(2) : "0");
+    setShowCliqPayPanel(false);
+  }, [order.id, order.staff_notes, remaining]);
+
+  const handleUploadCliQReceipt = async (file: File | undefined) => {
+    if (!file) return;
+    setUploadingReceipt(true);
+    try {
+      const converted = await convertToWebp(file, {
+        kind: "cake",
+        maxDimension: 800,
+        quality: 0.8,
+      });
+      const saved = await uploadReceiptFn({ data: { data_url: converted.dataUrl } });
+      setReceiptPreviewUrl(saved.url);
+      onPatch({ staff_notes: attachReceiptImageUrl(order.staff_notes, saved.url) });
+      toast.success("تم رفع وإرفاق صورة حوالة كليك بنجاح ✅");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "تعذّر رفع صورة الحوالة");
+    } finally {
+      setUploadingReceipt(false);
+      if (receiptInputRef.current) receiptInputRef.current.value = "";
+    }
+  };
+
+  const handleConfirmCliqPayment = async () => {
+    const amount = Number(cliqAmountInput);
+    if (!Number.isFinite(amount) || amount <= 0 || isProcessingPayment) {
+      toast.error("يرجى إدخال مبلغ صحيح أكبر من صفر");
+      return;
+    }
+    setIsProcessingPayment(true);
+    try {
+      const updatedOrder = await recordPaymentServer({
+        data: {
+          orderId: order.id,
+          amount,
+          paymentMethod: "cliq",
+          paymentType: amount >= remaining ? "full" : "deposit",
+          ...(receiptPreviewUrl ? { referenceNumber: receiptPreviewUrl } : {}),
+          notes:
+            amount >= remaining
+              ? "تسجيل استلام المتبقي كاملاً عبر كليك"
+              : "تسجيل دفعة / عربون عبر كليك",
+          idempotencyKey: paymentIdempotencyKeyRef.current,
+        },
+      });
+      paymentIdempotencyKeyRef.current = crypto.randomUUID();
+      setDeposit(String(updatedOrder.deposit_paid));
+      if (order.payment_method !== "cliq") {
+        onPatch({ payment_method: "cliq" });
+      }
+      setShowCliqPayPanel(false);
+      toast.success(`تم تسجيل الدفع عبر كليك بقيمة ${jd(amount)} بنجاح ✅`);
+      void queryClient.invalidateQueries({ queryKey: ORDERS_KEY });
+    } catch (err) {
+      toast.error((err as Error)?.message || "تعذّر تسجيل الدفعة");
+    } finally {
+      setIsProcessingPayment(false);
+    }
+  };
 
   const handleMarkPaidInFull = (method: "cash" | "cliq" = "cash") => {
     if (remaining <= 0 || isProcessingPayment) return;
@@ -1476,7 +1555,7 @@ ${collectionText}
                 </button>
               </div>
             ) : remaining > 0 ? (
-              <div className="space-y-1.5 pt-1">
+              <div className="space-y-2 pt-1">
                 <button
                   type="button"
                   disabled={isProcessingPayment}
@@ -1489,15 +1568,160 @@ ${collectionText}
                 <button
                   type="button"
                   disabled={isProcessingPayment}
-                  onClick={() => handleMarkPaidInFull("cliq")}
-                  className="min-h-[40px] w-full cursor-pointer rounded-xl border border-emerald-600/30 bg-emerald-50 text-xs font-bold text-emerald-800 hover:bg-emerald-100 disabled:opacity-50 dark:bg-emerald-950/40 dark:text-emerald-200"
+                  onClick={() => setShowCliqPayPanel((prev) => !prev)}
+                  className="flex min-h-[42px] w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-amber-500/40 bg-amber-50 text-xs font-black text-amber-900 transition hover:bg-amber-100 disabled:opacity-50 dark:bg-amber-950/30 dark:text-amber-200"
                 >
-                  💳 تم استلام المتبقي عبر CliQ
+                  <CreditCard className="h-4 w-4" />
+                  <span>💳 تسجيل الدفع عبر كليك + إرفاق الصورة (CliQ)</span>
                 </button>
+
+                {showCliqPayPanel && (
+                  <div className="space-y-2.5 rounded-xl border border-amber-300 bg-amber-50/70 p-3 dark:border-amber-700/60 dark:bg-amber-950/20">
+                    <label className="block text-xs font-bold text-foreground">
+                      المبلغ المدفوع عبر كليك (د.أ):
+                      <input
+                        type="number"
+                        min="0.01"
+                        step="0.01"
+                        dir="ltr"
+                        value={cliqAmountInput}
+                        onChange={(e) => setCliqAmountInput(e.target.value)}
+                        className="mt-1 min-h-10 w-full rounded-lg border border-border bg-background px-3 text-sm font-black"
+                      />
+                    </label>
+
+                    <div className="space-y-1.5">
+                      <span className="block text-[11px] font-bold text-muted-foreground">
+                        صورة إشعار حوالة كليك (اختياري):
+                      </span>
+                      {receiptPreviewUrl ? (
+                        <div className="flex items-center gap-2.5 rounded-lg border border-emerald-300 bg-background p-2">
+                          <img
+                            src={receiptPreviewUrl}
+                            alt="إشعار كليك"
+                            onClick={() => onZoom(receiptPreviewUrl)}
+                            className="h-12 w-12 shrink-0 cursor-pointer rounded-md border border-border object-cover"
+                          />
+                          <div className="min-w-0 flex-1 text-[11px]">
+                            <p className="font-bold text-emerald-700">تم إرفاق صورة الحوالة ✅</p>
+                            <button
+                              type="button"
+                              onClick={() => receiptInputRef.current?.click()}
+                              disabled={uploadingReceipt}
+                              className="cursor-pointer font-bold text-primary hover:underline"
+                            >
+                              تغيير الصورة
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => receiptInputRef.current?.click()}
+                          disabled={uploadingReceipt}
+                          className="flex min-h-10 w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-dashed border-amber-500/60 bg-background px-3 text-xs font-bold text-amber-900 hover:bg-amber-50 dark:text-amber-200"
+                        >
+                          {uploadingReceipt ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Camera className="h-4 w-4" />
+                          )}
+                          <span>
+                            {uploadingReceipt
+                              ? "جاري رفع صورة الحوالة..."
+                              : "📸 اضغط لإرفاق صورة إشعار كليك"}
+                          </span>
+                        </button>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      disabled={isProcessingPayment || uploadingReceipt}
+                      onClick={() => void handleConfirmCliqPayment()}
+                      className="flex min-h-10 w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-emerald-600 text-xs font-black text-white shadow-xs transition hover:bg-emerald-700 disabled:opacity-50"
+                    >
+                      {isProcessingPayment ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Check className="h-4 w-4" />
+                      )}
+                      <span>✅ تأكيد استلام الدفع عبر كليك</span>
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-2 text-center text-xs font-black text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
                 ✅ الحساب مسدد بالكامل
+              </div>
+            )}
+
+            {/* Hidden shared input for CliQ receipt upload */}
+            <input
+              ref={receiptInputRef}
+              type="file"
+              accept={IMAGE_ACCEPT}
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void handleUploadCliQReceipt(file);
+              }}
+            />
+
+            {/* CliQ Receipt Thumbnail / Late Upload Control */}
+            {!showCliqPayPanel && (receiptPreviewUrl || order.payment_method === "cliq") && (
+              <div className="mt-2 border-t border-border/60 pt-2.5">
+                {receiptPreviewUrl ? (
+                  <div className="flex items-center justify-between gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50/50 p-2 dark:border-emerald-800/40 dark:bg-emerald-950/20">
+                    <div className="flex items-center gap-2.5">
+                      <img
+                        src={receiptPreviewUrl}
+                        alt="إشعار حوالة كليك"
+                        onClick={() => onZoom(receiptPreviewUrl)}
+                        className="h-12 w-12 shrink-0 cursor-pointer rounded-lg border border-border object-cover transition hover:opacity-90"
+                      />
+                      <div className="text-[11px]">
+                        <p className="font-black text-emerald-800 dark:text-emerald-300">
+                          💳 صورة إشعار حوالة كليك
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => onZoom(receiptPreviewUrl)}
+                          className="cursor-pointer font-bold text-primary hover:underline"
+                        >
+                          عرض وتكبير 🔍
+                        </button>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => receiptInputRef.current?.click()}
+                      disabled={uploadingReceipt}
+                      className="cursor-pointer rounded-lg border border-border bg-card px-2.5 py-1 text-[11px] font-bold text-foreground hover:bg-secondary"
+                    >
+                      {uploadingReceipt ? "جاري الرفع..." : "تغيير"}
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => receiptInputRef.current?.click()}
+                    disabled={uploadingReceipt}
+                    className="flex min-h-9 w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-dashed border-amber-400 bg-amber-50/50 px-3 text-[11px] font-bold text-amber-900 hover:bg-amber-50 dark:bg-amber-950/20 dark:text-amber-200"
+                  >
+                    {uploadingReceipt ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Camera className="h-3.5 w-3.5" />
+                    )}
+                    <span>
+                      {uploadingReceipt
+                        ? "جاري رفع صورة الحوالة..."
+                        : "📸 إرفاق صورة إشعار حوالة كليك لاحقاً"}
+                    </span>
+                  </button>
+                )}
               </div>
             )}
           </div>
