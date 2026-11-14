@@ -100,8 +100,9 @@ export function useCliqAccounts() {
       }
       return parseCliqAliasJson((data as { cliq_alias?: string } | null)?.cliq_alias);
     },
-    staleTime: 60_000,
-    refetchOnWindowFocus: false,
+    staleTime: 5_000,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
 
   useEffect(() => {
@@ -132,12 +133,20 @@ export function useCliqAccounts() {
     saveStoredCliqAccounts(normalized);
     queryClient.setQueryData(CLIQ_SETTINGS_QUERY_KEY, normalized);
 
-    const { error } = await supabase
+    const payload = JSON.stringify(normalized);
+    const { data: updatedRows, error: updateErr } = await supabase
       .from("store_settings")
-      .upsert(
-        { singleton: true, cliq_alias: JSON.stringify(normalized) } as never,
-        { onConflict: "singleton" },
-      );
+      .update({ cliq_alias: payload } as never)
+      .eq("singleton", true)
+      .select("cliq_alias");
+
+    let error = updateErr;
+    if (!error && (!updatedRows || updatedRows.length === 0)) {
+      const { error: insertErr } = await supabase
+        .from("store_settings")
+        .insert({ singleton: true, cliq_alias: payload } as never);
+      error = insertErr;
+    }
 
     if (error) {
       console.error("[store_settings] failed to save cliq_alias:", error);
@@ -158,12 +167,20 @@ export function useCliqAccounts() {
     resetStoredCliqAccounts();
     queryClient.setQueryData(CLIQ_SETTINGS_QUERY_KEY, DEFAULT_CLIQ_ACCOUNTS);
 
-    const { error } = await supabase
+    const payload = JSON.stringify(DEFAULT_CLIQ_ACCOUNTS);
+    const { data: updatedRows, error: updateErr } = await supabase
       .from("store_settings")
-      .upsert(
-        { singleton: true, cliq_alias: JSON.stringify(DEFAULT_CLIQ_ACCOUNTS) } as never,
-        { onConflict: "singleton" },
-      );
+      .update({ cliq_alias: payload } as never)
+      .eq("singleton", true)
+      .select("cliq_alias");
+
+    let error = updateErr;
+    if (!error && (!updatedRows || updatedRows.length === 0)) {
+      const { error: insertErr } = await supabase
+        .from("store_settings")
+        .insert({ singleton: true, cliq_alias: payload } as never);
+      error = insertErr;
+    }
 
     if (error) {
       console.error("[store_settings] failed to reset cliq_alias:", error);
