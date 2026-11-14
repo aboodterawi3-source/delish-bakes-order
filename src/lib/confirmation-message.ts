@@ -169,7 +169,11 @@ export function buildConfirmationMessage(input: ConfirmationInput): string {
   }
 
   lines.push("", "🎂 تفاصيل الأوردر:");
-  const itemsList = input.items.filter(Boolean);
+  const INTERNAL_ITEM_LINE =
+    /^\s*(?:—\s*)?(?:المصدر:|كليك:|صورة حوالة كليك|صورة مرجعية:|طلب هدية)/;
+  const itemsList = input.items.filter(
+    (line) => Boolean(line) && !INTERNAL_ITEM_LINE.test(line),
+  );
   if (itemsList.length > 0) {
     lines.push(itemsList.join("\n"));
   } else {
