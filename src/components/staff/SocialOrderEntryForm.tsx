@@ -5,10 +5,17 @@ import {
   AlertTriangle,
   Camera,
   Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
   ClipboardCopy,
+  Columns2,
   Gift,
   Image as ImageIcon,
   Instagram,
+  Layers,
+  LayoutGrid,
   Loader2,
   MessageCircle,
   PlusCircle,
@@ -139,6 +146,19 @@ export function SocialOrderEntryForm({
   const [previewTab, setPreviewTab] = useState<"confirmation" | "modification">("confirmation");
   const [error, setError] = useState<string | null>(null);
   const [customErrors, setCustomErrors] = useState<CakeCustomizationErrors>({});
+  const [layoutMode, setLayoutMode] = useState<"pos" | "tabs" | "cards">(() => {
+    if (typeof window === "undefined") return "pos";
+    const saved = window.localStorage.getItem("delish_social_entry_layout");
+    return saved === "tabs" || saved === "cards" || saved === "pos" ? saved : "pos";
+  });
+  const [activeStep, setActiveStep] = useState<1 | 2 | 3>(1);
+
+  const switchLayout = (mode: "pos" | "tabs" | "cards") => {
+    setLayoutMode(mode);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("delish_social_entry_layout", mode);
+    }
+  };
 
   // CliQ Receipt Upload state
   const uploadReceiptFn = useServerFn(uploadPaymentReceipt);
@@ -172,8 +192,8 @@ export function SocialOrderEntryForm({
     }
   };
 
-  // Storefront Menu picker state
-  const [showMenuPicker, setShowMenuPicker] = useState(true);
+  // Storefront Menu picker state (collapsed by default; staff click to expand)
+  const [showMenuPicker, setShowMenuPicker] = useState(false);
   const [menuSearch, setMenuSearch] = useState("");
   const [menuCategory, setMenuCategory] = useState("all");
 
@@ -483,6 +503,34 @@ export function SocialOrderEntryForm({
     if (isSubmittingRef.current || submit.isPending) return;
     isSubmittingRef.current = true;
 
+    // Step 1 validation (important when tabs/cards hide inactive steps)
+    if (form.is_gift) {
+      if (
+        !form.sender_name.trim() ||
+        !form.sender_phone.trim() ||
+        !form.recipient_name.trim() ||
+        !form.recipient_phone.trim()
+      ) {
+        isSubmittingRef.current = false;
+        setActiveStep(1);
+        setError("⚠️ يرجى إكمال بيانات المرسل والمستلم في القسم الأول.");
+        return;
+      }
+    } else if (!form.customer_name.trim() || !form.customer_phone.trim()) {
+      isSubmittingRef.current = false;
+      setActiveStep(1);
+      setError("⚠️ يرجى إدخال اسم الزبون ورقم الهاتف في القسم الأول.");
+      return;
+    }
+
+    // Step 2 basic validation
+    if (!form.order_details.trim() || !(Number(form.unit_price) > 0)) {
+      isSubmittingRef.current = false;
+      setActiveStep(2);
+      setError("⚠️ يرجى اختيار الصنف وإدخال سعر الوحدة في قسم الأصناف والتخصيص.");
+      return;
+    }
+
     // Validation for Mandatory Customization Fields
     const newErrors: CakeCustomizationErrors = {};
     if (!customization.filling.trim()) {
@@ -517,6 +565,7 @@ export function SocialOrderEntryForm({
 
     if (Object.keys(newErrors).length > 0) {
       isSubmittingRef.current = false;
+      setActiveStep(2);
       setCustomErrors(newErrors);
       setError(
         "⚠️ يرجى إكمال خانات تخصيص الكيكة الإجبارية المحددة باللون الأحمر أدناه لتأكيد الطلب.",
@@ -530,10 +579,17 @@ export function SocialOrderEntryForm({
     }
     setCustomErrors({});
 
-    // Validation for Mandatory Delivery Address
+    // Validation for Mandatory Delivery Address & Dates
     if (form.method === "delivery" && !form.address.trim() && !form.area.trim()) {
       isSubmittingRef.current = false;
+      setActiveStep(3);
       setError("⚠️ يرجى كتابة عنوان التوصيل (خانة إجبارية عند اختيار التوصيل).");
+      return;
+    }
+    if (!form.requested_date.trim() || !form.requested_time.trim()) {
+      isSubmittingRef.current = false;
+      setActiveStep(3);
+      setError("⚠️ يرجى تحديد تاريخ ووقت التسليم في قسم التسليم والدفع.");
       return;
     }
 
@@ -684,10 +740,136 @@ export function SocialOrderEntryForm({
         </div>
       ) : null}
 
+      {/* LAYOUT MODE SWITCHER (A: POS, B: Tabs, C: Smart Cards) */}
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-[#E8DFD5] bg-[#FAF6F0] px-3 py-2">
+        <span className="text-xs font-bold text-[#6B5B53]">طريقة عرض نموذج الطلب:</span>
+        <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="طريقة عرض نموذج الطلب">
+          {(
+            [
+              { id: "pos", label: "A · واجهة الكاشير", icon: Columns2 },
+              { id: "tabs", label: "B · التبويبات الهادئة", icon: Layers },
+              { id: "cards", label: "C · البطاقات الذكية", icon: LayoutGrid },
+            ] as const
+          ).map((mode) => {
+            const Icon = mode.icon;
+            const active = layoutMode === mode.id;
+            return (
+              <button
+                key={mode.id}
+                type="button"
+                onClick={() => switchLayout(mode.id)}
+                aria-pressed={active}
+                className={`inline-flex cursor-pointer items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition ${
+                  active
+                    ? "bg-[#8B4513] text-white shadow-xs"
+                    : "border border-[#E8DFD5] bg-white text-[#3E2723] hover:bg-[#FDF9F3]"
+                }`}
+              >
+                <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>{mode.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div
+        className={
+          layoutMode === "pos"
+            ? "grid items-start gap-5 lg:grid-cols-[1.55fr_1fr]"
+            : "space-y-5"
+        }
+      >
       <form
+        id="social-order-entry-form"
+        noValidate={layoutMode !== "pos"}
         onSubmit={onSubmit}
         className="grid min-w-0 gap-5 rounded-3xl border border-slate-200/80 bg-white p-4 shadow-[0_8px_24px_-8px_rgba(62,39,35,0.06)] sm:p-6"
       >
+        {/* TAB BAR FOR LAYOUT B */}
+        {layoutMode === "tabs" ? (
+          <div className="grid grid-cols-3 gap-1.5 rounded-2xl border border-[#E8DFD5] bg-[#EFE7DC]/70 p-1.5">
+            {(
+              [
+                {
+                  step: 1 as const,
+                  label: "1. العميل والمصدر",
+                  done: form.is_gift
+                    ? Boolean(form.sender_name.trim() && form.recipient_name.trim())
+                    : Boolean(form.customer_name.trim() && form.customer_phone.trim()),
+                },
+                {
+                  step: 2 as const,
+                  label: "2. الكيك والتخصيص",
+                  done: Boolean(form.order_details.trim() && Number(form.unit_price) > 0 && customization.filling.trim()),
+                },
+                {
+                  step: 3 as const,
+                  label: "3. التسليم والدفع",
+                  done: Boolean(form.requested_date.trim() && form.requested_time.trim()),
+                },
+              ]
+            ).map((tab) => (
+              <button
+                key={tab.step}
+                type="button"
+                onClick={() => setActiveStep(tab.step)}
+                className={`flex cursor-pointer items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 text-xs font-bold transition sm:text-sm ${
+                  activeStep === tab.step
+                    ? "bg-white text-[#8B4513] shadow-xs"
+                    : "text-[#6B5B53] hover:text-[#3E2723]"
+                }`}
+              >
+                {tab.done ? (
+                  <span className="h-2 w-2 rounded-full bg-emerald-600" aria-hidden="true" />
+                ) : null}
+                <span className="truncate">{tab.label}</span>
+              </button>
+            ))}
+          </div>
+        ) : null}
+
+        {/* SECTION 1 WRAPPER (Customer & Source) */}
+        <div
+          className={
+            layoutMode === "cards"
+              ? "rounded-2xl border border-[#E8DFD5] bg-[#FFFEFC] p-3.5 sm:p-4"
+              : layoutMode === "pos"
+                ? "grid gap-5 rounded-2xl border border-[#E8DFD5] bg-[#FFFEFC] p-3.5 sm:p-4"
+                : activeStep === 1
+                  ? "grid gap-5"
+                  : "hidden"
+          }
+        >
+          {layoutMode === "cards" ? (
+            <div className="flex items-center justify-between gap-2 pb-1">
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-[#3E2723]">1. العميل والمصدر</p>
+                <p className="truncate text-xs text-[#6B5B53]">
+                  {CHANNEL_CONFIG[form.order_source].ar} •{" "}
+                  {(form.is_gift ? form.sender_name : form.customer_name) || "لم يُدخل اسم بعد"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveStep(activeStep === 1 ? 2 : 1)}
+                className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-[#E8DFD5] bg-white px-2.5 py-1 text-xs font-bold text-[#8B4513]"
+              >
+                {activeStep === 1 ? (
+                  <>
+                    <span>طي</span>
+                    <ChevronUp className="h-3.5 w-3.5" />
+                  </>
+                ) : (
+                  <>
+                    <span>تعديل</span>
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </>
+                )}
+              </button>
+            </div>
+          ) : null}
+          <div className={layoutMode !== "cards" || activeStep === 1 ? "grid gap-5" : "hidden"}>
         {/* HEADER & SOURCE SELECTOR */}
         <div className="border-b border-slate-100 pb-4">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
@@ -876,6 +1058,51 @@ export function SocialOrderEntryForm({
           </div>
         )}
 
+          </div>
+        </div>
+
+        {/* SECTION 2 WRAPPER (Items & Customization) */}
+        <div
+          className={
+            layoutMode === "cards"
+              ? "rounded-2xl border border-[#E8DFD5] bg-[#FFFEFC] p-3.5 sm:p-4"
+              : layoutMode === "pos"
+                ? "grid gap-5 rounded-2xl border border-[#E8DFD5] bg-[#FFFEFC] p-3.5 sm:p-4"
+                : activeStep === 2
+                  ? "grid gap-5"
+                  : "hidden"
+          }
+        >
+          {layoutMode === "cards" ? (
+            <div className="flex items-center justify-between gap-2 pb-1">
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-[#3E2723]">2. الأصناف والتخصيص</p>
+                <p className="truncate text-xs text-[#6B5B53]">
+                  {form.order_details.trim()
+                    ? `${form.quantity} × ${form.order_details.trim()} • ${jd(grandTotal)}`
+                    : "لم يُحدد صنف بعد"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveStep(activeStep === 2 ? 3 : 2)}
+                className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-[#E8DFD5] bg-white px-2.5 py-1 text-xs font-bold text-[#8B4513]"
+              >
+                {activeStep === 2 ? (
+                  <>
+                    <span>طي</span>
+                    <ChevronUp className="h-3.5 w-3.5" />
+                  </>
+                ) : (
+                  <>
+                    <span>تعديل</span>
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </>
+                )}
+              </button>
+            </div>
+          ) : null}
+          <div className={layoutMode !== "cards" || activeStep === 2 ? "grid gap-5" : "hidden"}>
         {/* DESIGN REFERENCE PHOTO — sits directly under the order name */}
         <DesignPhotoSection
           value={customization}
@@ -886,7 +1113,11 @@ export function SocialOrderEntryForm({
 
         {/* STOREFRONT MENU / CATALOG SELECTOR */}
         <div className="space-y-3 rounded-2xl border border-[#B8860B]/30 bg-[#FFFDF9] p-3.5 shadow-xs">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#B8860B]/20 pb-2">
+          <div
+            className={`flex flex-wrap items-center justify-between gap-2 ${
+              showMenuPicker ? "border-b border-[#B8860B]/20 pb-2" : ""
+            }`}
+          >
             <div className="flex items-center gap-2">
               <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#8B4513] text-white">
                 <Store className="h-5 w-5" />
@@ -902,8 +1133,9 @@ export function SocialOrderEntryForm({
             </div>
             <button
               type="button"
+              aria-expanded={showMenuPicker}
               onClick={() => setShowMenuPicker((v) => !v)}
-              className="rounded-full border border-[#B8860B]/40 bg-white px-3.5 py-1.5 text-xs font-bold text-[#8B4513] shadow-2xs transition hover:bg-[#FDE2CF]/30"
+              className="cursor-pointer rounded-full border border-[#B8860B]/40 bg-white px-3.5 py-1.5 text-xs font-bold text-[#8B4513] shadow-2xs transition hover:bg-[#FDE2CF]/30"
             >
               {showMenuPicker ? "إخفاء المنيو ▲" : "عرض منيو المنتجات ▼"}
             </button>
@@ -1076,6 +1308,55 @@ export function SocialOrderEntryForm({
           ) : null}
         </div>
 
+          </div>
+        </div>
+
+        {/* SECTION 3 WRAPPER (Fulfilment, Payment & Schedule) */}
+        <div
+          className={
+            layoutMode === "cards"
+              ? "rounded-2xl border border-[#E8DFD5] bg-[#FFFEFC] p-3.5 sm:p-4"
+              : layoutMode === "pos"
+                ? "grid gap-5 rounded-2xl border border-[#E8DFD5] bg-[#FFFEFC] p-3.5 sm:p-4"
+                : activeStep === 3
+                  ? "grid gap-5"
+                  : "hidden"
+          }
+        >
+          {layoutMode === "cards" ? (
+            <div className="flex items-center justify-between gap-2 pb-1">
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-[#3E2723]">3. التسليم والدفع والموعد</p>
+                <p className="truncate text-xs text-[#6B5B53]">
+                  {form.method === "delivery" ? "توصيل" : "استلام من المحل"} •{" "}
+                  {form.payment_option === "cash"
+                    ? "كاش"
+                    : form.payment_option === "cliq_pending"
+                      ? "بانتظار الكليك"
+                      : "كليك"}{" "}
+                  • {form.requested_date || "بدون تاريخ"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveStep(activeStep === 3 ? 1 : 3)}
+                className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-[#E8DFD5] bg-white px-2.5 py-1 text-xs font-bold text-[#8B4513]"
+              >
+                {activeStep === 3 ? (
+                  <>
+                    <span>طي</span>
+                    <ChevronUp className="h-3.5 w-3.5" />
+                  </>
+                ) : (
+                  <>
+                    <span>تعديل</span>
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </>
+                )}
+              </button>
+            </div>
+          ) : null}
+          <div className={layoutMode !== "cards" || activeStep === 3 ? "grid gap-5" : "hidden"}>
         {/* FULFILMENT METHOD */}
         <fieldset className="text-sm font-bold text-[#3E2723]">
           <legend>طريقة التسليم · Fulfilment</legend>
@@ -1495,8 +1776,42 @@ export function SocialOrderEntryForm({
           />
         </label>
 
+          </div>
+        </div>
+
+        {/* TABS STEP NAVIGATION (LAYOUT B) */}
+        {layoutMode === "tabs" ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#E8DFD5] pt-4">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={activeStep === 1}
+                onClick={() => setActiveStep((s) => (s === 3 ? 2 : 1))}
+                className="inline-flex cursor-pointer items-center gap-1 rounded-xl border border-[#E8DFD5] bg-white px-3.5 py-2 text-xs font-bold text-[#3E2723] transition hover:bg-[#FAF6F0] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                <span>السابق</span>
+              </button>
+              {activeStep < 3 ? (
+                <button
+                  type="button"
+                  onClick={() => setActiveStep((s) => (s === 1 ? 2 : 3))}
+                  className="inline-flex cursor-pointer items-center gap-1 rounded-xl bg-[#3E2723] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#5D2E17]"
+                >
+                  <span>التالي</span>
+                  <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                </button>
+              ) : null}
+            </div>
+            <div className="text-left">
+              <span className="block text-[11px] text-[#6B5B53]">الإجمالي</span>
+              <strong className="text-base font-black text-[#8B4513]">{jd(grandTotal)}</strong>
+            </div>
+          </div>
+        ) : null}
+
         {/* SUBMIT BUTTON */}
-        <div className="pt-2">
+        <div className={layoutMode === "pos" ? "pt-2 lg:hidden" : "pt-2"}>
           <button
             type="submit"
             disabled={submit.isPending || isSubmittingRef.current}
@@ -1513,7 +1828,42 @@ export function SocialOrderEntryForm({
       </form>
 
       {/* CONFIRMATION / MODIFICATION MESSAGE PREVIEW */}
-      <section className="rounded-3xl border border-[#B8860B]/40 bg-card p-5 shadow-sm">
+      <section
+        className={`rounded-3xl border border-[#B8860B]/40 bg-card p-5 shadow-sm ${
+          layoutMode === "pos" ? "lg:sticky lg:top-4" : ""
+        }`}
+      >
+        {layoutMode === "pos" ? (
+          <div className="mb-4 space-y-2 rounded-2xl border border-[#E8DFD5] bg-[#FAF6F0] p-3.5">
+            <div className="flex items-center justify-between text-xs text-[#6B5B53]">
+              <span>المجموع الفرعي</span>
+              <span className="font-bold text-[#3E2723]">{jd(originalPrice)}</span>
+            </div>
+            {form.method === "delivery" ? (
+              <div className="flex items-center justify-between text-xs text-[#6B5B53]">
+                <span>التوصيل</span>
+                <span className="font-bold text-[#3E2723]">{jd(deliveryFee)}</span>
+              </div>
+            ) : null}
+            <div className="flex items-center justify-between border-t border-dashed border-[#D8CBB8] pt-2 text-sm font-black text-[#3E2723]">
+              <span>الإجمالي الكلي</span>
+              <span className="text-base text-[#8B4513]">{jd(grandTotal)}</span>
+            </div>
+            <button
+              type="submit"
+              form="social-order-entry-form"
+              disabled={submit.isPending || isSubmittingRef.current}
+              className="mt-2 inline-flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#8B4513] px-4 text-center text-sm font-bold text-white shadow-sm transition hover:bg-[#5D2E17] disabled:opacity-60"
+            >
+              {submit.isPending || isSubmittingRef.current ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <Send className="h-4 w-4" aria-hidden="true" />
+              )}
+              إرسال وتثبيت الطلب فورا
+            </button>
+          </div>
+        ) : null}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
           <div className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-[#B8860B]" />
@@ -1583,6 +1933,7 @@ export function SocialOrderEntryForm({
           {activePreviewText}
         </pre>
       </section>
+      </div>
     </div>
   );
 }
