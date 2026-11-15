@@ -321,11 +321,11 @@ export function CakeCustomizationPanel({
             : "border-slate-200/90 bg-white shadow-2xs"
         }`}
       >
-        <div className="mb-2 flex items-center justify-between">
-          <label className="block text-xs font-bold text-[#3E2723]">
+        <div className="mb-1.5 flex items-center justify-between">
+          <label htmlFor="field-input-candles" className="block text-xs font-bold text-[#3E2723]">
             {ar ? "شموع الاحتفال" : "Celebration Candles"}
           </label>
-          {candleMode !== null ? (
+          {value.candleDigits.trim() ? (
             <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700">
               <Check className="h-3.5 w-3.5" /> {ar ? "تم التحديد" : "Selected"}
             </span>
@@ -336,69 +336,30 @@ export function CakeCustomizationPanel({
           )}
         </div>
 
-        {/* Choice buttons */}
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              onChange({
-                ...value,
-                candleChoice: "none",
-                standardCandles: false,
-                numberCandles: false,
-                candleDigits: "",
-              });
-              clear("candles");
-            }}
-            className={`min-h-11 cursor-pointer rounded-xl px-3 py-1.5 text-xs font-bold transition ${
-              candleMode === "none"
-                ? "border-2 border-[#8B4513] bg-[#8B4513] text-white shadow-xs"
-                : "border border-slate-200 bg-[#F9FBFC] text-[#5D2E17] hover:bg-amber-50"
-            }`}
-          >
-            {ar ? "بدون شموع" : "No Candles"}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              onChange({
-                ...value,
-                candleChoice: "standard",
-                standardCandles: true,
-                numberCandles: false,
-              });
-              if (value.candleDigits.trim()) clear("candles");
-            }}
-            className={`min-h-11 cursor-pointer rounded-xl px-3 py-1.5 text-xs font-bold transition ${
-              candleMode !== null && candleMode !== "none"
-                ? "border-2 border-[#8B4513] bg-[#8B4513] text-white shadow-xs"
-                : "border border-slate-200 bg-[#F9FBFC] text-[#5D2E17] hover:bg-amber-50"
-            }`}
-          >
-            {ar ? "🕯️ إضافة شموع" : "🕯️ Add Candles"}
-          </button>
-        </div>
-
-        {candleMode !== null && candleMode !== "none" && (
-          <div className="mt-2 space-y-1">
-            <input
-              id="field-input-candles"
-              type="text"
-              value={value.candleDigits}
-              onChange={(e) => {
-                set("candleDigits", e.target.value);
-                if (e.target.value.trim()) clear("candles");
-              }}
-              maxLength={120}
-              placeholder={
-                ar
-                  ? "اكتب تفاصيل الشموع (مثال: شموع عادية، أو أرقام 25، العدد)..."
-                  : "Type candle details (e.g. standard candles, number 25, count)..."
-              }
-              className={errors?.candles ? errorInputClass : normalInputClass}
-            />
-          </div>
-        )}
+        <input
+          id="field-input-candles"
+          type="text"
+          value={value.candleDigits}
+          onChange={(e) => {
+            const next = e.target.value;
+            const hasVal = Boolean(next.trim());
+            onChange({
+              ...value,
+              candleChoice: hasVal ? "standard" : null,
+              standardCandles: hasVal,
+              numberCandles: false,
+              candleDigits: next,
+            });
+            if (hasVal) clear("candles");
+          }}
+          maxLength={120}
+          placeholder={
+            ar
+              ? "اكتب تفاصيل الشموع (أو اكتب: بدون)..."
+              : "Type candle details (or type: none)..."
+          }
+          className={errors?.candles ? errorInputClass : normalInputClass}
+        />
 
         {errors?.candles ? (
           <p className="mt-1.5 flex animate-pulse items-center gap-1 text-xs font-bold text-red-600">
@@ -417,11 +378,11 @@ export function CakeCustomizationPanel({
             : "border-slate-200/90 bg-white shadow-2xs"
         }`}
       >
-        <div className="mb-2 flex items-center justify-between">
-          <label className="block text-xs font-bold text-[#3E2723]">
+        <div className="mb-1.5 flex items-center justify-between">
+          <label htmlFor="field-input-balloons" className="block text-xs font-bold text-[#3E2723]">
             {ar ? "بالونات هيليوم" : "Helium Balloons"}
           </label>
-          {balloonMode !== null ? (
+          {value.balloonNotes.trim() ? (
             <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700">
               <Check className="h-3.5 w-3.5" /> {ar ? "تم التحديد" : "Selected"}
             </span>
@@ -432,68 +393,30 @@ export function CakeCustomizationPanel({
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              onChange({
-                ...value,
-                balloonChoice: "none",
-                balloons: false,
-                balloonPicks: [],
-                balloonNotes: "",
-              });
-              clear("balloons");
-            }}
-            className={`min-h-11 cursor-pointer rounded-xl px-3 py-1.5 text-xs font-bold transition ${
-              balloonMode === "none"
-                ? "border-2 border-[#8B4513] bg-[#8B4513] text-white shadow-xs"
-                : "border border-slate-200 bg-[#F9FBFC] text-[#5D2E17] hover:bg-amber-50"
-            }`}
-          >
-            {ar ? "بدون بالونات" : "No Balloons"}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              onChange({
-                ...value,
-                balloonChoice: "yes",
-                balloons: true,
-                balloonPicks: [],
-              });
-              if (value.balloonNotes.trim()) clear("balloons");
-            }}
-            className={`min-h-11 cursor-pointer rounded-xl px-3 py-1.5 text-xs font-bold transition ${
-              balloonMode === "yes"
-                ? "border-2 border-[#8B4513] bg-[#8B4513] text-white shadow-xs"
-                : "border border-slate-200 bg-[#F9FBFC] text-[#5D2E17] hover:bg-amber-50"
-            }`}
-          >
-            {ar ? "🎈 إضافة بالونات" : "🎈 Add Balloons"}
-          </button>
-        </div>
-
-        {balloonMode === "yes" && (
-          <div className="mt-2 space-y-1">
-            <input
-              id="field-input-balloons"
-              type="text"
-              value={value.balloonNotes}
-              onChange={(e) => {
-                set("balloonNotes", e.target.value);
-                if (e.target.value.trim()) clear("balloons");
-              }}
-              maxLength={120}
-              placeholder={
-                ar
-                  ? "اكتب تفاصيل البالونات (الألوان، العدد، أو عبارة)..."
-                  : "Type balloon details (colors, count, or note)..."
-              }
-              className={errors?.balloons ? errorInputClass : normalInputClass}
-            />
-          </div>
-        )}
+        <input
+          id="field-input-balloons"
+          type="text"
+          value={value.balloonNotes}
+          onChange={(e) => {
+            const next = e.target.value;
+            const hasVal = Boolean(next.trim());
+            onChange({
+              ...value,
+              balloonChoice: hasVal ? "yes" : null,
+              balloons: hasVal,
+              balloonPicks: [],
+              balloonNotes: next,
+            });
+            if (hasVal) clear("balloons");
+          }}
+          maxLength={120}
+          placeholder={
+            ar
+              ? "اكتب تفاصيل البالونات (أو اكتب: بدون)..."
+              : "Type balloon details (or type: none)..."
+          }
+          className={errors?.balloons ? errorInputClass : normalInputClass}
+        />
 
         {errors?.balloons ? (
           <p className="mt-1.5 flex animate-pulse items-center gap-1 text-xs font-bold text-red-600">
@@ -510,11 +433,11 @@ export function CakeCustomizationPanel({
           errors?.topper ? "border-red-400 bg-red-50/30" : "border-slate-200/90 bg-white shadow-2xs"
         }`}
       >
-        <div className="mb-2 flex items-center justify-between">
-          <label className="block text-xs font-bold text-[#3E2723]">
+        <div className="mb-1.5 flex items-center justify-between">
+          <label htmlFor="field-input-topper" className="block text-xs font-bold text-[#3E2723]">
             {ar ? "توبر أكريليك احتفالي" : "Acrylic Cake Topper"}
           </label>
-          {topperMode !== null ? (
+          {value.topperText.trim() ? (
             <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700">
               <Check className="h-3.5 w-3.5" /> {ar ? "تم التحديد" : "Selected"}
             </span>
@@ -525,57 +448,29 @@ export function CakeCustomizationPanel({
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              onChange({ ...value, topperChoice: "none", topper: false, topperText: "" });
-              clear("topper");
-            }}
-            className={`min-h-11 cursor-pointer rounded-xl px-3 py-1.5 text-xs font-bold transition ${
-              topperMode === "none"
-                ? "border-2 border-[#8B4513] bg-[#8B4513] text-white shadow-xs"
-                : "border border-slate-200 bg-[#F9FBFC] text-[#5D2E17] hover:bg-amber-50"
-            }`}
-          >
-            {ar ? "بدون توبر" : "No Topper"}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              onChange({ ...value, topperChoice: "yes", topper: true });
-              if (value.topperText.trim()) clear("topper");
-            }}
-            className={`min-h-11 cursor-pointer rounded-xl px-3 py-1.5 text-xs font-bold transition ${
-              topperMode === "yes"
-                ? "border-2 border-[#8B4513] bg-[#8B4513] text-white shadow-xs"
-                : "border border-slate-200 bg-[#F9FBFC] text-[#5D2E17] hover:bg-amber-50"
-            }`}
-          >
-            {ar ? "✨ إضافة توبر" : "✨ Add Topper"}
-          </button>
-        </div>
-
-        {topperMode === "yes" && (
-          <div className="mt-2 space-y-1">
-            <input
-              id="field-input-topper"
-              type="text"
-              value={value.topperText}
-              onChange={(e) => {
-                set("topperText", e.target.value);
-                if (e.target.value.trim()) clear("topper");
-              }}
-              maxLength={60}
-              placeholder={
-                ar
-                  ? "اكتب العبارة المطلوبة على التوبر (مثال: مبروك التخرج، Happy Birthday)…"
-                  : "Type topper text (e.g. Happy Birthday)…"
-              }
-              className={errors?.topper ? errorInputClass : normalInputClass}
-            />
-          </div>
-        )}
+        <input
+          id="field-input-topper"
+          type="text"
+          value={value.topperText}
+          onChange={(e) => {
+            const next = e.target.value;
+            const hasVal = Boolean(next.trim());
+            onChange({
+              ...value,
+              topperChoice: hasVal ? "yes" : null,
+              topper: hasVal,
+              topperText: next,
+            });
+            if (hasVal) clear("topper");
+          }}
+          maxLength={60}
+          placeholder={
+            ar
+              ? "اكتب عبارة التوبر المطلوبة (أو اكتب: بدون)…"
+              : "Type topper text (or type: none)…"
+          }
+          className={errors?.topper ? errorInputClass : normalInputClass}
+        />
 
         {errors?.topper ? (
           <p className="mt-1.5 flex animate-pulse items-center gap-1 text-xs font-bold text-red-600">
