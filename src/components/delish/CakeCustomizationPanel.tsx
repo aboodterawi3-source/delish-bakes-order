@@ -96,13 +96,14 @@ export function customizationSummary(c: Customization) {
     ar.push(`الحشوة: ${c.filling.trim()}`);
     en.push(`Filling: ${c.filling.trim()}`);
   }
-  if (c.standardCandles) {
-    ar.push(`شموع عادية: ${c.candleQty}`);
-    en.push(`Standard candles: ${c.candleQty}`);
-  }
-  if (c.numberCandles && c.candleDigits.trim()) {
-    ar.push(`شموع أرقام: ${c.candleDigits.trim()} × ${c.numberCandleQty}`);
-    en.push(`Number candles: ${c.candleDigits.trim()} × ${c.numberCandleQty}`);
+  if (c.standardCandles || c.numberCandles) {
+    if (c.candleDigits.trim()) {
+      ar.push(`شموع: ${c.candleDigits.trim()}`);
+      en.push(`Candles: ${c.candleDigits.trim()}`);
+    } else {
+      ar.push("شموع: مطلوبة");
+      en.push("Candles: requested");
+    }
   }
   if (c.balloons) {
     const picks = c.balloonPicks.filter((p) => p.qty > 0);
@@ -324,116 +325,78 @@ export function CakeCustomizationPanel({
           <label className="block text-xs font-bold text-[#3E2723]">
             {ar ? "شموع الاحتفال" : "Celebration Candles"}
           </label>
-          <span className="text-[11px] text-muted-foreground">{ar ? "اختياري" : "Optional"}</span>
+          {candleMode !== null ? (
+            <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700">
+              <Check className="h-3.5 w-3.5" /> {ar ? "تم التحديد" : "Selected"}
+            </span>
+          ) : (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-[#8B4513]">
+              {ar ? "إجباري *" : "Required *"}
+            </span>
+          )}
         </div>
 
         {/* Choice buttons */}
-        <div className="mb-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {[
-            { id: "none", labelAr: "بدون شموع", labelEn: "No Candles" },
-            { id: "standard", labelAr: "🕯️ شموع عادية", labelEn: "🕯️ Standard" },
-            { id: "number", labelAr: "🔢 شموع أرقام", labelEn: "🔢 Numbers" },
-            { id: "both", labelAr: "✨ عادية + أرقام", labelEn: "✨ Both" },
-          ].map((opt) => {
-            const active = candleMode === opt.id;
-            const label = ar ? opt.labelAr : opt.labelEn;
-            return (
-              <button
-                key={opt.id}
-                type="button"
-                onClick={() => {
-                  if (opt.id === "none") {
-                    onChange({
-                      ...value,
-                      candleChoice: "none",
-                      standardCandles: false,
-                      numberCandles: false,
-                      candleDigits: "",
-                    });
-                  } else if (opt.id === "standard") {
-                    onChange({
-                      ...value,
-                      candleChoice: "standard",
-                      standardCandles: true,
-                      numberCandles: false,
-                      candleQty: value.candleQty || 1,
-                    });
-                  } else if (opt.id === "number") {
-                    onChange({
-                      ...value,
-                      candleChoice: "number",
-                      standardCandles: false,
-                      numberCandles: true,
-                      numberCandleQty: value.numberCandleQty || 1,
-                    });
-                  } else {
-                    onChange({
-                      ...value,
-                      candleChoice: "both",
-                      standardCandles: true,
-                      numberCandles: true,
-                      candleQty: value.candleQty || 1,
-                      numberCandleQty: value.numberCandleQty || 1,
-                    });
-                  }
-                  clear("candles");
-                }}
-                className={`min-h-11 cursor-pointer rounded-xl px-2.5 py-1.5 text-xs font-bold transition ${
-                  active
-                    ? "border-2 border-[#8B4513] bg-[#8B4513] text-white shadow-xs"
-                    : "border border-slate-200 bg-[#F9FBFC] text-[#5D2E17] hover:bg-amber-50"
-                }`}
-              >
-                {label}
-              </button>
-            );
-          })}
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              onChange({
+                ...value,
+                candleChoice: "none",
+                standardCandles: false,
+                numberCandles: false,
+                candleDigits: "",
+              });
+              clear("candles");
+            }}
+            className={`min-h-11 cursor-pointer rounded-xl px-3 py-1.5 text-xs font-bold transition ${
+              candleMode === "none"
+                ? "border-2 border-[#8B4513] bg-[#8B4513] text-white shadow-xs"
+                : "border border-slate-200 bg-[#F9FBFC] text-[#5D2E17] hover:bg-amber-50"
+            }`}
+          >
+            {ar ? "بدون شموع" : "No Candles"}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              onChange({
+                ...value,
+                candleChoice: "standard",
+                standardCandles: true,
+                numberCandles: false,
+              });
+              if (value.candleDigits.trim()) clear("candles");
+            }}
+            className={`min-h-11 cursor-pointer rounded-xl px-3 py-1.5 text-xs font-bold transition ${
+              candleMode !== null && candleMode !== "none"
+                ? "border-2 border-[#8B4513] bg-[#8B4513] text-white shadow-xs"
+                : "border border-slate-200 bg-[#F9FBFC] text-[#5D2E17] hover:bg-amber-50"
+            }`}
+          >
+            {ar ? "🕯️ إضافة شموع" : "🕯️ Add Candles"}
+          </button>
         </div>
 
-        {value.standardCandles && (
-          <div className="my-2 flex items-center justify-between rounded-xl border border-slate-200 bg-[#F9FBFC] p-2.5">
-            <span className="text-xs font-bold text-[#3E2723]">
-              {ar ? "عدد الشموع العادية:" : "Standard Candles Count:"}
-            </span>
-            <Counter
-              value={value.candleQty}
-              onChange={(n) => set("candleQty", n)}
-              label="Candles"
+        {candleMode !== null && candleMode !== "none" && (
+          <div className="mt-2 space-y-1">
+            <input
+              id="field-input-candles"
+              type="text"
+              value={value.candleDigits}
+              onChange={(e) => {
+                set("candleDigits", e.target.value);
+                if (e.target.value.trim()) clear("candles");
+              }}
+              maxLength={120}
+              placeholder={
+                ar
+                  ? "اكتب تفاصيل الشموع (مثال: شموع عادية، أو أرقام 25، العدد)..."
+                  : "Type candle details (e.g. standard candles, number 25, count)..."
+              }
+              className={errors?.candles ? errorInputClass : normalInputClass}
             />
-          </div>
-        )}
-
-        {value.numberCandles && (
-          <div className="my-2 grid gap-2.5 rounded-xl border border-slate-200 bg-[#F9FBFC] p-2.5 sm:grid-cols-2">
-            <div>
-              <label className="mb-1 block text-xs font-bold text-[#3E2723]">
-                {ar ? "أرقام الشموع (العمر أو السنة):" : "Candle Numbers:"}
-              </label>
-              <input
-                type="text"
-                inputMode="numeric"
-                maxLength={4}
-                value={value.candleDigits}
-                onChange={(e) => {
-                  set("candleDigits", e.target.value.replace(/[^0-9]/g, ""));
-                  if (e.target.value.trim()) clear("candles");
-                }}
-                placeholder={ar ? "مثال: 25 أو 18" : "e.g. 25"}
-                className={errors?.candles ? errorInputClass : normalInputClass}
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-bold text-[#3E2723]">
-                {ar ? "عدد الأطقم:" : "Sets Count:"}
-              </label>
-              <div className="pt-1">
-                <Counter
-                  value={value.numberCandleQty}
-                  onChange={(n) => set("numberCandleQty", n)}
-                  label="Number candles"
-                />
-              </div>
-            </div>
           </div>
         )}
 

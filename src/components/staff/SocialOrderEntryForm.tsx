@@ -496,9 +496,12 @@ export function SocialOrderEntryForm({
       newErrors.filling = "⚠️ يرجى كتابة نوع الحشوة للكيكة (خانة إجبارية)";
     }
     if (!customization.candleChoice) {
-      newErrors.candles = "⚠️ يرجى تحديد خيار الشموع (اختر نوع الشموع أو 'بدون شموع')";
-    } else if (customization.numberCandles && !customization.candleDigits.trim()) {
-      newErrors.candles = "⚠️ يرجى كتابة أرقام الشموع المطلوبة أو اختيار 'بدون شموع'";
+      newErrors.candles = "⚠️ يرجى تحديد خيار الشموع (اختر 'إضافة شموع' أو 'بدون شموع')";
+    } else if (
+      (customization.standardCandles || customization.numberCandles) &&
+      !customization.candleDigits.trim()
+    ) {
+      newErrors.candles = "⚠️ يرجى كتابة تفاصيل الشموع المطلوبة أو اختيار 'بدون شموع'";
     }
 
     if (!customization.balloonChoice) {
