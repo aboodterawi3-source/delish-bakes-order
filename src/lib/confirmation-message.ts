@@ -152,75 +152,74 @@ export function buildConfirmationMessage(input: ConfirmationInput): string {
       ? `${input.area.trim()} — ${input.address.trim()}`
       : input.address?.trim() || input.area?.trim() || "";
 
+  const RLM = "\u200F";
   const lines: string[] = [
-    "📌 تثبيت الأوردر",
+    `${RLM}*📌 تثبيت الأوردر*`,
     "",
-    `🔢 رقم الأوردر: ${orDash(input.orderNumber)}`,
-    `📅 التاريخ: ${dateText || "—"}`,
-    `⏰ الوقت: ${timeText || "—"}`,
-    `🚗 توصيل أو استلام: ${isDelivery ? "توصيل" : "استلام من المحل"}`,
+    `${RLM}🔢 رقم الأوردر: *${orDash(input.orderNumber)}*`,
+    `${RLM}📅 التاريخ: *${dateText || "—"}*`,
+    `${RLM}⏰ الوقت: *${timeText || "—"}*`,
+    `${RLM}🚗 توصيل أو استلام: *${isDelivery ? "توصيل" : "استلام من المحل"}*`,
   ];
 
   if (isDelivery) {
-    lines.push(`📍 العنوان: ${orDash(fullAddress || input.fulfilment)}`);
+    lines.push(`${RLM}📍 العنوان: ${orDash(fullAddress || input.fulfilment)}`);
     lines.push(
-      `📦 التوصيل: ${input.deliveryFee > 0 ? `${input.deliveryFee % 1 === 0 ? input.deliveryFee.toFixed(0) : input.deliveryFee.toFixed(2)} دنانير` : "مجاني"}`,
+      `${RLM}📦 التوصيل: *${input.deliveryFee > 0 ? `${input.deliveryFee % 1 === 0 ? input.deliveryFee.toFixed(0) : input.deliveryFee.toFixed(2)} دنانير` : "مجاني"}*`,
     );
   }
 
-  lines.push("", "🎂 تفاصيل الأوردر:");
+  lines.push("", `${RLM}*🎂 تفاصيل الأوردر:*`);
   const INTERNAL_ITEM_LINE =
     /^\s*(?:—\s*)?(?:المصدر:|كليك:|صورة حوالة كليك|صورة مرجعية:|طلب هدية)/;
   const itemsList = input.items.filter(
     (line) => Boolean(line) && !INTERNAL_ITEM_LINE.test(line),
   );
   if (itemsList.length > 0) {
-    lines.push(itemsList.join("\n"));
+    lines.push(itemsList.map((line) => `${RLM}${line}`).join("\n"));
   } else {
-    lines.push("—");
+    lines.push(`${RLM}—`);
   }
 
-  if (input.filling?.trim()) {
-    lines.push(` الحشوة ${input.filling.trim()}`);
+  const itemsText = itemsList.join("\n");
+  if (input.filling?.trim() && !itemsText.includes("الحشوة")) {
+    lines.push(`${RLM}— الحشوة: ${input.filling.trim()}`);
   }
 
-  if (input.cakeWriting?.trim()) {
-    lines.push(`الكتابة على الكيك: ${input.cakeWriting.trim()}`);
+  if (input.cakeWriting?.trim() && !itemsText.includes(input.cakeWriting.trim())) {
+    lines.push(`${RLM}— الكتابة على الكيك: ${input.cakeWriting.trim()}`);
   }
 
   if (input.cardWriting?.trim()) {
-    lines.push(`🎀 الكرت: الكرت بنكتب عليه ${input.cardWriting.trim()}`);
+    lines.push(`${RLM}🎀 الكرت: ${input.cardWriting.trim()}`);
   }
 
-  if (input.notes?.trim() && input.notes !== "—") {
-    lines.push("", `📝 ملاحظات: ${input.notes.trim()}`);
+  if (input.notes?.trim() && input.notes !== "—" && !itemsText.includes(input.notes.trim())) {
+    lines.push("", `${RLM}📝 ملاحظات: ${input.notes.trim()}`);
   }
 
   if (input.extraNote?.trim()) {
-    lines.push(`🚨 ${input.extraNote.trim()}`);
+    lines.push(`${RLM}🚨 ${input.extraNote.trim()}`);
   }
-
-  const paymentDesc = input.cliqAccount
-    ? `${input.paymentMethod} (${input.cliqAccount})`
-    : input.paymentMethod;
 
   const fin = calculateFinancials(input.total, input.paid);
 
   lines.push(
     "",
-    `💰 الحساب كامل: ${money(input.total)}`,
-    `💵 المبلغ المدفوع (عربون/كليك): ${money(input.paid)}`,
+    `${RLM}*💰 الملخص المالي:*`,
+    `${RLM}• الحساب كامل: *${money(input.total)}*`,
+    `${RLM}• المبلغ المدفوع (عربون/كليك): *${money(input.paid)}*`,
   );
 
   if (fin.isOverpaid) {
-    lines.push(`🔄 مبلغ مستحق الإرجاع للزبون: ${money(fin.refundDue)}`);
+    lines.push(`${RLM}• مبلغ مستحق الإرجاع للزبون: *${money(fin.refundDue)}*`);
   } else if (fin.remaining > 0) {
-    lines.push(`💳 المبلغ المتبقي: ${money(fin.remaining)}`);
+    lines.push(`${RLM}• المبلغ المتبقي: *${money(fin.remaining)}*`);
   } else {
-    lines.push(`💳 المبلغ المتبقي: 0.00 د.أ (مسدد بالكامل ✅)`);
+    lines.push(`${RLM}• المبلغ المتبقي: *0.00 د.أ* (مسدد بالكامل ✅)`);
   }
 
-  lines.push(`طريقة الدفع: ${orDash(paymentDesc)}`);
+  lines.push(`${RLM}• طريقة الدفع: ${orDash(input.paymentMethod)}`);
 
   if (
     input.isGift ||
@@ -229,11 +228,11 @@ export function buildConfirmationMessage(input: ConfirmationInput): string {
       input.recipientPhone.trim() !== input.senderPhone?.trim())
   ) {
     lines.push(
-      `رقم المستلم: ${orDash(input.recipientPhone)}`,
-      `رقم المرسل: ${orDash(input.senderPhone || input.customerPhone)}`,
+      `${RLM}• رقم المستلم: ${orDash(input.recipientPhone)}`,
+      `${RLM}• رقم المرسل: ${orDash(input.senderPhone || input.customerPhone)}`,
     );
   } else if (input.customerPhone?.trim()) {
-    lines.push(`رقم الهاتف: ${orDash(input.customerPhone)}`);
+    lines.push(`${RLM}• رقم الهاتف: ${orDash(input.customerPhone)}`);
   }
 
   lines.push("", TERMS);

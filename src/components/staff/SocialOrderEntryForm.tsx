@@ -262,6 +262,13 @@ export function SocialOrderEntryForm({
     return `عربون عبر كليك ${cliqDetail}: ${(Number(form.deposit_paid) || 0).toFixed(2)} د.أ`;
   }, [form.payment_option, form.deposit_paid, cliqAccountText]);
 
+  const customerPaymentLabel = useMemo(() => {
+    if (form.payment_option === "cash") return "كاش عند الاستلام";
+    if (form.payment_option === "cliq_pending") return "بانتظار الكليك";
+    if (form.payment_option === "cliq_full") return "كليك (دفع كامل)";
+    return "عربون عبر كليك";
+  }, [form.payment_option]);
+
   // Live financial calculator
   const unitPrice = Math.max(Number(form.unit_price) || 0, 0);
   const originalPrice = unitPrice * form.quantity;
@@ -319,12 +326,12 @@ export function SocialOrderEntryForm({
         deliveryFee,
         total: grandTotal,
         paid: paidAmount,
-        paymentMethod: paymentLabel,
+        paymentMethod: customerPaymentLabel,
         isGift: form.is_gift,
         recipientPhone: effectiveRecipientPhone,
         senderPhone: effectiveSenderPhone,
         orderSource: CHANNEL_CONFIG[form.order_source].ar,
-        cliqAccount: form.payment_option !== "cash" ? cliqAccountText : undefined,
+        cliqAccount: undefined,
       }),
     [
       effectiveCustomerName,
@@ -1584,7 +1591,10 @@ export function SocialOrderEntryForm({
           </a>
         </div>
 
-        <pre className="mt-3.5 max-h-96 overflow-y-auto rounded-2xl border border-border/80 bg-secondary/40 p-4 font-sans text-xs leading-relaxed break-words whitespace-pre-wrap text-foreground sm:text-sm">
+        <pre
+          dir="rtl"
+          className="mt-3.5 max-h-96 overflow-y-auto rounded-2xl border border-border/80 bg-secondary/40 p-4 text-right font-sans text-xs leading-relaxed break-words whitespace-pre-wrap text-foreground sm:text-sm"
+        >
           {activePreviewText}
         </pre>
       </section>
