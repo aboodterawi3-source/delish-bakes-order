@@ -503,23 +503,10 @@ export function SocialOrderEntryForm({
 
     if (!customization.balloonChoice) {
       newErrors.balloons = "⚠️ يرجى تحديد خيار البالونات (اختر 'إضافة بالونات' أو 'بدون بالونات')";
-    } else if (
-      customization.balloons &&
-      customization.balloonPicks.length === 0 &&
-      !customization.balloonNotes.trim()
-    ) {
-      newErrors.balloons =
-        "⚠️ يرجى اختيار ألوان البالونات أو كتابة تفاصيلها أو اختيار 'بدون بالونات'";
     }
 
     if (!customization.topperChoice) {
       newErrors.topper = "⚠️ يرجى تحديد خيار التوبر (اختر 'إضافة توبر' أو 'بدون توبر')";
-    } else if (customization.topper && !customization.topperText.trim()) {
-      newErrors.topper = "⚠️ يرجى كتابة الاسم أو العبارة المطلوبة على التوبر أو اختيار 'بدون توبر'";
-    }
-    if (!customization.notes.trim()) {
-      newErrors.notes =
-        "⚠️ يرجى كتابة ملاحظات الكيكة أو الضغط على زر 'لا توجد ملاحظات إضافية' (خانة إجبارية)";
     }
 
     if (Object.keys(newErrors).length > 0) {

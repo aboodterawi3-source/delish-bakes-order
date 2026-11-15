@@ -120,9 +120,14 @@ export function customizationSummary(c: Customization) {
       en.push("Balloons: requested");
     }
   }
-  if (c.topper && c.topperText.trim()) {
-    ar.push(`توبر أكريليك: ${c.topperText.trim()}`);
-    en.push(`Acrylic topper: ${c.topperText.trim()}`);
+  if (c.topper) {
+    if (c.topperText.trim()) {
+      ar.push(`توبر أكريليك: ${c.topperText.trim()}`);
+      en.push(`Acrylic topper: ${c.topperText.trim()}`);
+    } else {
+      ar.push("توبر أكريليك: مطلوب");
+      en.push("Acrylic topper: requested");
+    }
   }
   if (c.gift) {
     ar.push("هدية: نعم");
@@ -283,31 +288,6 @@ export function CakeCustomizationPanel({
           )}
         </div>
 
-        {/* Quick Suggestion Chips */}
-        <div className="mb-2 flex flex-wrap gap-1.5">
-          {FILLING_SUGGESTIONS.map((sug) => {
-            const label = ar ? sug.ar : sug.en;
-            const isSelected = value.filling === label;
-            return (
-              <button
-                key={sug.en}
-                type="button"
-                onClick={() => {
-                  set("filling", label);
-                  clear("filling");
-                }}
-                className={`cursor-pointer rounded-lg px-2.5 py-1 text-xs font-medium transition ${
-                  isSelected
-                    ? "border border-[#8B4513] bg-[#8B4513] text-white"
-                    : "border border-slate-200 bg-[#F9FBFC] text-[#5A4A42] hover:border-amber-200 hover:bg-amber-50"
-                }`}
-              >
-                {label}
-              </button>
-            );
-          })}
-        </div>
-
         {/* Input box */}
         <input
           id="field-input-filling"
@@ -318,7 +298,7 @@ export function CakeCustomizationPanel({
             if (e.target.value.trim()) clear("filling");
           }}
           placeholder={
-            ar ? "أو اكتب نوع الحشوة المطلوبة بالتفصيل..." : "Or type your custom filling..."
+            ar ? "اكتب نوع الحشوة المطلوبة بالتفصيل..." : "Type preferred filling details..."
           }
           className={errors?.filling ? errorInputClass : normalInputClass}
         />
@@ -478,10 +458,18 @@ export function CakeCustomizationPanel({
           <label className="block text-xs font-bold text-[#3E2723]">
             {ar ? "بالونات هيليوم" : "Helium Balloons"}
           </label>
-          <span className="text-[11px] text-muted-foreground">{ar ? "اختياري" : "Optional"}</span>
+          {balloonMode !== null ? (
+            <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700">
+              <Check className="h-3.5 w-3.5" /> {ar ? "تم التحديد" : "Selected"}
+            </span>
+          ) : (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-[#8B4513]">
+              {ar ? "إجباري *" : "Required *"}
+            </span>
+          )}
         </div>
 
-        <div className="mb-2 grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
             onClick={() => {
@@ -505,7 +493,14 @@ export function CakeCustomizationPanel({
           <button
             type="button"
             onClick={() => {
-              onChange({ ...value, balloonChoice: "yes", balloons: true });
+              onChange({
+                ...value,
+                balloonChoice: "yes",
+                balloons: true,
+                balloonPicks: [],
+                balloonNotes: "",
+              });
+              clear("balloons");
             }}
             className={`min-h-11 cursor-pointer rounded-xl px-3 py-1.5 text-xs font-bold transition ${
               balloonMode === "yes"
@@ -516,103 +511,6 @@ export function CakeCustomizationPanel({
             {ar ? "🎈 إضافة بالونات" : "🎈 Add Balloons"}
           </button>
         </div>
-
-        {balloonMode === "yes" && (
-          <div className="space-y-2.5 rounded-xl border border-slate-200 bg-[#F9FBFC] p-3">
-            <span className="block text-xs font-bold text-[#3E2723]">
-              {ar ? "اختر ألوان البالونات المطلوبة:" : "Select balloon colors:"}
-            </span>
-            <div className="flex flex-wrap gap-1.5">
-              {BALLOON_COLORS.map((color) => {
-                const label = ar ? color.ar : color.en;
-                const selected = value.balloonPicks.some((p) => p.id === color.id);
-                return (
-                  <button
-                    key={color.id}
-                    type="button"
-                    onClick={() => {
-                      const nextPicks = selected
-                        ? value.balloonPicks.filter((p) => p.id !== color.id)
-                        : [...value.balloonPicks, { id: color.id, label, qty: 1 }];
-                      set("balloonPicks", nextPicks);
-                      if (nextPicks.length > 0 || value.balloonNotes.trim()) clear("balloons");
-                    }}
-                    className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold transition ${
-                      selected
-                        ? "border-[#8B4513] bg-[#8B4513] text-white"
-                        : "border-slate-200 bg-white text-[#5A4A42] hover:bg-amber-50"
-                    }`}
-                  >
-                    <span
-                      aria-hidden="true"
-                      className="h-3 w-3 shrink-0 rounded-full border border-black/10"
-                      style={{ backgroundColor: color.swatch }}
-                    />
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-
-            {value.balloonPicks.length > 0 && (
-              <ul className="space-y-1.5 border-t border-slate-200 pt-2">
-                {value.balloonPicks.map((pick) => (
-                  <li
-                    key={pick.id}
-                    className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-[#3E2723]"
-                  >
-                    <span>{pick.label}</span>
-                    <div className="flex items-center gap-2">
-                      <Counter
-                        value={pick.qty}
-                        onChange={(n) =>
-                          set(
-                            "balloonPicks",
-                            value.balloonPicks.map((p) =>
-                              p.id === pick.id ? { ...p, qty: n } : p,
-                            ),
-                          )
-                        }
-                        label={pick.label}
-                      />
-                      <button
-                        type="button"
-                        aria-label={`حذف ${pick.label}`}
-                        onClick={() =>
-                          set(
-                            "balloonPicks",
-                            value.balloonPicks.filter((p) => p.id !== pick.id),
-                          )
-                        }
-                        className="cursor-pointer rounded p-1 text-red-600 hover:bg-red-50"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-
-            <div>
-              <label className="mb-1 block text-xs font-bold text-[#3E2723]">
-                {ar ? "ملاحظات إضافية على البالونات:" : "Extra balloon notes:"}
-              </label>
-              <input
-                type="text"
-                value={value.balloonNotes}
-                onChange={(e) => {
-                  set("balloonNotes", e.target.value);
-                  if (e.target.value.trim() || value.balloonPicks.length > 0) clear("balloons");
-                }}
-                placeholder={
-                  ar ? "مثال: 5 بالونات هيليوم كروم..." : "e.g. 5 chrome helium balloons..."
-                }
-                className={normalInputClass}
-              />
-            </div>
-          </div>
-        )}
 
         {errors?.balloons ? (
           <p className="mt-1.5 flex animate-pulse items-center gap-1 text-xs font-bold text-red-600">
@@ -630,13 +528,21 @@ export function CakeCustomizationPanel({
         }`}
       >
         <div className="mb-2 flex items-center justify-between">
-          <label htmlFor="field-input-topper" className="block text-xs font-bold text-[#3E2723]">
+          <label className="block text-xs font-bold text-[#3E2723]">
             {ar ? "توبر أكريليك احتفالي" : "Acrylic Cake Topper"}
           </label>
-          <span className="text-[11px] text-muted-foreground">{ar ? "اختياري" : "Optional"}</span>
+          {topperMode !== null ? (
+            <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700">
+              <Check className="h-3.5 w-3.5" /> {ar ? "تم التحديد" : "Selected"}
+            </span>
+          ) : (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-[#8B4513]">
+              {ar ? "إجباري *" : "Required *"}
+            </span>
+          )}
         </div>
 
-        <div className="mb-2 grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
             onClick={() => {
@@ -654,7 +560,8 @@ export function CakeCustomizationPanel({
           <button
             type="button"
             onClick={() => {
-              onChange({ ...value, topperChoice: "yes", topper: true });
+              onChange({ ...value, topperChoice: "yes", topper: true, topperText: "" });
+              clear("topper");
             }}
             className={`min-h-11 cursor-pointer rounded-xl px-3 py-1.5 text-xs font-bold transition ${
               topperMode === "yes"
@@ -665,27 +572,6 @@ export function CakeCustomizationPanel({
             {ar ? "✨ إضافة توبر" : "✨ Add Topper"}
           </button>
         </div>
-
-        {topperMode === "yes" && (
-          <div className="mt-2 space-y-1">
-            <input
-              id="field-input-topper"
-              type="text"
-              value={value.topperText}
-              onChange={(e) => {
-                set("topperText", e.target.value);
-                if (e.target.value.trim()) clear("topper");
-              }}
-              maxLength={60}
-              placeholder={
-                ar
-                  ? "اكتب العبارة المطلوبة (مثال: مبروك التخرج، Happy Birthday Sarah)…"
-                  : "Type topper text (e.g. Happy Birthday)…"
-              }
-              className={errors?.topper ? errorInputClass : normalInputClass}
-            />
-          </div>
-        )}
 
         {errors?.topper ? (
           <p className="mt-1.5 flex animate-pulse items-center gap-1 text-xs font-bold text-red-600">
@@ -704,56 +590,6 @@ export function CakeCustomizationPanel({
           onClearError={onClearError}
         />
       )}
-
-      {/* 6. SPECIAL NOTES */}
-      <div
-        id="custom-field-notes"
-        className={`rounded-2xl border p-3.5 transition-all ${
-          errors?.notes ? "border-red-400 bg-red-50/30" : "border-slate-200/90 bg-white shadow-2xs"
-        }`}
-      >
-        <div className="mb-1.5 flex items-center justify-between">
-          <label htmlFor="field-input-notes" className="block text-xs font-bold text-[#3E2723]">
-            {ar ? "ملاحظات إضافية للمطبخ" : "Special Kitchen Notes"}
-          </label>
-          <span className="text-[11px] text-muted-foreground">{ar ? "اختياري" : "Optional"}</span>
-        </div>
-
-        <textarea
-          id="field-input-notes"
-          rows={3}
-          value={value.notes}
-          onChange={(e) => {
-            set("notes", e.target.value);
-            if (e.target.value.trim()) clear("notes");
-          }}
-          maxLength={400}
-          placeholder={
-            ar
-              ? "أي ملاحظات خاصة بطلبكم (مثال: سكر خفيف، حساسية مكسرات، التوصيل وقت محدد)..."
-              : "Any special preparation notes (e.g. less sugar, nut allergy)..."
-          }
-          className={errors?.notes ? errorTextareaClass : normalTextareaClass}
-        />
-
-        <div className="mt-1 flex items-center justify-between text-[11px]">
-          {errors?.notes ? (
-            <p className="flex animate-pulse items-center gap-1 font-bold text-red-600">
-              <AlertCircle className="h-4 w-4 shrink-0" />
-              {errors.notes}
-            </p>
-          ) : (
-            <span
-              className={
-                value.notes.trim() ? "font-semibold text-emerald-700" : "text-muted-foreground"
-              }
-            >
-              {value.notes.trim() ? (ar ? "✓ تم حفظ الملاحظات" : "✓ Notes recorded") : ""}
-            </span>
-          )}
-          <span className="text-muted-foreground">{value.notes.length}/400</span>
-        </div>
-      </div>
 
       {/* 7. GIFT (IF NOT HIDDEN) */}
       {!hideGift && (
