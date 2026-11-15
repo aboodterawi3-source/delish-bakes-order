@@ -262,8 +262,8 @@ export function CakeCustomizationPanel({
           <Sparkles className="h-4 w-4 text-[#B8860B]" />
           <span>{ar ? "تخصيص الكيكة والإضافات" : "Customization & Add-ons"}</span>
         </h3>
-        <span className="rounded-full border border-[#FDE2CF] bg-[#FEF7EB] px-2.5 py-0.5 text-[11px] font-semibold text-[#8B4513]">
-          {ar ? "اختياري" : "Optional"}
+        <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-bold text-[#8B4513]">
+          {ar ? "إجباري *" : "Required *"}
         </span>
       </div>
 
@@ -285,7 +285,9 @@ export function CakeCustomizationPanel({
               <Check className="h-3.5 w-3.5" /> {ar ? "تم التحديد" : "Selected"}
             </span>
           ) : (
-            <span className="text-[11px] text-muted-foreground">{ar ? "اختياري" : "Optional"}</span>
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-[#8B4513]">
+              {ar ? "إجباري *" : "Required *"}
+            </span>
           )}
         </div>
 
