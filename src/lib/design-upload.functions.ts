@@ -33,15 +33,29 @@ function getEphemeralFallbackKey(): ArrayBuffer {
 }
 
 async function signPath(path: string): Promise<string> {
-  const envSecret = (
-    process.env["DESIGN_UPLOAD_SECRET"] ||
+  const dedicatedSecret = (process.env["DESIGN_UPLOAD_SECRET"] || "").trim();
+  const serviceSecret = (
     process.env["SUPABASE_SERVICE_ROLE_KEY"] ||
     process.env["SUPABASE_SERVICE_KEY"] ||
     ""
   ).trim();
-  const keyMaterial = envSecret
-    ? await crypto.subtle.digest("SHA-256", new TextEncoder().encode(envSecret))
-    : getEphemeralFallbackKey();
+
+  let keyMaterial: ArrayBuffer;
+  if (dedicatedSecret) {
+    keyMaterial = await crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode(`delish-design-upload-v1:${dedicatedSecret}`),
+    );
+  } else if (serviceSecret) {
+    keyMaterial = await crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode(`delish-design-upload-v1:derived:${serviceSecret}`),
+    );
+  } else if (process.env["NODE_ENV"] === "production") {
+    throw new Error("Server upload signing secret is not configured");
+  } else {
+    keyMaterial = getEphemeralFallbackKey();
+  }
   const key = await crypto.subtle.importKey(
     "raw",
     keyMaterial,
@@ -179,9 +193,8 @@ export const uploadDesignImage = createServerFn({ method: "POST" })
     const { enforceRateLimit } = await import("@/lib/rate-limit");
     enforceRateLimit("design-upload", 15, 10 * 60_000);
 
-    const { supabaseAdmin, hasSupabaseServiceRoleKey } = await import(
-      "@/integrations/supabase/client.server"
-    );
+    const { supabaseAdmin, hasSupabaseServiceRoleKey } =
+      await import("@/integrations/supabase/client.server");
 
     if (hasSupabaseServiceRoleKey()) {
       triggerBackgroundOrphanSweep(supabaseAdmin);

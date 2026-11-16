@@ -383,6 +383,8 @@ CREATE POLICY "Staff manage banner" ON public.storefront_banner FOR ALL TO authe
 
 DROP POLICY IF EXISTS "Public read store settings" ON public.store_settings;
 CREATE POLICY "Public read store settings" ON public.store_settings FOR SELECT USING (true);
+REVOKE SELECT ON public.store_settings FROM anon;
+GRANT SELECT (id, singleton, store_name, contact_phone, card_color_palette, updated_at) ON public.store_settings TO anon;
 
 DROP POLICY IF EXISTS "Staff manage store settings" ON public.store_settings;
 CREATE POLICY "Staff manage store settings" ON public.store_settings FOR ALL TO authenticated
@@ -1443,11 +1445,19 @@ RETURNS TABLE(
   card_note text
 )
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
-  SELECT o.id, o.order_number, o.staff_code, o.customer_name, o.method,
+  SELECT o.id, o.order_number, o.staff_code,
+         regexp_replace(o.customer_name, '(\+?962[\s-]*|0)?7[789]([\s-]*\d){7}|\+?[\d٠-٩][\d٠-٩\s-]{6,}[\d٠-٩]', '***', 'g') AS customer_name,
+         o.method,
          o.requested_date, o.requested_time, o.status,
-         regexp_replace(regexp_replace(o.inscription, '(\+?962[\s-]*|0)?7[789]([\s-]*\d){7}', '***', 'g'), '\d+(\.\d+)?\s*(د\.أ|JD|jd)', '***', 'gi') AS inscription,
+         regexp_replace(
+           regexp_replace(o.inscription, '(\+?962[\s-]*|0)?7[789]([\s-]*\d){7}|\+?[\d٠-٩][\d٠-٩\s-]{6,}[\d٠-٩]', '***', 'g'),
+           '(\d+(\.\d+)?\s*(د\.أ|JD|jd|دينار))|(قيمة|مبلغ|سعر)\s*[:=]?\s*\d+(\.\d+)?(\s*(د\.أ|JD|jd|دينار))?', '***', 'gi'
+         ) AS inscription,
          o.design_image_url,
-         regexp_replace(regexp_replace(o.notes, '(\+?962[\s-]*|0)?7[789]([\s-]*\d){7}', '***', 'g'), '\d+(\.\d+)?\s*(د\.أ|JD|jd)', '***', 'gi') AS notes,
+         regexp_replace(
+           regexp_replace(o.notes, '(\+?962[\s-]*|0)?7[789]([\s-]*\d){7}|\+?[\d٠-٩][\d٠-٩\s-]{6,}[\d٠-٩]', '***', 'g'),
+           '(\d+(\.\d+)?\s*(د\.أ|JD|jd|دينار))|(قيمة|مبلغ|سعر)\s*[:=]?\s*\d+(\.\d+)?(\s*(د\.أ|JD|jd|دينار))?', '***', 'gi'
+         ) AS notes,
          o.schedule_updated_at, o.last_edited_at,
          o.created_at,
          COALESCE(
@@ -1455,7 +1465,10 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
              SELECT jsonb_agg(
                jsonb_build_object(
                  'id', m->>'id',
-                 'field', regexp_replace(regexp_replace(m->>'field', '(\+?962[\s-]*|0)?7[789]([\s-]*\d){7}', '***', 'g'), '\d+(\.\d+)?\s*(د\.أ|JD|jd)', '***', 'gi'),
+                 'field', regexp_replace(
+                   regexp_replace(m->>'field', '(\+?962[\s-]*|0)?7[789]([\s-]*\d){7}|\+?[\d٠-٩][\d٠-٩\s-]{6,}[\d٠-٩]', '***', 'g'),
+                   '(\d+(\.\d+)?\s*(د\.أ|JD|jd|دينار))|(قيمة|مبلغ|سعر)\s*[:=]?\s*\d+(\.\d+)?(\s*(د\.أ|JD|jd|دينار))?', '***', 'gi'
+                 ),
                  'timestamp', COALESCE(m->>'timestamp', m->>'updatedAt'),
                  'updatedAt', COALESCE(m->>'updatedAt', m->>'timestamp'),
                  'staff_name', m->>'staff_name',
@@ -1466,15 +1479,15 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
                  'oldValue', CASE 
                    WHEN m->>'field' ~* '(phone|هاتف|جوال|total|إجمالي|subtotal|مجموع|deposit|عربون|مدفوع|discount|خصم|سعر|price|النسخة الأصلية|الطلب الأساسي)' THEN '***'
                    ELSE regexp_replace(
-                     regexp_replace(COALESCE(m->>'oldValue', m->>'old_value', ''), '(\+?962[\s-]*|0)?7[789]([\s-]*\d){7}', '***', 'g'),
-                     '\d+(\.\d+)?\s*(د\.أ|JD|jd)', '***', 'gi'
+                     regexp_replace(COALESCE(m->>'oldValue', m->>'old_value', ''), '(\+?962[\s-]*|0)?7[789]([\s-]*\d){7}|\+?[\d٠-٩][\d٠-٩\s-]{6,}[\d٠-٩]', '***', 'g'),
+                     '(\d+(\.\d+)?\s*(د\.أ|JD|jd|دينار))|(قيمة|مبلغ|سعر)\s*[:=]?\s*\d+(\.\d+)?(\s*(د\.أ|JD|jd|دينار))?', '***', 'gi'
                    )
                  END,
                  'newValue', CASE 
                    WHEN m->>'field' ~* '(phone|هاتف|جوال|total|إجمالي|subtotal|مجموع|deposit|عربون|مدفوع|discount|خصم|سعر|price|النسخة الأصلية|الطلب الأساسي)' THEN '***'
                    ELSE regexp_replace(
-                     regexp_replace(COALESCE(m->>'newValue', m->>'new_value', ''), '(\+?962[\s-]*|0)?7[789]([\s-]*\d){7}', '***', 'g'),
-                     '\d+(\.\d+)?\s*(د\.أ|JD|jd)', '***', 'gi'
+                     regexp_replace(COALESCE(m->>'newValue', m->>'new_value', ''), '(\+?962[\s-]*|0)?7[789]([\s-]*\d){7}|\+?[\d٠-٩][\d٠-٩\s-]{6,}[\d٠-٩]', '***', 'g'),
+                     '(\d+(\.\d+)?\s*(د\.أ|JD|jd|دينار))|(قيمة|مبلغ|سعر)\s*[:=]?\s*\d+(\.\d+)?(\s*(د\.أ|JD|jd|دينار))?', '***', 'gi'
                    )
                  END
                )
@@ -1484,7 +1497,10 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
            '[]'::jsonb
          ) AS modifications,
          o.queue_rank,
-         regexp_replace(regexp_replace(o.card_note, '(\+?962[\s-]*|0)?7[789]([\s-]*\d){7}', '***', 'g'), '\d+(\.\d+)?\s*(د\.أ|JD|jd)', '***', 'gi') AS card_note
+         regexp_replace(
+           regexp_replace(o.card_note, '(\+?962[\s-]*|0)?7[789]([\s-]*\d){7}|\+?[\d٠-٩][\d٠-٩\s-]{6,}[\d٠-٩]', '***', 'g'),
+           '(\d+(\.\d+)?\s*(د\.أ|JD|jd|دينار))|(قيمة|مبلغ|سعر)\s*[:=]?\s*\d+(\.\d+)?(\s*(د\.أ|JD|jd|دينار))?', '***', 'gi'
+         ) AS card_note
   FROM public.orders o
   WHERE (private.has_role(auth.uid(), 'kitchen') OR private.has_role(auth.uid(), 'admin'))
     AND o.status IN ('new', 'confirmed', 'baking', 'ready')

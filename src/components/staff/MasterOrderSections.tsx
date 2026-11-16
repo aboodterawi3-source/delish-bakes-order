@@ -557,7 +557,7 @@ export function MasterOrderFinancialsSection({
               receiptUrl={receiptUrl}
               uploading={uploadingReceipt}
               onUploadFile={onUploadReceipt}
-              onPreview={(url) => window.open(url, "_blank")}
+              onPreview={(url) => window.open(url, "_blank", "noopener,noreferrer")}
               emptyLabel="📸 تحميل صورة إشعار حوالة كليك"
             />
           </div>

@@ -219,7 +219,7 @@ export function SocialOrderPaymentSection({
                       src={receiptUrl}
                       alt="إشعار حوالة كليك"
                       className="h-16 w-16 shrink-0 cursor-pointer rounded-lg border border-slate-200 object-cover transition hover:opacity-90"
-                      onClick={() => window.open(receiptUrl, "_blank")}
+                      onClick={() => window.open(receiptUrl, "_blank", "noopener,noreferrer")}
                       title="اضغط لفتح الصورة بحجم كامل"
                     />
                     <div className="min-w-0 flex-1">
