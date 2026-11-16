@@ -1,7 +1,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { roundJod } from "../src/lib/currency";
-import { esc } from "../src/lib/esc";
+import { esc } from "../src/lib/print";
 
 async function runTests() {
   console.log("Running Fixes Tests...");

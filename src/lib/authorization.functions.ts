@@ -1,9 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { publicError } from "@/lib/public-error";
+import { staffRpcError } from "@/lib/server-log";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertRole, getRoles, type StaffRoleName } from "@/lib/role-guard";
 import { emailToUsername } from "@/lib/username";
-import type { Ctx } from "@/lib/server-shared";
+import { listAllAuthUsers, type ServerAuthContext } from "@/lib/server-shared";
+import { isValidIsoDate, isValidTime } from "@/lib/validators";
 
 const SALES_ROLES: StaffRoleName[] = ["sales", "admin"];
 
@@ -44,14 +46,14 @@ const NO_AUTHORIZATION: StaffAuthorization = {
   max_discount_percent: 0,
 };
 
-const staffName = (context: Ctx) =>
+const staffName = (context: ServerAuthContext) =>
   emailToUsername(
     typeof context.claims["email"] === "string" ? (context.claims["email"] as string) : "",
   ) || context.userId;
 
 /** Resolves what a staff account is actually allowed to do with money. */
 async function resolveAuthorization(
-  context: Ctx,
+  context: ServerAuthContext,
 ): Promise<StaffAuthorization & { isAdmin: boolean }> {
   const roles = await getRoles(context);
   if (roles.includes("admin")) return { ...ADMIN_AUTHORIZATION, isAdmin: true };
@@ -71,7 +73,7 @@ async function resolveAuthorization(
 
 /** Writes an immutable audit row through the signed-in staff session. */
 async function writeAudit(
-  context: Ctx,
+  context: ServerAuthContext,
   entry: {
     order_id: string | null;
     order_number: string | null;
@@ -103,21 +105,17 @@ export { resolveAuthorization, writeAudit, staffName };
 
 export const getMyAuthorization = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => resolveAuthorization(context as unknown as Ctx));
+  .handler(async ({ context }) => resolveAuthorization(context as unknown as ServerAuthContext));
 
 /* ------------------------------- admin side ------------------------------- */
-
-async function assertAdmin(context: Ctx) {
-  await assertRole(context, ["admin"]);
-}
 
 export const listStaffAuthorizations = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<StaffAuthorizationRow[]> => {
-    await assertAdmin(context as unknown as Ctx);
+    await assertRole(context as unknown as ServerAuthContext, ["admin"]);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const [{ data: users }, { data: roleRows }, { data: perms }] = await Promise.all([
-      supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 200 }),
+    const [{ users }, { data: roleRows }, { data: perms }] = await Promise.all([
+      listAllAuthUsers(supabaseAdmin),
       supabaseAdmin.from("user_roles").select("user_id, role"),
       supabaseAdmin
         .from("staff_permissions")
@@ -132,7 +130,7 @@ export const listStaffAuthorizations = createServerFn({ method: "GET" })
     }
     const permByUser = new Map((perms ?? []).map((row) => [row.user_id as string, row]));
 
-    return (users?.users ?? [])
+    return (users ?? [])
       .map((user) => {
         const roles = rolesByUser.get(user.id) ?? [];
         const perm = permByUser.get(user.id);
@@ -160,7 +158,7 @@ export const setStaffAuthorization = createServerFn({ method: "POST" })
     return input;
   })
   .handler(async ({ data, context }) => {
-    await assertAdmin(context as unknown as Ctx);
+    await assertRole(context as unknown as ServerAuthContext, ["admin"]);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: current } = await supabaseAdmin
       .from("staff_permissions")
@@ -186,7 +184,7 @@ export const setStaffAuthorization = createServerFn({ method: "POST" })
 export const listAuditLogs = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<AuditEntry[]> => {
-    await assertRole(context as unknown as Ctx, ["admin"]);
+    await assertRole(context as unknown as ServerAuthContext, ["admin"]);
 
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -203,8 +201,6 @@ export const listAuditLogs = createServerFn({ method: "GET" })
     if (error) throw new Error(error.message);
     return (data ?? []) as unknown as AuditEntry[];
   });
-
-export const getAuditLogs = listAuditLogs;
 
 /* ------------------------------- discounting ------------------------------ */
 
@@ -234,7 +230,7 @@ export const applyOrderDiscount = createServerFn({ method: "POST" })
     },
   )
   .handler(async ({ data, context }) => {
-    const ctx = context as unknown as Ctx;
+    const ctx = context as unknown as ServerAuthContext;
     await assertRole(ctx, SALES_ROLES);
     const auth = await resolveAuthorization(ctx);
     if (!auth.allow_custom_discount) {
@@ -251,7 +247,13 @@ export const applyOrderDiscount = createServerFn({ method: "POST" })
       .select("id, order_number, subtotal, delivery_fee, method, total")
       .eq("id", data.orderId)
       .single();
-    if (readError) throw new Error(readError.message);
+    if (readError) {
+      throw staffRpcError(
+        "authorization.applyOrderDiscount.read",
+        readError,
+        "تعذّر قراءة الطلب · Could not load order",
+      );
+    }
 
     const subtotal = Number(order.subtotal ?? 0);
     const discountAmount = Number(((subtotal * data.percent) / 100).toFixed(2));
@@ -268,7 +270,13 @@ export const applyOrderDiscount = createServerFn({ method: "POST" })
       },
     );
 
-    if (rpcError) throw new Error(rpcError.message);
+    if (rpcError) {
+      throw staffRpcError(
+        "authorization.applyOrderDiscount.rpc",
+        rpcError,
+        "تعذّر تطبيق الخصم · Could not apply discount",
+      );
+    }
 
     const { data: updated } = await context.supabase
       .from("orders")
@@ -308,7 +316,7 @@ export const createOrderEditLink = createServerFn({ method: "POST" })
     return input;
   })
   .handler(async ({ data, context }) => {
-    const ctx = context as unknown as Ctx;
+    const ctx = context as unknown as ServerAuthContext;
     await assertRole(ctx, SALES_ROLES);
 
     const { data: order, error: readError } = await context.supabase
@@ -390,6 +398,9 @@ async function loadToken(token: string): Promise<TokenRow> {
 export const getOrderByEditToken = createServerFn({ method: "POST" })
   .validator((input: { token: string }) => ({ token: String(input?.token ?? "") }))
   .handler(async ({ data }) => {
+    const { enforceRateLimit } = await import("@/lib/rate-limit");
+    enforceRateLimit("order-edit-read", 30, 10 * 60_000);
+
     const row = await loadToken(data.token);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: order, error } = await supabaseAdmin
@@ -403,9 +414,6 @@ export const getOrderByEditToken = createServerFn({ method: "POST" })
     return { order, expires_at: row.expires_at };
   });
 
-const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-const TIME_PATTERN = /^\d{2}:\d{2}(:\d{2})?$/;
-
 export const submitOrderEdit = createServerFn({ method: "POST" })
   .validator(
     (input: {
@@ -418,10 +426,10 @@ export const submitOrderEdit = createServerFn({ method: "POST" })
     }) => {
       const requestedDate = String(input?.requested_date ?? "").trim();
       const requestedTime = String(input?.requested_time ?? "").trim();
-      if (requestedDate && !DATE_PATTERN.test(requestedDate)) {
+      if (requestedDate && !isValidIsoDate(requestedDate)) {
         throw new Error("التاريخ غير صالح · Invalid date");
       }
-      if (requestedTime && !TIME_PATTERN.test(requestedTime)) {
+      if (requestedTime && !isValidTime(requestedTime)) {
         throw new Error("الوقت غير صالح · Invalid time");
       }
       return {
@@ -439,6 +447,9 @@ export const submitOrderEdit = createServerFn({ method: "POST" })
     },
   )
   .handler(async ({ data }) => {
+    const { enforceRateLimit } = await import("@/lib/rate-limit");
+    enforceRateLimit("order-edit-submit", 15, 10 * 60_000);
+
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data: updatedOrder, error: rpcError } = await (supabaseAdmin as any).rpc(

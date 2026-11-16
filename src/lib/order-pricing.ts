@@ -6,8 +6,8 @@ import {
   products,
   DELIVERY_FEE,
   type Option,
-} from "@/lib/menu";
-import { feeForArea } from "@/lib/delivery-zones";
+} from "./menu.ts";
+import { feeForArea } from "./delivery-zones.ts";
 
 export type ServingSizeOffset = {
   label: string;
@@ -167,3 +167,93 @@ export function deliveryFeeFor(
   if (method !== "delivery" || lineCount === 0) return 0;
   return feeForArea(area) ?? DELIVERY_FEE;
 }
+
+/**
+ * Combines modal-level flavor, filling, and cake writing with customization extras,
+ * ensuring filling is never duplicated when set in both places and all choices reach the server.
+ */
+export function mergeModalSpecExtras(input: {
+  flavor?: string | null | undefined;
+  filling?: string | null | undefined;
+  customizationFilling?: string | null | undefined;
+  inscription?: string | null | undefined;
+  extrasAr?: string[] | null | undefined;
+  extrasEn?: string[] | null | undefined;
+}): { extrasAr: string[]; extrasEn: string[] } {
+  const resolvedFilling = (input.customizationFilling ?? "").trim() || (input.filling ?? "").trim();
+  const cleanExtrasAr = (input.extrasAr ?? []).filter((item) => !item.trim().startsWith("الحشوة:"));
+  const cleanExtrasEn = (input.extrasEn ?? []).filter(
+    (item) => !/^Filling:/i.test(item.trim()),
+  );
+  const flavor = (input.flavor ?? "").trim();
+  const inscription = (input.inscription ?? "").trim();
+
+  return {
+    extrasAr: [
+      flavor ? `النكهة: ${flavor}` : "",
+      resolvedFilling ? `الحشوة: ${resolvedFilling}` : "",
+      inscription ? `الكتابة: ${inscription}` : "",
+      ...cleanExtrasAr,
+    ].filter(Boolean),
+    extrasEn: [
+      flavor ? `Flavor: ${flavor}` : "",
+      resolvedFilling ? `Filling: ${resolvedFilling}` : "",
+      inscription ? `Message: ${inscription}` : "",
+      ...cleanExtrasEn,
+    ].filter(Boolean),
+  };
+}
+
+/**
+ * Extracts a cake writing inscription from bilingual line extras so CMS catalog cakes
+ * also populate `orders.inscription` for KDS and Sales views.
+ */
+export function extractLineInscription(extras: LineExtras): string | null {
+  for (const item of extras.ar) {
+    const trimmed = item.trim();
+    if (trimmed.startsWith("الكتابة:")) {
+      const msg = trimmed.replace(/^الكتابة:\s*/, "").trim();
+      if (msg) return msg;
+    }
+  }
+  for (const item of extras.en) {
+    const trimmed = item.trim();
+    if (/^Message:/i.test(trimmed)) {
+      const msg = trimmed.replace(/^Message:\s*/i, "").trim();
+      if (msg) return msg;
+    }
+  }
+  return null;
+}
+
+/**
+ * Checks whether a unit price matches any official catalog price for a product:
+ * either its base price, one of its configured `sizes` prices, or (when no custom sizes exist)
+ * a standard serving size offset tier.
+ */
+export function isOfficialCatalogPrice(
+  unitPrice: number,
+  product: { price?: number | null | undefined; sizes?: unknown },
+): boolean {
+  const target = Number(unitPrice);
+  if (!Number.isFinite(target)) return false;
+  const basePrice = Number(product.price ?? 0);
+  if (Math.abs(target - basePrice) <= 0.01) return true;
+
+  const sizes = Array.isArray(product.sizes)
+    ? (product.sizes as { label?: string; price?: number }[])
+    : [];
+  if (sizes.length > 0) {
+    return sizes.some(
+      (entry) =>
+        typeof entry?.price === "number" &&
+        Number.isFinite(entry.price) &&
+        Math.abs(target - Number(entry.price)) <= 0.01,
+    );
+  }
+
+  return SERVING_SIZE_OFFSETS.some(
+    (tier) => Math.abs(target - (basePrice + tier.offset)) <= 0.01,
+  );
+}
+

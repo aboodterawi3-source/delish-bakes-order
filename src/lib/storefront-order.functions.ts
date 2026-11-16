@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import {
   deliveryFeeFor,
+  extractLineInscription,
   getServingSizeOffset,
   priceLine,
   type CmsSpec,
@@ -8,10 +9,15 @@ import {
   type PricedLine,
 } from "@/lib/order-pricing";
 import { publicError } from "@/lib/public-error";
-import { extraList, isValidStorageUrl } from "@/lib/server-shared";
+import { sanitizeExtraList, isValidStorageUrl } from "@/lib/server-shared";
 import { roundJod } from "@/lib/currency";
-import { isReasonableOrderDate, isValidTime, UUID_PATTERN } from "@/lib/validators";
-import { logServerError } from "@/lib/server-log";
+import {
+  cleanFieldText,
+  isReasonableOrderDate,
+  isValidTime,
+  PHONE_PATTERN,
+  UUID_PATTERN,
+} from "@/lib/validators";
 
 const MAX_LINES = 100;
 const MAX_QTY = 500;
@@ -40,29 +46,19 @@ export type StorefrontOrderRequest = {
   }[];
 };
 
-const text = (value: unknown, max: number, label: string, required = false) => {
-  const trimmed = typeof value === "string" ? value.trim() : "";
-  if (!trimmed) {
-    if (required) throw new Error(`${label} مطلوب · ${label} is required`);
-    return null;
-  }
-  if (trimmed.length > max) throw new Error(`${label} طويل جداً · ${label} is too long`);
-  return trimmed;
-};
-
 function validate(input: StorefrontOrderRequest) {
-  const name = text(input?.customer_name, 80, "الاسم", true)!;
-  const phone = text(input?.customer_phone, 25, "الهاتف", true)!;
-  if (!/^[0-9+\s-]{7,25}$/.test(phone)) throw new Error("رقم هاتف غير صحيح · Invalid phone number");
+  const name = cleanFieldText(input?.customer_name, 80, "الاسم", true)!;
+  const phone = cleanFieldText(input?.customer_phone, 25, "الهاتف", true)!;
+  if (!PHONE_PATTERN.test(phone)) throw new Error("رقم هاتف غير صحيح · Invalid phone number");
 
   const method = input?.method === "pickup" ? "pickup" : "delivery";
-  const area = text(input?.area, 80, "المنطقة", method === "delivery");
-  const address = text(input?.address, 300, "العنوان", method === "delivery");
+  const area = cleanFieldText(input?.area, 80, "المنطقة", method === "delivery");
+  const address = cleanFieldText(input?.address, 300, "العنوان", method === "delivery");
 
-  const date = text(input?.requested_date, 10, "التاريخ", true)!;
+  const date = cleanFieldText(input?.requested_date, 10, "التاريخ", true)!;
   // Real calendar date inside a sane window (was: regex only, accepted 2026-99-99 and past dates).
   if (!isReasonableOrderDate(date)) throw new Error("تاريخ غير صحيح · Invalid date");
-  const time = text(input?.requested_time, 8, "الوقت", true)!;
+  const time = cleanFieldText(input?.requested_time, 8, "الوقت", true)!;
   if (!isValidTime(time)) throw new Error("وقت غير صحيح · Invalid time");
 
   const rawRequestId =
@@ -72,7 +68,7 @@ function validate(input: StorefrontOrderRequest) {
   }
   const clientRequestId = rawRequestId || null;
 
-  const notes = text(input?.notes, 1000, "الملاحظات");
+  const notes = cleanFieldText(input?.notes, 1000, "الملاحظات");
 
   let designImage: string | null = null;
   if (typeof input?.design_image === "string" && input.design_image.trim()) {
@@ -119,14 +115,17 @@ function validate(input: StorefrontOrderRequest) {
       throw new Error("الكمية غير صحيحة · Invalid quantity");
     }
     const spec = line?.spec;
-    const lineNotes = text(line?.notes, 400, "الملاحظات");
-    const extras = { ar: extraList(line?.extras_ar), en: extraList(line?.extras_en) };
+    const lineNotes = cleanFieldText(line?.notes, 400, "الملاحظات");
+    const extras = {
+      ar: sanitizeExtraList(line?.extras_ar),
+      en: sanitizeExtraList(line?.extras_en),
+    };
     if (!spec) throw new Error("صنف غير صحيح · Invalid item");
 
     if (spec.kind === "cms") {
-      const productId = text(spec.productId, 40, "المنتج", true)!;
+      const productId = cleanFieldText(spec.productId, 40, "المنتج", true)!;
       cmsLines.push({
-        spec: { kind: "cms", productId, size: text(spec.size, 60, "الحجم") },
+        spec: { kind: "cms", productId, size: cleanFieldText(spec.size, 60, "الحجم") },
         quantity,
         notes: lineNotes,
         extras,
@@ -138,7 +137,7 @@ function validate(input: StorefrontOrderRequest) {
       throw new Error("صنف غير صحيح · Invalid item");
     }
     if (spec.kind === "builder" && spec.message) {
-      text(spec.message, 120, "الكتابة");
+      cleanFieldText(spec.message, 120, "الكتابة");
     }
     priced.push(priceLine(spec, quantity, lineNotes, extras));
   }
@@ -264,7 +263,7 @@ export const submitStorefrontOrder = createServerFn({ method: "POST" })
           options_ar: [sizeLabel ? `الحجم: ${sizeLabel}` : "", ...line.extras.ar].filter(Boolean),
           options_en: [sizeLabel ? `Size: ${sizeLabel}` : "", ...line.extras.en].filter(Boolean),
           notes: line.notes,
-          message: null,
+          message: extractLineInscription(line.extras),
         });
       }
     }

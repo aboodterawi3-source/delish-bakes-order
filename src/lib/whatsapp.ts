@@ -35,8 +35,6 @@ export function formatJordanianPhone(phone: string | null | undefined): string {
 
 /** Backwards-compatible alias for existing imports */
 export const waNumber = formatJordanianPhone;
-export const getCleanPhone = formatJordanianPhone;
-export const formatWhatsappPhone = formatJordanianPhone;
 
 /**
  * Generates a direct WhatsApp link.

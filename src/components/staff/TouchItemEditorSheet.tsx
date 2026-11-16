@@ -1,16 +1,5 @@
 import { useMemo, useState, useEffect, useRef } from "react";
-import {
-  Cake,
-  Check,
-  ChevronDown,
-  Minus,
-  PenTool,
-  Plus,
-  Search,
-  Sparkles,
-  Trash2,
-  X,
-} from "lucide-react";
+import { Cake, Check, Minus, PenTool, Plus, Search, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import type { StorefrontProduct } from "@/lib/storefront-content";
@@ -19,6 +8,7 @@ import { jd, roundJod } from "@/lib/currency";
 import {
   DEFAULT_EXTRAS,
   type BakeryExtraItem,
+  isCakeCategory,
   parseOptionsAndExtras,
   calculateBasePriceFromSaved,
   evaluateFillingRequirement,
@@ -174,9 +164,7 @@ export function TouchItemEditorSheet({
     setUnitPrice(prod.price || 0);
     // J3: Reset or update filling according to new product specification
     setSelectedFilling(prod.filling_ar?.trim() || "");
-    const cat = (prod.category || "").toLowerCase();
-    const isCake = cat.includes("cake") || cat.includes("كيك");
-    if (!isCake) {
+    if (!isCakeCategory(prod.category)) {
       setCakeInscription("");
     }
   };
@@ -631,110 +619,6 @@ export function TouchItemEditorSheet({
             <span>حفظ وتطبيق الصنف</span>
           </button>
         </footer>
-      </div>
-    </div>
-  );
-}
-
-/** Responsive, Touch-Friendly Item Summary Card Component */
-export function TouchItemSummaryCard({
-  item,
-  onEdit,
-  onDelete,
-  onQtyChange,
-}: {
-  item: SalesItem;
-  onEdit: () => void;
-  onDelete: () => void;
-  onQtyChange: (newQty: number) => void;
-}) {
-  const lineTotal = item.unit_price * item.quantity;
-
-  return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-border bg-card p-4 shadow-xs transition-all hover:border-primary/40">
-      {/* Title & Line Total */}
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <h5 className="font-display text-base font-extrabold break-words text-foreground">
-            {item.name_ar}
-          </h5>
-          <p className="text-xs text-muted-foreground">سعر الحبة: {jd(item.unit_price)}</p>
-        </div>
-
-        <div className="shrink-0 text-end">
-          <span className="block font-display text-base font-extrabold text-primary">
-            {jd(lineTotal)}
-          </span>
-        </div>
-      </div>
-
-      {/* Attribute Sub-badges (Size, Filling, Writing, Extras) */}
-      {(item.options_ar.length > 0 || item.notes) && (
-        <div className="flex flex-wrap gap-1.5 pt-1">
-          {item.options_ar.map((opt, i) => (
-            <span
-              key={`${i}-${opt}`}
-              className="inline-flex items-center rounded-lg bg-secondary px-2.5 py-1 text-xs font-bold text-secondary-foreground"
-            >
-              {opt}
-            </span>
-          ))}
-          {item.notes && (
-            <span className="inline-flex items-center rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary">
-              ملاحظة: {item.notes}
-            </span>
-          )}
-        </div>
-      )}
-
-      {/* Touch-Friendly Action Bar: Quantity Stepper & Edit/Delete Buttons */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/50 pt-3">
-        {/* Quantity Stepper (Large Touch Targets >= 44px) */}
-        <div className="flex items-center gap-2 rounded-xl border border-border bg-background p-1">
-          <button
-            type="button"
-            onClick={() => onQtyChange(Math.max(item.quantity - 1, 1))}
-            disabled={item.quantity <= 1}
-            className="grid h-11 w-11 cursor-pointer place-items-center rounded-lg bg-secondary text-foreground hover:bg-secondary/80 disabled:opacity-40"
-            aria-label="إنقاص الكمية"
-          >
-            <Minus className="h-4 w-4" />
-          </button>
-
-          <span className="min-w-8 text-center font-display text-sm font-extrabold text-foreground">
-            {item.quantity}
-          </span>
-
-          <button
-            type="button"
-            onClick={() => onQtyChange(item.quantity + 1)}
-            className="grid h-11 w-11 cursor-pointer place-items-center rounded-lg bg-secondary text-foreground hover:bg-secondary/80"
-            aria-label="زيادة الكمية"
-          >
-            <Plus className="h-4 w-4" />
-          </button>
-        </div>
-
-        {/* Edit & Delete Action Buttons (Min 44px height) */}
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={onEdit}
-            className="inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-xl border border-primary/30 bg-primary/10 px-4 text-xs font-bold text-primary transition-all hover:bg-primary hover:text-primary-foreground"
-          >
-            <PenTool className="h-4 w-4" />
-            <span>تعديل</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={onDelete}
-            className="grid h-11 w-11 cursor-pointer place-items-center rounded-xl border border-destructive/30 bg-destructive/10 text-destructive transition-all hover:bg-destructive hover:text-destructive-foreground"
-            aria-label="حذف الصنف"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
-        </div>
       </div>
     </div>
   );

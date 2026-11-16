@@ -1,13 +1,11 @@
 import { memo, useMemo, useState, useEffect, useRef } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import {
-  Calendar,
   ChevronLeft,
   ChevronRight,
   Clock,
   Filter,
   MapPin,
-  Maximize2,
   MessageCircle,
   Package,
   Pencil,
@@ -16,7 +14,6 @@ import {
   Sparkles,
   Store,
   Truck,
-  User,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -26,15 +23,64 @@ import {
   type SalesOrder,
   type SalesStatus,
 } from "@/lib/sales.functions";
+import {
+  ORDER_STATUS_META,
+  PAYMENT_METHOD_LABELS,
+  getStatusMeta,
+  type OrderStatus,
+  type PaymentMethod,
+} from "@/lib/order-status";
+import { jd } from "@/lib/currency";
 import { orderLabel } from "@/lib/order-label";
 import { printCustomerReceipt } from "@/lib/receipt-templates";
 import { todayIso } from "@/lib/date-filter";
 import { getWhatsAppChatUrl } from "@/lib/whatsapp";
+import { consolidateModifications, type OrderModification } from "@/lib/order-modifications";
 import { OrderStatusBadge } from "@/components/staff/OrderStatusBadge";
-import { consolidateModifications } from "@/lib/order-modifications";
-import { parseDesignImageUrls } from "@/lib/utils";
+import { DesignGallery } from "@/components/staff/DesignGallery";
+import { ModificationsSummary } from "@/components/staff/ModificationsSummary";
+import { ImageLightbox } from "@/components/staff/ImageLightbox";
 
 export type CalendarViewMode = "month" | "day";
+
+/** Shared order shape accepted by the calendar from both Sales and Kitchen views. */
+export interface CalendarOrder {
+  id: string;
+  order_number: string;
+  staff_code: number | null;
+  customer_name: string;
+  method: "delivery" | "pickup";
+  requested_date: string;
+  requested_time: string;
+  status: string;
+  inscription: string | null;
+  card_note?: string | null | undefined;
+  design_image_url: string | null;
+  notes: string | null;
+  schedule_updated_at: string | null;
+  last_edited_at: string | null;
+  modifications?: OrderModification[] | null | undefined;
+  items: Array<{
+    id: string;
+    name_ar: string;
+    quantity: number;
+    options_ar: string[];
+    notes: string | null;
+    unit_price?: number;
+  }>;
+  customer_phone?: string;
+  area?: string | null;
+  address?: string | null;
+  order_name?: string | null;
+  sender_phone?: string | null;
+  recipient_phone?: string | null;
+  subtotal?: number;
+  delivery_fee?: number;
+  discount_amount?: number;
+  total?: number;
+  deposit_paid?: number;
+  payment_method?: PaymentMethod | null;
+}
 
 const WEEKDAYS_AR = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
 const MONTHS_AR = [
@@ -52,88 +98,61 @@ const MONTHS_AR = [
   "كانون الأول",
 ];
 
-export const STATUS_CONFIG: Record<
-  SalesStatus,
-  {
-    bg: string;
-    border: string;
-    text: string;
-    badgeBg: string;
-    badgeText: string;
-    ar: string;
-  }
-> = {
+const CARD_SURFACE_BY_STATUS: Record<OrderStatus, { bg: string; border: string; text: string }> = {
   new: {
     bg: "bg-amber-50/90 dark:bg-amber-950/40",
     border: "border-amber-300 dark:border-amber-700",
     text: "text-amber-950 dark:text-amber-200",
-    badgeBg: "bg-amber-500",
-    badgeText: "text-white",
-    ar: "جديد 🆕",
   },
   confirmed: {
     bg: "bg-sky-50/90 dark:bg-sky-950/40",
     border: "border-sky-300 dark:border-sky-700",
     text: "text-sky-950 dark:text-sky-200",
-    badgeBg: "bg-sky-500",
-    badgeText: "text-white",
-    ar: "مؤكد 🤝",
   },
   baking: {
     bg: "bg-amber-100/90 dark:bg-amber-900/50",
     border: "border-amber-400 dark:border-amber-600",
     text: "text-amber-950 dark:text-amber-100",
-    badgeBg: "bg-amber-600",
-    badgeText: "text-white",
-    ar: "قيد التجهيز 🎂",
   },
   ready: {
     bg: "bg-emerald-50/90 dark:bg-emerald-950/40",
     border: "border-emerald-400 dark:border-emerald-700",
     text: "text-emerald-950 dark:text-emerald-200",
-    badgeBg: "bg-emerald-600",
-    badgeText: "text-white",
-    ar: "جاهز ✨",
   },
   out_for_delivery: {
     bg: "bg-blue-50/90 dark:bg-blue-950/40",
     border: "border-blue-400 dark:border-blue-700",
     text: "text-blue-950 dark:text-blue-200",
-    badgeBg: "bg-blue-600",
-    badgeText: "text-white",
-    ar: "خرج للتوصيل 🚗",
   },
   completed: {
     bg: "bg-slate-100/80 dark:bg-slate-900/60",
     border: "border-slate-300 dark:border-slate-700",
     text: "text-slate-800 dark:text-slate-200",
-    badgeBg: "bg-slate-600",
-    badgeText: "text-white",
-    ar: "مكتمل ✅",
   },
   delivered: {
     bg: "bg-teal-50/90 dark:bg-teal-950/40",
     border: "border-teal-400 dark:border-teal-700",
     text: "text-teal-950 dark:text-teal-200",
-    badgeBg: "bg-teal-600",
-    badgeText: "text-white",
-    ar: "تم التسليم 📦",
   },
   cancelled: {
     bg: "bg-rose-50/90 dark:bg-rose-950/40",
     border: "border-rose-300 dark:border-rose-700",
     text: "text-rose-950 dark:text-rose-200",
-    badgeBg: "bg-rose-600",
-    badgeText: "text-white",
-    ar: "ملغى ❌",
   },
 };
 
-const PAYMENT_METHOD_MAP: Record<string, string> = {
-  cash: "نقداً عند الاستلام 💵",
-  cliq: "كليك (CliQ) 📲",
-  visa: "بطاقة ائتمان 💳",
-};
+function statusCardStyle(status: string | null | undefined) {
+  const meta = getStatusMeta(status);
+  const surface = CARD_SURFACE_BY_STATUS[meta.key] ?? CARD_SURFACE_BY_STATUS.new;
+  return { ...meta, ...surface };
+}
+
+function toLocalIsoDate(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
 
 /** Parse HH:mm time string to minutes from midnight */
 function parseTimeInMinutes(timeStr: string): number {
@@ -158,7 +177,7 @@ function formatMinutesArabic(totalMins: number): string {
 
 /** Positioned Order layout metadata for multi-column same-hour scheduling */
 interface PositionedOrder {
-  order: SalesOrder;
+  order: CalendarOrder;
   startMinutes: number; // minutes from 06:00 AM
   durationMinutes: number;
   colIndex: number;
@@ -172,7 +191,7 @@ interface PositionedOrder {
  * timeline bounds: 06:00 AM to 11:00 PM (18 hours total = 1080 mins)
  */
 function computeHourlyMultiColumnLayout(
-  orders: SalesOrder[],
+  orders: CalendarOrder[],
   pixelsPerHour = 72,
 ): PositionedOrder[] {
   const START_DAY_MINUTES = 6 * 60; // 06:00 AM
@@ -255,19 +274,19 @@ function computeHourlyMultiColumnLayout(
 }
 
 /** Print single order receipt */
-function printOrderReceipt(order: SalesOrder) {
-  if (!printCustomerReceipt(order)) {
+function printOrderReceipt(order: CalendarOrder) {
+  if (!printCustomerReceipt(order as unknown as SalesOrder)) {
     toast.error("تعذر فتح نافذة الطباعة");
   }
 }
 
 export interface OrdersCalendarProps {
-  orders: SalesOrder[];
+  orders: CalendarOrder[];
   onOpen: (id: string) => void;
   onPatch?: (input: OrderPatch) => void;
   isKitchen?: boolean;
   onKitchenStage?: (id: string, stage: "new" | "baking" | "ready") => void;
-  onPrintKitchenTicket?: (order: SalesOrder) => void;
+  onPrintKitchenTicket?: (order: CalendarOrder) => void;
 }
 
 export const OrdersCalendar = memo(function OrdersCalendar({
@@ -282,7 +301,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
   const [viewMode, setViewMode] = useState<CalendarViewMode>("day");
   const [currentDate, setCurrentDate] = useState<Date>(() => new Date());
   const [statusFilter, setStatusFilter] = useState<SalesStatus | "all">("all");
-  const [selectedOrder, setSelectedOrder] = useState<SalesOrder | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<CalendarOrder | null>(null);
   const [zoomImage, setZoomImage] = useState<string | null>(null);
 
   const cleanModifications = useMemo(() => {
@@ -304,7 +323,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
 
   // Touch Long-Press Dragging State
   const [dragging, setDragging] = useState<{
-    order: SalesOrder;
+    order: CalendarOrder;
     startX: number;
     startY: number;
     currentX: number;
@@ -325,12 +344,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
   }, []);
 
   // Active YYYY-MM-DD
-  const dateISO = useMemo(() => {
-    const y = currentDate.getFullYear();
-    const m = String(currentDate.getMonth() + 1).padStart(2, "0");
-    const d = String(currentDate.getDate()).padStart(2, "0");
-    return `${y}-${m}-${d}`;
-  }, [currentDate]);
+  const dateISO = useMemo(() => toLocalIsoDate(currentDate), [currentDate]);
 
   // Status Filtered orders
   const filteredOrders = useMemo(() => {
@@ -349,7 +363,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
   }, [dayOrders]);
 
   // Touch / Pointer Handlers for 300ms Long-Press Touch Dragging
-  const handlePointerDown = (e: React.PointerEvent, ord: SalesOrder) => {
+  const handlePointerDown = (e: React.PointerEvent, ord: CalendarOrder) => {
     if (e.button !== 0 && e.pointerType === "mouse") return;
 
     const startX = e.clientX;
@@ -435,18 +449,21 @@ export const OrdersCalendar = memo(function OrdersCalendar({
       isDraggingActive.current = false;
       setDragging(null);
 
-      // Perform mutation
+      // Perform mutation and report real success/failure
       if (onPatch) {
         onPatch({ orderId: orderToMove.id, requested_time: targetTimeStr });
+        toast.success(`✨ تم نقل الطلب إلى الساعة ${displayTime} بنجاح`);
       } else {
         updateOrderServerFn({
           data: { orderId: orderToMove.id, requested_time: targetTimeStr },
-        }).catch(() => {
-          toast.error("تعذر تحديث موعد الطلب");
-        });
+        })
+          .then(() => {
+            toast.success(`✨ تم نقل الطلب إلى الساعة ${displayTime} بنجاح`);
+          })
+          .catch(() => {
+            toast.error("تعذر تحديث موعد الطلب");
+          });
       }
-
-      toast.success(`✨ تم نقل الطلب إلى الساعة ${displayTime} بنجاح`);
       return;
     }
 
@@ -484,7 +501,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
     for (let i = 0; i < 7; i++) {
       const d = new Date(base);
       d.setDate(d.getDate() + i);
-      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const iso = toLocalIsoDate(d);
       result.push({
         date: d,
         iso,
@@ -513,7 +530,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
     for (let i = firstDayIndex - 1; i >= 0; i--) {
       const dayNum = prevMonthDays - i;
       const d = new Date(year, month - 1, dayNum);
-      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const iso = toLocalIsoDate(d);
       grid.push({
         date: d,
         iso,
@@ -528,7 +545,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
     const todayISO = todayIso();
     for (let dayNum = 1; dayNum <= totalDays; dayNum++) {
       const d = new Date(year, month, dayNum);
-      const iso = `${year}-${String(month + 1).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
+      const iso = toLocalIsoDate(d);
       grid.push({
         date: d,
         iso,
@@ -543,7 +560,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
     const remaining = 42 - grid.length;
     for (let i = 1; i <= remaining; i++) {
       const d = new Date(year, month + 1, i);
-      const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(i).padStart(2, "0")}`;
+      const iso = toLocalIsoDate(d);
       grid.push({
         date: d,
         iso,
@@ -646,8 +663,8 @@ export const OrdersCalendar = memo(function OrdersCalendar({
         >
           الكل ({orders.length})
         </button>
-        {(Object.keys(STATUS_CONFIG) as SalesStatus[]).map((st) => {
-          const cfg = STATUS_CONFIG[st];
+        {(Object.keys(ORDER_STATUS_META) as SalesStatus[]).map((st) => {
+          const cfg = ORDER_STATUS_META[st];
           const count = orders.filter((o) => o.status === st).length;
           if (count === 0 && statusFilter !== st) return null;
           return (
@@ -661,7 +678,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                   : `border-border bg-background text-foreground hover:bg-muted`
               }`}
             >
-              {cfg.ar} ({count})
+              {cfg.ar} {cfg.icon} ({count})
             </button>
           );
         })}
@@ -750,7 +767,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                 {/* Order Chips */}
                 <div className="space-y-1">
                   {cell.orders.slice(0, 3).map((ord) => {
-                    const cfg = STATUS_CONFIG[ord.status] ?? STATUS_CONFIG.new;
+                    const cfg = statusCardStyle(ord.status);
                     const code = orderLabel(ord.order_number, ord.staff_code);
                     const timeStr = ord.requested_time ? ord.requested_time.slice(0, 5) : "";
                     const firstItem = ord.items?.[0]?.name_ar ?? "كيكة";
@@ -862,7 +879,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                 ) : (
                   positionedDayOrders.map((pos) => {
                     const ord = pos.order;
-                    const cfg = STATUS_CONFIG[ord.status] ?? STATUS_CONFIG.new;
+                    const cfg = statusCardStyle(ord.status);
                     const code = orderLabel(ord.order_number, ord.staff_code);
                     const mainItem = ord.items?.[0]?.name_ar ?? "كيكة مخصصة";
                     const locationText =
@@ -902,11 +919,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                           <span className="dir-ltr inline-flex items-center gap-1 rounded-md bg-black/10 px-1.5 py-0.5 font-mono text-[11px] font-black">
                             {code}
                           </span>
-                          <span
-                            className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-black ${cfg.badgeBg} ${cfg.badgeText}`}
-                          >
-                            {cfg.ar}
-                          </span>
+                          <OrderStatusBadge status={ord.status} size="sm" />
                         </div>
 
                         {/* Card Body: Customer & Location */}
@@ -930,7 +943,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                             <Clock className="h-3 w-3" /> {timeWindow}
                           </span>
                           {!isKitchen && (ord.total ?? 0) > 0 ? (
-                            <span>{(ord.total ?? 0).toFixed(2)} د.أ</span>
+                            <span>{jd(ord.total)}</span>
                           ) : isKitchen ? (
                             <span>
                               {ord.items.length
@@ -1080,7 +1093,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                       {selectedOrder.area ?? "منطقة غير محددة"}{" "}
                       {selectedOrder.address ? `— ${selectedOrder.address}` : ""}{" "}
                       {selectedOrder.delivery_fee
-                        ? `(أجرة: ${selectedOrder.delivery_fee.toFixed(2)} د.أ)`
+                        ? `(أجرة: ${jd(selectedOrder.delivery_fee)})`
                         : ""}
                     </>
                   ) : (
@@ -1104,7 +1117,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                           {it.name_ar} (x{it.quantity})
                         </span>
                         {it.unit_price && it.unit_price > 0 ? (
-                          <span>{(it.unit_price * it.quantity).toFixed(2)} د.أ</span>
+                          <span>{jd(it.unit_price * it.quantity)}</span>
                         ) : null}
                       </div>
                       {it.options_ar?.length ? (
@@ -1148,77 +1161,54 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                       {selectedOrder.notes}
                     </p>
                   ) : null}
-                  {(() => {
-                    const designImages = parseDesignImageUrls(selectedOrder.design_image_url);
-                    if (designImages.length === 0) return null;
-                    return (
-                      <div>
-                        <span className="mb-1.5 block text-[11px] font-bold text-muted-foreground">
-                          {designImages.length > 1
-                            ? `صور التصميم المرفقة (${designImages.length}):`
-                            : "صورة التصميم المرفقة:"}
-                        </span>
-                        <div className="flex flex-wrap gap-2">
-                          {designImages.map((imgUrl, idx) => (
-                            <img
-                              key={imgUrl}
-                              src={imgUrl}
-                              alt={`Design Reference ${idx + 1}`}
-                              onClick={() => setZoomImage(imgUrl)}
-                              className="h-28 w-28 cursor-pointer rounded-xl border border-border object-cover transition-opacity hover:opacity-90"
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })()}
+                  <DesignGallery
+                    designImageUrl={selectedOrder.design_image_url}
+                    onZoom={(url) => setZoomImage(url)}
+                  />
                 </div>
               ) : null}
 
               {/* Financial Calculation & Payment (Hidden in kitchen mode) */}
-              {!isKitchen && (selectedOrder.total > 0 || selectedOrder.payment_method) ? (
+              {!isKitchen && ((selectedOrder.total ?? 0) > 0 || selectedOrder.payment_method) ? (
                 <div className="space-y-2 rounded-2xl border border-border bg-card p-4 text-xs font-bold">
                   <h4 className="mb-2 text-xs font-black text-muted-foreground">
                     💵 الحساب المالي وطريقة الدفع
                   </h4>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">المجموع الفرعي:</span>
-                    <span>{(selectedOrder.subtotal ?? 0).toFixed(2)} د.أ</span>
+                    <span>{jd(selectedOrder.subtotal ?? 0)}</span>
                   </div>
                   {(selectedOrder.delivery_fee ?? 0) > 0 ? (
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">أجرة التوصيل:</span>
-                      <span>+{(selectedOrder.delivery_fee ?? 0).toFixed(2)} د.أ</span>
+                      <span>+{jd(selectedOrder.delivery_fee ?? 0)}</span>
                     </div>
                   ) : null}
                   {(selectedOrder.discount_amount ?? 0) > 0 ? (
                     <div className="flex justify-between text-rose-600">
                       <span>الخصم:</span>
-                      <span>-{(selectedOrder.discount_amount ?? 0).toFixed(2)} د.أ</span>
+                      <span>-{jd(selectedOrder.discount_amount ?? 0)}</span>
                     </div>
                   ) : null}
                   <div className="flex justify-between border-t border-border pt-1 text-sm font-black">
                     <span>الإجمالي النهائي:</span>
-                    <span className="text-primary">
-                      {(selectedOrder.total ?? 0).toFixed(2)} د.أ
-                    </span>
+                    <span className="text-primary">{jd(selectedOrder.total ?? 0)}</span>
                   </div>
                   <div className="flex justify-between text-emerald-600">
                     <span>المدفوع (العربون):</span>
-                    <span>{(selectedOrder.deposit_paid ?? 0).toFixed(2)} د.أ</span>
+                    <span>{jd(selectedOrder.deposit_paid ?? 0)}</span>
                   </div>
                   <div className="flex justify-between text-sm font-black text-amber-600">
                     <span>المتبقي المطلوب:</span>
                     <span>
-                      {((selectedOrder.total ?? 0) - (selectedOrder.deposit_paid ?? 0)).toFixed(2)}{" "}
-                      د.أ
+                      {jd((selectedOrder.total ?? 0) - (selectedOrder.deposit_paid ?? 0))}
                     </span>
                   </div>
                   <div className="flex items-center justify-between border-t border-border pt-2 text-muted-foreground">
                     <span>طريقة الدفع:</span>
                     <span className="font-bold text-foreground">
                       {selectedOrder.payment_method
-                        ? (PAYMENT_METHOD_MAP[selectedOrder.payment_method] ??
+                        ? (PAYMENT_METHOD_LABELS[selectedOrder.payment_method]?.ar ??
                           selectedOrder.payment_method)
                         : "لم تحدد"}
                     </span>
@@ -1226,50 +1216,10 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                 </div>
               ) : null}
 
-              {/* 📋 قائمة التعديلات المعتمدة (في أسفل النافذة، الخيار الجديد فقط وبدون مربعات سابقة) */}
-              {cleanModifications.length > 0 ? (
-                <div className="space-y-2 rounded-2xl border border-border/80 bg-secondary/20 p-3.5 shadow-2xs">
-                  <div className="flex items-center justify-between border-b border-border/60 pb-2">
-                    <span className="flex items-center gap-1.5 text-xs font-black text-foreground">
-                      <span>📋</span>
-                      <span>التعديلات</span>
-                    </span>
-                    {(selectedOrder.last_edited_at || selectedOrder.schedule_updated_at) && (
-                      <span className="font-mono text-[10px] text-muted-foreground" dir="ltr">
-                        {new Date(
-                          selectedOrder.last_edited_at ||
-                            selectedOrder.schedule_updated_at ||
-                            Date.now(),
-                        ).toLocaleTimeString("ar-JO", { hour: "2-digit", minute: "2-digit" })}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="space-y-1.5">
-                    {cleanModifications.map((mod, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center justify-between gap-2 rounded-xl border border-border/60 bg-card p-2 text-xs"
-                      >
-                        <div className="flex items-center gap-1.5 font-bold text-foreground">
-                          <span className="font-black text-primary">• {mod.field}:</span>
-                          <span className="rounded-md border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 font-black text-emerald-800 dark:text-emerald-300">
-                            {mod.newValue}
-                          </span>
-                        </div>
-                        {mod.updatedAt && (
-                          <span className="font-mono text-[10px] text-muted-foreground" dir="ltr">
-                            {new Date(mod.updatedAt).toLocaleTimeString("ar-JO", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
+              <ModificationsSummary
+                modifications={cleanModifications}
+                headerTimestamp={selectedOrder.last_edited_at || selectedOrder.schedule_updated_at}
+              />
 
               {/* Kitchen Stage Transition Actions */}
               {isKitchen && onKitchenStage ? (
@@ -1343,28 +1293,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
         </div>
       ) : null}
 
-      {/* IMAGE ZOOM MODAL */}
-      {zoomImage ? (
-        <div
-          onClick={() => setZoomImage(null)}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md"
-        >
-          <div className="relative max-h-[90vh] max-w-3xl">
-            <img
-              src={zoomImage}
-              alt="Zoomed view"
-              className="max-h-[85vh] max-w-full rounded-2xl object-contain"
-            />
-            <button
-              type="button"
-              onClick={() => setZoomImage(null)}
-              className="absolute -top-3 -right-3 flex h-9 w-9 items-center justify-center rounded-full bg-white text-black shadow-lg"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
-      ) : null}
+      <ImageLightbox src={zoomImage} onClose={() => setZoomImage(null)} />
     </div>
   );
 });

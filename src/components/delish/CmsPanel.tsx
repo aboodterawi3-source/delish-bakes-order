@@ -14,6 +14,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
+import { jd } from "@/lib/currency";
 import {
   deleteCategory,
   deleteStorefrontProduct,
@@ -799,7 +800,7 @@ function ProductsEditor({
                 {product.name_ar} · {product.name_en}
               </p>
               <p className="flex min-w-0 flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-                <span>{product.price.toFixed(2)} د.أ</span>
+                <span>{jd(product.price)}</span>
                 {product.sizes.length > 0 && (
                   <span>{product.sizes.map((s) => s.label).join(" · ")}</span>
                 )}

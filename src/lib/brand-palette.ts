@@ -122,7 +122,12 @@ function applyThemeCssVariables(palette: BrandPalette) {
 
 export function useBrandPalette() {
   const queryClient = useQueryClient();
-  const [cachedPaletteId, setCachedPaletteId] = useState<string>(getStoredPaletteId);
+  // Default to "gold" on initial render so SSR and client hydration match, then restore from localStorage.
+  const [cachedPaletteId, setCachedPaletteId] = useState<string>("gold");
+
+  useEffect(() => {
+    setCachedPaletteId(getStoredPaletteId());
+  }, []);
 
   // Single source of truth: store_settings table in Supabase
   const { data: storeSettings, isSuccess } = useQuery({

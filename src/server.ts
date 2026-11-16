@@ -44,17 +44,29 @@ function isH3SwallowedErrorBody(body: string): boolean {
   }
 }
 
-/** Ensure SSR HTML documents are never served stale from browser or Cloudflare CDN cache. */
-function withFreshHtmlCacheHeaders(response: Response): Response {
+/** Ensure SSR HTML documents are never served stale from browser or Cloudflare CDN cache, and attach baseline security headers. */
+function withSecurityAndFreshHtmlHeaders(response: Response, requestUrl?: string): Response {
   const contentType = response.headers.get("content-type") ?? "";
-  if (!contentType.includes("text/html")) return response;
-
   const headers = new Headers(response.headers);
-  headers.set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
-  headers.set("CDN-Cache-Control", "no-store");
-  headers.set("Cloudflare-CDN-Cache-Control", "no-store");
-  headers.set("Pragma", "no-cache");
-  headers.set("Expires", "0");
+
+  headers.set("X-Content-Type-Options", "nosniff");
+  headers.set("X-Frame-Options", "SAMEORIGIN");
+  headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+
+  // Prevent bearer edit tokens in /edit-order?token=... from leaking via Referer.
+  const isTokenPage = requestUrl ? requestUrl.includes("/edit-order") : false;
+  headers.set(
+    "Referrer-Policy",
+    isTokenPage ? "no-referrer" : "strict-origin-when-cross-origin",
+  );
+
+  if (contentType.includes("text/html")) {
+    headers.set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+    headers.set("CDN-Cache-Control", "no-store");
+    headers.set("Cloudflare-CDN-Cache-Control", "no-store");
+    headers.set("Pragma", "no-cache");
+    headers.set("Expires", "0");
+  }
 
   return new Response(response.body, {
     status: response.status,
@@ -68,14 +80,18 @@ export default {
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
-      return withFreshHtmlCacheHeaders(await normalizeCatastrophicSsrResponse(response));
+      return withSecurityAndFreshHtmlHeaders(
+        await normalizeCatastrophicSsrResponse(response),
+        request.url,
+      );
     } catch (error) {
       console.error(error);
-      return withFreshHtmlCacheHeaders(
+      return withSecurityAndFreshHtmlHeaders(
         new Response(renderErrorPage(), {
           status: 500,
           headers: { "content-type": "text/html; charset=utf-8" },
         }),
+        request.url,
       );
     }
   },

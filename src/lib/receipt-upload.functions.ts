@@ -29,6 +29,9 @@ export const uploadPaymentReceipt = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertRole(context, SALES_ROLES);
 
+    const { enforceRateLimit } = await import("@/lib/rate-limit");
+    enforceRateLimit(`receipt-upload:${context.userId}`, 30, 10 * 60_000);
+
     const now = new Date();
     const folder = now.toISOString().slice(0, 10);
     const filename = `${crypto.randomUUID()}.${data.ext}`;

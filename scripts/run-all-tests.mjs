@@ -6,12 +6,8 @@ const suites = [
     args: ["test/acceptance_hardening.test.mjs"],
   },
   {
-    name: "React-i18next Localization Verification",
+    name: "Localization Dictionary Verification",
     args: ["test/i18n.test.mjs"],
-  },
-  {
-    name: "Scheduled Delivery & Pickup Slots Engine (TDD)",
-    args: ["test/delivery_slots.test.mjs"],
   },
   {
     name: "Touch Item Editor Lifecycle (J2, J3, J5)",

@@ -4,17 +4,17 @@
  */
 import { esc, printDocument } from "@/lib/print";
 import { formatJod } from "@/lib/currency";
-import { formatJordanianPhone } from "@/lib/whatsapp";
+import { formatJordanianPhone, WHATSAPP_STORE_NUMBER } from "@/lib/whatsapp";
 import { orderLabel } from "@/lib/order-label";
 import { formatStaffNotes } from "@/lib/utils";
 
-export const PAYMENT_METHOD_NAMES: Record<string, string> = {
+const PAYMENT_METHOD_NAMES: Record<string, string> = {
   cash: "كاش",
   cliq: "CliQ / محفظة",
   visa: "فيزا / بطاقة",
 };
 
-export function getPaymentMethodName(method?: string | null): string {
+function getPaymentMethodName(method?: string | null): string {
   if (!method) return "—";
   return PAYMENT_METHOD_NAMES[method] ?? method;
 }
@@ -104,8 +104,12 @@ export function generateCustomerReceiptHtml(order: CustomerReceiptOrder): string
       ? `توصيل منازل (${esc(order.area ?? "")} ${esc(order.address ?? "")})`.trim()
       : "استلام من المحل";
 
+  const storeLocalPhone = WHATSAPP_STORE_NUMBER.startsWith("962")
+    ? `0${WHATSAPP_STORE_NUMBER.slice(3)}`
+    : WHATSAPP_STORE_NUMBER;
+
   return `<h1 style="text-align:center;font-size:20px;margin-bottom:4px;font-weight:900;">Delish Cake &amp; Bake</h1>
-<div style="text-align:center;font-size:12px;color:#555;">عمان – الأردن · 0779179995</div>
+<div style="text-align:center;font-size:12px;color:#555;">عمان – الأردن · ${storeLocalPhone}</div>
 <div style="text-align:center;font-weight:bold;margin:8px 0;border-bottom:2px dashed #000;padding-bottom:4px;">إيصال العميل · CUSTOMER RECEIPT</div>
 <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:bold;margin-bottom:4px;">
   <span>${esc(orderLabel(order.order_number, order.staff_code))}</span>
@@ -166,7 +170,7 @@ export interface KitchenTicketOrder {
   items: KitchenTicketItem[];
 }
 
-export function generateKitchenTicketHtml(order: KitchenTicketOrder): string {
+function generateKitchenTicketHtml(order: KitchenTicketOrder): string {
   const lines =
     order.items && order.items.length
       ? order.items

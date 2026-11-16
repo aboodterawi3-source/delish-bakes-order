@@ -1,4 +1,3 @@
-// Full revised edit-order page – see implementation plan above (components inlined for simplicity)
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -27,6 +26,16 @@ export const Route = createFileRoute("/edit-order")({
   }),
   component: EditOrderPage,
 });
+
+function Stepper() {
+  return (
+    <ol className="mb-4 flex justify-center gap-2 text-sm">
+      <li className="font-bold text-[#B8860B]">1️⃣ اختيار التاريخ</li>
+      <li className="font-bold text-[#B8860B]">2️⃣ اختيار الوقت</li>
+      <li className="font-bold text-[#B8860B]">3️⃣ حفظ</li>
+    </ol>
+  );
+}
 
 function EditOrderPage() {
   const [token, setToken] = useState<string | null>(null);
@@ -80,15 +89,6 @@ function EditOrderPage() {
   const apiError = orderQuery.isError ? formatApiError(orderQuery.error) : null;
   const linkExpired = expired && !saveMutation.isSuccess;
   const success = saveMutation.isSuccess;
-
-  // stepper UI (simple text) – could be replaced with a full stepper component later
-  const Stepper = () => (
-    <ol className="mb-4 flex justify-center gap-2 text-sm">
-      <li className="font-bold text-[#B8860B]">1️⃣ اختيار التاريخ</li>
-      <li className="font-bold text-[#B8860B]">2️⃣ اختيار الوقت</li>
-      <li className="font-bold text-[#B8860B]">3️⃣ حفظ</li>
-    </ol>
-  );
 
   return (
     <main dir="rtl" lang="ar" className="min-h-dvh w-full bg-[#F9FBFC] px-4 py-10 text-[#3E2723]">

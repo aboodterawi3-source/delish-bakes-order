@@ -61,40 +61,47 @@ export function parseStoreSettingsEnvelope(raw: unknown): StoreSettingsConfigEnv
   return {};
 }
 
-export async function persistStoreSettingsEnvelopeField<K extends keyof StoreSettingsConfigEnvelope>(
+let persistEnvelopeQueue: Promise<void> = Promise.resolve();
+
+export function persistStoreSettingsEnvelopeField<K extends keyof StoreSettingsConfigEnvelope>(
   field: K,
   value: StoreSettingsConfigEnvelope[K],
 ): Promise<void> {
-  const { data: currentRow } = await supabase
-    .from("store_settings")
-    .select("cliq_alias")
-    .eq("singleton", true)
-    .maybeSingle();
-
-  const existing = parseStoreSettingsEnvelope(
-    (currentRow as { cliq_alias?: string } | null)?.cliq_alias,
-  );
-  const nextEnvelope: StoreSettingsConfigEnvelope = {
-    ...existing,
-    [field]: value,
-  };
-  const payload = JSON.stringify(nextEnvelope);
-
-  const { data: updatedRows, error: updateErr } = await supabase
-    .from("store_settings")
-    .update({ cliq_alias: payload } as never)
-    .eq("singleton", true)
-    .select("cliq_alias");
-
-  let error = updateErr;
-  if (!error && (!updatedRows || updatedRows.length === 0)) {
-    const { error: insertErr } = await supabase
+  const run = persistEnvelopeQueue.catch(() => undefined).then(async () => {
+    const { data: currentRow } = await supabase
       .from("store_settings")
-      .insert({ singleton: true, cliq_alias: payload } as never);
-    error = insertErr;
-  }
+      .select("cliq_alias")
+      .eq("singleton", true)
+      .maybeSingle();
 
-  if (error) throw error;
+    const existing = parseStoreSettingsEnvelope(
+      (currentRow as { cliq_alias?: string } | null)?.cliq_alias,
+    );
+    const nextEnvelope: StoreSettingsConfigEnvelope = {
+      ...existing,
+      [field]: value,
+    };
+    const payload = JSON.stringify(nextEnvelope);
+
+    const { data: updatedRows, error: updateErr } = await supabase
+      .from("store_settings")
+      .update({ cliq_alias: payload } as never)
+      .eq("singleton", true)
+      .select("cliq_alias");
+
+    let error = updateErr;
+    if (!error && (!updatedRows || updatedRows.length === 0)) {
+      const { error: insertErr } = await supabase
+        .from("store_settings")
+        .insert({ singleton: true, cliq_alias: payload } as never);
+      error = insertErr;
+    }
+
+    if (error) throw error;
+  });
+
+  persistEnvelopeQueue = run;
+  return run;
 }
 
 function parseCliqAliasJson(raw: unknown): CliqAccountConfig[] | null {

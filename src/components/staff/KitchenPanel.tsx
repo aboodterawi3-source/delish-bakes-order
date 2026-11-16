@@ -1,44 +1,22 @@
 import { useNavigate } from "@tanstack/react-router";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
-  AlertTriangle,
   Bell,
   BellRing,
-  Cake,
-  Calendar,
   Calendar as CalendarIcon,
-  CheckCircle2,
   ChefHat,
-  Clock,
-  Clock3,
-  Download,
-  Eye,
-  FileText,
-  Filter,
-  Flame,
-  Layers,
   LayoutGrid,
   Loader2,
-  LogOut,
-  Maximize2,
-  PencilLine,
-  Play,
-  Printer,
   RefreshCw,
-  Sparkles,
-  Timer,
-  Undo2,
-  Volume2,
-  VolumeX,
-  X,
-  Zap,
 } from "lucide-react";
+import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useOrdersRealtime } from "@/hooks/use-orders-realtime";
 import { useScreenWakeLock } from "@/hooks/use-screen-wake-lock";
+import { useStaffAccess } from "@/hooks/use-staff-access";
 import {
   acknowledgeOrderModification,
   getKitchenAccess,
@@ -46,159 +24,20 @@ import {
   setKitchenStage,
   type KdsOrder,
   type KitchenStage,
-  type OrderModification,
 } from "@/lib/kds.functions";
 import { OrdersCalendar } from "@/components/staff/OrdersCalendar";
-import type { SalesOrder, SalesStatus } from "@/lib/sales.functions";
-import { PRIORITY_META, type PriorityColor } from "@/lib/priority";
-import { formatTimeSlotArabic, printKitchenTicket } from "@/lib/receipt-templates";
-import { orderLabel } from "@/lib/order-label";
-import { parseDesignImageUrls } from "@/lib/utils";
-import { isKitchenRelevantModification, consolidateModifications } from "@/lib/order-modifications";
-import { isoDay, matchesDateFilter, type CustomRange, type DateFilterKey } from "@/lib/date-filter";
-import { formatArabicDate } from "@/lib/confirmation-message";
-
-/** Strips out marketing, communication channel tags (WhatsApp, Instagram, etc.), and payment meta from kitchen views */
-function isChannelOrMeta(text: string): boolean {
-  if (!text) return false;
-  const t = text.trim();
-  return (
-    t.startsWith("المصدر:") ||
-    t.startsWith("مصدر:") ||
-    t.includes("المصدر: ") ||
-    t.includes("واتساب") ||
-    t.includes("انستغرام") ||
-    t.includes("فيسبوك") ||
-    t.includes("تيك توك") ||
-    t.includes("كليك") ||
-    t.includes("حوالة") ||
-    t.includes("gift") ||
-    t.includes("source") ||
-    t.startsWith("طلب هدية")
-  );
-}
-
-/** Formats relative time in Arabic (e.g., قبل 5 دقائق) */
-function formatRelativeTime(dateString: string) {
-  if (!dateString) return "";
-  try {
-    const diffMs = Date.now() - new Date(dateString).getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    if (diffMins < 1) return "قبل لحظات";
-    if (diffMins < 60) return `قبل ${diffMins} دقيقة`;
-    const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) return `قبل ${diffHours} ساعة`;
-    return `قبل ${Math.floor(diffHours / 24)} يوم`;
-  } catch {
-    return "";
-  }
-}
-
-let sharedAudioCtx: AudioContext | null = null;
-function getSharedAudioCtx() {
-  if (typeof window === "undefined") return null;
-  if (!sharedAudioCtx) {
-    try {
-      sharedAudioCtx = new (
-        window.AudioContext ||
-        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
-      )();
-
-      // KDS-01: Auto-resume audio context on user interaction to bypass autoplay policy
-      const unlockAudio = () => {
-        if (sharedAudioCtx?.state === "suspended") {
-          void sharedAudioCtx.resume();
-        }
-      };
-      window.addEventListener("click", unlockAudio, { once: true, capture: true });
-      window.addEventListener("touchstart", unlockAudio, { once: true, capture: true });
-    } catch {
-      return null;
-    }
-  }
-  return sharedAudioCtx;
-}
-
-/** Audio synth chime fallback to guarantee alert sound */
-function playKitchenChimeSound() {
-  try {
-    const ctx = getSharedAudioCtx();
-    if (!ctx) return;
-    if (ctx.state === "suspended") {
-      void ctx.resume();
-    }
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(880, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(1760, ctx.currentTime + 0.15);
-    gain.gain.setValueAtTime(0.3, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.4);
-  } catch (e) {
-    console.error("Audio synth error:", e);
-  }
-}
-
-/** Distinctive double-tone chime for kitchen order modifications */
-function playKitchenModificationChimeSound() {
-  try {
-    const ctx = getSharedAudioCtx();
-    if (!ctx) return;
-    if (ctx.state === "suspended") {
-      void ctx.resume();
-    }
-    // Tone 1
-    const osc1 = ctx.createOscillator();
-    const gain1 = ctx.createGain();
-    osc1.type = "sine";
-    osc1.frequency.setValueAtTime(659.25, ctx.currentTime);
-    gain1.gain.setValueAtTime(0.35, ctx.currentTime);
-    gain1.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
-    osc1.connect(gain1);
-    gain1.connect(ctx.destination);
-    osc1.start(ctx.currentTime);
-    osc1.stop(ctx.currentTime + 0.2);
-
-    // Tone 2 (higher frequency chime)
-    const osc2 = ctx.createOscillator();
-    const gain2 = ctx.createGain();
-    osc2.type = "sine";
-    osc2.frequency.setValueAtTime(987.77, ctx.currentTime + 0.15);
-    gain2.gain.setValueAtTime(0.35, ctx.currentTime + 0.15);
-    gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.45);
-    osc2.connect(gain2);
-    gain2.connect(ctx.destination);
-    osc2.start(ctx.currentTime + 0.15);
-    osc2.stop(ctx.currentTime + 0.45);
-  } catch (e) {
-    console.error("Audio synth mod error:", e);
-  }
-}
-
-/** Saves design image for edible printer */
-async function downloadDesignImage(url: string, orderNumber: string) {
-  try {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error("download failed");
-    const blob = await response.blob();
-    const rawExtension = blob.type.split("/")[1] ?? "jpg";
-    const extension = rawExtension.replace(/[^a-zA-Z0-9]/g, "").replace("jpeg", "jpg") || "jpg";
-    const objectUrl = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = objectUrl;
-    link.download = `delish-${orderNumber}.${extension}`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(objectUrl);
-  } catch {
-    window.open(url, "_blank", "noopener,noreferrer");
-  }
-}
+import { ImageLightbox } from "@/components/staff/ImageLightbox";
+import { KdsOrderCard } from "@/components/staff/KdsOrderCard";
+import { KitchenOrderDetailsModal } from "@/components/staff/KitchenOrderDetailsModal";
+import {
+  getSharedAudioCtx,
+  playKitchenChimeSound,
+  playKitchenModificationChimeSound,
+} from "@/components/staff/kds-audio";
+import { downloadDesignImage, stageOf } from "@/components/staff/kds-helpers";
+import { printKitchenTicket } from "@/lib/receipt-templates";
+import { computeUnackModKey, isKitchenRelevantModification } from "@/lib/order-modifications";
+import { matchesDateFilter, type DateFilterKey } from "@/lib/date-filter";
 
 const ORDERS_KEY = ["kds-orders"] as const;
 
@@ -208,7 +47,6 @@ const STAGES: {
   en: string;
   icon: string;
   border: string;
-  bgBadge: string;
 }[] = [
   {
     key: "new",
@@ -216,7 +54,6 @@ const STAGES: {
     en: "Incoming Queue",
     icon: "🆕",
     border: "border-t-4 border-t-amber-500",
-    bgBadge: "bg-amber-100 text-amber-900 border-amber-300",
   },
   {
     key: "baking",
@@ -224,7 +61,6 @@ const STAGES: {
     en: "In Baking / Decorating",
     icon: "👩‍🍳",
     border: "border-t-4 border-t-blue-500",
-    bgBadge: "bg-blue-100 text-blue-900 border-blue-300",
   },
   {
     key: "ready",
@@ -232,829 +68,8 @@ const STAGES: {
     en: "Ready for Handover",
     icon: "✨",
     border: "border-t-4 border-t-emerald-500",
-    bgBadge: "bg-emerald-100 text-emerald-900 border-emerald-300",
   },
 ];
-
-const stageOf = (status: string): KitchenStage =>
-  status === "ready" ? "ready" : status === "baking" ? "baking" : "new";
-
-/** Formats time remaining with exact SLA color indicators: Safe (>45m), Urgent (<20m), Overdue (Late) */
-function getCountdownText(requestedDate: string, requestedTime: string) {
-  if (!requestedDate || !requestedTime)
-    return { text: "الموعد غير محدد", status: "normal" as const };
-
-  try {
-    const timeClean = requestedTime.slice(0, 5);
-    const target = new Date(`${requestedDate}T${timeClean}:00`);
-    const now = new Date();
-    const diffMs = target.getTime() - now.getTime();
-    const diffMins = Math.round(diffMs / 60000);
-
-    if (diffMins < 0) {
-      const lateMins = Math.abs(diffMins);
-      const lateStr =
-        lateMins >= 60 ? `${Math.floor(lateMins / 60)}س ${lateMins % 60}د` : `${lateMins}د`;
-      return { text: `متأخر: -${lateStr}`, status: "overdue" as const, mins: diffMins };
-    }
-
-    if (diffMins <= 20) {
-      return { text: `مستعجل: ${diffMins} دقيقة`, status: "urgent" as const, mins: diffMins };
-    }
-
-    if (diffMins <= 45) {
-      return { text: `باقي: ${diffMins} دقيقة`, status: "normal" as const, mins: diffMins };
-    }
-
-    const hours = Math.floor(diffMins / 60);
-    const remMins = diffMins % 60;
-    return {
-      text: `باقي: ${hours > 0 ? `${hours}س ` : ""}${remMins}د`,
-      status: "safe" as const,
-      mins: diffMins,
-    };
-  } catch {
-    return { text: requestedTime.slice(0, 5), status: "normal" as const, mins: 999 };
-  }
-}
-
-/** Resolves visual priority styles for cards */
-function getPriorityStyles(color: PriorityColor) {
-  switch (color) {
-    case "dark_red":
-      return {
-        cardBg: "bg-card border-orange-400/80 shadow-xs",
-        badgeBg: "bg-orange-100 text-orange-950 border-orange-300",
-        badgeText: "أولوية قصوى",
-      };
-    case "warm_orange":
-      return {
-        cardBg: "bg-card border-amber-400/80 shadow-xs",
-        badgeBg: "bg-amber-100 text-amber-950 border-amber-300",
-        badgeText: "توصيل سريع",
-      };
-    case "sky_blue":
-      return {
-        cardBg: "bg-card border-emerald-400/80 shadow-xs",
-        badgeBg: "bg-emerald-100 text-emerald-950 border-emerald-300",
-        badgeText: "تجهيز عادي",
-      };
-    case "golden_yellow":
-      return {
-        cardBg: "bg-card border-yellow-400 shadow-xs",
-        badgeBg: "bg-yellow-100 text-yellow-950 border-yellow-400",
-        badgeText: "VIP خاص",
-      };
-    case "soft_green":
-    default:
-      return {
-        cardBg: "bg-card border-border/80 shadow-xs",
-        badgeBg: "bg-secondary text-foreground border-border",
-        badgeText: "طلب عادي",
-      };
-  }
-}
-
-
-
-const KdsCleanCard = memo(function KdsCleanCard({
-  order,
-  busy,
-  alerted = false,
-  onAck,
-  onStage,
-  onZoom,
-  onOpenDetails,
-}: {
-  order: KdsOrder;
-  stageBorder: string;
-  busy: boolean;
-  alerted?: boolean;
-  onAck: (id: string, modIds?: string[]) => void;
-  onStage: (id: string, stage: KitchenStage) => void;
-  onZoom: (url: string) => void;
-  onOpenDetails: (order: KdsOrder) => void;
-}) {
-  const stage = stageOf(order.status);
-  const priorityMeta =
-    PRIORITY_META[order.priority_color ?? "soft_green"] || PRIORITY_META["soft_green"];
-  const orderPrio = getPriorityStyles(order.priority_color ?? "soft_green");
-  const [countdownTick, setCountdownTick] = useState(0);
-  useEffect(() => {
-    const timer = setInterval(() => setCountdownTick((t) => t + 1), 30000);
-    return () => clearInterval(timer);
-  }, []);
-  const countdown = useMemo(
-    () => getCountdownText(order.requested_date, order.requested_time),
-    [order.requested_date, order.requested_time, countdownTick],
-  );
-
-  // Filter modifications to only include kitchen preparation relevant changes
-  const kitchenMods = useMemo(() => {
-    return consolidateModifications(order.modifications, { isKitchen: true });
-  }, [order.modifications]);
-
-  const unackMods = kitchenMods.filter((m) => !m.acknowledgedAt);
-  const hasUnack = unackMods.length > 0;
-  const isEdited = hasUnack || kitchenMods.length > 0;
-
-  // Filter out packaging accessories to show as a compact secondary summary
-  const packagingKeywords = [
-    "شمعة",
-    "شموع",
-    "بالون",
-    "بالونات",
-    "توبر",
-    "كرت",
-    "topper",
-    "candle",
-    "balloon",
-  ];
-  const mainItems = order.items.filter(
-    (it) => !packagingKeywords.some((kw) => (it.name_ar || "").toLowerCase().includes(kw)),
-  );
-  const accessoryItems = order.items.filter((it) =>
-    packagingKeywords.some((kw) => (it.name_ar || "").toLowerCase().includes(kw)),
-  );
-
-  return (
-    <article
-      className={`relative flex flex-col justify-between rounded-3xl border p-4 shadow-sm transition-all hover:shadow-md ${orderPrio.cardBg} ${
-        hasUnack ? "border-amber-400 shadow-md ring-2 shadow-amber-500/20 ring-amber-500" : ""
-      }`}
-    >
-      {/* Top Priority Accent Strip */}
-      <div
-        className="absolute inset-x-0 top-0 h-2 rounded-t-3xl"
-        style={{ backgroundColor: priorityMeta.swatch || priorityMeta.bg }}
-      />
-
-      <div className="space-y-3 pt-1.5">
-        {/* Card Header: Order Number, Method, SLA countdown, Delivery Time */}
-        <div
-          onClick={() => onOpenDetails(order)}
-          className="group/hdr flex cursor-pointer items-start justify-between gap-2 border-b border-border/80 pb-3 transition hover:opacity-95"
-          title="اضغط لفتح صفحة وتفاصيل الطلب كاملة"
-        >
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-lg leading-tight font-black text-foreground transition group-hover/hdr:text-primary sm:text-xl">
-                {orderLabel(order.order_number, order.staff_code)}
-              </h2>
-              {isEdited && (
-                <span
-                  className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-black shadow-2xs ${
-                    hasUnack
-                      ? "animate-pulse border-amber-400 bg-amber-500 text-white"
-                      : "border-amber-300 bg-amber-100 text-amber-900"
-                  }`}
-                >
-                  <PencilLine className="h-3.5 w-3.5" />
-                  {hasUnack ? "⚠️ طلب معدّل - انتبه!" : "معدّل ✓"}
-                </span>
-              )}
-            </div>
-
-            <div className="mt-1 flex items-center gap-2">
-              <span className="text-xs font-bold text-muted-foreground">
-                العميل: <strong className="text-foreground">{order.customer_name}</strong>
-              </span>
-              <span className="rounded-lg border border-border/70 bg-secondary px-2 py-0.5 text-[11px] font-black text-foreground">
-                {order.method === "delivery" ? "توصيل 🛵" : "استلام 🏪"}
-              </span>
-            </div>
-          </div>
-
-          {/* Delivery Time & SLA Countdown Badge */}
-          <div className="flex shrink-0 flex-col items-end gap-1">
-            <span
-              className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-black shadow-2xs ${
-                countdown.status === "overdue"
-                  ? "animate-pulse border-red-500 bg-red-600 text-sm text-white"
-                  : countdown.status === "urgent"
-                    ? "animate-pulse border-amber-400 bg-amber-500 text-white"
-                    : countdown.status === "safe"
-                      ? "border-emerald-500 bg-emerald-600 text-white"
-                      : "border-amber-300 bg-amber-100 font-bold text-amber-950"
-              }`}
-            >
-              <Clock3 className="h-3.5 w-3.5" />
-              {countdown.text}
-            </span>
-            <span className="flex items-center gap-1 text-xs font-black text-foreground">
-              ⏰ {formatTimeSlotArabic(order.requested_time)}
-            </span>
-          </div>
-        </div>
-
-        {/* 1. ORIGINAL ORDER PREPARATION SPECS (الأصناف، الحشوات، الكتابة، التصميم) */}
-        <div className="space-y-2.5">
-          <div className="flex items-center justify-between border-b border-border/50 pb-1 text-xs font-black text-foreground/80">
-            <span className="flex items-center gap-1.5">
-              <Cake className="h-4 w-4 text-amber-600" />
-              <span>مواصفات وتجهيز الطلب:</span>
-            </span>
-            <span className="text-[11px] font-bold text-muted-foreground">
-              {mainItems.length} صنف
-            </span>
-          </div>
-
-          {/* Cake Items List */}
-          {(mainItems.length > 0 ? mainItems : order.items).map((item) => (
-            <div
-              key={item.id}
-              className="space-y-2 rounded-2xl border border-border/80 bg-secondary/50 p-3.5 shadow-2xs"
-            >
-              <div className="flex items-baseline justify-between gap-1">
-                <span className="text-lg leading-snug font-black text-foreground sm:text-xl">
-                  {item.quantity} × {item.name_ar}
-                </span>
-                {item.category && (
-                  <span className="rounded-full border border-border/60 bg-card px-2.5 py-0.5 text-[11px] font-bold text-muted-foreground">
-                    {item.category}
-                  </span>
-                )}
-              </div>
-
-              {(() => {
-                const cleanOptions = item.options_ar.filter((opt) => !isChannelOrMeta(opt));
-                if (cleanOptions.length === 0) return null;
-                return (
-                  <ul className="mr-0.5 space-y-1 border-r-2 border-amber-400/60 pt-1 pr-1 text-xs font-bold text-foreground/90">
-                    {cleanOptions.map((option, idx) => (
-                      <li key={idx} className="flex items-start gap-1.5 leading-snug">
-                        <span className="font-black text-amber-800 dark:text-amber-300">•</span>
-                        <span>{option}</span>
-                      </li>
-                    ))}
-                  </ul>
-                );
-              })()}
-
-              {item.notes && (
-                <p className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-2 text-xs font-black text-amber-900 dark:text-amber-200">
-                  ملاحظة الصنف: {item.notes}
-                </p>
-              )}
-            </div>
-          ))}
-
-          {/* Simple compact card / cake writing line among order info */}
-          {order.inscription && (
-            <div className="flex items-start gap-2 rounded-xl border border-amber-500/20 bg-amber-500/10 p-2.5 text-xs">
-              <span className="flex shrink-0 items-center gap-1 font-black text-amber-900 dark:text-amber-200">
-                <span>🎂</span>
-                <span>الكتابة المطلوبة / الكرت:</span>
-              </span>
-              <span className="font-bold break-words text-foreground select-all">
-                "{order.inscription}"
-              </span>
-            </div>
-          )}
-
-          {order.card_note && order.card_note !== order.inscription && (
-            <div className="flex items-start gap-2 rounded-xl border border-amber-500/20 bg-amber-500/10 p-2.5 text-xs">
-              <span className="flex shrink-0 items-center gap-1 font-black text-amber-900 dark:text-amber-200">
-                <span>💌</span>
-                <span>الكتابة على الكرت:</span>
-              </span>
-              <span className="font-bold break-words text-foreground select-all">
-                "{order.card_note}"
-              </span>
-            </div>
-          )}
-
-          {/* PACKAGING ACCESSORIES SUMMARY (Candles, Toppers, Balloons) */}
-          {accessoryItems.length > 0 && (
-            <div className="rounded-2xl border border-border/70 bg-secondary/50 p-2.5 text-xs font-bold text-muted-foreground">
-              <span className="font-black text-foreground">ملحقات التغليف والشموع: </span>
-              {accessoryItems.map((acc) => `${acc.quantity} × ${acc.name_ar}`).join(" • ")}
-            </div>
-          )}
-
-          {/* REFERENCE DESIGN IMAGE THUMBNAILS */}
-          {(() => {
-            const designImages = parseDesignImageUrls(order.design_image_url);
-            if (designImages.length === 0) return null;
-            return (
-              <div className="space-y-1.5 rounded-2xl border border-border bg-card p-2.5 shadow-2xs">
-                <div className="flex items-center justify-between gap-2">
-                  <button
-                    type="button"
-                    onClick={() => onZoom(designImages[0]!)}
-                    className="flex min-h-[46px] cursor-pointer items-center gap-2.5 text-xs font-black text-primary hover:underline"
-                  >
-                    <img
-                      src={designImages[0]!}
-                      alt="تصميم الكيك"
-                      className="h-11 w-11 shrink-0 rounded-xl border border-border object-cover shadow-xs"
-                    />
-                    <span>
-                      {designImages.length > 1
-                        ? `صور التصميم المرجعية (${designImages.length} صور) 🔍`
-                        : "صورة التصميم المرجعية (عرض وتكبير كامل) 🔍"}
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void downloadDesignImage(designImages[0]!, order.order_number)}
-                    title="تنزيل للطباعة الغذائية"
-                    className="grid h-11 w-11 cursor-pointer place-items-center rounded-xl border border-border text-foreground hover:bg-secondary"
-                  >
-                    <Download className="h-4 w-4" />
-                  </button>
-                </div>
-                {designImages.length > 1 && (
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    {designImages.map((imgUrl, idx) => (
-                      <button
-                        key={imgUrl}
-                        type="button"
-                        onClick={() => onZoom(imgUrl)}
-                        className="relative cursor-pointer overflow-hidden rounded-lg border border-border hover:ring-2 hover:ring-primary"
-                      >
-                        <img
-                          src={imgUrl}
-                          alt={`تصميم ${idx + 1}`}
-                          className="h-12 w-12 object-cover"
-                        />
-                        <span className="absolute top-0.5 right-0.5 rounded bg-black/65 px-1 text-[9px] font-bold text-white">
-                          {idx + 1}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })()}
-
-          {order.notes && (
-            <div className="rounded-xl border border-border/60 bg-secondary/40 p-2.5 text-xs text-muted-foreground">
-              <span className="font-black text-foreground">ملاحظات العميل: </span>
-              <span>{order.notes}</span>
-            </div>
-          )}
-        </div>
-
-        {/* شريط تنبيه التعديلات الإنتاجية المدمج والأنيق للمطبخ */}
-        {kitchenMods.length > 0 && hasUnack && (
-          <div className="animate-in space-y-2 rounded-2xl border border-amber-400/80 bg-amber-500/10 p-2.5 shadow-2xs duration-150 fade-in sm:p-3">
-            <div className="flex items-center justify-between gap-2 border-b border-amber-400/30 pb-1.5">
-              <div className="flex items-center gap-1.5 text-xs font-black text-amber-950 dark:text-amber-200">
-                <span className="animate-pulse text-amber-600">⚠️</span>
-                <span>تعديل في مواصفات الطلب:</span>
-              </div>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const targetModIds = unackMods
-                    .map((m: any) => m.id || m.updatedAt)
-                    .filter(Boolean);
-                  onAck(order.id, targetModIds);
-                }}
-                className="flex min-h-[30px] shrink-0 cursor-pointer items-center gap-1 rounded-lg bg-emerald-600 px-3 text-[11px] font-black text-white shadow-xs transition-all hover:bg-emerald-700 active:scale-95"
-                title="اعتماد التعديل في المطبخ"
-              >
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                <span>اعتمدت ✓</span>
-              </button>
-            </div>
-
-            <div className="space-y-1.5 text-xs">
-              {kitchenMods.map((mod, idx) => (
-                <div
-                  key={idx}
-                  className="flex flex-wrap items-center gap-1.5 font-bold text-foreground"
-                >
-                  <span className="font-black text-amber-900 dark:text-amber-300">
-                    🔹 {mod.field}:
-                  </span>
-                  {mod.newValue && mod.newValue !== "— (تم حذفه)" && (
-                    <span className="rounded-lg border border-emerald-500/30 bg-emerald-500/15 px-2 py-0.5 font-black text-emerald-800 dark:text-emerald-300">
-                      {mod.newValue}
-                    </span>
-                  )}
-                  {(mod.newValue === "— (تم حذفه)" || !mod.newValue) && mod.oldValue && (
-                    <span className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-2 py-0.5 font-black text-rose-700 line-through opacity-70 dark:text-rose-400">
-                      {mod.oldValue}
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* FOOTER & ACTIONS (Large tactile touch buttons) */}
-      <div className="mt-4 space-y-2 border-t border-border/80 pt-3">
-        {/* Open Order Details Modal Button */}
-        <button
-          type="button"
-          onClick={() => onOpenDetails(order)}
-          title="عرض تفاصيل ومواصفات الطلب كاملة"
-          className="inline-flex min-h-[44px] w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/15 text-xs font-black text-amber-950 shadow-2xs transition hover:bg-amber-500/25 active:scale-[0.98] dark:text-amber-100"
-        >
-          <Eye className="h-4 w-4 text-amber-700 dark:text-amber-300" />
-          <span>📋 فتح صفحة الطلب</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => printKitchenTicket(order)}
-          title="طباعة تذكرة المطبخ"
-          className="inline-flex min-h-[44px] w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-border bg-secondary/70 text-xs font-black text-foreground shadow-2xs hover:bg-secondary active:scale-95"
-        >
-          <Printer className="h-4 w-4" />
-          🖨️ طباعة تذكرة حرارية للمطبخ
-        </button>
-
-        {/* Stage Transition Action Button (52px high) */}
-        {stage === "new" && (
-          <button
-            type="button"
-            onClick={() => void onStage(order.id, "baking")}
-            disabled={busy}
-            className="inline-flex min-h-[52px] w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-amber-600 text-sm font-black text-white shadow-md hover:bg-amber-700 active:scale-95 disabled:opacity-60"
-          >
-            {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <Play className="h-5 w-5" />}[
-            بدء الخبز والتزيين والكريمة 👩‍🍳 ]
-          </button>
-        )}
-
-        {stage === "baking" && (
-          <button
-            type="button"
-            onClick={() => void onStage(order.id, "ready")}
-            disabled={busy}
-            className="inline-flex min-h-[52px] w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-blue-600 text-sm font-black text-white shadow-md hover:bg-blue-700 active:scale-95 disabled:opacity-60"
-          >
-            {busy ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
-              <CheckCircle2 className="h-5 w-5" />
-            )}
-            [ تم الانتهاء وجاهز للتسليم ✨ ]
-          </button>
-        )}
-
-        {stage === "ready" && (
-          <div className="flex gap-2">
-            <span className="inline-flex min-h-[52px] flex-1 items-center justify-center gap-2 rounded-2xl bg-emerald-600 text-xs font-black text-white shadow-xs">
-              <CheckCircle2 className="h-4 w-4" /> جاهز للتسليم بالمحل ✓
-            </span>
-            <button
-              type="button"
-              onClick={() => void onStage(order.id, "baking")}
-              disabled={busy}
-              title="تراجع إلى قيد التجهيز"
-              className="inline-flex min-h-[52px] cursor-pointer items-center justify-center rounded-2xl border border-border bg-card px-4 text-xs font-black text-foreground hover:bg-secondary"
-            >
-              <Undo2 className="h-4 w-4" />
-            </button>
-          </div>
-        )}
-      </div>
-    </article>
-  );
-});
-
-/**
- * Detailed Order Page / Modal for Kitchen Staff
- * Displays preparation specifications smoothly like the confirmation message / structured list
- * without communication channels or fragmented keywords.
- */
-function KitchenOrderDetailsModal({
-  order,
-  onClose,
-  onStage,
-  onPrintTicket,
-  onZoom,
-}: {
-  order: KdsOrder;
-  onClose: () => void;
-  onStage: (id: string, stage: KitchenStage) => void;
-  onPrintTicket: (order: KdsOrder) => void;
-  onZoom: (url: string) => void;
-}) {
-  const stage = stageOf(order.status);
-  const kitchenMods = useMemo(() => {
-    return consolidateModifications(order.modifications, { isKitchen: true });
-  }, [order.modifications]);
-  const packagingKeywords = [
-    "شمعة",
-    "شموع",
-    "بالون",
-    "بالونات",
-    "توبر",
-    "كرت",
-    "topper",
-    "candle",
-    "balloon",
-  ];
-  const mainItems = order.items.filter(
-    (it) => !packagingKeywords.some((kw) => (it.name_ar || "").toLowerCase().includes(kw)),
-  );
-  const accessoryItems = order.items.filter((it) =>
-    packagingKeywords.some((kw) => (it.name_ar || "").toLowerCase().includes(kw)),
-  );
-
-  return (
-    <div
-      onClick={onClose}
-      className="fixed inset-0 z-50 flex animate-in items-center justify-center overflow-y-auto bg-black/75 p-3 backdrop-blur-sm duration-150 fade-in sm:p-4"
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="relative flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-2xl"
-      >
-        {/* Modal Sticky Header */}
-        <div className="flex shrink-0 items-center justify-between border-b border-border bg-secondary/30 p-4">
-          <div className="flex items-center gap-2.5">
-            <div className="grid h-10 w-10 place-items-center rounded-2xl bg-amber-500 text-white shadow-xs">
-              <Cake className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-lg font-black text-foreground">
-                  طلب {orderLabel(order.order_number, order.staff_code)}
-                </h2>
-                <span className="rounded-full border border-border bg-secondary px-2.5 py-0.5 text-[11px] font-black text-foreground">
-                  {order.method === "delivery" ? "توصيل 🛵" : "استلام من المحل 🏪"}
-                </span>
-              </div>
-              <p className="text-xs font-bold text-muted-foreground">
-                العميل: <strong className="text-foreground">{order.customer_name}</strong>
-              </p>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="grid h-9 w-9 cursor-pointer place-items-center rounded-full bg-secondary text-foreground transition hover:bg-secondary/80"
-            title="إغلاق"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        {/* Modal Scrollable Body formatted smoothly like Confirmation Message */}
-        <div className="space-y-4 overflow-y-auto p-4 text-foreground sm:p-6">
-          {/* 1. Time & Fulfilment Banner */}
-          <div className="space-y-1.5 rounded-2xl border border-amber-300/80 bg-gradient-to-r from-amber-500/10 via-amber-400/5 to-amber-500/10 p-3.5">
-            <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-black text-amber-950 dark:text-amber-100">
-              <span className="flex items-center gap-1.5 text-sm">
-                <span>📅</span>
-                <span>موعد التجهيز والتسليم:</span>
-              </span>
-              <span className="text-sm font-black text-amber-900 dark:text-amber-200">
-                {formatArabicDate(order.requested_date)} ⏰{" "}
-                {formatTimeSlotArabic(order.requested_time)}
-              </span>
-            </div>
-            <div className="flex items-center gap-3 border-t border-amber-300/40 pt-1 text-xs font-bold text-muted-foreground">
-              <span>
-                🚗 طريقة التسليم:{" "}
-                <strong className="text-foreground">
-                  {order.method === "delivery" ? "توصيل" : "استلام من المحل"}
-                </strong>
-              </span>
-              <span>•</span>
-              <span>
-                👤 العميل: <strong className="text-foreground">{order.customer_name}</strong>
-              </span>
-            </div>
-          </div>
-
-          {/* 2. Items & Preparation Specs List */}
-          <div className="space-y-3 rounded-2xl border border-border bg-secondary/30 p-4">
-            <h3 className="flex items-center gap-2 border-b border-border/60 pb-2 text-sm font-black text-[#5D2E17] dark:text-amber-300">
-              <span>🎂</span>
-              <span>تفاصيل ومواصفات الطلب للتجهيز:</span>
-            </h3>
-
-            <div className="space-y-3">
-              {(mainItems.length > 0 ? mainItems : order.items).map((item, idx) => {
-                const cleanOptions = item.options_ar.filter((opt) => !isChannelOrMeta(opt));
-                return (
-                  <div
-                    key={item.id || idx}
-                    className="space-y-2 rounded-xl border border-border/80 bg-card p-3 shadow-2xs"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-base font-black text-foreground">
-                        {item.quantity} × {item.name_ar}
-                      </span>
-                      {item.category && (
-                        <span className="rounded-full bg-secondary px-2.5 py-0.5 text-[11px] font-bold text-muted-foreground">
-                          {item.category}
-                        </span>
-                      )}
-                    </div>
-
-                    {cleanOptions.length > 0 && (
-                      <ul className="space-y-1 border-r-2 border-amber-400 pr-2 text-xs font-bold text-foreground/90">
-                        {cleanOptions.map((opt, oIdx) => (
-                          <li key={oIdx} className="flex items-start gap-1.5">
-                            <span className="font-black text-amber-800 dark:text-amber-300">•</span>
-                            <span>{opt}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-
-                    {item.notes && (
-                      <p className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-2 text-xs font-bold text-amber-950 dark:text-amber-100">
-                        <span className="font-black text-amber-800 dark:text-amber-300">
-                          ملاحظة الصنف:{" "}
-                        </span>
-                        <span>{item.notes}</span>
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* 3. Inscription / Card Writing */}
-          {(order.inscription || order.card_note) && (
-            <div className="space-y-2 rounded-2xl border border-amber-300/80 bg-amber-50/70 p-3.5 dark:bg-amber-950/20">
-              <h3 className="flex items-center gap-1.5 text-xs font-black text-amber-950 dark:text-amber-100">
-                <span>🎀</span>
-                <span>الكتابة المطلوبة على الكرت أو الكيكة:</span>
-              </h3>
-              {order.inscription && (
-                <p className="rounded-xl border border-amber-300/60 bg-card p-2.5 text-sm font-black text-foreground select-all">
-                  "{order.inscription}"
-                </p>
-              )}
-              {order.card_note && order.card_note !== order.inscription && (
-                <p className="rounded-xl border border-amber-300/60 bg-card p-2.5 text-sm font-black text-foreground select-all">
-                  <span className="mb-0.5 block text-xs text-muted-foreground">نص الكرت:</span>"
-                  {order.card_note}"
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* 4. Accessories */}
-          {accessoryItems.length > 0 && (
-            <div className="rounded-2xl border border-border bg-secondary/40 p-3 text-xs">
-              <span className="mb-1 block font-black text-foreground">
-                📦 ملحقات التغليف والشموع:
-              </span>
-              <ul className="list-inside list-disc space-y-0.5 font-bold text-muted-foreground">
-                {accessoryItems.map((acc, aIdx) => (
-                  <li key={aIdx}>
-                    {acc.quantity} × {acc.name_ar}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* 5. Reference Design Images */}
-          {(() => {
-            const designImages = parseDesignImageUrls(order.design_image_url);
-            if (designImages.length === 0) return null;
-            return (
-              <div className="space-y-2.5 rounded-2xl border border-border bg-card p-3">
-                <div className="flex items-center justify-between">
-                  <span className="block text-xs font-black text-primary">
-                    {designImages.length > 1
-                      ? `صور التصميم المرجعية (${designImages.length} صور — اضغط للتكبير) 🔍`
-                      : "صورة التصميم المرجعية (اضغط للتكبير) 🔍"}
-                  </span>
-                  <span className="text-[11px] font-bold text-muted-foreground">
-                    معاينة الشكل والديكور المعتمد
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-                  {designImages.map((imgUrl, idx) => (
-                    <div
-                      key={imgUrl}
-                      className="relative overflow-hidden rounded-xl border border-border bg-slate-50"
-                    >
-                      <img
-                        src={imgUrl}
-                        alt={`تصميم الكيك ${idx + 1}`}
-                        onClick={() => onZoom(imgUrl)}
-                        className="h-28 w-full cursor-pointer object-cover transition hover:opacity-95"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => void downloadDesignImage(imgUrl, `${order.order_number}-${idx + 1}`)}
-                        className="absolute bottom-1.5 left-1.5 grid h-8 w-8 cursor-pointer place-items-center rounded-lg border border-border bg-white/95 text-foreground shadow-xs hover:bg-secondary"
-                        title="تنزيل للطباعة"
-                      >
-                        <Download className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })()}
-
-          {/* 6. Customer Notes */}
-          {order.notes && (
-            <div className="rounded-2xl border border-border/70 bg-secondary/30 p-3 text-xs">
-              <span className="mb-0.5 block font-black text-foreground">💬 ملاحظات العميل:</span>
-              <span className="font-bold text-muted-foreground">{order.notes}</span>
-            </div>
-          )}
-
-          {/* 7. Modifications List (at the bottom, new value only) */}
-          {kitchenMods.length > 0 && (
-            <div className="space-y-2 rounded-2xl border border-border/80 bg-secondary/20 p-3.5 text-xs shadow-2xs">
-              <div className="flex items-center justify-between border-b border-border/60 pb-1.5">
-                <span className="flex items-center gap-1.5 font-black text-foreground">
-                  <span>📋</span>
-                  <span>التعديلات</span>
-                </span>
-              </div>
-              <div className="space-y-1.5">
-                {kitchenMods.map((mod, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center justify-between gap-2 rounded-xl border border-border/60 bg-card p-2 text-xs"
-                  >
-                    <div className="flex items-center gap-1.5 font-bold text-foreground">
-                      <span className="font-black text-primary">• {mod.field}:</span>
-                      <span className="rounded-md border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 font-black text-emerald-800 dark:text-emerald-300">
-                        {mod.newValue}
-                      </span>
-                    </div>
-                    {mod.updatedAt && (
-                      <span className="font-mono text-[10px] text-muted-foreground" dir="ltr">
-                        {new Date(mod.updatedAt).toLocaleTimeString("ar-JO", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Modal Sticky Footer Actions */}
-        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border bg-card p-3.5">
-          <button
-            type="button"
-            onClick={() => onPrintTicket(order)}
-            className="flex min-h-[44px] cursor-pointer items-center gap-1.5 rounded-xl border border-border bg-secondary px-4 text-xs font-black text-foreground transition hover:bg-secondary/80"
-          >
-            <Printer className="h-4 w-4" />
-            <span>طباعة تذكرة المطبخ</span>
-          </button>
-
-          <div className="flex items-center gap-2">
-            {stage === "new" && (
-              <button
-                type="button"
-                onClick={() => {
-                  void onStage(order.id, "baking");
-                  onClose();
-                }}
-                className="min-h-[44px] cursor-pointer rounded-xl bg-amber-600 px-5 text-xs font-black text-white shadow-sm transition hover:bg-amber-700 active:scale-95"
-              >
-                [ بدء الخبز والتزيين والكريمة 👨‍🍳 ]
-              </button>
-            )}
-
-            {stage === "baking" && (
-              <button
-                type="button"
-                onClick={() => {
-                  void onStage(order.id, "ready");
-                  onClose();
-                }}
-                className="min-h-[44px] cursor-pointer rounded-xl bg-emerald-600 px-5 text-xs font-black text-white shadow-sm transition hover:bg-emerald-700 active:scale-95"
-              >
-                [ تم تجهيز الكيكة بالكامل والتغليف ✅ ]
-              </button>
-            )}
-
-            <button
-              type="button"
-              onClick={onClose}
-              className="min-h-[44px] cursor-pointer rounded-xl border border-border bg-background px-4 text-xs font-bold text-foreground transition hover:bg-secondary"
-            >
-              إغلاق
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export function KitchenPanel() {
   const navigate = useNavigate();
@@ -1065,7 +80,6 @@ export function KitchenPanel() {
   const ackModFn = useServerFn(acknowledgeOrderModification);
 
   const [filter, setFilter] = useState<DateFilterKey>("today");
-  const [custom, setCustom] = useState<CustomRange>({ from: isoDay(0), to: isoDay(0) });
   const [viewMode, setViewMode] = useState<"board" | "calendar">("board");
   const [pending, setPending] = useState<string | null>(null);
   const [alerts, setAlerts] = useState<string[]>([]);
@@ -1076,33 +90,27 @@ export function KitchenPanel() {
 
   const enableAudio = useCallback(() => {
     try {
-      const ctx = new (
-        window.AudioContext ||
-        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
-      )();
-      if (ctx.state === "suspended") {
+      const ctx = getSharedAudioCtx();
+      if (ctx && ctx.state === "suspended") {
         void ctx.resume();
       }
       playKitchenChimeSound();
-    } catch {
-      /* ignore */
+    } catch (err) {
+      console.warn("[KitchenPanel] enableAudio error:", err);
     }
     setAudioUnlocked(true);
     setSoundEnabled(true);
   }, []);
 
-  // Unlock browser audio context automatically on user's first click anywhere on the page
+  // Unlock browser audio context automatically on user's first interaction
   useEffect(() => {
     const handleFirstInteraction = () => {
       setAudioUnlocked(true);
       try {
-        const ctx = new (
-          window.AudioContext ||
-          (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
-        )();
-        if (ctx.state === "suspended") void ctx.resume();
-      } catch {
-        /* ignore */
+        const ctx = getSharedAudioCtx();
+        if (ctx && ctx.state === "suspended") void ctx.resume();
+      } catch (err) {
+        console.warn("[KitchenPanel] audio unlock error:", err);
       }
       window.removeEventListener("click", handleFirstInteraction);
       window.removeEventListener("touchstart", handleFirstInteraction);
@@ -1120,30 +128,7 @@ export function KitchenPanel() {
     };
   }, []);
 
-  const access = useQuery({
-    queryKey: ["kitchen-access"],
-    queryFn: async () => {
-      try {
-        const res = await fetchAccess({});
-        if (res?.allowed) return res;
-      } catch (err) {
-        console.warn("[KitchenPanel] fetchAccess error, using direct user_roles check:", err);
-      }
-      const { data: sessionData } = await supabase.auth.getUser();
-      if (!sessionData?.user) return { allowed: false, roles: [] };
-      const { data: roleRows } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", sessionData.user.id);
-      const userRoles = (roleRows ?? []).map((r) => r.role as string);
-      return {
-        allowed: userRoles.includes("kitchen") || userRoles.includes("admin"),
-        roles: userRoles,
-      };
-    },
-    staleTime: 30_000,
-    gcTime: 60_000,
-  });
+  const access = useStaffAccess(["kitchen-access"], () => fetchAccess({}), ["kitchen", "admin"]);
 
   const orders = useQuery({
     queryKey: ORDERS_KEY,
@@ -1152,13 +137,9 @@ export function KitchenPanel() {
     refetchInterval: 10_000,
   });
 
-  // Keep kitchen screen active during operational hours
   useScreenWakeLock(true);
-
-  // Realtime subscription (refetches the kitchen queue on any order change)
   const realtime = useOrdersRealtime(ORDERS_KEY, true, "kitchen-live");
 
-  // Any newly appearing order or modification raises an alert and rings the kitchen chime.
   const knownIds = useRef<Set<string> | null>(null);
   const knownModTimestamps = useRef<Map<string, string>>(new Map());
 
@@ -1170,11 +151,9 @@ export function KitchenPanel() {
     if (!knownIds.current) {
       knownIds.current = new Set(ids);
       rows.forEach((r) => {
-        const unack = (r.modifications || [])
-          .filter(isKitchenRelevantModification)
-          .filter((m) => !m.acknowledgedAt);
-        if (unack.length > 0) {
-          knownModTimestamps.current.set(r.id, unack[0]?.updatedAt || r.last_edited_at || "init");
+        const unackKey = computeUnackModKey(r);
+        if (unackKey) {
+          knownModTimestamps.current.set(r.id, unackKey);
         }
       });
       return;
@@ -1183,22 +162,16 @@ export function KitchenPanel() {
     const fresh = ids.filter((id) => !knownIds.current!.has(id));
     knownIds.current = new Set(ids);
 
-    // Detect newly modified orders with unacknowledged changes relevant to kitchen
     const newlyModified: string[] = [];
     rows.forEach((r) => {
-      const unack = (r.modifications || [])
-        .filter(isKitchenRelevantModification)
-        .filter((m) => !m.acknowledgedAt);
-      if (unack.length > 0) {
-        const latestUnackTime = unack.reduce(
-          (latest, m) => (m.updatedAt > latest ? m.updatedAt : latest),
-          "",
-        );
-        const unackKey = `${(r as any).version || 1}_${unack.map((m) => (m as any).id || m.updatedAt).join(",")}_${latestUnackTime}`;
+      const unackKey = computeUnackModKey(r);
+      if (unackKey) {
         if (knownModTimestamps.current.get(r.id) !== unackKey) {
           newlyModified.push(r.id);
           knownModTimestamps.current.set(r.id, unackKey);
         }
+      } else {
+        knownModTimestamps.current.delete(r.id);
       }
     });
 
@@ -1206,18 +179,14 @@ export function KitchenPanel() {
     if (toAlert.length === 0) return;
 
     if (soundEnabled) {
-      if (newlyModified.length > 0) {
-        try {
+      try {
+        if (newlyModified.length > 0) {
           playKitchenModificationChimeSound();
-        } catch {
-          /* ignore */
-        }
-      } else {
-        try {
+        } else {
           playKitchenChimeSound();
-        } catch {
-          /* ignore */
         }
+      } catch (err) {
+        console.warn("[KitchenPanel] chime playback error:", err);
       }
     }
     setAlerts((curr) => [...curr, ...toAlert.filter((id) => !curr.includes(id))]);
@@ -1225,77 +194,15 @@ export function KitchenPanel() {
 
   const rawOrdersList = useMemo(() => orders.data ?? [], [orders.data]);
 
-  const adaptedOrders: SalesOrder[] = useMemo(() => {
-    return rawOrdersList.map((k) => ({
-      id: k.id,
-      order_number: k.order_number,
-      staff_code: k.staff_code,
-      order_name: null,
-      sender_phone: null,
-      recipient_phone: null,
-      last_edited_at: k.last_edited_at ?? null,
-      queue_rank: null,
-      customer_name: k.customer_name,
-      customer_phone: "—",
-      method: k.method,
-      area: null,
-      address: null,
-      requested_date: k.requested_date,
-      requested_time: k.requested_time,
-      notes: k.notes,
-      staff_notes: null,
-      inscription: k.inscription,
-      design_image_url: k.design_image_url,
-      subtotal: 0,
-      delivery_fee: 0,
-      discount_amount: 0,
-      discount_percent: 0,
-      total: 0,
-      deposit_paid: 0,
-      payment_method: null,
-      driver_name: null,
-      driver_phone: null,
-      cancel_reason: null,
-      card_note: null,
-      final_photo_requested: false,
-      confirmation_message: null,
-      status: (k.status === "ready"
-        ? "ready"
-        : k.status === "baking"
-          ? "baking"
-          : "new") as SalesStatus,
-      schedule_updated_at: k.schedule_updated_at ?? null,
-      created_at: k.requested_date || new Date().toISOString(),
-      updated_at: k.requested_date || new Date().toISOString(),
-      modifications: k.modifications ?? null,
-      items: (k.items || []).map((it) => ({
-        id: it.id,
-        order_id: k.id,
-        product_id: null,
-        item_name: it.name_ar || it.name_en,
-        name_ar: it.name_ar,
-        name_en: it.name_en,
-        options_ar: it.options_ar || [],
-        quantity: it.quantity,
-        unit_price: 0,
-        total_price: 0,
-        notes: it.notes,
-        flavor: (it.options_ar || []).join(", "),
-        size: null,
-        category: it.category,
-        color: null,
-        filling: null,
-        photo_url: null,
-        priority_color: it.priority_color,
-        order_index: 0,
-      })),
-    })) as unknown as SalesOrder[];
-  }, [rawOrdersList]);
+  const activeKitchenOrder = useMemo(() => {
+    if (!selectedKitchenOrder) return null;
+    return rawOrdersList.find((o) => o.id === selectedKitchenOrder.id) ?? selectedKitchenOrder;
+  }, [rawOrdersList, selectedKitchenOrder]);
 
-  // FIFO AUTOMATIC SORTING: Sort by nearest deadline (requested_date ascending, then requested_time ascending)
+  // FIFO sorting by nearest requested date/time, then queue rank
   const visible = useMemo(() => {
     return rawOrdersList
-      .filter((order) => matchesDateFilter(order.requested_date, filter, custom))
+      .filter((order) => matchesDateFilter(order.requested_date, filter))
       .sort((a, b) => {
         const byDate = (a.requested_date || "").localeCompare(b.requested_date || "");
         if (byDate !== 0) return byDate;
@@ -1305,7 +212,7 @@ export function KitchenPanel() {
         const rankB = b.queue_rank ?? Number.MAX_SAFE_INTEGER;
         return rankA - rankB;
       });
-  }, [rawOrdersList, filter, custom]);
+  }, [rawOrdersList, filter]);
 
   const onStage = useCallback(
     async (id: string, stage: KitchenStage) => {
@@ -1316,8 +223,10 @@ export function KitchenPanel() {
       setPending(id);
       try {
         await applyStage({ data: { orderId: id, stage } });
-      } catch {
+      } catch (err) {
         if (previous) queryClient.setQueryData(ORDERS_KEY, previous);
+        console.error("[KitchenPanel] setKitchenStage error:", err);
+        toast.error(err instanceof Error ? err.message : "تعذر تحديث مرحلة الطلب في المطبخ");
       } finally {
         setPending(null);
       }
@@ -1333,6 +242,7 @@ export function KitchenPanel() {
         void queryClient.invalidateQueries({ queryKey: ORDERS_KEY });
       } catch (e) {
         console.error("Ack error:", e);
+        toast.error(e instanceof Error ? e.message : "تعذر اعتماد التعديل");
       }
     },
     [ackModFn, queryClient],
@@ -1385,7 +295,6 @@ export function KitchenPanel() {
       dir="rtl"
       className="min-h-screen w-full bg-background pb-20 font-sans text-foreground select-none"
     >
-      {/* 1. MASTER PRODUCTION COMMAND BAR */}
       <header className="sticky top-0 z-30 border-b border-border/80 bg-card/95 px-4 py-3 shadow-xs backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -1414,7 +323,6 @@ export function KitchenPanel() {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* View Mode Switcher */}
             <div className="flex rounded-2xl border border-border/70 bg-secondary/80 p-1">
               <button
                 type="button"
@@ -1442,7 +350,6 @@ export function KitchenPanel() {
               </button>
             </div>
 
-            {/* Quick Date Filter Chips (shown when in board view) */}
             {viewMode === "board" && (
               <div className="flex rounded-2xl border border-border/70 bg-secondary/60 p-1">
                 <button
@@ -1481,7 +388,6 @@ export function KitchenPanel() {
               </div>
             )}
 
-            {/* Sound Toggle Button / Audio Unlock */}
             {!audioUnlocked ? (
               <button
                 type="button"
@@ -1511,7 +417,6 @@ export function KitchenPanel() {
               </button>
             )}
 
-            {/* Live Connection Pill */}
             <div
               className={`flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-[11px] font-bold ${
                 realtime.isConnected
@@ -1534,7 +439,6 @@ export function KitchenPanel() {
               </span>
             </div>
 
-            {/* Refresh Button */}
             <button
               type="button"
               onClick={() => void queryClient.invalidateQueries({ queryKey: ORDERS_KEY })}
@@ -1549,11 +453,10 @@ export function KitchenPanel() {
         </div>
       </header>
 
-      {/* 2. MAIN CONTENT: CALENDAR OR THREE-STAGE PRODUCTION BOARD */}
       {viewMode === "calendar" ? (
         <main className="mx-auto max-w-7xl px-3 py-4 sm:px-4">
           <OrdersCalendar
-            orders={adaptedOrders}
+            orders={rawOrdersList}
             isKitchen={true}
             onOpen={(id) => {
               const k = rawOrdersList.find((x) => x.id === id);
@@ -1592,7 +495,6 @@ export function KitchenPanel() {
                   key={stage.key}
                   className={`flex flex-col overflow-hidden rounded-3xl border border-border/80 bg-card shadow-xs ${stage.border}`}
                 >
-                  {/* Stage Header */}
                   <div className="flex items-center justify-between border-b border-border/60 bg-secondary/30 p-3.5">
                     <div className="flex items-center gap-2">
                       <span className="text-base">{stage.icon}</span>
@@ -1604,16 +506,13 @@ export function KitchenPanel() {
                     <span className="text-[10px] font-bold text-muted-foreground">{stage.en}</span>
                   </div>
 
-                  {/* Orders Column List */}
                   <div className="min-h-[58vh] space-y-3.5 p-3">
                     {list.length > 0 ? (
                       list.map((order) => (
-                        <KdsCleanCard
+                        <KdsOrderCard
                           key={order.id}
                           order={order}
-                          stageBorder={stage.border}
                           busy={pending === order.id}
-                          alerted={alerts.includes(order.id)}
                           onAck={acknowledge}
                           onStage={onStage}
                           onZoom={setZoom}
@@ -1633,37 +532,16 @@ export function KitchenPanel() {
         </main>
       )}
 
-      {/* 3. FULLSCREEN REFERENCE DESIGN IMAGE MODAL */}
-      {zoom && (
-        <div
-          onClick={() => setZoom(null)}
-          className="fixed inset-0 z-50 flex animate-in flex-col items-center justify-center bg-black/95 p-4 backdrop-blur-lg duration-200 fade-in"
-        >
-          <div
-            className="relative flex max-h-[92vh] w-full max-w-4xl flex-col items-center"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <img
-              src={zoom}
-              alt="صورة التصميم المرجعية بملء الشاشة"
-              className="max-h-[80vh] max-w-full rounded-3xl border border-white/20 object-contain shadow-2xl"
-            />
-            <button
-              type="button"
-              onClick={() => setZoom(null)}
-              className="mt-4 flex min-h-[50px] cursor-pointer items-center gap-2 rounded-full bg-white px-8 text-sm font-black text-slate-950 shadow-2xl transition hover:bg-slate-100 active:scale-95"
-            >
-              <X className="h-5 w-5" />
-              إغلاق العرض (العودة إلى شاشة المطبخ)
-            </button>
-          </div>
-        </div>
-      )}
+      <ImageLightbox
+        src={zoom}
+        onClose={() => setZoom(null)}
+        alt="صورة التصميم المرجعية بملء الشاشة"
+        onDownload={(url) => void downloadDesignImage(url, "design")}
+      />
 
-      {/* 4. DETAILED ORDER SPECIFICATIONS MODAL (Clean list & Confirmation style) */}
-      {selectedKitchenOrder && (
+      {activeKitchenOrder && (
         <KitchenOrderDetailsModal
-          order={selectedKitchenOrder}
+          order={activeKitchenOrder}
           onClose={() => setSelectedKitchenOrder(null)}
           onStage={onStage}
           onPrintTicket={printKitchenTicket}

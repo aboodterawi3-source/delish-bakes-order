@@ -15,7 +15,8 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { getSocialStaffStats, type SocialStaffStatsResult } from "@/lib/social.functions";
-import { jordanDay } from "@/lib/date-filter";
+import { isoDay, jordanDay, todayIso } from "@/lib/date-filter";
+import { jd } from "@/lib/currency";
 import { getWhatsAppChatUrl } from "@/lib/whatsapp";
 import { OrderStatusBadge } from "@/components/staff/OrderStatusBadge";
 
@@ -32,23 +33,21 @@ export function SocialStaffOrdersStats() {
     },
   );
 
-  const now = useMemo(() => new Date(), []);
-  const todayStr = useMemo(() => jordanDay(now), [now]);
-  const monthPrefix = useMemo(() => todayStr.slice(0, 7), [todayStr]);
-  const sevenDaysAgo = useMemo(
-    () => new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-    [now],
-  );
-
   const filteredOrders = useMemo(() => {
     if (!data?.myOrders) return [];
+    const todayStr = todayIso();
+    const monthPrefix = todayStr.slice(0, 7);
+    const sevenDaysAgoStr = isoDay(-7);
     let list = data.myOrders;
 
     // Time filtering
     if (timeFilter === "today") {
       list = list.filter((o) => jordanDay(o.created_at) === todayStr);
     } else if (timeFilter === "week") {
-      list = list.filter((o) => o.created_at && o.created_at >= sevenDaysAgo);
+      list = list.filter((o) => {
+        const day = jordanDay(o.created_at);
+        return Boolean(day && day >= sevenDaysAgoStr);
+      });
     } else if (timeFilter === "month") {
       list = list.filter((o) => jordanDay(o.created_at).startsWith(monthPrefix));
     }
@@ -66,7 +65,7 @@ export function SocialStaffOrdersStats() {
     }
 
     return list;
-  }, [data?.myOrders, timeFilter, searchQuery, todayStr, sevenDaysAgo, monthPrefix]);
+  }, [data?.myOrders, timeFilter, searchQuery]);
 
   if (isPending) {
     return (
@@ -151,7 +150,7 @@ export function SocialStaffOrdersStats() {
           </div>
           <p className="text-2xl font-black text-[#8B4513]">{myStats.todayCount}</p>
           <p className="text-[11px] font-bold text-muted-foreground">
-            بقيمة: {myStats.todaySales.toFixed(2)} د.أ
+            بقيمة: {jd(myStats.todaySales)}
           </p>
         </div>
 
@@ -177,7 +176,7 @@ export function SocialStaffOrdersStats() {
           </div>
           <p className="text-2xl font-black text-[#8B4513]">{myStats.monthCount}</p>
           <p className="text-[11px] font-bold text-muted-foreground">
-            بقيمة: {myStats.monthSales.toFixed(2)} د.أ
+            بقيمة: {jd(myStats.monthSales)}
           </p>
         </div>
 
@@ -191,7 +190,7 @@ export function SocialStaffOrdersStats() {
           </div>
           <p className="text-2xl font-black text-[#3E2723]">{myStats.totalCount}</p>
           <p className="text-[11px] font-bold text-muted-foreground">
-            إجمالي: {myStats.totalSales.toFixed(2)} د.أ
+            إجمالي: {jd(myStats.totalSales)}
           </p>
         </div>
       </div>
@@ -332,13 +331,9 @@ export function SocialStaffOrdersStats() {
 
                     <div className="flex items-center gap-2">
                       {ord.deposit_paid > 0 && ord.deposit_paid < ord.total && (
-                        <span className="text-muted-foreground">
-                          مدفوع: {ord.deposit_paid.toFixed(2)} د.أ
-                        </span>
+                        <span className="text-muted-foreground">مدفوع: {jd(ord.deposit_paid)}</span>
                       )}
-                      <span className="text-sm font-black text-[#8B4513]">
-                        {ord.total.toFixed(2)} د.أ
-                      </span>
+                      <span className="text-sm font-black text-[#8B4513]">{jd(ord.total)}</span>
                     </div>
                   </div>
                 </div>

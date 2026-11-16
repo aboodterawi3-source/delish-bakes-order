@@ -15,7 +15,7 @@ export const PRIORITY_COLORS = [
 export type PriorityColor = (typeof PRIORITY_COLORS)[number];
 
 /** Used whenever nothing was chosen for the product or its category. */
-export const BASE_PRIORITY: PriorityColor = "soft_green";
+const BASE_PRIORITY: PriorityColor = "soft_green";
 
 export type PriorityMeta = {
   value: PriorityColor;

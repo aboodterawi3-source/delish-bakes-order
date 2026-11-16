@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertRole, type StaffRoleName } from "@/lib/role-guard";
+import { isValidUuid } from "@/lib/server-shared";
 
 /** Everyone who works the board may reorder the preparation queue. */
 const QUEUE_ROLES: StaffRoleName[] = ["admin", "sales", "social", "kitchen"];
@@ -20,24 +21,36 @@ export const setQueueRanks = createServerFn({ method: "POST" })
     return {
       items: items.map((item) => {
         const rank = Math.trunc(Number(item.queue_rank));
-        if (!item?.orderId) throw new Error("orderId is required");
+        if (!item?.orderId || !isValidUuid(item.orderId)) {
+          throw new Error("معرّف الطلب غير صالح · Valid orderId is required");
+        }
         if (!Number.isFinite(rank) || rank < 0 || rank > 100000) {
           throw new Error("ترتيب غير صالح · Invalid rank");
         }
-        return { orderId: String(item.orderId), queue_rank: rank };
+        return { orderId: String(item.orderId).trim(), queue_rank: rank };
       }),
     };
   })
   .handler(async ({ data, context }) => {
     await assertRole(context, QUEUE_ROLES);
+    const { hasSupabaseServiceRoleKey, supabaseAdmin } = await import(
+      "@/integrations/supabase/client.server"
+    );
+    // Kitchen staff is allowed to reorder the KDS queue, while direct RLS UPDATE
+    // on public.orders excludes kitchen; use elevated client only after assertRole.
+    const writer = hasSupabaseServiceRoleKey() ? supabaseAdmin : context.supabase;
+    let updated = 0;
     for (const item of data.items) {
-      const { error } = await context.supabase
+      const { data: row, error } = await writer
         .from("orders")
         .update({ queue_rank: item.queue_rank } as never)
-        .eq("id", item.orderId);
+        .eq("id", item.orderId)
+        .select("id")
+        .maybeSingle();
       if (error) throw new Error(error.message);
+      if (row) updated += 1;
     }
-    return { ok: true, updated: data.items.length };
+    return { ok: true, updated };
   });
 
 /**

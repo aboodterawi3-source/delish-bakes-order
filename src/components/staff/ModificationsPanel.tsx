@@ -14,8 +14,6 @@ import {
   Clock,
   CreditCard,
   Gift,
-  History,
-  Layers,
   Loader2,
   MessageCircle,
   Pencil,
@@ -23,9 +21,7 @@ import {
   Phone,
   Plus,
   Printer,
-  RotateCcw,
   Search,
-  SlidersHorizontal,
   Sparkles,
   Store,
   Tag,
@@ -45,9 +41,11 @@ import {
 
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useOrdersRealtime, broadcastKitchenUpdate } from "@/hooks/use-orders-realtime";
+import { useReceiptUpload } from "@/hooks/use-receipt-upload";
 import { orderLabel } from "@/lib/order-label";
-import { ORDERS_KEY, statusMeta, payMeta, printReceipt } from "@/components/staff/OrdersWorkspace";
-import { waNumber } from "@/lib/whatsapp";
+import { ORDERS_KEY, payMeta, statusMeta } from "@/lib/staff-orders-shared";
+import { printCustomerReceipt } from "@/lib/receipt-templates";
+import { getWhatsAppChatUrl } from "@/lib/whatsapp";
 import { jd } from "@/lib/currency";
 import {
   getSalesOrders,
@@ -59,177 +57,25 @@ import {
   type OrderItemPatch,
   type OrderPatch,
   type SalesOrder,
-  type OrderModification,
   type SalesStatus,
 } from "@/lib/sales.functions";
 import { applyOrderDiscount, getMyAuthorization } from "@/lib/authorization.functions";
-import { DELIVERY_ZONES, OTHER_GOVERNORATES_AREA, feeForArea } from "@/lib/delivery-zones";
-import { uploadPaymentReceipt } from "@/lib/receipt-upload.functions";
-import { convertToWebp } from "@/lib/image-webp";
 import { IMAGE_ACCEPT } from "@/lib/image-validation";
 import { extractReceiptImageUrl, attachReceiptImageUrl } from "@/lib/utils";
 import { DeliveryZoneSelect } from "@/components/delish/DeliveryZoneSelect";
 import { useStorefrontContent } from "@/hooks/use-storefront-content";
 import type { StorefrontProduct } from "@/lib/storefront-content";
 import { WebsiteRebuildPanel } from "@/components/staff/WebsiteRebuildPanel";
+import { TouchItemEditorSheet } from "@/components/staff/TouchItemEditorSheet";
 import {
-  CakeCustomizationPanel,
-  customizationSummary,
-  emptyCustomization,
-  type Customization,
-} from "@/components/delish/CakeCustomizationPanel";
-import {
-  TouchItemEditorSheet,
-  TouchItemSummaryCard,
-} from "@/components/staff/TouchItemEditorSheet";
+  editorInputClass as inputClass,
+  InteractiveItemEditorCard,
+} from "@/components/staff/InteractiveItemEditorCard";
 
-/** Replaces (or removes) a labelled extra such as «الحشوة: نوتيلا» in the list. */
-const withLabel = (list: string[], label: string, value: string) => {
-  const rest = list.filter((entry) => !entry.startsWith(`${label}:`));
-  return value ? [...rest, `${label}: ${value}`] : rest;
-};
-
-const inputClass =
-  "min-h-11 w-full rounded-xl border border-input bg-background px-3.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition";
 const boxedTextarea =
   "w-full rounded-xl border border-input bg-background p-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition";
 
-/** Displays order modification logs cleanly under order details. */
-export function ModificationsHistoryBox({
-  modifications,
-  lastEditedAt,
-}: {
-  modifications?: OrderModification[] | null | undefined;
-  lastEditedAt?: string | null | undefined;
-}) {
-  const [open, setOpen] = useState(true);
-
-  if ((!modifications || modifications.length === 0) && !lastEditedAt) {
-    return (
-      <div className="flex items-center gap-2 rounded-xl border border-dashed border-border bg-muted/20 px-3.5 py-2.5 text-xs text-muted-foreground">
-        <span>ℹ️</span>
-        <span>لا توجد تعديلات سابقة مسجلة على هذا الطلب حتى الآن.</span>
-      </div>
-    );
-  }
-
-  const baselineMod = (modifications ?? []).find(
-    (m) => m.field.includes("الطلب الأساسي") || m.field.includes("النسخة الأصلية"),
-  );
-  const regularMods = (modifications ?? []).filter(
-    (m) => !m.field.includes("الطلب الأساسي") && !m.field.includes("النسخة الأصلية"),
-  );
-
-  return (
-    <div className="rounded-2xl border border-amber-300/80 bg-amber-50/70 p-3.5 text-xs text-amber-950 shadow-xs">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-200/80 pb-2">
-        <button
-          type="button"
-          onClick={() => setOpen((prev) => !prev)}
-          className="flex cursor-pointer items-center gap-2 font-black text-amber-950 hover:underline"
-        >
-          <History className="h-4 w-4 text-amber-700" />
-          <span>سجل الطلب التعديلات والتدقيق ({modifications?.length ?? 0} سجلات)</span>
-          <span className="rounded-full bg-amber-200/80 px-2 py-0.5 text-[10px] font-bold text-amber-800">
-            {open ? "إخفاء التفاصيل ▲" : "عرض التفاصيل ▼"}
-          </span>
-        </button>
-        {lastEditedAt && (
-          <span className="text-[11px] font-normal text-amber-800" dir="ltr">
-            آخر تعديل:{" "}
-            {new Date(lastEditedAt).toLocaleTimeString("ar-JO", {
-              hour: "2-digit",
-              minute: "2-digit",
-              day: "2-digit",
-              month: "2-digit",
-            })}
-          </span>
-        )}
-      </div>
-
-      {open && (
-        <div className="mt-3 space-y-3">
-          {/* ORIGINAL ORDER BASELINE BANNER */}
-          {baselineMod && (
-            <div className="space-y-1.5 rounded-xl border border-amber-400 bg-amber-100/90 p-3 text-xs text-amber-950 shadow-2xs">
-              <div className="flex items-center justify-between border-b border-amber-300/80 pb-1.5 font-black text-amber-900">
-                <span className="flex items-center gap-1.5">
-                  <span>📌</span>
-                  <span>الطلب الأساسي الأصلي (عند الإنشاء من السوشيل ميديا / النظام):</span>
-                </span>
-                {baselineMod.updatedAt && (
-                  <span className="shrink-0 font-mono text-[10px] text-amber-800" dir="ltr">
-                    {new Date(baselineMod.updatedAt).toLocaleTimeString("ar-JO", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </span>
-                )}
-              </div>
-              <div className="rounded-lg border border-amber-200/90 bg-white/70 p-2.5 text-xs leading-relaxed font-bold whitespace-pre-line text-amber-950">
-                {baselineMod.oldValue}
-              </div>
-            </div>
-          )}
-
-          {/* SUBSEQUENT MODIFICATIONS LIST */}
-          {regularMods.length > 0 ? (
-            <div className="space-y-2 pt-1">
-              <div className="flex items-center gap-1 text-xs font-black text-amber-950">
-                <span>📝</span>
-                <span>التعديلات والتغييرات التي جرت عليه ({regularMods.length}):</span>
-              </div>
-              <ul className="space-y-2 divide-y divide-amber-200/60">
-                {regularMods.map((mod, idx) => (
-                  <li key={idx} className="space-y-1 pt-2 first:pt-0">
-                    <div className="flex flex-wrap items-center justify-between gap-1">
-                      <span className="text-xs font-black text-amber-950">{mod.field}</span>
-                      {mod.updatedAt && (
-                        <span className="shrink-0 font-mono text-[10px] text-amber-800" dir="ltr">
-                          {new Date(mod.updatedAt).toLocaleTimeString("ar-JO", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-1 gap-1.5 text-[11px] sm:grid-cols-2">
-                      {mod.oldValue && (
-                        <div className="rounded-lg border border-rose-400/30 bg-rose-500/10 p-2 text-rose-900">
-                          <span className="block text-[10px] font-bold text-rose-700">
-                            ❌ القيمة الأصلية:
-                          </span>
-                          <span className="font-semibold line-through">{mod.oldValue}</span>
-                        </div>
-                      )}
-                      {mod.newValue && (
-                        <div className="rounded-lg border border-emerald-400/30 bg-emerald-500/10 p-2 font-black text-emerald-950">
-                          <span className="block text-[10px] font-bold text-emerald-700">
-                            ✨ القيمة المعدلة (الجديدة):
-                          </span>
-                          <span>{mod.newValue}</span>
-                        </div>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : !baselineMod ? (
-            <p className="text-[11px] text-amber-800">تم حفظ وتأكيد التعديلات على هذا الطلب ✅</p>
-          ) : null}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/**
- * Radical ground-up redesign of ModificationsPanel:
- * A high-efficiency Cake Order Modification Studio with a responsive split pane:
- * - Live Order Selector on the right (with search, category filters, and quick stats).
- * - Full-Featured Interactive Modification Studio on the left with zero feature deletion.
- */
+/** Split-pane studio for inspecting and editing active sales orders. */
 export function ModificationsPanel({
   initialSelectedId = null,
   onCloseEdit,
@@ -264,7 +110,7 @@ export function ModificationsPanel({
   useOrdersRealtime(ORDERS_KEY, true, "modifications-orders");
   const storefront = useStorefrontContent();
 
-  const rows = orders.data ?? [];
+  const rows = useMemo(() => orders.data ?? [], [orders.data]);
 
   // Filtered orders list
   const filteredOrders = useMemo(() => {
@@ -649,13 +495,7 @@ export function ModificationsPanel({
                 (rebuild.mutateAsync || rebuild.mutate)({
                   orderId: selected.id,
                   lines,
-                  expectedVersion:
-                    expectedVersion !== undefined && expectedVersion !== null
-                      ? expectedVersion
-                      : ((lines as any)?.version ??
-                        (lines as any)?.[0]?.draftVersion ??
-                        selected.version ??
-                        null),
+                  expectedVersion: expectedVersion ?? selected.version ?? null,
                 })
               }
               onDiscount={(percent, reason, expectedVersion) =>
@@ -750,30 +590,33 @@ function MasterOrderEditor({
   const quickPaymentIdempotencyKeyRef = useRef<string>(crypto.randomUUID());
 
   const recordPaymentServer = useServerFn(recordOrderPayment);
-  const uploadReceiptFn = useServerFn(uploadPaymentReceipt);
-  const [uploadingReceipt, setUploadingReceipt] = useState(false);
   const receiptInputRef = useRef<HTMLInputElement>(null);
   const receiptUrl = extractReceiptImageUrl(order.staff_notes);
 
-  const handleUploadReceipt = async (file: File | undefined) => {
-    if (!file) return;
-    setUploadingReceipt(true);
-    try {
-      const converted = await convertToWebp(file, {
-        kind: "cake",
-        maxDimension: 800,
-        quality: 0.8,
-      });
-      const saved = await uploadReceiptFn({ data: { data_url: converted.dataUrl } });
-      await handlePatch({ staff_notes: attachReceiptImageUrl(order.staff_notes, saved.url) });
-      toast.success("تم رفع وإرفاق صورة حوالة كليك بنجاح ✅");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "تعذّر رفع صورة الحوالة");
-    } finally {
-      setUploadingReceipt(false);
-      if (receiptInputRef.current) receiptInputRef.current.value = "";
+  const onPatch = (patch: Omit<OrderPatch, "orderId">) => {
+    pendingSelfMutationRef.current = true;
+    const p = onPatchProp({ ...patch, expected_version: initialVersionRef.current });
+    if (p && typeof (p as any).then === "function") {
+      (p as Promise<any>).then(
+        (res) => {
+          if (res && typeof res === "object" && typeof res.version === "number") {
+            initialVersionRef.current = res.version;
+          }
+          pendingSelfMutationRef.current = false;
+        },
+        () => {
+          pendingSelfMutationRef.current = false;
+        },
+      );
     }
+    return p;
   };
+
+  const { uploading: uploadingReceipt, handleFile: handleUploadReceipt } = useReceiptUpload(
+    async (url) => {
+      await onPatch({ staff_notes: attachReceiptImageUrl(order.staff_notes, url) });
+    },
+  );
   const handleQuickAddPayment = async (
     amount: number,
     type: "deposit" | "remainder" | "full" = "remainder",
@@ -805,30 +648,6 @@ function MasterOrderEditor({
       setIsProcessingQuickPayment(false);
     }
   };
-
-  const handlePatch = (patch: Omit<OrderPatch, "orderId">) => {
-    pendingSelfMutationRef.current = true;
-    const caller =
-      (typeof onPatchProp !== "undefined" && onPatchProp) ||
-      (typeof (globalThis as any).onPatchProp !== "undefined" && (globalThis as any).onPatchProp) ||
-      (typeof (globalThis as any).onPatch !== "undefined" && (globalThis as any).onPatch);
-    const p = caller({ ...patch, expected_version: initialVersionRef.current });
-    if (p && typeof (p as any).then === "function") {
-      (p as Promise<any>).then(
-        (res) => {
-          if (res && typeof res === "object" && typeof res.version === "number") {
-            initialVersionRef.current = res.version;
-          }
-          pendingSelfMutationRef.current = false;
-        },
-        () => {
-          pendingSelfMutationRef.current = false;
-        },
-      );
-    }
-    return p;
-  };
-  const onPatch = handlePatch;
 
   const handleItemPatch = (patch: Omit<OrderItemPatch, "orderId">) => {
     pendingSelfMutationRef.current = true;
@@ -1109,7 +928,7 @@ function MasterOrderEditor({
             {/* Print Receipt */}
             <button
               type="button"
-              onClick={() => printReceipt(order)}
+              onClick={() => printCustomerReceipt(order)}
               className="inline-flex min-h-10 cursor-pointer items-center gap-1.5 rounded-xl border border-border bg-background px-3 text-xs font-bold text-foreground transition hover:bg-secondary"
               title="طباعة إيصال حراري"
             >
@@ -1117,9 +936,8 @@ function MasterOrderEditor({
               <span className="hidden sm:inline">إيصال حراري</span>
             </button>
 
-            {/* WhatsApp Contact with Modification text */}
             <a
-              href={`https://wa.me/${waNumber(order.customer_phone)}?text=${encodeURIComponent(modificationText)}`}
+              href={getWhatsAppChatUrl(order.customer_phone, modificationText)}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-emerald-300 bg-emerald-50 px-3 text-xs font-bold text-emerald-800 transition hover:bg-emerald-100"
@@ -1722,6 +1540,7 @@ function MasterOrderEditor({
                 className="hidden"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
+                  e.currentTarget.value = "";
                   if (file) void handleUploadReceipt(file);
                 }}
               />
@@ -1864,360 +1683,3 @@ function MasterOrderEditor({
  * Gives quick access to quantity steppers, price editing, quick extras pills (candles, balloons, toppings),
  * and custom requests without clunky navigation.
  */
-function InteractiveItemEditorCard({
-  item,
-  products,
-  onItemPatch,
-  onOpenSheet,
-  onDelete,
-}: {
-  item: SalesOrder["items"][number];
-  products: StorefrontProduct[];
-  onItemPatch: (patch: Omit<OrderItemPatch, "orderId">) => void;
-  onOpenSheet: () => void;
-  onDelete: () => void;
-}) {
-  const [options, setOptions] = useState<string[]>(item.options_ar);
-  const [draft, setDraft] = useState("");
-  const [showWebsiteOptions, setShowWebsiteOptions] = useState(false);
-  const [custom, setCustom] = useState<Customization>(emptyCustomization);
-  const [productId, setProductId] = useState(item.product_id ?? "");
-  const [sizeLabel, setSizeLabel] = useState("");
-  const [filling, setFilling] = useState("");
-
-  const product = products.find((row) => row.id === productId) ?? null;
-  const fillings = useMemo(() => {
-    const set = new Set<string>();
-    for (const row of products) if (row.filling_ar?.trim()) set.add(row.filling_ar.trim());
-    return [...set].sort();
-  }, [products]);
-
-  useEffect(() => {
-    setOptions(item.options_ar);
-  }, [item.options_ar]);
-
-  const commitOptions = (next: string[]) => {
-    setOptions(next);
-    onItemPatch({ itemId: item.id, options: next });
-  };
-
-  const addOptionPill = (text: string) => {
-    if (options.includes(text)) return;
-    const next = [...options, text];
-    commitOptions(next);
-  };
-
-  // Popular quick extra accessories
-  const quickAccessories = [
-    { label: "🕯️ شموع أرقام", value: "شموع أرقام" },
-    { label: "✨ شمعة سحرية", value: "شمعة سحرية مضيئة" },
-    { label: "🎈 بالونات هيليوم", value: "بالونات هيليوم" },
-    { label: "🎂 توبير أكريليك", value: "توبير أكريليك مخصص" },
-    { label: "🍫 حشوة نوتيلا", value: "الحشوة: نوتيلا" },
-    { label: "🌾 حشوة لوتس", value: "الحشوة: لوتس" },
-    { label: "🥜 حشوة بستاشيو", value: "الحشوة: بستاشيو" },
-    { label: "🍓 فراولة وتوت", value: "الحشوة: فراولة وتوت" },
-  ];
-
-  return (
-    <div className="space-y-3 rounded-2xl border border-border/80 bg-background p-4 shadow-2xs">
-      {/* Item Title and Price Header */}
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <input
-            defaultValue={item.name_ar}
-            onBlur={(e) => {
-              const val = e.target.value.trim();
-              if (val && val !== item.name_ar) onItemPatch({ itemId: item.id, name: val });
-            }}
-            placeholder="اسم الصنف أو الكيكة..."
-            className="w-full border-b border-dashed border-border/70 bg-transparent pb-1 font-display text-sm font-black text-foreground transition outline-none focus:border-primary"
-          />
-        </div>
-
-        {/* Quantity Stepper & Unit Price */}
-        <div className="flex shrink-0 items-center gap-2">
-          {/* Stepper */}
-          <div className="flex items-center rounded-xl border border-border bg-card">
-            <button
-              type="button"
-              onClick={() => {
-                if (item.quantity > 1) {
-                  onItemPatch({ itemId: item.id, quantity: item.quantity - 1 });
-                }
-              }}
-              disabled={item.quantity <= 1}
-              className="grid h-8 w-8 cursor-pointer place-items-center text-xs font-bold text-muted-foreground hover:text-foreground disabled:opacity-30"
-            >
-              −
-            </button>
-            <span className="w-8 text-center text-xs font-bold text-foreground">
-              {item.quantity}
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                onItemPatch({ itemId: item.id, quantity: item.quantity + 1 });
-              }}
-              className="grid h-8 w-8 cursor-pointer place-items-center text-xs font-bold text-muted-foreground hover:text-foreground"
-            >
-              +
-            </button>
-          </div>
-
-          {/* Unit Price */}
-          <div className="flex items-center gap-1">
-            <input
-              type="number"
-              min="0"
-              step="0.25"
-              defaultValue={item.unit_price}
-              onBlur={(e) => {
-                const val = parseFloat(e.target.value);
-                if (!Number.isNaN(val) && val !== item.unit_price) {
-                  onItemPatch({ itemId: item.id, newUnitPrice: val });
-                }
-              }}
-              className="h-8 w-20 rounded-xl border border-input bg-card px-2 text-center text-xs font-bold text-foreground"
-            />
-            <span className="text-[11px] text-muted-foreground">د.أ</span>
-          </div>
-
-          {/* Line Total Badge */}
-          <span className="rounded-xl bg-primary/10 px-2.5 py-1 text-xs font-black text-primary">
-            {jd(item.unit_price * item.quantity)}
-          </span>
-
-          {/* Delete Item */}
-          <button
-            type="button"
-            onClick={onDelete}
-            title="حذف الصنف"
-            className="grid h-8 w-8 cursor-pointer place-items-center rounded-xl border border-rose-200 text-rose-600 transition hover:bg-rose-50"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* Item Note */}
-      <input
-        defaultValue={item.notes ?? ""}
-        onBlur={(e) => {
-          const val = e.target.value.trim();
-          if (val !== (item.notes ?? "")) {
-            onItemPatch({ itemId: item.id, notes: val || null });
-          }
-        }}
-        placeholder="ملاحظة خاصة على هذا الصنف (مثل: كتابة خاصة، بدون مكسرات...)"
-        className="w-full rounded-xl border border-transparent bg-secondary/30 px-3 py-1.5 text-xs text-muted-foreground transition outline-none focus:border-border"
-      />
-
-      {/* Active Options Tag Cloud */}
-      {options.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 pt-1">
-          {options.map((opt, idx) => (
-            <span
-              key={`${idx}-${opt}`}
-              className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/5 px-2.5 py-0.5 text-[11px] font-bold text-primary"
-            >
-              <span>{opt}</span>
-              <button
-                type="button"
-                onClick={() => commitOptions(options.filter((_, i) => i !== idx))}
-                className="cursor-pointer text-primary/70 hover:text-rose-600"
-                title="إزالة الإضافة"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* Quick Accessories & Fillings Pill Deck */}
-      <div className="border-t border-border/50 pt-1">
-        <div className="mb-1.5 flex items-center justify-between text-[11px] font-bold text-muted-foreground">
-          <span>إضافات سريعة ونكهات (بنقرة واحدة):</span>
-          <button
-            type="button"
-            onClick={onOpenSheet}
-            className="flex items-center gap-1 text-primary hover:underline"
-          >
-            <Pencil className="h-3 w-3" />
-            <span>تخصيص متقدم</span>
-          </button>
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {quickAccessories.map((acc) => (
-            <button
-              key={acc.value}
-              type="button"
-              onClick={() => addOptionPill(acc.value)}
-              className="cursor-pointer rounded-full bg-secondary px-2.5 py-1 text-[11px] font-bold text-foreground transition hover:bg-primary hover:text-primary-foreground"
-            >
-              + {acc.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Custom Draft Extra Input */}
-      <div className="flex items-center gap-2 pt-1">
-        <input
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder="إضافة طلب خاص مخصص لهذا الصنف..."
-          className="min-h-9 flex-1 rounded-xl border border-input bg-card px-3 text-xs text-foreground outline-none focus:border-primary"
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && draft.trim()) {
-              e.preventDefault();
-              commitOptions([...options, draft.trim()]);
-              setDraft("");
-            }
-          }}
-        />
-        <button
-          type="button"
-          onClick={() => {
-            if (!draft.trim()) return;
-            commitOptions([...options, draft.trim()]);
-            setDraft("");
-          }}
-          className="grid h-9 w-9 shrink-0 cursor-pointer place-items-center rounded-xl bg-primary text-primary-foreground transition hover:bg-primary/90"
-        >
-          <Plus className="h-4 w-4" />
-        </button>
-      </div>
-
-      {/* Website Catalogue Expander Button */}
-      <div className="pt-1">
-        <button
-          type="button"
-          onClick={() => setShowWebsiteOptions((prev) => !prev)}
-          className="flex cursor-pointer items-center gap-1 text-[11px] font-bold text-primary hover:underline"
-        >
-          <span>
-            {showWebsiteOptions
-              ? "▲ إخفاء خيارات كتالوج الموقع"
-              : "▼ خيارات كتالوج الموقع (أحجام، حشوات متقدمة)"}
-          </span>
-        </button>
-
-        {showWebsiteOptions && (
-          <div className="animate-fadeIn mt-2 space-y-3 rounded-2xl border border-primary/20 bg-secondary/20 p-3">
-            <div className="grid gap-2 sm:grid-cols-2">
-              <label className="block text-xs font-bold text-foreground">
-                المنتج من الموقع · Website Product
-                <select
-                  value={productId}
-                  onChange={(event) => {
-                    setProductId(event.target.value);
-                    setSizeLabel("");
-                    const picked = products.find((row) => row.id === event.target.value);
-                    if (picked) {
-                      const patch: Parameters<typeof onItemPatch>[0] = {
-                        itemId: item.id,
-                        name: picked.name_ar,
-                      };
-                      if (!picked.price_on_request && picked.price > 0) {
-                        patch.newUnitPrice = picked.price;
-                      }
-                      onItemPatch(patch);
-                      if (picked.filling_ar?.trim()) setFilling(picked.filling_ar.trim());
-                    }
-                  }}
-                  className={inputClass}
-                >
-                  <option value="">— اختر منتجاً من الموقع —</option>
-                  {products.map((row) => (
-                    <option key={row.id} value={row.id}>
-                      {row.name_ar}{" "}
-                      {row.price_on_request ? "(السعر عند الطلب)" : `— ${jd(row.price)}`}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="block text-xs font-bold text-foreground">
-                الحجم · Size
-                <select
-                  value={sizeLabel}
-                  onChange={(event) => {
-                    const label = event.target.value;
-                    setSizeLabel(label);
-                    const size = product?.sizes.find((entry) => entry.label === label);
-                    if (!size) return;
-                    const nextOptions = withLabel(options, "الحجم", size.label);
-                    setOptions(nextOptions);
-                    onItemPatch({
-                      itemId: item.id,
-                      newUnitPrice: size.price,
-                      options: nextOptions,
-                    });
-                  }}
-                  disabled={!product || product.sizes.length === 0}
-                  className={inputClass}
-                >
-                  <option value="">— اختر الحجم —</option>
-                  {(product?.sizes ?? []).map((size) => (
-                    <option key={size.label} value={size.label}>
-                      {size.label} — {jd(size.price)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="block text-xs font-bold text-foreground sm:col-span-2">
-                الحشوة · Filling
-                <input
-                  list={`fillings-${item.id}`}
-                  value={filling}
-                  onChange={(event) => setFilling(event.target.value)}
-                  onBlur={() => commitOptions(withLabel(options, "الحشوة", filling.trim()))}
-                  placeholder="مثال: نوتيلا · لوتس · بستاشيو"
-                  className={inputClass}
-                />
-                <datalist id={`fillings-${item.id}`}>
-                  {fillings.map((value) => (
-                    <option key={value} value={value} />
-                  ))}
-                </datalist>
-              </label>
-            </div>
-
-            <div dir="rtl" className="rounded-2xl border border-border/50 bg-white p-2">
-              <CakeCustomizationPanel value={custom} onChange={setCustom} />
-            </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                const lines = customizationSummary(custom).ar;
-                if (lines.length === 0) {
-                  toast.error("لم يتم اختيار أي إضافة");
-                  return;
-                }
-                let merged = options;
-                for (const line of lines) {
-                  const [key, ...rest] = line.split(":");
-                  merged = rest.length
-                    ? withLabel(merged, key ?? line, rest.join(":").trim())
-                    : merged.includes(line)
-                      ? merged
-                      : [...merged, line];
-                }
-                commitOptions(merged);
-                setCustom(emptyCustomization);
-                toast.success("تم تطبيق الخيارات على الصنف ✅");
-              }}
-              className="min-h-10 w-full cursor-pointer rounded-xl bg-primary px-4 text-xs font-bold text-primary-foreground transition hover:bg-primary/90"
-            >
-              تطبيق خيارات الكستمايزيشن على الصنف ✅
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}

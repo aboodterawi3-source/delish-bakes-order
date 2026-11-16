@@ -1,15 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
-import {
-  AlertCircle,
-  Check,
-  ChevronDown,
-  ImageUp,
-  Loader2,
-  Minus,
-  Plus,
-  Sparkles,
-  Trash2,
-} from "lucide-react";
+import { AlertCircle, Check, ImageUp, Loader2, Plus, Sparkles, Trash2 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { convertToWebp, formatBytes } from "@/lib/image-webp";
 import { IMAGE_ACCEPT } from "@/lib/image-validation";
@@ -69,23 +59,6 @@ export const emptyCustomization: Customization = {
   notes: "",
   designImageUrl: null,
 };
-
-const BALLOON_COLORS = [
-  { id: "gold", ar: "ذهبي", en: "Gold", swatch: "#B8860B" },
-  { id: "peach", ar: "خوخي", en: "Peach", swatch: "#FDE2CF" },
-  { id: "rose", ar: "وردي", en: "Rose", swatch: "#E8A0BF" },
-  { id: "sky", ar: "سماوي", en: "Sky blue", swatch: "#9CC7E8" },
-  { id: "white", ar: "أبيض", en: "White", swatch: "#F8F8F6" },
-  { id: "chocolate", ar: "بني", en: "Chocolate", swatch: "#8B4513" },
-];
-
-const FILLING_SUGGESTIONS = [
-  { ar: "فستق حلبي طبيعي", en: "Natural Pistachio" },
-  { ar: "نوتيلا بلجيكية", en: "Belgian Nutella" },
-  { ar: "لوتس مقرمش", en: "Crunchy Lotus" },
-  { ar: "كراميل مملح", en: "Salted Caramel" },
-  { ar: "فانيلا وتوت طازج", en: "Vanilla & Berries" },
-];
 
 /** Bilingual lines describing the picked extras; shown to staff on the order. */
 export function customizationSummary(c: Customization) {
@@ -158,48 +131,12 @@ export type CakeCustomizationErrors = {
   notes?: string;
 };
 
-function Counter({
-  value,
-  onChange,
-  label,
-}: {
-  value: number;
-  onChange: (next: number) => void;
-  label: string;
-}) {
-  return (
-    <div className="inline-flex items-center rounded-full bg-[#8B4513] px-1 py-0.5 text-white shadow-xs">
-      <button
-        type="button"
-        aria-label={`${label} −`}
-        onClick={() => onChange(Math.max(1, value - 1))}
-        className="grid h-11 w-11 cursor-pointer place-items-center rounded-full transition hover:text-amber-200 active:scale-90"
-      >
-        <Minus className="h-3.5 w-3.5" />
-      </button>
-      <span className="px-2 text-xs font-bold">{value}</span>
-      <button
-        type="button"
-        aria-label={`${label} +`}
-        onClick={() => onChange(Math.min(99, value + 1))}
-        className="grid h-11 w-11 cursor-pointer place-items-center rounded-full transition hover:text-amber-200 active:scale-90"
-      >
-        <Plus className="h-3.5 w-3.5" />
-      </button>
-    </div>
-  );
-}
-
 const baseInputClass =
   "mt-1 w-full rounded-xl px-3.5 text-sm text-[#3E2723] transition-all outline-none";
 
 const normalInputClass = `${baseInputClass} min-h-11 border border-slate-200 bg-[#F9FBFC] focus:border-[#B8860B] focus:bg-white focus:ring-2 focus:ring-[#B8860B]/20`;
 
 const errorInputClass = `${baseInputClass} min-h-11 border-2 border-red-500 bg-red-50/50 ring-2 ring-red-200 focus:border-red-600 focus:bg-red-50/70 focus:ring-red-300`;
-
-const normalTextareaClass = `${baseInputClass} border border-slate-200 bg-[#F9FBFC] p-3 text-sm focus:border-[#B8860B] focus:bg-white focus:ring-2 focus:ring-[#B8860B]/20`;
-
-const errorTextareaClass = `${baseInputClass} border-2 border-red-500 bg-red-50/50 p-3 text-sm ring-2 ring-red-200 focus:border-red-600 focus:bg-red-50/70 focus:ring-red-300`;
 
 export function CakeCustomizationPanel({
   value,
@@ -226,37 +163,8 @@ export function CakeCustomizationPanel({
     if (onClearError) onClearError(key);
   };
 
-  // Derive active candle mode (null if not chosen yet)
-  const candleMode =
-    value.candleChoice !== undefined
-      ? value.candleChoice
-      : value.standardCandles && value.numberCandles
-        ? "both"
-        : value.standardCandles
-          ? "standard"
-          : value.numberCandles
-            ? "number"
-            : null;
-
-  // Derive active balloon mode (null if not chosen yet)
-  const balloonMode =
-    value.balloonChoice !== undefined
-      ? value.balloonChoice
-      : value.balloons
-        ? "yes"
-        : null;
-
-  // Derive active topper mode (null if not chosen yet)
-  const topperMode =
-    value.topperChoice !== undefined
-      ? value.topperChoice
-      : value.topper
-        ? "yes"
-        : null;
-
   return (
     <div className="space-y-4 pt-1">
-      {/* SECTION HEADER */}
       <div className="flex items-center justify-between border-b border-[#FDE2CF]/80 pb-2.5">
         <h3 className="flex items-center gap-2 text-sm font-bold text-[#5D2E17]">
           <Sparkles className="h-4 w-4 text-[#B8860B]" />
@@ -291,7 +199,6 @@ export function CakeCustomizationPanel({
           )}
         </div>
 
-        {/* Input box */}
         <input
           id="field-input-filling"
           type="text"
@@ -356,9 +263,7 @@ export function CakeCustomizationPanel({
           }}
           maxLength={120}
           placeholder={
-            ar
-              ? "اكتب تفاصيل الشموع (أو اكتب: بدون)..."
-              : "Type candle details (or type: none)..."
+            ar ? "اكتب تفاصيل الشموع (أو اكتب: بدون)..." : "Type candle details (or type: none)..."
           }
           className={errors?.candles ? errorInputClass : normalInputClass}
         />
@@ -467,9 +372,7 @@ export function CakeCustomizationPanel({
           }}
           maxLength={60}
           placeholder={
-            ar
-              ? "اكتب عبارة التوبر المطلوبة (أو اكتب: بدون)…"
-              : "Type topper text (or type: none)…"
+            ar ? "اكتب عبارة التوبر المطلوبة (أو اكتب: بدون)…" : "Type topper text (or type: none)…"
           }
           className={errors?.topper ? errorInputClass : normalInputClass}
         />
@@ -492,7 +395,7 @@ export function CakeCustomizationPanel({
         />
       )}
 
-      {/* 7. GIFT (IF NOT HIDDEN) */}
+      {/* 6. GIFT */}
       {!hideGift && (
         <div className="rounded-2xl border border-slate-200/90 bg-white p-3.5 shadow-2xs">
           <div className="mb-2 flex items-center justify-between">
@@ -626,7 +529,9 @@ export function DesignPhotoSection({
     clear("photo");
   };
 
-  const uploadSingleFile = async (file: File): Promise<{ url: string; before: number; after: number }> => {
+  const uploadSingleFile = async (
+    file: File,
+  ): Promise<{ url: string; before: number; after: number }> => {
     const converted = await convertToWebp(file, {
       kind: "cake",
       maxDimension: 800,
@@ -694,9 +599,7 @@ export function DesignPhotoSection({
     if (!fileList || fileList.length === 0) return;
     const remainingSlots = Math.max(0, 10 - imageUrls.length);
     if (remainingSlots === 0) {
-      setUploadError(
-        ar ? "الحد الأقصى هو 10 صور للطلب الواحد" : "Maximum 10 photos per order",
-      );
+      setUploadError(ar ? "الحد الأقصى هو 10 صور للطلب الواحد" : "Maximum 10 photos per order");
       return;
     }
 

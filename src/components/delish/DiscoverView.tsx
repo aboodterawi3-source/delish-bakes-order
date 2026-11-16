@@ -1,4 +1,4 @@
-import React, { memo, useEffect, useMemo, useState } from "react";
+import React, { memo, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   Search,
@@ -13,10 +13,9 @@ import {
 } from "lucide-react";
 import { DelishLogo } from "./DelishLogo";
 import { BackgroundCurves } from "./BackgroundCurves";
+import { FallbackImage } from "./FallbackImage";
 import { useStorefrontContent } from "@/hooks/use-storefront-content";
 import {
-  priceForSize,
-  tintFill,
   getProductFallbackImage,
   getCategoryFallbackImage,
   type StorefrontProduct,
@@ -50,7 +49,7 @@ export const DiscoverView = memo(function DiscoverView({
 
   const banner = content.data?.banner ?? null;
   const categories = content.data?.categories ?? [];
-  const products = content.data?.products ?? [];
+  const products = useMemo(() => content.data?.products ?? [], [content.data?.products]);
 
   const visible = useMemo(() => {
     const needle = searchQuery.trim().toLowerCase();
@@ -228,7 +227,6 @@ export const DiscoverView = memo(function DiscoverView({
                   >
                     <CategoryCircle
                       imageUrl={category.image_url}
-                      icon={category.icon}
                       name={categoryName}
                       active={active}
                     />
@@ -291,23 +289,14 @@ export const DiscoverView = memo(function DiscoverView({
 
 const CategoryCircle = memo(function CategoryCircle({
   imageUrl,
-  icon,
   name,
   active,
 }: {
   imageUrl?: string | null | undefined;
-  icon?: string | null | undefined;
   name: string;
   active: boolean;
 }) {
   const fallbackImage = useMemo(() => getCategoryFallbackImage(name), [name]);
-  const [imgSrc, setImgSrc] = useState(imageUrl || fallbackImage);
-  const [imgFailed, setImgFailed] = useState(false);
-
-  useEffect(() => {
-    setImgSrc(imageUrl || fallbackImage);
-    setImgFailed(false);
-  }, [imageUrl, fallbackImage]);
 
   return (
     <div
@@ -317,25 +306,18 @@ const CategoryCircle = memo(function CategoryCircle({
           : "border-[#EDE4D8] hover:border-primary/60 hover:shadow-2xs"
       }`}
     >
-      {!imgFailed && imgSrc ? (
-        <img
-          src={imgSrc}
-          alt={name}
-          decoding="async"
-          onError={() => {
-            if (imgSrc !== fallbackImage && fallbackImage) {
-              setImgSrc(fallbackImage);
-            } else {
-              setImgFailed(true);
-            }
-          }}
-          className="h-full w-full rounded-full object-cover transition-transform duration-300 group-hover:scale-105"
-        />
-      ) : (
-        <div className="flex h-full w-full items-center justify-center rounded-full bg-secondary/40 font-display text-sm font-bold text-primary">
-          {name.slice(0, 2)}
-        </div>
-      )}
+      <FallbackImage
+        src={imageUrl}
+        fallbackSrc={fallbackImage}
+        alt={name}
+        decoding="async"
+        className="h-full w-full rounded-full object-cover transition-transform duration-300 group-hover:scale-105"
+        renderFallback={() => (
+          <div className="flex h-full w-full items-center justify-center rounded-full bg-secondary/40 font-display text-sm font-bold text-primary">
+            {name.slice(0, 2)}
+          </div>
+        )}
+      />
     </div>
   );
 });
@@ -360,13 +342,6 @@ const ProductCard = memo(function ProductCard({
     () => getProductFallbackImage(product.slug, product.category, name),
     [product.slug, product.category, name],
   );
-  const [currentSrc, setCurrentSrc] = useState(product.image_url || fallback);
-  const [imgFailed, setImgFailed] = useState(false);
-
-  useEffect(() => {
-    setCurrentSrc(product.image_url || fallback);
-    setImgFailed(false);
-  }, [product.image_url, fallback]);
 
   return (
     <div
@@ -397,28 +372,20 @@ const ProductCard = memo(function ProductCard({
           </div>
         )}
 
-        {/* Product Photo or Fallback Badge */}
-        {!imgFailed ? (
-          <img
-            src={currentSrc}
-            alt={name}
-            loading="lazy"
-            decoding="async"
-            onError={() => {
-              if (currentSrc !== fallback && fallback) {
-                setCurrentSrc(fallback);
-              } else {
-                setImgFailed(true);
-              }
-            }}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-          />
-        ) : (
-          <div className="flex flex-col items-center justify-center p-2 text-center select-none">
-            <span className="font-display text-2xl font-bold text-primary">DELISH</span>
-            <span className="mt-1 text-[11px] font-bold text-muted-foreground">Cake & Bake</span>
-          </div>
-        )}
+        <FallbackImage
+          src={product.image_url}
+          fallbackSrc={fallback}
+          alt={name}
+          loading="lazy"
+          decoding="async"
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          renderFallback={() => (
+            <div className="flex flex-col items-center justify-center p-2 text-center select-none">
+              <span className="font-display text-2xl font-bold text-primary">DELISH</span>
+              <span className="mt-1 text-[11px] font-bold text-muted-foreground">Cake & Bake</span>
+            </div>
+          )}
+        />
       </div>
 
       {/* Card Body Content - Enhanced Type Scale */}

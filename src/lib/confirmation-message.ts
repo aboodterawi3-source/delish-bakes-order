@@ -1,3 +1,6 @@
+import { jod } from "./currency.ts";
+import { todayIso } from "./date-filter.ts";
+
 /**
  * Official Delish Cake order-confirmation and modification messages.
  *
@@ -48,7 +51,7 @@ export type ModificationMessageInput = {
   editedAt?: string | undefined;
 };
 
-const money = (value: number) => `${(Number.isFinite(value) ? value : 0).toFixed(2)} د.أ`;
+const money = (value: number) => jod(value);
 const orDash = (value: string | undefined | null) => (value && value.trim() ? value.trim() : "—");
 
 /** Paid amount can never exceed the total when showing the remaining balance. */
@@ -82,8 +85,9 @@ export function formatArabicDate(dateStr?: string | null): string {
         const date = new Date(y, m - 1, d);
         const days = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
         const dayName = days[date.getDay()];
-        const now = new Date();
-        const isToday = now.getFullYear() === y && now.getMonth() === m - 1 && now.getDate() === d;
+        const ammanToday = todayIso();
+        const targetIso = `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+        const isToday = ammanToday === targetIso;
         const prefix = isToday ? "اليوم " : "";
         return `${prefix}${dayName} ${d}/${m}/${y}`;
       }

@@ -207,4 +207,3 @@ export const builderFrostings: Option[] = [
 ];
 
 export const DELIVERY_FEE = 3;
-export { WHATSAPP } from "@/lib/whatsapp";

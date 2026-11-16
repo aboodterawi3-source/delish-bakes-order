@@ -7,7 +7,6 @@ import {
   Check,
   ClipboardCopy,
   Gift,
-  Image as ImageIcon,
   Instagram,
   Loader2,
   MessageCircle,
@@ -25,7 +24,7 @@ import {
 import { getWhatsAppChatUrl } from "@/lib/whatsapp";
 import { createSocialOrder, type SocialOrderInput } from "@/lib/social.functions";
 import { jd } from "@/lib/currency";
-import { DELIVERY_ZONES, OTHER_GOVERNORATES_AREA, feeForArea } from "@/lib/delivery-zones";
+import { feeForArea } from "@/lib/delivery-zones";
 import {
   buildConfirmationMessage,
   buildModificationMessage,
@@ -34,6 +33,7 @@ import {
   remainingBalance,
 } from "@/lib/confirmation-message";
 import { useStorefrontContent } from "@/hooks/use-storefront-content";
+import { useReceiptUpload } from "@/hooks/use-receipt-upload";
 import type { StorefrontProduct, SizePrice } from "@/lib/storefront-content";
 import {
   CakeCustomizationPanel,
@@ -44,9 +44,7 @@ import {
   type Customization,
 } from "@/components/delish/CakeCustomizationPanel";
 import { useCliqAccounts } from "@/lib/cliq-config";
-import { convertToWebp } from "@/lib/image-webp";
 import { IMAGE_ACCEPT } from "@/lib/image-validation";
-import { uploadPaymentReceipt } from "@/lib/receipt-upload.functions";
 
 export type OrderSource = "instagram" | "whatsapp" | "messenger" | "store";
 export type CliqAccount = "mahmoud" | "shop" | "staff";
@@ -112,12 +110,6 @@ const CHANNEL_CONFIG: Record<OrderSource, { ar: string; color: string; icon: typ
   },
 };
 
-const CLIQ_ACCOUNTS: { id: CliqAccount; label: string; icon: string }[] = [
-  { id: "mahmoud", label: "كليك محمود", icon: "💼" },
-  { id: "shop", label: "كليك محل", icon: "🏬" },
-  { id: "staff", label: "كليك موظفة معينة", icon: "👩‍💼" },
-];
-
 export interface SocialOrderEntryFormProps {
   onSuccessOrder?: (orderNumber: string) => void;
   title?: string;
@@ -141,36 +133,24 @@ export function SocialOrderEntryForm({
   const [customErrors, setCustomErrors] = useState<CakeCustomizationErrors>({});
 
   // CliQ Receipt Upload state
-  const uploadReceiptFn = useServerFn(uploadPaymentReceipt);
   const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
-  const [uploadingReceipt, setUploadingReceipt] = useState(false);
-  const [receiptError, setReceiptError] = useState<string | null>(null);
   const receiptFileRef = useRef<HTMLInputElement>(null);
   const isSubmittingRef = useRef(false);
   const draftRequestIdRef = useRef<string>(crypto.randomUUID());
+  const copyTimerRef = useRef<number | null>(null);
 
-  const handleReceiptUpload = async (file: File | undefined) => {
-    if (!file) return;
-    setReceiptError(null);
-    setUploadingReceipt(true);
-    try {
-      const converted = await convertToWebp(file, {
-        kind: "cake",
-        maxDimension: 800,
-        quality: 0.8,
-      });
-      const saved = await uploadReceiptFn({ data: { data_url: converted.dataUrl } });
-      setReceiptUrl(saved.url);
+  const { uploading: uploadingReceipt, handleFile: handleReceiptUpload } = useReceiptUpload(
+    (url) => {
+      setReceiptUrl(url);
       setError(null);
-    } catch (err) {
-      setReceiptError(
-        err instanceof Error ? err.message : "تعذّر رفع صورة الحوالة · Upload failed",
-      );
-    } finally {
-      setUploadingReceipt(false);
-      if (receiptFileRef.current) receiptFileRef.current.value = "";
-    }
-  };
+    },
+  );
+
+  useEffect(() => {
+    return () => {
+      if (copyTimerRef.current !== null) window.clearTimeout(copyTimerRef.current);
+    };
+  }, []);
 
   // Storefront Menu picker state (collapsed by default; staff click to expand)
   const [showMenuPicker, setShowMenuPicker] = useState(false);
@@ -249,18 +229,6 @@ export function SocialOrderEntryForm({
     }
     return label;
   }, [cliqAccounts, form.cliq_account, form.cliq_staff_name]);
-
-  const paymentLabel = useMemo(() => {
-    if (form.payment_option === "cash") return "كاش عند الاستلام";
-    const cliqDetail = `(${cliqAccountText})`;
-    if (form.payment_option === "cliq_pending") {
-      return `بانتظار الكليك ${cliqDetail}`;
-    }
-    if (form.payment_option === "cliq_full") {
-      return `كليك دفع كامل ${cliqDetail}: ${(Number(form.deposit_paid) || 0).toFixed(2)} د.أ`;
-    }
-    return `عربون عبر كليك ${cliqDetail}: ${(Number(form.deposit_paid) || 0).toFixed(2)} د.أ`;
-  }, [form.payment_option, form.deposit_paid, cliqAccountText]);
 
   const customerPaymentLabel = useMemo(() => {
     if (form.payment_option === "cash") return "كاش عند الاستلام";
@@ -344,7 +312,6 @@ export function SocialOrderEntryForm({
       form.quantity,
       form.order_details,
       extras.ar,
-      form.design_notes,
       customization.topperText,
       customization.notes,
       customization.filling,
@@ -354,13 +321,11 @@ export function SocialOrderEntryForm({
       deliveryFee,
       grandTotal,
       paidAmount,
-      paymentLabel,
+      customerPaymentLabel,
       form.is_gift,
       effectiveRecipientPhone,
       effectiveSenderPhone,
       form.order_source,
-      form.payment_option,
-      cliqAccountText,
     ],
   );
 
@@ -402,7 +367,6 @@ export function SocialOrderEntryForm({
       form.area,
       form.address,
       form.order_details,
-      form.design_notes,
       form.card_note,
       customization,
     ],
@@ -433,7 +397,6 @@ export function SocialOrderEntryForm({
       setCustomization(emptyCustomization);
       setCustomErrors({});
       setReceiptUrl(null);
-      setReceiptError(null);
     },
     onError: (mutationError: Error) => {
       isSubmittingRef.current = false;
@@ -463,13 +426,15 @@ export function SocialOrderEntryForm({
         }
         setCopied(which);
         setError(null);
-        window.setTimeout(() => setCopied(null), 2500);
+        if (copyTimerRef.current !== null) window.clearTimeout(copyTimerRef.current);
+        copyTimerRef.current = window.setTimeout(() => setCopied(null), 2500);
       } catch {
         try {
           legacyCopy();
           setCopied(which);
           setError(null);
-          window.setTimeout(() => setCopied(null), 2500);
+          if (copyTimerRef.current !== null) window.clearTimeout(copyTimerRef.current);
+          copyTimerRef.current = window.setTimeout(() => setCopied(null), 2500);
         } catch {
           setError("تعذّر النسخ · Copy failed — حدّد النص من المعاينة وانسخه يدوياً");
         }
@@ -988,7 +953,7 @@ export function SocialOrderEntryForm({
                             {prod.name_ar}
                           </h4>
                           <p className="mt-0.5 text-[11px] font-extrabold text-[#8B4513]">
-                            {prod.price_on_request ? "حسب الطلب" : `${prod.price.toFixed(2)} د.أ`}
+                            {prod.price_on_request ? "حسب الطلب" : jd(prod.price)}
                           </p>
                           {prod.filling_ar && (
                             <span className="mt-1 inline-block rounded bg-[#FDE2CF]/50 px-1.5 py-0.5 text-[10px] font-bold text-[#7B3F00]">
@@ -1205,15 +1170,11 @@ export function SocialOrderEntryForm({
                 <select
                   value={form.payment_option}
                   onChange={(e) => {
-                    const nextOpt = e.target.value as
-                      | "cliq_full"
-                      | "cliq_deposit"
-                      | "cliq_pending";
+                    const nextOpt = e.target.value as "cliq_full" | "cliq_deposit" | "cliq_pending";
                     set("payment_option", nextOpt);
                     if (nextOpt === "cliq_pending") {
                       set("deposit_paid", "");
                       setReceiptUrl(null);
-                      setReceiptError(null);
                     }
                   }}
                   className="min-h-11 w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-[#3E2723] focus:ring-2 focus:ring-[#B8860B] focus:outline-none"
@@ -1261,7 +1222,8 @@ export function SocialOrderEntryForm({
 
               {form.payment_option === "cliq_pending" ? (
                 <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-xs font-bold text-amber-900">
-                  ⏳ تم تحديد الطلب كـ «بانتظار الكليك» — سيتم تسجيل المبلغ وإرفاق صورة الحوالة لاحقاً من شاشة الطلبات فور استلام التحويل.
+                  ⏳ تم تحديد الطلب كـ «بانتظار الكليك» — سيتم تسجيل المبلغ وإرفاق صورة الحوالة
+                  لاحقاً من شاشة الطلبات فور استلام التحويل.
                 </div>
               ) : (
                 <>
@@ -1279,7 +1241,7 @@ export function SocialOrderEntryForm({
                           onClick={() => set("deposit_paid", grandTotal.toFixed(2))}
                           className="cursor-pointer text-[10px] font-bold text-[#8B4513] hover:underline"
                         >
-                          تعبئة كامل المبلغ ({grandTotal.toFixed(2)} د.أ)
+                          تعبئة كامل المبلغ ({jd(grandTotal)})
                         </button>
                       )}
                     </div>
@@ -1300,114 +1262,110 @@ export function SocialOrderEntryForm({
                     id="cliq-receipt-upload-section"
                     className="space-y-2 border-t border-amber-200/70 pt-2.5"
                   >
-                <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-1.5 text-xs font-black text-[#5D2E17]">
-                    <Camera className="h-4 w-4 text-[#8B4513]" />
-                    <span>صورة إشعار / حوالة كليك (اختياري — تُرفع عند الدفع) · CliQ Receipt</span>
-                  </label>
-                  {receiptUrl && (
-                    <span className="flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
-                      <Check className="h-3 w-3" /> تم الإرفاق
-                    </span>
-                  )}
-                </div>
-
-                <input
-                  ref={receiptFileRef}
-                  type="file"
-                  accept={IMAGE_ACCEPT}
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) void handleReceiptUpload(file);
-                  }}
-                />
-
-                {receiptUrl ? (
-                  <div className="flex items-center gap-3 rounded-xl border border-emerald-300 bg-white p-3 shadow-2xs">
-                    <img
-                      src={receiptUrl}
-                      alt="إشعار حوالة كليك"
-                      className="h-16 w-16 shrink-0 cursor-pointer rounded-lg border border-slate-200 object-cover transition hover:opacity-90"
-                      onClick={() => window.open(receiptUrl, "_blank")}
-                      title="اضغط لفتح الصورة بحجم كامل"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-xs font-bold text-slate-800">
-                        صورة الحوالة مرفقة بنجاح ✅
-                      </p>
-                      <p className="mt-0.5 text-[11px] text-muted-foreground">
-                        سواء كان كليك كامل أو عربون
-                      </p>
-                      <div className="mt-1.5 flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => receiptFileRef.current?.click()}
-                          className="cursor-pointer text-[11px] font-bold text-primary hover:underline"
-                        >
-                          تغيير الصورة
-                        </button>
-                        <span className="text-muted-foreground">•</span>
-                        <button
-                          type="button"
-                          onClick={() => setReceiptUrl(null)}
-                          className="flex cursor-pointer items-center gap-1 text-[11px] font-bold text-rose-600 hover:underline"
-                        >
-                          <Trash2 className="h-3 w-3" /> حذف
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    aria-label="اختيار أو تصوير صورة حوالة كليك"
-                    onClick={() => {
-                      if (!uploadingReceipt) receiptFileRef.current?.click();
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        if (!uploadingReceipt) receiptFileRef.current?.click();
-                      }
-                    }}
-                    className={`group relative flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-4 text-center transition-all ${
-                      uploadingReceipt
-                        ? "cursor-wait border-amber-300 bg-amber-50/50"
-                        : "border-amber-300/80 bg-white/80 hover:border-[#8B4513] hover:bg-amber-50/40"
-                    }`}
-                  >
-                    {uploadingReceipt ? (
-                      <div className="flex flex-col items-center gap-2 py-2">
-                        <Loader2 className="h-7 w-7 animate-spin text-[#8B4513]" />
-                        <span className="text-xs font-black text-[#5D2E17]">
-                          جاري معالجة ورفع صورة الحوالة...
+                    <div className="flex items-center justify-between">
+                      <label className="flex items-center gap-1.5 text-xs font-black text-[#5D2E17]">
+                        <Camera className="h-4 w-4 text-[#8B4513]" />
+                        <span>
+                          صورة إشعار / حوالة كليك (اختياري — تُرفع عند الدفع) · CliQ Receipt
                         </span>
+                      </label>
+                      {receiptUrl && (
+                        <span className="flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
+                          <Check className="h-3 w-3" /> تم الإرفاق
+                        </span>
+                      )}
+                    </div>
+
+                    <input
+                      ref={receiptFileRef}
+                      type="file"
+                      accept={IMAGE_ACCEPT}
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        e.currentTarget.value = "";
+                        if (file) void handleReceiptUpload(file);
+                      }}
+                    />
+
+                    {receiptUrl ? (
+                      <div className="flex items-center gap-3 rounded-xl border border-emerald-300 bg-white p-3 shadow-2xs">
+                        <img
+                          src={receiptUrl}
+                          alt="إشعار حوالة كليك"
+                          className="h-16 w-16 shrink-0 cursor-pointer rounded-lg border border-slate-200 object-cover transition hover:opacity-90"
+                          onClick={() => window.open(receiptUrl, "_blank")}
+                          title="اضغط لفتح الصورة بحجم كامل"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-xs font-bold text-slate-800">
+                            صورة الحوالة مرفقة بنجاح ✅
+                          </p>
+                          <p className="mt-0.5 text-[11px] text-muted-foreground">
+                            سواء كان كليك كامل أو عربون
+                          </p>
+                          <div className="mt-1.5 flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => receiptFileRef.current?.click()}
+                              className="cursor-pointer text-[11px] font-bold text-primary hover:underline"
+                            >
+                              تغيير الصورة
+                            </button>
+                            <span className="text-muted-foreground">•</span>
+                            <button
+                              type="button"
+                              onClick={() => setReceiptUrl(null)}
+                              className="flex cursor-pointer items-center gap-1 text-[11px] font-bold text-rose-600 hover:underline"
+                            >
+                              <Trash2 className="h-3 w-3" /> حذف
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     ) : (
-                      <>
-                        <div className="grid h-10 w-10 place-items-center rounded-xl bg-amber-100/70 text-[#8B4513] transition group-hover:scale-110">
-                          <UploadCloud className="h-5 w-5" />
-                        </div>
-                        <p className="mt-2 text-xs font-black text-[#5D2E17]">
-                          اضغط هنا لاختيار أو تصوير صورة حوالة كليك 📸
-                        </p>
-                        <p className="mt-0.5 text-[11px] text-[#7A6458]">
-                          (لقطة شاشة من البنك أو وصل التحويل — يدعم JPG / PNG حتى 5MB)
-                        </p>
-                      </>
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        aria-label="اختيار أو تصوير صورة حوالة كليك"
+                        onClick={() => {
+                          if (!uploadingReceipt) receiptFileRef.current?.click();
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            if (!uploadingReceipt) receiptFileRef.current?.click();
+                          }
+                        }}
+                        className={`group relative flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-4 text-center transition-all ${
+                          uploadingReceipt
+                            ? "cursor-wait border-amber-300 bg-amber-50/50"
+                            : "border-amber-300/80 bg-white/80 hover:border-[#8B4513] hover:bg-amber-50/40"
+                        }`}
+                      >
+                        {uploadingReceipt ? (
+                          <div className="flex flex-col items-center gap-2 py-2">
+                            <Loader2 className="h-7 w-7 animate-spin text-[#8B4513]" />
+                            <span className="text-xs font-black text-[#5D2E17]">
+                              جاري معالجة ورفع صورة الحوالة...
+                            </span>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="grid h-10 w-10 place-items-center rounded-xl bg-amber-100/70 text-[#8B4513] transition group-hover:scale-110">
+                              <UploadCloud className="h-5 w-5" />
+                            </div>
+                            <p className="mt-2 text-xs font-black text-[#5D2E17]">
+                              اضغط هنا لاختيار أو تصوير صورة حوالة كليك 📸
+                            </p>
+                            <p className="mt-0.5 text-[11px] text-[#7A6458]">
+                              (لقطة شاشة من البنك أو وصل التحويل — يدعم JPG / PNG حتى 5MB)
+                            </p>
+                          </>
+                        )}
+                      </div>
                     )}
                   </div>
-                )}
-
-                {receiptError && (
-                  <p className="mt-1 flex items-center gap-1 text-xs font-bold text-rose-600">
-                    <AlertTriangle className="h-3.5 w-3.5" />
-                    <span>{receiptError}</span>
-                  </p>
-                )}
-              </div>
                 </>
               )}
             </div>

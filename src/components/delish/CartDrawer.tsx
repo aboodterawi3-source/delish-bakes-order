@@ -2,7 +2,7 @@ import { useId, useRef, useState } from "react";
 import { CheckCircle2, Minus, Plus, Trash2, X } from "lucide-react";
 import { getWhatsAppChatUrl } from "@/lib/whatsapp";
 import { formatJod, roundJod } from "@/lib/currency";
-import { DELIVERY_ZONES, OTHER_GOVERNORATES_AREA, feeForArea } from "@/lib/delivery-zones";
+import { feeForArea } from "@/lib/delivery-zones";
 import { DeliveryZoneSelect } from "@/components/delish/DeliveryZoneSelect";
 import { TimeSlotPicker } from "@/components/delish/TimeSlotPicker";
 import { todayIso } from "@/lib/date-filter";
@@ -12,6 +12,7 @@ import { useDismissable } from "@/lib/a11y";
 import { useServerFn } from "@tanstack/react-start";
 import { submitStorefrontOrder } from "@/lib/storefront-order.functions";
 import { useBrandPalette } from "@/lib/brand-palette";
+import { computeCartSubmissionFingerprint } from "@/lib/order-modifications";
 import { toast } from "sonner";
 
 type Form = {
@@ -49,15 +50,14 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   const [form, setForm] = useState<Form>(empty);
   const [errors, setErrors] = useState<Partial<Record<keyof Form, boolean>>>({});
   const [sending, setSending] = useState(false);
-  const isSubmittingRef = useRef(false);
   const sendingRef = useRef(false);
   const draftRequestIdRef = useRef<string>(crypto.randomUUID());
+  const failedFingerprintRef = useRef<string | null>(null);
   const [saveError, setSaveError] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const submitOrder = useServerFn(submitStorefrontOrder);
 
   const titleId = useId();
-  const closeRef = useRef<HTMLButtonElement>(null);
 
   useDismissable(open, onClose);
 
@@ -81,7 +81,15 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
     return Object.keys(e).length === 0;
   };
 
-  const buildMessage = (savedOrderNumber?: string | number | null) => {
+  const buildMessage = (
+    savedOrderNumber?: string | number | null,
+    confirmedTotals?: { subtotal?: number; deliveryFee?: number; total?: number },
+  ) => {
+    const finalSubtotal =
+      typeof confirmedTotals?.subtotal === "number" ? confirmedTotals.subtotal : subtotal;
+    const finalDeliveryFee =
+      typeof confirmedTotals?.deliveryFee === "number" ? confirmedTotals.deliveryFee : deliveryFee;
+    const finalTotal = typeof confirmedTotals?.total === "number" ? confirmedTotals.total : total;
     const ar = lang === "ar";
     const L: string[] = [];
     L.push(ar ? "🧾 *طلب جديد – Delish Cake & Bake*" : "🧾 *New Order – Delish Cake & Bake*");
@@ -111,9 +119,9 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
       if (l.notes) L.push(`   • ${ar ? "ملاحظة" : "Note"}: ${l.notes}`);
     });
     L.push("");
-    L.push(`${ar ? "المجموع" : "Subtotal"}: ${formatJod(subtotal, lang)}`);
-    L.push(`${ar ? "التوصيل" : "Delivery"}: ${formatJod(deliveryFee, lang)}`);
-    L.push(`*${ar ? "الإجمالي" : "Total"}: ${formatJod(total, lang)}*`);
+    L.push(`${ar ? "المجموع" : "Subtotal"}: ${formatJod(finalSubtotal, lang)}`);
+    L.push(`${ar ? "التوصيل" : "Delivery"}: ${formatJod(finalDeliveryFee, lang)}`);
+    L.push(`*${ar ? "الإجمالي" : "Total"}: ${formatJod(finalTotal, lang)}*`);
     L.push(
       `${ar ? "طريقة الدفع" : "Payment"}: ${
         form.pay === "cash"
@@ -150,13 +158,11 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
 
   const send = async () => {
     // SEC-02: Double-Click / Rapid-Tap Guard:
-    if (isSubmittingRef.current || sendingRef.current || sending) return;
-    isSubmittingRef.current = true;
+    if (sendingRef.current || sending) return;
     sendingRef.current = true;
     setSending(true);
 
     if (!validate()) {
-      isSubmittingRef.current = false;
       sendingRef.current = false;
       setSending(false);
       return;
@@ -165,7 +171,28 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
     setSaveError(false);
     setErrorMessage(null);
 
-    let saved: { order_number?: string | number | null } | null = null;
+    const currentFingerprint = computeCartSubmissionFingerprint({
+      lines,
+      method: form.method,
+      area: form.area,
+      date: form.date,
+      time: form.time,
+      pay: form.pay,
+      name: form.name,
+      phone: form.phone,
+      address: form.address,
+      notes: form.notes,
+    });
+    if (failedFingerprintRef.current && failedFingerprintRef.current !== currentFingerprint) {
+      draftRequestIdRef.current = crypto.randomUUID();
+    }
+
+    let saved: {
+      order_number?: string | number | null;
+      subtotal?: number;
+      delivery_fee?: number;
+      total?: number;
+    } | null = null;
     try {
       saved = await submitOrder({
         data: {
@@ -198,6 +225,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
       });
     } catch (err) {
       // SEC-01: Stop execution immediately, never clear cart, never transition to done
+      failedFingerprintRef.current = currentFingerprint;
       setSaveError(true);
       const msg =
         err instanceof Error
@@ -209,13 +237,13 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
       toast.error(msg);
       return; // Early return: Cart stays intact!
     } finally {
-      isSubmittingRef.current = false;
       sendingRef.current = false;
       setSending(false);
     }
 
     // SEC-01: Ensure orderNumber exists and was confirmed before opening WhatsApp or clearing cart
     if (!saved?.order_number) {
+      failedFingerprintRef.current = currentFingerprint;
       setSaveError(true);
       const msg =
         lang === "ar"
@@ -226,9 +254,17 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
       return;
     }
 
+    failedFingerprintRef.current = null;
     draftRequestIdRef.current = crypto.randomUUID();
     setOrderNumber(saved.order_number);
-    const url = getWhatsAppChatUrl(undefined, buildMessage(saved.order_number));
+    const url = getWhatsAppChatUrl(
+      undefined,
+      buildMessage(saved.order_number, {
+        ...(typeof saved.subtotal === "number" ? { subtotal: saved.subtotal } : {}),
+        ...(typeof saved.delivery_fee === "number" ? { deliveryFee: saved.delivery_fee } : {}),
+        ...(typeof saved.total === "number" ? { total: saved.total } : {}),
+      }),
+    );
     setWaUrl(url);
     setStage("done");
     clear();
@@ -268,7 +304,6 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
             )}
           </h2>
           <button
-            ref={closeRef}
             onClick={onClose}
             aria-label={lang === "ar" ? "إغلاق" : "Close"}
             className="grid h-12 w-12 place-items-center rounded-full border border-border text-foreground"
@@ -382,7 +417,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                       </button>
                     </div>
                     <span className="text-sm font-semibold">
-                      {(l.unit * l.qty).toFixed(2)} {t("jod")}
+                      {formatJod(l.unit * l.qty, lang)}
                     </span>
                   </div>
                 </div>
@@ -520,11 +555,6 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                 date={form.date || todayIso()}
                 time={form.time}
                 method={form.method}
-                cartItems={lines.map((l) => ({
-                  name_ar: l.ar,
-                  name_en: l.en,
-                  options_ar: l.detailsAr,
-                }))}
                 onDateChange={(d) => set("date", d)}
                 onTimeChange={(t) => {
                   set("time", t);
@@ -653,13 +683,11 @@ function Field({
   );
 }
 
-function Row({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
+function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between text-sm">
-      <span className={strong ? "font-display text-base font-semibold" : "text-muted-foreground"}>
-        {label}
-      </span>
-      <span className={strong ? "font-display text-base font-semibold" : ""}>{value}</span>
+      <span className="text-muted-foreground">{label}</span>
+      <span>{value}</span>
     </div>
   );
 }

@@ -1,8 +1,14 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { emailToUsername, normalizeUsername, usernameToEmail } from "@/lib/username";
+import { assertRole, getPortalAccess, type StaffRoleName } from "@/lib/role-guard";
+import { listAllAuthUsers, timingSafeEqualString } from "@/lib/server-shared";
+import {
+  aggregateAdminCustomerAndAgentStats,
+  type CustomerStatsEntry,
+} from "@/lib/validators";
 
-export type StaffRole = "admin" | "sales" | "kitchen" | "social";
+export type StaffRole = StaffRoleName;
 
 function authErrorMessage(message: string): string {
   const m = message.toLowerCase();
@@ -83,25 +89,65 @@ const DONE = ["delivered", "completed"] as const;
  * A persistent flag closes it forever, even if the admin count later drops to zero.
  */
 async function setupIsClosed(): Promise<boolean> {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data } = await (supabaseAdmin as any)
-    .from("app_setup_state")
-    .select("admin_setup_completed_at")
-    .maybeSingle();
-  if (data?.admin_setup_completed_at) return true;
+  const { supabaseAdmin, hasSupabaseServiceRoleKey } = await import(
+    "@/integrations/supabase/client.server"
+  );
+  // Fail closed when the server is not configured for privileged bootstrap.
+  if (!hasSupabaseServiceRoleKey()) return true;
 
-  const { count, error } = await supabaseAdmin
-    .from("user_roles")
-    .select("id", { count: "exact", head: true })
-    .eq("role", "admin");
-  if (error) throw new Error(error.message);
-  return (count ?? 0) > 0;
+  try {
+    const { data } = await (supabaseAdmin as any)
+      .from("app_setup_state")
+      .select("admin_setup_completed_at")
+      .maybeSingle();
+    if (data?.admin_setup_completed_at) return true;
+
+    const { count, error } = await supabaseAdmin
+      .from("user_roles")
+      .select("id", { count: "exact", head: true })
+      .eq("role", "admin");
+    if (error) return true;
+    return (count ?? 0) > 0;
+  } catch {
+    return true;
+  }
 }
 
 /** True only while the app has never completed admin setup. */
 export const getAdminSetupState = createServerFn({ method: "GET" }).handler(async () => {
   return { needsSetup: !(await setupIsClosed()) };
 });
+
+async function upsertStaffAuthUser(
+  supabaseAdmin: any,
+  email: string,
+  password: string,
+  fallbackError: string,
+): Promise<{ userId: string; reused: boolean }> {
+  const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+  });
+
+  if (created?.user) {
+    return { userId: String(created.user.id), reused: false };
+  }
+
+  // The name may already belong to an existing account: update it instead of failing.
+  const { users } = await listAllAuthUsers(supabaseAdmin);
+  const existing = users.find((user) => (user.email ?? "").toLowerCase() === email.toLowerCase());
+  if (!existing) {
+    throw new Error(authErrorMessage(error?.message ?? fallbackError));
+  }
+
+  const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(existing.id, {
+    password,
+    email_confirm: true,
+  });
+  if (updateError) throw new Error(authErrorMessage(updateError.message));
+  return { userId: String(existing.id), reused: true };
+}
 
 /**
  * Creates the very first admin account. Refuses once any admin exists.
@@ -119,35 +165,24 @@ export const bootstrapAdmin = createServerFn({ method: "POST" })
     return { email: usernameToEmail(input.username), password: input.password, setupToken };
   })
   .handler(async ({ data }) => {
+    const { enforceRateLimit } = await import("@/lib/rate-limit");
+    enforceRateLimit("admin-bootstrap", 5, 15 * 60_000);
+
     const expected = process.env["ADMIN_SETUP_TOKEN"];
-    if (!expected || data.setupToken !== expected)
+    if (!expected || !timingSafeEqualString(data.setupToken, expected))
       throw new Error("رمز التهيئة غير صحيح · Invalid setup token");
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { supabaseAdmin, assertSupabaseServiceRoleKey } = await import(
+      "@/integrations/supabase/client.server"
+    );
+    assertSupabaseServiceRoleKey();
     if (await setupIsClosed()) throw new Error("Setup already completed");
 
-    // Reuse an existing account with the same name instead of failing on a duplicate.
-    let userId: string | null = null;
-    const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
-      email: data.email,
-      password: data.password,
-      email_confirm: true,
-    });
-    if (created?.user) {
-      userId = created.user.id;
-    } else {
-      const { data: list } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 200 });
-      const existing = list?.users.find(
-        (user) => (user.email ?? "").toLowerCase() === data.email.toLowerCase(),
-      );
-      if (!existing)
-        throw new Error(authErrorMessage(error?.message ?? "Could not create the admin account"));
-      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(existing.id, {
-        password: data.password,
-        email_confirm: true,
-      });
-      if (updateError) throw new Error(authErrorMessage(updateError.message));
-      userId = existing.id;
-    }
+    const { userId } = await upsertStaffAuthUser(
+      supabaseAdmin,
+      data.email,
+      data.password,
+      "Could not create the admin account",
+    );
 
     const { error: roleError } = await supabaseAdmin
       .from("user_roles")
@@ -165,40 +200,18 @@ export const bootstrapAdmin = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-async function assertAdmin(context: { supabase: { from: (t: string) => any }; userId: string }) {
-  const { data, error } = await context.supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", context.userId);
-  if (error) throw new Error(error.message);
-  const roles = (data ?? []).map((row: { role: string }) => row.role);
-  if (!roles.includes("admin")) throw new Error("غير مصرّح · Not authorised");
-  return roles as StaffRole[];
-}
-
 export const getAdminAccess = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { data, error } = await context.supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", context.userId);
-    if (error) throw new Error(error.message);
-    const roles = (data ?? []).map((row) => row.role as StaffRole);
-    return { allowed: roles.includes("admin"), roles };
-  });
+  .handler(async ({ context }) => getPortalAccess(context, ["admin"]));
 
 /* ---------------------------------- staff --------------------------------- */
 
 export const listStaff = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<StaffMember[]> => {
-    await assertAdmin(context);
+    await assertRole(context, ["admin"]);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: users, error } = await supabaseAdmin.auth.admin.listUsers({
-      page: 1,
-      perPage: 200,
-    });
+    const { users, error } = await listAllAuthUsers(supabaseAdmin);
     if (error) throw new Error(error.message);
     const { data: roleRows, error: roleError } = await supabaseAdmin
       .from("user_roles")
@@ -216,7 +229,7 @@ export const listStaff = createServerFn({ method: "GET" })
       list.push(row.role as StaffRole);
       byUser.set(row.user_id, list);
     }
-    return users.users
+    return users
       .map((user) => ({
         id: user.id,
         username: emailToUsername(user.email),
@@ -251,41 +264,15 @@ export const createStaff = createServerFn({ method: "POST" })
     },
   )
   .handler(async ({ data, context }) => {
-    await assertAdmin(context);
+    await assertRole(context, ["admin"]);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    let userId: string | null = null;
-    let reused = false;
-
-    const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
-      email: data.email,
-      password: data.password,
-      email_confirm: true,
-    });
-
-    if (created?.user) {
-      userId = created.user.id;
-    } else {
-      // The name may already belong to an existing account: update it instead of failing.
-      const { data: existing } = await supabaseAdmin.auth.admin.listUsers({
-        page: 1,
-        perPage: 200,
-      });
-      const match = (existing?.users ?? []).find(
-        (user) => (user.email ?? "").toLowerCase() === data.email,
-      );
-      if (!match)
-        throw new Error(
-          authErrorMessage(error?.message ?? "تعذّر إنشاء الحساب · Could not create the account"),
-        );
-      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(match.id, {
-        password: data.password,
-        email_confirm: true,
-      });
-      if (updateError) throw new Error(authErrorMessage(updateError.message));
-      userId = match.id;
-      reused = true;
-    }
+    const { userId, reused } = await upsertStaffAuthUser(
+      supabaseAdmin,
+      data.email,
+      data.password,
+      "تعذّر إنشاء الحساب · Could not create the account",
+    );
 
     const { error: roleError } = await supabaseAdmin
       .from("user_roles")
@@ -311,7 +298,7 @@ export const resetStaffPassword = createServerFn({ method: "POST" })
     return input;
   })
   .handler(async ({ data, context }) => {
-    await assertAdmin(context);
+    await assertRole(context, ["admin"]);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.auth.admin.updateUserById(data.userId, {
       password: data.password,
@@ -329,7 +316,7 @@ export const setStaffRole = createServerFn({ method: "POST" })
     return input;
   })
   .handler(async ({ data, context }) => {
-    await assertAdmin(context);
+    await assertRole(context, ["admin"]);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     await supabaseAdmin.from("user_roles").delete().eq("user_id", data.userId);
     const { error } = await supabaseAdmin
@@ -354,7 +341,7 @@ export const setStaffCode = createServerFn({ method: "POST" })
     return { userId: String(input.userId), staffCode: code };
   })
   .handler(async ({ data, context }) => {
-    await assertAdmin(context);
+    await assertRole(context, ["admin"]);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     if (data.staffCode === null) {
@@ -387,7 +374,7 @@ export const removeStaff = createServerFn({ method: "POST" })
     return input;
   })
   .handler(async ({ data, context }) => {
-    await assertAdmin(context);
+    await assertRole(context, ["admin"]);
     if (data.userId === context.userId)
       throw new Error("لا يمكنك حذف حسابك · You cannot remove your own account");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -401,7 +388,7 @@ export const removeStaff = createServerFn({ method: "POST" })
 export const getAdminAnalytics = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<AdminAnalytics> => {
-    await assertAdmin(context);
+    await assertRole(context, ["admin"]);
 
     // SEC-06: 1. Cumulative aggregates across all records without memory bloat or arbitrary 1000 limit truncation
     let gross = 0;
@@ -410,6 +397,8 @@ export const getAdminAnalytics = createServerFn({ method: "GET" })
     let totalNonCancelledOrders = 0;
     let totalCancelledOrders = 0;
     const paymentMap = new Map<string, { orders: number; collected: number }>();
+    const agentMap = new Map<string, { orders: number; volume: number }>();
+    const customerMap = new Map<string, CustomerStatsEntry>();
 
     const CHUNK_SIZE = 1000;
     let from = 0;
@@ -418,10 +407,14 @@ export const getAdminAnalytics = createServerFn({ method: "GET" })
     while (hasMore) {
       const { data: chunk, error: chunkErr } = await context.supabase
         .from("orders")
-        .select("total, deposit_paid, status, payment_method")
+        .select(
+          "total, deposit_paid, status, payment_method, customer_phone, customer_name, created_at, created_by",
+        )
         .range(from, from + CHUNK_SIZE - 1);
 
       if (chunkErr) throw new Error(chunkErr.message);
+
+      aggregateAdminCustomerAndAgentStats(chunk ?? [], { customerMap, agentMap });
 
       for (const row of chunk ?? []) {
         const rowTotal = Number(row.total ?? 0);
@@ -497,40 +490,12 @@ export const getAdminAnalytics = createServerFn({ method: "GET" })
     const completedRows = mapRows(completedRes.data);
     const cancelledRows = mapRows(cancelledRes.data);
 
-    // Build customer and agent statistics from operational orders
-    const agentMap = new Map<string, { orders: number; volume: number }>();
-    const customerMap = new Map<string, CustomerEntry>();
-
-    for (const row of [...activeRows, ...completedRows]) {
-      const customer = customerMap.get(row.customer_phone) ?? {
-        phone: row.customer_phone,
-        name: row.customer_name,
-        orders: 0,
-        spend: 0,
-        last_order: row.created_at,
-      };
-      customer.orders += 1;
-      customer.spend += row.total;
-      if (row.created_at > customer.last_order) {
-        customer.last_order = row.created_at;
-        customer.name = row.customer_name;
-      }
-      customerMap.set(row.customer_phone, customer);
-
-      if (row.created_by) {
-        const agent = agentMap.get(row.created_by) ?? { orders: 0, volume: 0 };
-        agent.orders += 1;
-        agent.volume += row.total;
-        agentMap.set(row.created_by, agent);
-      }
-    }
-
     let agentNames = new Map<string, string>();
     if (agentMap.size > 0) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const { data: users } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 200 });
+      const { users } = await listAllAuthUsers(supabaseAdmin);
       agentNames = new Map(
-        (users?.users ?? []).map((user) => [user.id, emailToUsername(user.email) || user.id]),
+        users.map((user) => [user.id, emailToUsername(user.email) || user.id]),
       );
     }
 
@@ -557,5 +522,3 @@ export const getAdminAnalytics = createServerFn({ method: "GET" })
       customers: [...customerMap.values()].sort((a, b) => b.last_order.localeCompare(a.last_order)),
     };
   });
-
-export { listAuditLogs, getAuditLogs } from "./authorization.functions";

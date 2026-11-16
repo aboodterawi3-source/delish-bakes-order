@@ -5,21 +5,29 @@
 export function broadcastKitchenUpdate(orderId?: string) {
   try {
     const payload = { orderId: orderId ?? null, timestamp: Date.now() };
-    // Broadcast on both the direct kitchen-live channel and the fallback broadcast channel
+    const existing = supabase
+      .getChannels()
+      .find((ch) => ch.topic === "realtime:kitchen-live-live");
+    if (existing) {
+      void existing.send({
+        type: "broadcast",
+        event: "kitchen-update",
+        payload,
+      });
+      return;
+    }
     const chDirect = supabase.channel("kitchen-live-live");
-    void chDirect.send({
-      type: "broadcast",
-      event: "kitchen-update",
-      payload,
-    });
-    const chBroadcast = supabase.channel("delish-kitchen-sync-broadcast");
-    void chBroadcast.send({
-      type: "broadcast",
-      event: "kitchen-update",
-      payload,
-    });
-  } catch {
-    // Non-blocking
+    void chDirect
+      .send({
+        type: "broadcast",
+        event: "kitchen-update",
+        payload,
+      })
+      .finally(() => {
+        void supabase.removeChannel(chDirect);
+      });
+  } catch (err) {
+    console.warn("[Realtime] broadcastKitchenUpdate failed:", err);
   }
 }
 

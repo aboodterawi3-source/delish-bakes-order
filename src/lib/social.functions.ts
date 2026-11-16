@@ -1,16 +1,18 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { assertRole, type StaffRoleName } from "@/lib/role-guard";
+import { assertRole, getPortalAccess, type StaffRoleName } from "@/lib/role-guard";
 import { feeForArea } from "@/lib/delivery-zones";
 import { jordanDay } from "@/lib/date-filter";
+import { emailToUsername } from "@/lib/username";
 import {
   getStaffCodeForUser,
   isValidStorageUrl,
+  sanitizeExtraList,
   serializeValidStorageUrls,
-  STORAGE_URL,
-  extraList,
 } from "@/lib/server-shared";
+import { isValidUuid, validateSocialOrderScheduleAndQuantity } from "@/lib/validators";
 import { roundJod } from "@/lib/currency";
+import { logServerError } from "@/lib/server-log";
 
 const SOCIAL_ROLES: StaffRoleName[] = ["social", "sales", "admin"];
 
@@ -62,18 +64,7 @@ export type SocialOrderInput = {
 /** Confirms the signed-in user may use the social media portal. */
 export const getSocialAccess = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { data, error } = await context.supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", context.userId);
-    if (error) throw new Error(error.message);
-    const roles = (data ?? []).map((row) => row.role as string);
-    return {
-      allowed: roles.includes("social") || roles.includes("sales") || roles.includes("admin"),
-      roles,
-    };
-  });
+  .handler(async ({ context }) => getPortalAccess(context, SOCIAL_ROLES));
 
 /**
  * Creates a free-form custom order from the social portal. The complete request
@@ -93,7 +84,17 @@ export const createSocialOrder = createServerFn({ method: "POST" })
     }
     if (!input?.requested_date || !input?.requested_time)
       throw new Error("تاريخ ووقت التسليم مطلوب");
-    if (!Number.isFinite(input.quantity) || input.quantity < 1) throw new Error("الكمية غير صحيحة");
+    validateSocialOrderScheduleAndQuantity({
+      requested_date: input.requested_date,
+      requested_time: input.requested_time,
+      quantity: input.quantity,
+    });
+    if (
+      input.unit_price !== undefined &&
+      (!Number.isFinite(Number(input.unit_price)) || Number(input.unit_price) < 0)
+    ) {
+      throw new Error("سعر الوحدة غير صالح · Invalid unit price");
+    }
     if (!["cash", "cliq_full", "cliq_deposit", "cliq_pending"].includes(input?.payment_option as string)) {
       throw new Error("طريقة الدفع مطلوبة · Payment method is required");
     }
@@ -127,12 +128,11 @@ export const createSocialOrder = createServerFn({ method: "POST" })
         ? 0
         : roundJod(Math.max(0, Number(data.deposit_paid) || 0));
     const paymentMethod = data.payment_option === "cash" ? "cash" : "cliq";
-    const extrasAr = extraList(data.extras_ar);
-    const extrasEn = extraList(data.extras_en);
-    const designImage = serializeValidStorageUrls(data.design_image_url, true, 10);
+    const extrasAr = sanitizeExtraList(data.extras_ar);
+    const extrasEn = sanitizeExtraList(data.extras_en);
+    const designImage = serializeValidStorageUrls(data.design_image_url, false, 10);
     const receiptImage =
-      typeof data.receipt_image_url === "string" &&
-      (isValidStorageUrl(data.receipt_image_url) || STORAGE_URL.test(data.receipt_image_url.trim()))
+      typeof data.receipt_image_url === "string" && isValidStorageUrl(data.receipt_image_url)
         ? data.receipt_image_url.trim()
         : null;
 
@@ -155,10 +155,7 @@ export const createSocialOrder = createServerFn({ method: "POST" })
         ]
       : [];
 
-    let orderId: string;
-    let orderNumber: string;
-    let orderTotal: number;
-    let orderStaffCode: number | null = staffCode;
+    const orderStaffCode: number | null = staffCode;
 
     const { data: atomicResult, error: atomicErr } = await context.supabase.rpc(
       "create_staff_order_atomic",
@@ -211,9 +208,9 @@ export const createSocialOrder = createServerFn({ method: "POST" })
     if (atomicErr || !atomicResult || !(atomicResult as any).id) {
       throw new Error(atomicErr?.message || "تعذّر حفظ طلب السوشيال عبر المعاملة الذرية");
     }
-    orderId = (atomicResult as any).id;
-    orderNumber = (atomicResult as any).order_number;
-    orderTotal = Number((atomicResult as any).total ?? subtotal + deliveryFee);
+    const orderId: string = (atomicResult as any).id;
+    const orderNumber: string = (atomicResult as any).order_number;
+    const orderTotal: number = Number((atomicResult as any).total ?? subtotal + deliveryFee);
 
     const isDuplicate = Boolean((atomicResult as any).is_duplicate);
     if (isDuplicate) {
@@ -237,10 +234,16 @@ export const createSocialOrder = createServerFn({ method: "POST" })
       ? template.replace(/\{\{ORDER_NUMBER\}\}/g, orderNumber).slice(0, 8000)
       : null;
     if (message) {
-      await context.supabase
+      const { error: msgError } = await context.supabase
         .from("orders")
         .update({ confirmation_message: message } as any)
         .eq("id", orderId);
+      if (msgError) {
+        logServerError("social.confirmationMessage", msgError, { orderId, orderNumber });
+        throw new Error(
+          `تم إنشاء الطلب ${orderNumber} لكن تعذّر حفظ رسالة التأكيد: ${msgError.message}`,
+        );
+      }
     }
 
     return {
@@ -305,12 +308,9 @@ export const getSocialStaffStats = createServerFn({ method: "GET" })
     let currentUsername = currentStaffCode ? `موظفة #${currentStaffCode}` : "موظفة السوشال";
     try {
       const { data: userData } = await context.supabase.auth.getUser();
-      const email = userData?.user?.email || "";
-      if (email) {
-        const rawUser = email.includes("@") ? (email.split("@")[0] ?? email) : email;
-        if (rawUser) {
-          currentUsername = rawUser.replace(/[._-]/g, " ");
-        }
+      const parsed = emailToUsername(userData?.user?.email);
+      if (parsed) {
+        currentUsername = parsed;
       }
     } catch {
       // fallback
@@ -325,7 +325,16 @@ export const getSocialStaffStats = createServerFn({ method: "GET" })
       .order("created_at", { ascending: false })
       .limit(1000);
 
-    if (currentStaffCode) {
+    if (!isValidUuid(currentUserId)) {
+      throw new Error("معرّف المستخدم غير صالح · Invalid user identifier");
+    }
+
+    if (
+      currentStaffCode !== null &&
+      Number.isInteger(currentStaffCode) &&
+      currentStaffCode > 0 &&
+      currentStaffCode <= 9999
+    ) {
       query = query.or(`created_by.eq.${currentUserId},staff_code.eq.${currentStaffCode}`);
     } else {
       query = query.eq("created_by", currentUserId);

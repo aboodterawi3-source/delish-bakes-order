@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState, useMemo, useCallback, lazy, Suspense } from "react";
 import { DiscoverView } from "@/components/delish/DiscoverView";
 import { SiteFooter } from "@/components/delish/SiteFooter";
-import { useCart } from "@/lib/cart";
+import { useCart, buildCmsCartLine } from "@/lib/cart";
 import { useStorefrontContent } from "@/hooks/use-storefront-content";
 import { customizationSummary } from "@/components/delish/CakeCustomizationPanel";
 import type { ModalAddPayload } from "@/components/delish/StorefrontProductModal";
@@ -59,28 +59,27 @@ function DiscoverPage() {
   const handleAddProduct = useCallback(
     (payload: ModalAddPayload) => {
       const extras = customizationSummary(payload.customization);
-      const notes = payload.customization.notes.trim() || payload.notes.trim();
-      const details = [
-        payload.size ? `الحجم: ${payload.size}` : "",
-        payload.flavor ? `النكهة: ${payload.flavor}` : "",
-        payload.filling ? `الحشوة: ${payload.filling}` : "",
-        payload.inscription ? `الكتابة: ${payload.inscription}` : "",
-      ].filter(Boolean);
-
-      add({
-        ar: payload.product.name_ar,
-        en: payload.product.name_en,
-        unit: payload.price,
-        qty: payload.quantity,
-        image: payload.product.image_url ?? undefined,
-        designImage: payload.customization.designImageUrl ?? undefined,
-        notes: notes || undefined,
-        detailsAr: [...details, ...extras.ar],
-        detailsEn: [...details, ...extras.en],
-        extrasAr: extras.ar,
-        extrasEn: extras.en,
-        spec: { kind: "cms", productId: payload.product.id, size: payload.size ?? null },
-      });
+      const notes = payload.customization.notes.trim();
+      add(
+        buildCmsCartLine({
+          productId: payload.product.id,
+          nameAr: payload.product.name_ar,
+          nameEn: payload.product.name_en,
+          unitPrice: payload.price,
+          quantity: payload.quantity,
+          size: payload.size,
+          image: payload.product.image_url,
+          designImage: payload.customization.designImageUrl,
+          notes,
+          extrasAr: extras.ar,
+          extrasEn: extras.en,
+          flavor: payload.flavor,
+          filling: payload.filling,
+          customizationFilling: payload.customization.filling,
+          inscription: payload.inscription,
+          prefixSizeLabel: true,
+        }),
+      );
       setSelectedProductId(null);
       setCartOpen(true);
     },

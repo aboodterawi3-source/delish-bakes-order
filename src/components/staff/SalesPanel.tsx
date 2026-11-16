@@ -1,11 +1,11 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Loader2, LogOut } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { getSalesAccess } from "@/lib/sales.functions";
+import { useStaffAccess } from "@/hooks/use-staff-access";
 import { CmsPanel } from "@/components/delish/CmsPanel";
 import { OrdersWorkspace } from "@/components/staff/OrdersWorkspace";
 import { ModificationsPanel } from "@/components/staff/ModificationsPanel";
@@ -17,39 +17,9 @@ export function SalesPanel() {
   const accessFn = useServerFn(getSalesAccess);
   const [view, setView] = useState<"pos" | "orders" | "modifications" | "messages" | "site">("pos");
 
-  const access = useQuery({
-    queryKey: ["sales-access"],
-    queryFn: async () => {
-      try {
-        const res = await accessFn({});
-        if (res?.allowed) return res;
-      } catch (err) {
-        console.warn("[SalesPanel] accessFn error, using direct user_roles check:", err);
-      }
-      const { data: sessionData } = await supabase.auth.getUser();
-      if (!sessionData?.user) return { allowed: false, roles: [] };
-      const { data: roleRows } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", sessionData.user.id);
-      const userRoles = (roleRows ?? []).map((r) => r.role as string);
-      return {
-        allowed: userRoles.includes("sales") || userRoles.includes("admin"),
-        roles: userRoles,
-      };
-    },
-    staleTime: 30_000,
-    gcTime: 60_000,
-  });
+  const access = useStaffAccess(["sales-access"], () => accessFn({}), ["sales", "admin"]);
 
   const signOut = useCallback(async () => {
-    if (typeof window !== "undefined" && window.sessionStorage) {
-      Object.keys(sessionStorage).forEach((key) => {
-        if (key.startsWith("delish_pos_draft_")) {
-          sessionStorage.removeItem(key);
-        }
-      });
-    }
     await supabase.auth.signOut();
     void navigate({ to: "/auth", replace: true });
   }, [navigate]);

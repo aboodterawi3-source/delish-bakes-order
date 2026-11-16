@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { assertRole, type StaffRoleName } from "@/lib/role-guard";
+import { assertRole, getPortalAccess, type StaffRoleName } from "@/lib/role-guard";
 import { highestPriority, type PriorityColor } from "@/lib/priority";
 import { isoDay, todayIso } from "@/lib/date-filter";
 
@@ -27,9 +27,10 @@ const stripPhones = (text: string | null): string | null =>
 const stripPhonesAndPrices = (text: string | null): string | null =>
   text ? text.replace(PHONE_LIKE, "—").replace(PRICE_LIKE, "—") : text;
 
-import type { OrderModification } from "@/lib/server-shared";
+import type { OrderModification } from "@/lib/order-modifications";
 export type { OrderModification };
 import { serializeValidStorageUrls } from "@/lib/server-shared";
+import { isValidUuid } from "@/lib/validators";
 
 export type KdsItem = {
   id: string;
@@ -77,18 +78,7 @@ export type KdsOrder = {
 /** Confirms the signed-in user may use the kitchen display. */
 export const getKitchenAccess = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { data, error } = await context.supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", context.userId);
-    if (error) throw new Error(error.message);
-    const roles = (data ?? []).map((row) => row.role as string);
-    return {
-      allowed: roles.includes("kitchen") || roles.includes("admin"),
-      roles,
-    };
-  });
+  .handler(async ({ context }) => getPortalAccess(context, KITCHEN_ROLES));
 
 /**
  * Kitchen-safe order feed. Prices, delivery fees, totals and payment data are
@@ -243,6 +233,7 @@ export const getKitchenOrders = createServerFn({ method: "GET" })
       return {
         id: order.id,
         order_number: order.order_number,
+        version: typeof order.version === "number" ? order.version : 1,
         staff_code: order.staff_code ?? null,
         customer_name: stripPhones(order.customer_name) ?? "",
         method: order.method,
@@ -267,30 +258,15 @@ export const getKitchenOrders = createServerFn({ method: "GET" })
     });
   });
 
-/** Marks an order ready; sales sees the same row instantly. */
-export const markOrderReady = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .validator((input: { orderId: string }) => {
-    if (!input?.orderId) throw new Error("orderId is required");
-    return input;
-  })
-  .handler(async ({ data, context }) => {
-    await assertRole(context, KITCHEN_ROLES);
-    const { error } = await context.supabase.rpc("update_kitchen_order_status" as any, {
-      p_order_id: data.orderId,
-      p_status: "ready",
-    });
-    if (error) throw new Error(error.message);
-    return { ok: true };
-  });
-
 /** Kitchen staff acknowledges modifications on an order */
 export const acknowledgeOrderModification = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: { orderId: string; modIds?: string[] | undefined }) => {
-    if (!input?.orderId) throw new Error("orderId is required");
+    if (!input?.orderId || !isValidUuid(input.orderId)) {
+      throw new Error("معرّف الطلب غير صالح · Valid orderId is required");
+    }
     return {
-      orderId: String(input.orderId),
+      orderId: String(input.orderId).trim(),
       modIds: Array.isArray(input.modIds) ? input.modIds.map(String) : [],
     };
   })
@@ -314,12 +290,12 @@ export const acknowledgeOrderModification = createServerFn({ method: "POST" })
       return { ok: true, result };
     }
 
-    let orderRow: { modifications?: any } | null = null;
+    let orderRow: { modifications?: any; version?: number } | null = null;
 
     try {
       const { data: order } = await context.supabase
         .from("orders")
-        .select("modifications")
+        .select("modifications, version")
         .eq("id", data.orderId)
         .single();
       orderRow = order;
@@ -332,7 +308,7 @@ export const acknowledgeOrderModification = createServerFn({ method: "POST" })
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { data: adminRow } = await supabaseAdmin
           .from("orders")
-          .select("modifications")
+          .select("modifications, version")
           .eq("id", data.orderId)
           .single();
         orderRow = adminRow;
@@ -373,22 +349,42 @@ export const acknowledgeOrderModification = createServerFn({ method: "POST" })
       ];
     }
 
-    const { error } = await context.supabase
+    let updateQuery = context.supabase
       .from("orders")
       .update({ modifications: updatedMods as any })
       .eq("id", data.orderId);
+    if (typeof orderRow?.version === "number") {
+      updateQuery = updateQuery.eq("version", orderRow.version);
+    }
+    const { data: updatedRows, error } = await updateQuery.select("id");
 
-    if (error && process.env["SUPABASE_SERVICE_ROLE_KEY"]) {
+    if ((!error && updatedRows && updatedRows.length > 0)) {
+      return { ok: true };
+    }
+
+    if (process.env["SUPABASE_SERVICE_ROLE_KEY"]) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const { error: adminError } = await supabaseAdmin
+      let adminUpdate = supabaseAdmin
         .from("orders")
         .update({ modifications: updatedMods as any })
         .eq("id", data.orderId);
+      if (typeof orderRow?.version === "number") {
+        adminUpdate = adminUpdate.eq("version", orderRow.version);
+      }
+      const { data: adminUpdatedRows, error: adminError } = await adminUpdate.select("id");
       if (adminError) throw new Error(adminError.message);
-    } else if (error) {
-      throw new Error(error.message);
+      if (!adminUpdatedRows || adminUpdatedRows.length === 0) {
+        throw new Error(
+          "تعارض تعديل: تم تحديث الطلب من شاشة أخرى · Conflict: order was updated elsewhere",
+        );
+      }
+      return { ok: true };
     }
-    return { ok: true };
+
+    if (error) throw new Error(error.message);
+    throw new Error(
+      "تعارض تعديل: تم تحديث الطلب من شاشة أخرى · Conflict: order was updated elsewhere",
+    );
   });
 
 /** Kitchen stages the cook may set: start preparing, mark ready, or undo back. */
@@ -398,9 +394,11 @@ const KITCHEN_STAGES: KitchenStage[] = ["new", "baking", "ready"];
 export const setKitchenStage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: { orderId: string; stage: KitchenStage }) => {
-    if (!input?.orderId) throw new Error("orderId is required");
+    if (!input?.orderId || !isValidUuid(input.orderId)) {
+      throw new Error("معرّف الطلب غير صالح · Valid orderId is required");
+    }
     if (!KITCHEN_STAGES.includes(input.stage)) throw new Error("مرحلة غير صالحة · Invalid stage");
-    return { orderId: String(input.orderId), stage: input.stage };
+    return { orderId: String(input.orderId).trim(), stage: input.stage };
   })
   .handler(async ({ data, context }) => {
     await assertRole(context, KITCHEN_ROLES);
@@ -411,8 +409,3 @@ export const setKitchenStage = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
-
-/* --------------------------- kitchen priority tiers -------------------------- */
-
-export { PRIORITY_COLORS } from "@/lib/priority";
-export type { PriorityColor } from "@/lib/priority";

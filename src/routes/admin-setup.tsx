@@ -31,6 +31,7 @@ function AdminSetupPage() {
   const checkState = useServerFn(getAdminSetupState);
   const create = useServerFn(bootstrapAdmin);
   const [needsSetup, setNeedsSetup] = useState<boolean | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [setupToken, setSetupToken] = useState("");
@@ -38,7 +39,25 @@ function AdminSetupPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    void checkState().then((state) => setNeedsSetup(state.needsSetup));
+    let active = true;
+    setLoadError(null);
+    checkState()
+      .then((state) => {
+        if (active) setNeedsSetup(Boolean(state?.needsSetup));
+      })
+      .catch((caught) => {
+        if (active) {
+          setLoadError(
+            caught instanceof Error
+              ? caught.message
+              : "تعذّر التحقق من حالة التهيئة · Could not check setup state",
+          );
+          setNeedsSetup(false);
+        }
+      });
+    return () => {
+      active = false;
+    };
   }, [checkState]);
 
   const submit = async (event: React.FormEvent) => {
@@ -81,9 +100,18 @@ function AdminSetupPage() {
 
         {needsSetup === false && (
           <div className="mt-6 space-y-4">
-            <p className="rounded-xl bg-muted p-3 text-sm font-bold text-foreground">
-              تم إنشاء حساب المدير مسبقاً · An admin account already exists.
-            </p>
+            {loadError ? (
+              <p
+                role="alert"
+                className="rounded-xl bg-destructive/10 p-3 text-xs font-bold text-destructive"
+              >
+                {loadError}
+              </p>
+            ) : (
+              <p className="rounded-xl bg-muted p-3 text-sm font-bold text-foreground">
+                تم إنشاء حساب المدير مسبقاً · An admin account already exists.
+              </p>
+            )}
             <button
               type="button"
               onClick={() => void navigate({ to: "/auth" })}

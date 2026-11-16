@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { decodeValidatedImage } from "@/lib/image-validation";
 import { publicError } from "@/lib/public-error";
 import { logServerError } from "@/lib/server-log";
+import { timingSafeEqualString } from "@/lib/server-shared";
 
 const BUCKET = "order-designs";
 /** Five years: staff must still be able to open old reference photos. */
@@ -20,14 +21,30 @@ export type DesignUploadRequest = {
   previous_deleteToken?: string | null;
 };
 
+let ephemeralFallbackKey: ArrayBuffer | null = null;
+
+function getEphemeralFallbackKey(): ArrayBuffer {
+  if (!ephemeralFallbackKey) {
+    const bytes = new Uint8Array(32);
+    crypto.getRandomValues(bytes);
+    ephemeralFallbackKey = bytes.buffer;
+  }
+  return ephemeralFallbackKey;
+}
+
 async function signPath(path: string): Promise<string> {
-  const secret =
+  const envSecret = (
+    process.env["DESIGN_UPLOAD_SECRET"] ||
     process.env["SUPABASE_SERVICE_ROLE_KEY"] ||
     process.env["SUPABASE_SERVICE_KEY"] ||
-    "delish-bakes-order-design-signature-secret-key-2026";
+    ""
+  ).trim();
+  const keyMaterial = envSecret
+    ? await crypto.subtle.digest("SHA-256", new TextEncoder().encode(envSecret))
+    : getEphemeralFallbackKey();
   const key = await crypto.subtle.importKey(
     "raw",
-    new TextEncoder().encode(secret.slice(0, 32).padEnd(32, "0")),
+    keyMaterial,
     { name: "HMAC", hash: "SHA-256" },
     false,
     ["sign"],
@@ -85,6 +102,63 @@ async function removeDesignPhoto(path: string): Promise<void> {
 }
 
 /**
+ * Throttled background sweep for orphaned design photos older than 5 days.
+ * Any photo uploaded in the last 5 days is untouched (protecting open carts and drafts),
+ * and every candidate is checked against `orders.design_image_url` (failing closed on DB error).
+ */
+const ORPHAN_SWEEP_INTERVAL_MS = 6 * 60 * 60 * 1000; // Once every 6 hours
+const ORPHAN_MIN_AGE_DAYS = 5;
+const ORPHAN_WINDOW_DAYS = 5; // Checks folders 5..9 days old
+const ORPHAN_MAX_CHECKS_PER_SWEEP = 15;
+let lastOrphanSweepAt = 0;
+
+async function sweepOrphanedDesignPhotos(
+  admin: Awaited<typeof import("@/integrations/supabase/client.server")>["supabaseAdmin"],
+  nowMs = Date.now(),
+): Promise<number> {
+  let removedCount = 0;
+  let checkedCount = 0;
+
+  for (
+    let daysAgo = ORPHAN_MIN_AGE_DAYS;
+    daysAgo < ORPHAN_MIN_AGE_DAYS + ORPHAN_WINDOW_DAYS;
+    daysAgo++
+  ) {
+    if (checkedCount >= ORPHAN_MAX_CHECKS_PER_SWEEP) break;
+    const folderDate = new Date(nowMs - daysAgo * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const { data: files, error: listError } = await admin.storage
+      .from(BUCKET)
+      .list(folderDate, { limit: 30 });
+    if (listError || !Array.isArray(files) || files.length === 0) continue;
+
+    for (const file of files) {
+      if (checkedCount >= ORPHAN_MAX_CHECKS_PER_SWEEP) break;
+      const candidatePath = `${folderDate}/${file.name ?? ""}`;
+      if (!DESIGN_PATH.test(candidatePath)) continue;
+      checkedCount++;
+
+      const attached = await isAttachedToOrder(admin, candidatePath);
+      if (!attached) {
+        const { error: rmError } = await admin.storage.from(BUCKET).remove([candidatePath]);
+        if (!rmError) removedCount++;
+      }
+    }
+  }
+  return removedCount;
+}
+
+function triggerBackgroundOrphanSweep(
+  admin: Awaited<typeof import("@/integrations/supabase/client.server")>["supabaseAdmin"],
+): void {
+  const now = Date.now();
+  if (now - lastOrphanSweepAt < ORPHAN_SWEEP_INTERVAL_MS) return;
+  lastOrphanSweepAt = now;
+  void sweepOrphanedDesignPhotos(admin, now).catch((err) => {
+    logServerError("design-upload.orphanSweep", err);
+  });
+}
+
+/**
  * Stores a customer reference photo (already converted to WebP in the browser)
  * in private Cloud storage and returns a long-lived signed URL for staff views.
  * A superseded photo is deleted only when it matches our generated path shape
@@ -105,11 +179,17 @@ export const uploadDesignImage = createServerFn({ method: "POST" })
     const { enforceRateLimit } = await import("@/lib/rate-limit");
     enforceRateLimit("design-upload", 15, 10 * 60_000);
 
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { supabaseAdmin, hasSupabaseServiceRoleKey } = await import(
+      "@/integrations/supabase/client.server"
+    );
+
+    if (hasSupabaseServiceRoleKey()) {
+      triggerBackgroundOrphanSweep(supabaseAdmin);
+    }
 
     // Validated, order-safe cleanup of the replaced photo (was: arbitrary path deletion).
     const oldPath = resolveDesignPath(data.previous_path, data.previous_url);
-    if (oldPath && data.previous_deleteToken === (await signPath(oldPath))) {
+    if (oldPath && timingSafeEqualString(data.previous_deleteToken, await signPath(oldPath))) {
       await removeDesignPhoto(oldPath);
     }
 
@@ -157,7 +237,7 @@ export const deleteDesignImage = createServerFn({ method: "POST" })
     enforceRateLimit("design-delete", 30, 10 * 60_000);
 
     const target = resolveDesignPath(data.path, data.url);
-    if (target && data.deleteToken === (await signPath(target))) {
+    if (target && timingSafeEqualString(data.deleteToken, await signPath(target))) {
       await removeDesignPhoto(target);
     }
     // Always the same answer so the endpoint cannot be used to probe which files exist.

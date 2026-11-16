@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   ChevronLeft,
@@ -8,10 +8,10 @@ import {
   Minus,
   Check,
   Loader2,
-  ImageOff,
 } from "lucide-react";
 import { DelishLogo } from "./DelishLogo";
 import { BackgroundCurves } from "./BackgroundCurves";
+import { FallbackImage } from "./FallbackImage";
 import {
   CakeCustomizationPanel,
   emptyCustomization,
@@ -19,7 +19,7 @@ import {
 } from "./CakeCustomizationPanel";
 import { LangToggle, useLang } from "@/lib/i18n";
 import { formatJod } from "@/lib/currency";
-import { WHATSAPP } from "@/lib/menu";
+import { getWhatsAppChatUrl } from "@/lib/whatsapp";
 import {
   priceForSize,
   getProductFallbackImage,
@@ -67,7 +67,7 @@ export function ProductDetailsView({
   const [addedAnimation, setAddedAnimation] = useState(false);
   const [customization, setCustomization] = useState<Customization>(emptyCustomization);
 
-  const sizes = product?.sizes ?? [];
+  const sizes = useMemo(() => product?.sizes ?? [], [product?.sizes]);
   const activeSize = useMemo(
     () => (sizes.some((option) => option.label === size) ? size : (sizes[0]?.label ?? null)),
     [sizes, size],
@@ -78,10 +78,19 @@ export function ProductDetailsView({
   const name = product ? (ar ? product.name_ar : product.name_en) : "";
   const description = product ? (ar ? product.description_ar : product.description_en) : null;
 
+  const resetAnimTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (resetAnimTimerRef.current) clearTimeout(resetAnimTimerRef.current);
+    };
+  }, []);
+
   const handleAdd = () => {
     if (!product) return;
     setAddedAnimation(true);
-    setTimeout(() => setAddedAnimation(false), 1500);
+    if (resetAnimTimerRef.current) clearTimeout(resetAnimTimerRef.current);
+    resetAnimTimerRef.current = setTimeout(() => setAddedAnimation(false), 1500);
     onAddToCart?.({
       productId: product.id,
       nameAr: product.name_ar,
@@ -158,7 +167,7 @@ export function ProductDetailsView({
       </header>
 
       {/* Main Product Showcase Block */}
-      <main className="relative z-10 w-full max-w-3xl flex-1 space-y-4 self-center overflow-x-hidden px-4 pt-3 pb-24 sm:px-5">
+      <div className="relative z-10 w-full max-w-3xl flex-1 space-y-4 self-center overflow-x-hidden px-4 pt-3 pb-24 sm:px-5">
         {isPending && !product ? (
           <p className="flex items-center justify-center gap-2 py-24 text-xs text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> {t("loadingMenu")}
@@ -171,18 +180,10 @@ export function ProductDetailsView({
           <>
             {/* Single product photo, exactly as the sales desk uploaded it */}
             <div className="flex h-64 min-w-0 items-center justify-center sm:h-80">
-              <img
-                src={
-                  product.image_url || getProductFallbackImage(product.slug, product.category, name)
-                }
+              <FallbackImage
+                src={product.image_url}
+                fallbackSrc={getProductFallbackImage(product.slug, product.category, name)}
                 alt={name}
-                onError={(e) => {
-                  const fallback = getProductFallbackImage(product.slug, product.category, name);
-                  if (!e.currentTarget.dataset["fallbackApplied"]) {
-                    e.currentTarget.dataset["fallbackApplied"] = "true";
-                    e.currentTarget.src = fallback;
-                  }
-                }}
                 className="h-full w-full object-contain drop-shadow-md"
               />
             </div>
@@ -270,7 +271,7 @@ export function ProductDetailsView({
             <CakeCustomizationPanel value={customization} onChange={setCustomization} />
           </>
         )}
-      </main>
+      </div>
 
       {/* Sticky Bottom Action Bar */}
       <footer className="sticky bottom-0 z-20 grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] items-center gap-3 border-t border-border bg-background/98 px-4 py-4 sm:flex sm:flex-wrap sm:justify-between sm:px-6">
@@ -285,11 +286,12 @@ export function ProductDetailsView({
               </span>
             </div>
             <a
-              href={`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(
+              href={getWhatsAppChatUrl(
+                null,
                 ar
                   ? `مرحباً، أريد معرفة سعر: ${product.name_ar}`
                   : `Hello, I would like the price for: ${product.name_en}`,
-              )}`}
+              )}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex min-h-[50px] min-w-0 items-center justify-center gap-2 rounded-full bg-whatsapp px-4 py-3.5 text-center text-xs font-bold text-whatsapp-foreground uppercase shadow-sm sm:flex-none sm:px-7 sm:text-sm"

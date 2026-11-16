@@ -1,12 +1,12 @@
 import { memo } from "react";
 import { Facebook, Instagram, MessageCircle } from "lucide-react";
-import { WHATSAPP } from "@/lib/menu";
+import { getWhatsAppChatUrl } from "@/lib/whatsapp";
 import { useLang } from "@/lib/i18n";
 
 export const SOCIAL_LINKS = {
   facebook: "https://www.facebook.com/delishcakejo",
   instagram: "https://www.instagram.com/delishcakejo",
-  whatsapp: `https://wa.me/${WHATSAPP}`,
+  whatsapp: getWhatsAppChatUrl(),
 };
 
 /** Shared storefront footer: social icons plus the Delish Bakes copyright. */

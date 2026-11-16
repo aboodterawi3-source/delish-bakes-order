@@ -115,16 +115,3 @@ export function useDeliveryZonesStore() {
 export const getActiveDeliveryZones = (): DeliveryZone[] => {
   return readStoredZones();
 };
-
-/** Helper to compute fees mapping from current zones */
-export const getActiveAreaFees = (): Record<string, number> => {
-  const zones = getActiveDeliveryZones();
-  const map: Record<string, number> = {};
-  for (const zone of zones) {
-    for (const area of zone.areas) {
-      const current = map[area];
-      map[area] = current === undefined ? zone.fee : Math.min(current, zone.fee);
-    }
-  }
-  return map;
-};

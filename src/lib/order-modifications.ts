@@ -1,4 +1,11 @@
-import type { OrderModification } from "@/lib/server-shared";
+export type OrderModification = {
+  id?: string;
+  field: string;
+  oldValue: string;
+  newValue: string;
+  updatedAt: string;
+  acknowledgedAt?: string | null;
+};
 
 /**
  * Keywords for driver, delivery dispatch, and transfer/payment that should
@@ -134,4 +141,152 @@ export function consolidateModifications(
   }
 
   return Array.from(map.values());
+}
+
+/**
+ * Computes a deterministic key representing the unacknowledged kitchen-relevant modifications
+ * of an order. Used identically on initial KDS load and on subsequent polling/realtime updates
+ * so pre-existing unacknowledged modifications do not falsely re-trigger the audio alarm.
+ */
+export function computeUnackModKey(order: {
+  version?: number | null | undefined;
+  modifications?: OrderModification[] | null | undefined;
+}): string | null {
+  const unack = (order.modifications || [])
+    .filter(isKitchenRelevantModification)
+    .filter((m) => !m.acknowledgedAt);
+  if (unack.length === 0) return null;
+  const latestUnackTime = unack.reduce(
+    (latest, m) => (m.updatedAt > latest ? m.updatedAt : latest),
+    "",
+  );
+  return `${order.version || 1}_${unack.map((m) => (m as { id?: string }).id || m.updatedAt).join(",")}_${latestUnackTime}`;
+}
+
+/**
+ * Applies a server-confirmed discount payload to a cached order row while advancing
+ * its OCC `version` so consecutive edits do not fail with a stale-version conflict.
+ */
+export function applyDiscountToCachedOrder<
+  T extends {
+    id: string;
+    subtotal: number;
+    delivery_fee: number;
+    method: string;
+    version?: number;
+  },
+>(
+  order: T,
+  updated: {
+    discount_amount: number;
+    discount_percent: number;
+    version?: number | null | undefined;
+  },
+): T & { discount_amount: number; discount_percent: number; total: number; version: number } {
+  const nextTotal = Math.max(
+    order.subtotal +
+      (order.method === "delivery" ? order.delivery_fee : 0) -
+      updated.discount_amount,
+    0,
+  );
+  return {
+    ...order,
+    discount_amount: updated.discount_amount,
+    discount_percent: updated.discount_percent,
+    total: Number(nextTotal.toFixed(2)),
+    version:
+      typeof updated.version === "number" && Number.isFinite(updated.version)
+        ? updated.version
+        : (order.version ?? 1) + 1,
+  };
+}
+
+/**
+ * Produces a stable fingerprint of the storefront cart and checkout fields so
+ * retries after an error keep the same idempotency key only when the order is unchanged.
+ */
+export function computeCartSubmissionFingerprint(input: {
+  lines: ReadonlyArray<{ key: string; qty: number }>;
+  method: string;
+  area: string;
+  date: string;
+  time: string;
+  pay: string;
+  name: string;
+  phone: string;
+  address: string;
+  notes: string;
+}): string {
+  return JSON.stringify({
+    lines: input.lines.map((l) => [l.key, l.qty]),
+    method: input.method,
+    area: input.area.trim(),
+    date: input.date.trim(),
+    time: input.time.trim(),
+    pay: input.pay,
+    name: input.name.trim(),
+    phone: input.phone.trim(),
+    address: input.address.trim(),
+    notes: input.notes.trim(),
+  });
+}
+
+export type DrawerOrderSnapshot = {
+  id: string;
+  deposit_paid: number;
+  driver_name: string | null;
+  driver_phone: string | null;
+  discount_percent: number;
+  address: string | null;
+};
+
+export type DrawerLocalFields = {
+  deposit: string;
+  driverName: string;
+  driverPhone: string;
+  discountPercent: string;
+  discountReason: string;
+  address: string;
+};
+
+/**
+ * Reconciles OrderPanelDrawer local form fields when `order` updates.
+ * - Switching to a different order ID resets every field to the new server values.
+ * - Updating the same order ID (payments, discounts, realtime sync) refreshes any field
+ *   whose server value changed AND wasn't locally dirtied by the staff member.
+ */
+export function reconcileOrderDrawerFields(
+  prevServer: DrawerOrderSnapshot,
+  nextServer: DrawerOrderSnapshot,
+  local: DrawerLocalFields,
+): DrawerLocalFields {
+  const toSnapshotStrings = (s: DrawerOrderSnapshot) => ({
+    deposit: String(s.deposit_paid),
+    driverName: s.driver_name ?? "",
+    driverPhone: s.driver_phone ?? "",
+    discountPercent: String(s.discount_percent || ""),
+    address: s.address ?? "",
+  });
+
+  const nextStr = toSnapshotStrings(nextServer);
+  if (prevServer.id !== nextServer.id) {
+    return { ...nextStr, discountReason: "" };
+  }
+
+  const prevStr = toSnapshotStrings(prevServer);
+  const pick = <K extends keyof typeof nextStr>(key: K): string => {
+    if (prevStr[key] !== nextStr[key] && local[key] === prevStr[key]) {
+      return nextStr[key];
+    }
+    return local[key];
+  };
+
+  return {
+    deposit: pick("deposit"),
+    driverName: pick("driverName"),
+    driverPhone: pick("driverPhone"),
+    discountPercent: pick("discountPercent"),
+    discountReason: local.discountReason,
+    address: pick("address"),
+  };
 }

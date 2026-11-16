@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
-import { useEffect, useMemo } from "react";
+import { lazy, Suspense, useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ChefHat,
@@ -11,12 +11,51 @@ import {
   ShoppingBag,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { AdminPanel } from "@/components/staff/AdminPanel";
-import { SalesPanel } from "@/components/staff/SalesPanel";
-import { KitchenPanel } from "@/components/staff/KitchenPanel";
-import { SocialPanel } from "@/components/staff/SocialPanel";
-import { MessagesPanel } from "@/components/staff/MessagesPanel";
 import { TabErrorBoundary } from "@/components/staff/TabErrorBoundary";
+
+const AdminPanel = lazy(() =>
+  import("@/components/staff/AdminPanel").then((m) => ({ default: m.AdminPanel })),
+);
+const SalesPanel = lazy(() =>
+  import("@/components/staff/SalesPanel").then((m) => ({ default: m.SalesPanel })),
+);
+const KitchenPanel = lazy(() =>
+  import("@/components/staff/KitchenPanel").then((m) => ({ default: m.KitchenPanel })),
+);
+const SocialPanel = lazy(() =>
+  import("@/components/staff/SocialPanel").then((m) => ({ default: m.SocialPanel })),
+);
+const MessagesPanel = lazy(() =>
+  import("@/components/staff/MessagesPanel").then((m) => ({ default: m.MessagesPanel })),
+);
+
+function preloadStaffTab(tab: StaffTab) {
+  switch (tab) {
+    case "sales":
+      void import("@/components/staff/SalesPanel");
+      break;
+    case "kitchen":
+      void import("@/components/staff/KitchenPanel");
+      break;
+    case "social":
+      void import("@/components/staff/SocialPanel");
+      break;
+    case "messages":
+      void import("@/components/staff/MessagesPanel");
+      break;
+    case "admin":
+      void import("@/components/staff/AdminPanel");
+      break;
+  }
+}
+
+function PanelLoadingFallback() {
+  return (
+    <div className="grid min-h-[50vh] place-items-center">
+      <Loader2 className="h-6 w-6 animate-spin text-[#B8860B]" aria-label="جاري التحميل" />
+    </div>
+  );
+}
 
 type StaffTab = "sales" | "kitchen" | "social" | "messages" | "admin";
 
@@ -103,11 +142,12 @@ function StaffErrorScreen({ error }: { error: unknown }) {
   );
 }
 
-export function useUnreadMessagesCount() {
+export function useUnreadMessagesCount(enabled = true) {
   const queryClient = useQueryClient();
 
   const query = useQuery({
     queryKey: ["staff", "unread-messages-count"],
+    enabled,
     queryFn: async () => {
       const { count, error } = await supabase
         .from("customer_messages")
@@ -121,10 +161,12 @@ export function useUnreadMessagesCount() {
       return count ?? 0;
     },
     staleTime: 15_000,
-    refetchInterval: 30_000,
+    refetchInterval: enabled ? 30_000 : false,
   });
 
   useEffect(() => {
+    if (!enabled) return;
+
     const invalidate = () => {
       void queryClient.invalidateQueries({ queryKey: ["staff", "unread-messages-count"] });
       void queryClient.invalidateQueries({ queryKey: ["staff", "customer-messages"] });
@@ -142,16 +184,15 @@ export function useUnreadMessagesCount() {
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [queryClient]);
+  }, [queryClient, enabled]);
 
-  return query.data ?? 0;
+  return enabled ? (query.data ?? 0) : 0;
 }
 
 function StaffPortalPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const search = useSearch({ from: "/_authenticated/staff" });
-  const unreadCount = useUnreadMessagesCount();
 
   const roles = useQuery({
     queryKey: ["staff", "roles"],
@@ -167,6 +208,12 @@ function StaffPortalPage() {
     },
     staleTime: 60_000,
   });
+
+  const canViewMessages = useMemo(() => {
+    const list = roles.data ?? [];
+    return list.includes("admin") || list.includes("sales") || list.includes("social");
+  }, [roles.data]);
+  const unreadCount = useUnreadMessagesCount(canViewMessages);
 
   /** Only the panels this account is authorised for ever reach the tab bar. */
   const allowed = useMemo(() => {
@@ -188,13 +235,6 @@ function StaffPortalPage() {
   }, [active, navigate, search.tab]);
 
   const signOut = async () => {
-    if (typeof window !== "undefined" && window.sessionStorage) {
-      Object.keys(sessionStorage).forEach((key) => {
-        if (key.startsWith("delish_pos_draft_")) {
-          sessionStorage.removeItem(key);
-        }
-      });
-    }
     await queryClient.cancelQueries();
     queryClient.clear();
     await supabase.auth.signOut();
@@ -259,6 +299,8 @@ function StaffPortalPage() {
                   key={tab.value}
                   type="button"
                   aria-current={on}
+                  onMouseEnter={() => preloadStaffTab(tab.value)}
+                  onFocus={() => preloadStaffTab(tab.value)}
                   onClick={() => void navigate({ to: "/staff", search: { tab: tab.value } })}
                   className={`inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-2 rounded-full px-4 text-xs font-bold whitespace-nowrap transition-all active:scale-95 ${
                     on
@@ -292,27 +334,37 @@ function StaffPortalPage() {
 
       {active === "sales" && (
         <TabErrorBoundary tabName="المبيعات (Sales)">
-          <SalesPanel />
+          <Suspense fallback={<PanelLoadingFallback />}>
+            <SalesPanel />
+          </Suspense>
         </TabErrorBoundary>
       )}
       {active === "kitchen" && (
         <TabErrorBoundary tabName="المطبخ (Kitchen)">
-          <KitchenPanel />
+          <Suspense fallback={<PanelLoadingFallback />}>
+            <KitchenPanel />
+          </Suspense>
         </TabErrorBoundary>
       )}
       {active === "social" && (
         <TabErrorBoundary tabName="السوشال (Social)">
-          <SocialPanel />
+          <Suspense fallback={<PanelLoadingFallback />}>
+            <SocialPanel />
+          </Suspense>
         </TabErrorBoundary>
       )}
       {active === "messages" && (
         <TabErrorBoundary tabName="الرسائل (Messages)">
-          <MessagesPanel />
+          <Suspense fallback={<PanelLoadingFallback />}>
+            <MessagesPanel />
+          </Suspense>
         </TabErrorBoundary>
       )}
       {active === "admin" && (
         <TabErrorBoundary tabName="الإدارة (Admin)">
-          <AdminPanel />
+          <Suspense fallback={<PanelLoadingFallback />}>
+            <AdminPanel />
+          </Suspense>
         </TabErrorBoundary>
       )}
     </div>

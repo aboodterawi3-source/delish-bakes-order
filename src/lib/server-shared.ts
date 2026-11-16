@@ -1,3 +1,7 @@
+import { resolveSupabaseUrl } from "../integrations/supabase/shared.ts";
+import type { OrderModification } from "./order-modifications.ts";
+import { isValidUuid } from "./validators.ts";
+
 /**
  * Shared server types, utilities, and guards for Delish Bakery server functions.
  */
@@ -8,15 +12,7 @@ export type ServerAuthContext = {
   claims: Record<string, unknown>;
 };
 
-export type Ctx = ServerAuthContext;
-
-export type OrderModification = {
-  field: string;
-  oldValue: string;
-  newValue: string;
-  updatedAt: string;
-  acknowledgedAt?: string | null;
-};
+export type { OrderModification };
 
 /**
  * Retrieves the numeric employee staff code for a given authenticated user ID.
@@ -39,16 +35,7 @@ export const MAX_EXTRA_LENGTH = 160;
  * supporting Node/Serverless runtimes and Vite browser environments.
  */
 export function getSupabaseStorageBaseUrl(): string {
-  const DEFAULT_URL = "https://dmvwdkxcltnomigoqtue.supabase.co";
-  const envUrl =
-    (typeof process !== "undefined" &&
-      (process.env?.["SUPABASE_URL"] ||
-        process.env?.["VITE_SUPABASE_URL"] ||
-        process.env?.["NEXT_PUBLIC_SUPABASE_URL"])) ||
-    (typeof import.meta !== "undefined" &&
-      ((import.meta as any)?.env?.VITE_SUPABASE_URL || (import.meta as any)?.env?.SUPABASE_URL)) ||
-    DEFAULT_URL;
-  return envUrl ? String(envUrl).replace(/\/+$/, "") : DEFAULT_URL;
+  return resolveSupabaseUrl();
 }
 
 /**
@@ -145,4 +132,66 @@ export const sanitizeExtraList = (value: unknown): string[] => {
     .map((entry) => entry.slice(0, MAX_EXTRA_LENGTH));
 };
 
-export const extraList = sanitizeExtraList;
+export { isValidUuid };
+
+/**
+ * Builds the `products` write payload for CMS saves: preserves existing product
+ * slugs across updates (preventing broken links and unique-slug collisions) while
+ * assigning a slug on insert.
+ */
+export function buildCmsProductWritePayload<T extends Record<string, unknown>>({
+  id,
+  slug,
+  row,
+}: {
+  id: string | null | undefined;
+  slug: string;
+  row: T;
+}): T & { slug?: string } {
+  if (id) {
+    return { ...row };
+  }
+  return { ...row, slug };
+}
+
+/**
+ * Constant-time string comparison to prevent timing side-channel attacks
+ * when comparing secret setup tokens or HMAC hex digests.
+ */
+export function timingSafeEqualString(a: unknown, b: unknown): boolean {
+  if (typeof a !== "string" || typeof b !== "string") return false;
+  const enc = new TextEncoder();
+  const aBytes = enc.encode(a);
+  const bBytes = enc.encode(b);
+  const maxLen = Math.max(aBytes.length, bBytes.length);
+  let diff = aBytes.length ^ bBytes.length;
+  for (let i = 0; i < maxLen; i++) {
+    diff |= (aBytes[i] ?? 0) ^ (bBytes[i] ?? 0);
+  }
+  return diff === 0;
+}
+
+/**
+ * Paginates through Supabase Auth admin.listUsers so staff listings and duplicate
+ * checks do not silently truncate once total accounts exceed 200.
+ */
+export async function listAllAuthUsers(
+  supabaseAdmin: any,
+  maxPages = 10,
+  perPage = 200,
+): Promise<{ users: any[]; error: any }> {
+  const allUsers: any[] = [];
+  for (let page = 1; page <= maxPages; page++) {
+    const { data, error } = await supabaseAdmin.auth.admin.listUsers({
+      page,
+      perPage,
+    });
+    if (error) {
+      return { users: allUsers, error };
+    }
+    const batch = data?.users ?? [];
+    allUsers.push(...batch);
+    if (batch.length < perPage) break;
+  }
+  return { users: allUsers, error: null };
+}

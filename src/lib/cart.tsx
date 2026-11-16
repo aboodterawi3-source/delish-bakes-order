@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { SERVING_SIZE_OFFSETS, type LineSpec } from "@/lib/order-pricing";
-import { roundJod } from "@/lib/currency";
+import { mergeModalSpecExtras, SERVING_SIZE_OFFSETS, type LineSpec } from "./order-pricing.ts";
+import { roundJod } from "./currency.ts";
 
 function canonicalSize(size?: string | null): string {
   if (!size) return "default";
@@ -34,7 +34,10 @@ export function generateCartLineKey(line: Omit<CartLine, "key"> & { key?: string
       const normalizedSize = canonicalSize(spec.size);
       const notes = (line.notes ?? "").trim().toLowerCase();
       const design = (line.designImage ?? "").trim();
-      return `cms:${spec.productId}:${normalizedSize}:${notes}:${design}:${line.unit}`;
+      const extrasKey = (line.extrasAr ?? []).join("|").trim().toLowerCase();
+      return extrasKey
+        ? `cms:${spec.productId}:${normalizedSize}:${notes}:${design}:${extrasKey}:${line.unit}`
+        : `cms:${spec.productId}:${normalizedSize}:${notes}:${design}:${line.unit}`;
     }
 
     if (spec.kind === "catalog") {
@@ -74,6 +77,64 @@ export type CartLine = {
   /** Trusted description of the choice; the server re-prices from this. */
   spec?: LineSpec | undefined;
 };
+
+/**
+ * Assembles a normalized `CartLine` payload for any CMS product view
+ * (discover modal or standalone product details page).
+ */
+export function buildCmsCartLine(input: {
+  productId: string;
+  nameAr: string;
+  nameEn: string;
+  unitPrice: number;
+  quantity: number;
+  size: string | null;
+  image?: string | null | undefined;
+  designImage?: string | null | undefined;
+  notes?: string | null | undefined;
+  extrasAr: string[];
+  extrasEn: string[];
+  flavor?: string | null | undefined;
+  filling?: string | null | undefined;
+  customizationFilling?: string | null | undefined;
+  inscription?: string | null | undefined;
+  prefixSizeLabel?: boolean;
+}): Omit<CartLine, "key"> {
+  const hasModalMeta =
+    input.flavor !== undefined ||
+    input.filling !== undefined ||
+    input.customizationFilling !== undefined ||
+    input.inscription !== undefined;
+  const resolved = hasModalMeta
+    ? mergeModalSpecExtras({
+        flavor: input.flavor,
+        filling: input.filling,
+        customizationFilling: input.customizationFilling,
+        inscription: input.inscription,
+        extrasAr: input.extrasAr,
+        extrasEn: input.extrasEn,
+      })
+    : { extrasAr: input.extrasAr, extrasEn: input.extrasEn };
+
+  const sizeAr = input.size ? (input.prefixSizeLabel ? `الحجم: ${input.size}` : input.size) : "";
+  const sizeEn = input.size ? (input.prefixSizeLabel ? `Size: ${input.size}` : input.size) : "";
+  const cleanNotes = (input.notes ?? "").trim();
+
+  return {
+    ar: input.nameAr,
+    en: input.nameEn,
+    unit: input.unitPrice,
+    qty: input.quantity,
+    image: input.image ?? undefined,
+    designImage: input.designImage ?? undefined,
+    notes: cleanNotes || undefined,
+    detailsAr: [sizeAr, ...resolved.extrasAr].filter(Boolean),
+    detailsEn: [sizeEn, ...resolved.extrasEn].filter(Boolean),
+    extrasAr: resolved.extrasAr,
+    extrasEn: resolved.extrasEn,
+    spec: { kind: "cms", productId: input.productId, size: input.size ?? null },
+  };
+}
 
 type Ctx = {
   lines: CartLine[];

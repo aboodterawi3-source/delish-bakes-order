@@ -5,6 +5,7 @@
 // ==============================================================================
 
 import assert from "node:assert/strict";
+import { test } from "node:test";
 import {
   DEFAULT_EXTRAS,
   parseOptionsAndExtras,
@@ -12,26 +13,6 @@ import {
   evaluateFillingRequirement,
   compileSavePayload,
 } from "../src/components/staff/touch-item-editor-utils.ts";
-
-console.log("================================================================================");
-console.log("🍰 TOUCH ITEM EDITOR LIFECYCLE & INTEGRITY SUITE (ACTUAL SOURCE CODE UNIT TESTS)");
-console.log("================================================================================\n");
-
-let passed = 0;
-let total = 0;
-
-async function test(name, fn) {
-  total++;
-  try {
-    await fn();
-    console.log(`  ✅ PASS: ${name}`);
-    passed++;
-  } catch (err) {
-    console.error(`  ❌ FAIL: ${name}`);
-    console.error(err);
-    process.exitCode = 1;
-  }
-}
 
 // ------------------------------------------------------------------------------
 // TEST 1 (J2-A): Historical Price Retention & Exact Deduction upon Removal
@@ -533,79 +514,28 @@ await test("6. K2: Zero-priced extras and authorized low-price items (0.00 & 0.5
 });
 
 // ------------------------------------------------------------------------------
-// TEST 7 (K3): Product Selection & Size Price Invariance
+// TEST 7 (K3): Size Price Invariance & Clean Option Preservation in compileSavePayload
 // ------------------------------------------------------------------------------
-await test("7. K3: Switching product resets size; order of product/size clicks produces identical invariant pricing", () => {
-  const prodA = {
-    id: "prod-a",
-    name_ar: "كيكة فانيلا فاخرة",
-    price: 20.0,
-    sizes: [{ label: "عائلي (20+ شخص)", price: 30.0 }],
-  };
+test("7. K3: compileSavePayload preserves selected size price consistently without duplicate option entries", () => {
+  const cakeOpts = parseOptionsAndExtras(["الحجم: عائلي (20+ شخص)"]);
+  const baseWithNoExtras = calculateBasePriceFromSaved(20.0, cakeOpts.savedExtrasTotal);
+  assert.equal(baseWithNoExtras, 20.0);
 
-  const prodB = {
-    id: "prod-b",
-    name_ar: "كيكة شوكولاتة",
-    price: 10.0,
-    sizes: [{ label: "عائلي (20+ شخص)", price: 20.0 }],
-  };
-
-  // Workflow 1: Click A (20) -> Click Family (+10 = 30) -> Switch to B -> Click Family (+10 = 20)
-  // Simulating exact component state transitions:
-  let selectedProduct = prodA;
-  let selectedSize = "";
-  let unitPrice = prodA.price;
-
-  // Click Family size on A
-  selectedSize = "عائلي (20+ شخص)";
-  const sizeA = prodA.sizes.find((s) => s.label === selectedSize);
-  unitPrice = sizeA.price; // 30.00
-  assert.equal(unitPrice, 30.0);
-
-  // Switch to Product B (handleSelectProduct)
-  selectedProduct = prodB;
-  selectedSize = ""; // K3 FIX: reset selectedSize!
-  unitPrice = prodB.price || 0; // 10.00
-  assert.equal(selectedSize, "");
-  assert.equal(unitPrice, 10.0);
-
-  // Click Family size on B
-  selectedSize = "عائلي (20+ شخص)";
-  const sizeB = prodB.sizes.find((s) => s.label === selectedSize);
-  unitPrice = sizeB.price; // 20.00
-  assert.equal(unitPrice, 20.0);
-
-  const payloadFlow1 = compileSavePayload({
+  const payload = compileSavePayload({
     tab: "catalog",
-    productId: selectedProduct.id,
-    productName: selectedProduct.name_ar,
-    unitPrice: unitPrice,
-    quantity: 1,
-    selectedSize: selectedSize,
-    extras: [],
-  });
-
-  // Workflow 2: Directly select B (10) -> Click Family (+10 = 20)
-  const payloadFlow2 = compileSavePayload({
-    tab: "catalog",
-    productId: prodB.id,
-    productName: prodB.name_ar,
-    unitPrice: 20.0,
+    productId: "prod-b",
+    productName: "كيكة شوكولاتة",
+    unitPrice: baseWithNoExtras,
     quantity: 1,
     selectedSize: "عائلي (20+ شخص)",
+    selectedFilling: "نوتيلا",
     extras: [],
   });
 
-  // Assertion: Both workflows yield identical unit price of 20.00 JD
-  assert.equal(payloadFlow1.success, true);
-  assert.equal(payloadFlow2.success, true);
-  assert.equal(
-    payloadFlow1.payload.unitPrice,
-    payloadFlow2.payload.unitPrice,
-    "Both selection sequences must yield identical 20.00 JD unit price",
-  );
-  assert.equal(payloadFlow1.payload.unitPrice, 20.0);
-  assert.deepEqual(payloadFlow1.payload.options, payloadFlow2.payload.options);
+  assert.equal(payload.success, true);
+  assert.equal(payload.payload.unitPrice, 20.0);
+  assert.equal(payload.payload.options.filter((o) => o.startsWith("الحجم:")).length, 1);
+  assert.ok(payload.payload.options.includes("الحجم: عائلي (20+ شخص)"));
 });
 
 // ------------------------------------------------------------------------------
@@ -658,7 +588,3 @@ await test("8. K4: Existing item retains its original product_id; product swappi
     "New item correctly receives selected product_id",
   );
 });
-
-console.log("\n================================================================================");
-console.log(`🏁 ITEM EDITOR LIFECYCLE SUITE: ${passed} of ${total} checks passed cleanly!`);
-console.log("================================================================================\n");

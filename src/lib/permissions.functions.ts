@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertRole, getRoles } from "@/lib/role-guard";
-import type { Ctx } from "@/lib/server-shared";
+import type { ServerAuthContext } from "@/lib/server-shared";
 
 export type ProductPermissionRecord = {
   id: string;
@@ -18,7 +18,7 @@ export type ProductPermissionRecord = {
  * Admins are always allowed.
  */
 export async function canEditProductPrice(
-  context: Ctx,
+  context: ServerAuthContext,
   productId: string | null | undefined,
 ): Promise<boolean> {
   const roles = await getRoles(context);
@@ -36,51 +36,11 @@ export async function canEditProductPrice(
   return Boolean(data.can_edit_price);
 }
 
-/** Products the signed-in staff member is denied/allowed to reprice. */
-export const getMyPermissions = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(
-    async ({
-      context,
-    }): Promise<{
-      permittedProductIds: string[];
-      deniedProductIds: string[];
-      isAdmin: boolean;
-    }> => {
-      const ctx = context as unknown as Ctx;
-      const roles = await getRoles(ctx);
-      const isAdmin = roles.includes("admin");
-
-      const { data: products } = await ctx.supabase.from("products").select("id");
-      const allIds = (products ?? []).map((p: { id: string }) => p.id);
-
-      if (isAdmin) return { permittedProductIds: allIds, deniedProductIds: [], isAdmin };
-
-      const { data, error } = await (ctx.supabase as any)
-        .from("sales_product_permissions")
-        .select("product_id, can_edit_price")
-        .eq("user_id", ctx.userId);
-      if (error) throw new Error(error.message);
-
-      const denied = new Set(
-        (data ?? [])
-          .filter((row: { can_edit_price: boolean }) => !row.can_edit_price)
-          .map((row: { product_id: string }) => row.product_id),
-      );
-
-      return {
-        permittedProductIds: allIds.filter((id: string) => !denied.has(id)),
-        deniedProductIds: Array.from(denied) as string[],
-        isAdmin,
-      };
-    },
-  );
-
 /** Admin-only: the full employee × product price-edit matrix. */
 export const getStaffPermissionMatrix = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const ctx = context as unknown as Ctx;
+    const ctx = context as unknown as ServerAuthContext;
     await assertRole(ctx, ["admin"]);
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -129,7 +89,7 @@ export const updateStaffProductPermission = createServerFn({ method: "POST" })
     };
   })
   .handler(async ({ data, context }) => {
-    const ctx = context as unknown as Ctx;
+    const ctx = context as unknown as ServerAuthContext;
     await assertRole(ctx, ["admin"]);
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");

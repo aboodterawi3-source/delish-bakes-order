@@ -15,9 +15,20 @@ const buckets = new Map<string, Bucket>();
 const MAX_BUCKETS = 5000;
 
 function clientIdentity(): string {
-  const forwarded = getRequestHeader("x-forwarded-for")?.split(",")[0]?.trim();
-  const ip = getRequestHeader("cf-connecting-ip") ?? getRequestHeader("x-real-ip") ?? forwarded;
-  return (ip ?? "unknown").slice(0, 64);
+  const cfIp = getRequestHeader("cf-connecting-ip")?.trim();
+  if (cfIp) return cfIp.slice(0, 64);
+
+  const trustProxy =
+    typeof process !== "undefined" &&
+    (process.env?.["TRUST_PROXY"] === "1" || process.env?.["TRUST_PROXY"] === "true");
+  if (trustProxy) {
+    const forwarded = getRequestHeader("x-forwarded-for")?.split(",")[0]?.trim();
+    const realIp = getRequestHeader("x-real-ip")?.trim();
+    const ip = realIp || forwarded;
+    if (ip) return ip.slice(0, 64);
+  }
+
+  return "direct-client";
 }
 
 /** Throws a bilingual error once `limit` calls were made in `windowMs`. */

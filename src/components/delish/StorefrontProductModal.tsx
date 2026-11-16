@@ -1,9 +1,10 @@
 import { useEffect, useId, useMemo, useState } from "react";
 import { Minus, Plus, X, ShoppingBag, ChevronDown, Sparkles } from "lucide-react";
+import { FallbackImage } from "./FallbackImage";
 import { useLang } from "@/lib/i18n";
 import { useDismissable } from "@/lib/a11y";
 import { formatJod } from "@/lib/currency";
-import { WHATSAPP } from "@/lib/menu";
+import { getWhatsAppChatUrl } from "@/lib/whatsapp";
 import {
   priceForSize,
   getProductFallbackImage,
@@ -25,7 +26,6 @@ export type ModalAddPayload = {
   flavor: string;
   filling: string;
   inscription: string;
-  notes: string;
   customization: Customization;
 };
 
@@ -65,10 +65,8 @@ export function StorefrontProductModal({
   const [flavor, setFlavor] = useState("VANILLA");
   const [filling, setFilling] = useState("");
   const [inscription, setInscription] = useState("");
-  const [notes, setNotes] = useState("");
   const [showExtras, setShowExtras] = useState(false);
   const [customization, setCustomization] = useState<Customization>(emptyCustomization);
-  const [imgFailed, setImgFailed] = useState(false);
   const fallbackImg = useMemo(
     () =>
       product
@@ -80,26 +78,24 @@ export function StorefrontProductModal({
         : "",
     [product, ar],
   );
-  const [modalImgSrc, setModalImgSrc] = useState<string>("");
 
   useDismissable(Boolean(product), onClose);
 
   useEffect(() => {
     if (product) {
+      const defaultFilling =
+        product.filling_ar?.trim() || "وصفة الشيف الأصلية";
       setSize(product.sizes[0]?.label ?? SERVING_SIZE_OFFSETS[0]!.label);
       setQuantity(1);
       setFlavor("VANILLA");
-      setFilling(
-        product?.filling_ar?.trim() || (ar ? "وصفة الشيف الأصلية" : "Chef's Original Recipe"),
-      );
+      setFilling(defaultFilling);
       setInscription("");
-      setNotes("");
       setShowExtras(false);
-      setCustomization(emptyCustomization);
-      setModalImgSrc(product.image_url || fallbackImg);
-      setImgFailed(false);
+      setCustomization({ ...emptyCustomization, filling: defaultFilling });
     }
-  }, [product, ar, fallbackImg]);
+    // Intentionally reset only when opening or switching products so language toggles preserve selections.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product?.id]);
 
   const baseUnitPrice = useMemo(() => (product ? priceForSize(product, size) : 0), [product, size]);
   const activeOffset = useMemo(() => getServingSizeOffset(size), [size]);
@@ -113,14 +109,12 @@ export function StorefrontProductModal({
     : product.description_en ||
       "Handcrafted celebration cake baked fresh daily with finest ingredients";
 
-  const askUrl = `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(
+  const askUrl = getWhatsAppChatUrl(
+    null,
     ar
       ? `مرحباً، أريد الاستفسار عن كيكة: ${product.name_ar}`
       : `Hello, I'd like to inquire about: ${product.name_en}`,
-  )}`;
-
-  const resolvedImage =
-    product.image_url || getProductFallbackImage(product.slug, product.category, name);
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-3 backdrop-blur-xs transition-opacity duration-300 sm:p-4">
@@ -148,26 +142,19 @@ export function StorefrontProductModal({
           className="relative flex min-h-[260px] w-full shrink-0 flex-col items-center justify-center p-6 transition-colors duration-300 md:min-h-[460px] md:w-1/2"
         >
           <div className="relative my-auto flex h-full w-full items-center justify-center p-4">
-            {!imgFailed ? (
-              <img
-                src={modalImgSrc || fallbackImg}
-                alt={name}
-                onError={() => {
-                  if (modalImgSrc !== fallbackImg && fallbackImg) {
-                    setModalImgSrc(fallbackImg);
-                  } else {
-                    setImgFailed(true);
-                  }
-                }}
-                className="max-h-56 max-w-full object-contain drop-shadow-xl transition-transform duration-300 hover:scale-105 md:max-h-80"
-              />
-            ) : (
-              <div className="flex flex-col items-center justify-center rounded-3xl border border-amber-200 bg-white/90 p-8 text-center shadow-inner">
-                <span className="text-4xl">🎂</span>
-                <span className="mt-2 text-xs font-bold text-amber-900">DELISH Bakes</span>
-                <span className="mt-1 text-[11px] text-muted-foreground">{name}</span>
-              </div>
-            )}
+            <FallbackImage
+              src={product.image_url}
+              fallbackSrc={fallbackImg}
+              alt={name}
+              className="max-h-56 max-w-full object-contain drop-shadow-xl transition-transform duration-300 hover:scale-105 md:max-h-80"
+              renderFallback={() => (
+                <div className="flex flex-col items-center justify-center rounded-3xl border border-amber-200 bg-white/90 p-8 text-center shadow-inner">
+                  <span className="text-4xl">🎂</span>
+                  <span className="mt-2 text-xs font-bold text-amber-900">DELISH Bakes</span>
+                  <span className="mt-1 text-[11px] text-muted-foreground">{name}</span>
+                </div>
+              )}
+            />
           </div>
         </div>
 
@@ -279,7 +266,7 @@ export function StorefrontProductModal({
                           >
                             {ar ? option.ar : option.label} (
                             {option.offset > 0
-                              ? `+${option.offset}.00 JOD`
+                              ? `+${formatJod(option.offset, lang)}`
                               : formatJod(displayPrice, lang)}
                             )
                           </button>
@@ -329,7 +316,10 @@ export function StorefrontProductModal({
                       <button
                         key={chip.en}
                         type="button"
-                        onClick={() => setFilling(label)}
+                        onClick={() => {
+                          setFilling(label);
+                          setCustomization((curr) => ({ ...curr, filling: label }));
+                        }}
                         className={`cursor-pointer rounded-lg px-2 py-0.5 text-[11px] font-semibold transition ${
                           isSelected
                             ? "bg-[#8B4513] text-white"
@@ -345,7 +335,11 @@ export function StorefrontProductModal({
                 <input
                   type="text"
                   value={filling}
-                  onChange={(e) => setFilling(e.target.value)}
+                  onChange={(e) => {
+                    const nextVal = e.target.value;
+                    setFilling(nextVal);
+                    setCustomization((curr) => ({ ...curr, filling: nextVal }));
+                  }}
                   placeholder={
                     ar ? "أو اكتب نوع الحشوة المفضلة بالتفصيل..." : "Or type custom filling..."
                   }
@@ -393,7 +387,15 @@ export function StorefrontProductModal({
                 </button>
                 {showExtras && (
                   <div className="mt-3 border-t border-[#EFE8DC] pt-2">
-                    <CakeCustomizationPanel value={customization} onChange={setCustomization} />
+                    <CakeCustomizationPanel
+                      value={customization}
+                      onChange={(next) => {
+                        setCustomization(next);
+                        if (next.filling !== customization.filling) {
+                          setFilling(next.filling);
+                        }
+                      }}
+                    />
                   </div>
                 )}
               </div>
@@ -437,7 +439,6 @@ export function StorefrontProductModal({
                       flavor,
                       filling: finalFilling,
                       inscription,
-                      notes,
                       customization,
                     });
                   }}

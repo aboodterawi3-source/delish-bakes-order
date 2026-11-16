@@ -31,6 +31,7 @@ export function WebsiteRebuildPanel({
   const [query, setQuery] = useState("");
   const [picked, setPicked] = useState<StorefrontProduct | null>(null);
   const [lines, setLines] = useState<Draft[]>([]);
+  const [draftVersion, setDraftVersion] = useState<number | null>(null);
 
   const categories = useMemo(() => {
     const set = new Set<string>();
@@ -65,7 +66,7 @@ export function WebsiteRebuildPanel({
         quantity: payload.quantity,
         unitPrice: payload.price,
         options,
-        notes: payload.notes.trim() || null,
+        notes: payload.customization.notes.trim() || null,
       },
     ]);
     setPicked(null);
@@ -83,7 +84,7 @@ export function WebsiteRebuildPanel({
       notes: item.notes,
       draftVersion: order.version || 1,
     }));
-    (list as any).version = order.version || 1;
+    setDraftVersion(order.version || 1);
     setLines(list);
   };
 
@@ -239,7 +240,7 @@ export function WebsiteRebuildPanel({
           onClick={() =>
             onReplace(
               lines.map(({ key: _key, draftVersion: _dv, ...line }) => line),
-              (lines as any).version ?? (lines[0] as any)?.draftVersion,
+              draftVersion ?? lines[0]?.draftVersion ?? order.version ?? 1,
             )
           }
           className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-primary px-5 text-sm font-extrabold text-primary-foreground disabled:opacity-50"

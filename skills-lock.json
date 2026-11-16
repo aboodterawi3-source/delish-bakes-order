@@ -1,116 +1,124 @@
 {
-  "version": 1,
+  "version": 2,
   "skills": {
     "archify": {
       "source": "tt-a1i/archify",
       "sourceType": "github",
       "skillPath": "archify/SKILL.md",
-      "computedHash": "e9ef0923cda908886e667eb48e36b29e81d0a7a7b9fe2bc05f3779be271e5119",
+      "computedHash": "",
       "installMode": "copy"
     },
     "brainstorming": {
       "source": "obra/superpowers",
       "sourceType": "github",
       "skillPath": "skills/brainstorming/SKILL.md",
-      "computedHash": "749e6b37996cb97f756fff55da436530a11eb01897aca133fa7befe57b009707",
+      "computedHash": "",
       "installMode": "copy"
     },
     "code-review-and-quality": {
       "source": "addyosmani/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/code-review-and-quality/SKILL.md",
-      "computedHash": "895b57b6fa13a75d182472c1428621cc59fca373723c07c2372ab4ac96307186",
+      "computedHash": "",
       "installMode": "copy"
     },
     "design-taste-frontend": {
       "source": "Leonxlnx/taste-skill",
       "sourceType": "github",
       "skillPath": "skills/taste-skill/SKILL.md",
-      "computedHash": "53590ee9325bee34d7888bf0d81bd3941a108b1e7850df46802d93104e3f2b90",
+      "computedHash": "",
       "installMode": "copy"
     },
     "dispatching-parallel-agents": {
       "source": "obra/superpowers",
       "sourceType": "github",
       "skillPath": "skills/dispatching-parallel-agents/SKILL.md",
-      "computedHash": "b011107f17188e0b2898bb1856b5bac8b49537cc86e737c82126558a235bd62a",
+      "computedHash": "",
       "installMode": "copy"
     },
     "finishing-a-development-branch": {
       "source": "obra/superpowers",
       "sourceType": "github",
       "skillPath": "skills/finishing-a-development-branch/SKILL.md",
-      "computedHash": "4f571e7befb8b0946d9d7770232c818812412e9ab1dfb811f847edfba1fc6275",
+      "computedHash": "",
       "installMode": "copy"
     },
     "grill-me": {
       "source": "mattpocock/skills",
       "sourceType": "github",
       "skillPath": "skills/productivity/grill-me/SKILL.md",
-      "computedHash": "4266faa37df274c1578ced3385aef6e93bf14d594dd1da6e6f3318c48ee20be4",
+      "computedHash": "",
       "installMode": "copy"
     },
     "planning-and-task-breakdown": {
       "source": "addyosmani/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/planning-and-task-breakdown/SKILL.md",
-      "computedHash": "0dc14a1402cdabd376f2d81d2225fcb4a18ee63d58b945ff83affeb024285b8f",
+      "computedHash": "",
       "installMode": "copy"
     },
     "playwright-cli": {
       "source": "microsoft/playwright-cli",
       "sourceType": "github",
       "skillPath": "skills/playwright-cli/SKILL.md",
-      "computedHash": "f30a0fdd58beaa834f7780b1c6c1237f939280fe95dac12a5d522225154dcec8",
+      "computedHash": "",
       "installMode": "copy"
     },
     "security-and-hardening": {
       "source": "addyosmani/agent-skills",
       "sourceType": "github",
       "skillPath": "skills/security-and-hardening/SKILL.md",
-      "computedHash": "f79bc2010272830c6d65400cfa5e860edc37af8607f1439a0a88aa3cea111ef1",
+      "computedHash": "",
       "installMode": "copy"
     },
     "slopmonster": {
       "source": "ItsssssJack/SlopMonster",
       "sourceType": "github",
       "skillPath": "SKILL.md",
-      "computedHash": "aaff2b70ef4d5c6d1074a8c9860c369a5129e5349c6e35189e389d7bd6e3c66b",
+      "computedHash": "",
       "installMode": "copy"
     },
     "subagent-driven-development": {
       "source": "obra/superpowers",
       "sourceType": "github",
       "skillPath": "skills/subagent-driven-development/SKILL.md",
-      "computedHash": "d04b3e0b04640f8a5cd8cd94ad1d1c5c062f8257ea2dd0cf67f23062bb835760",
+      "computedHash": "",
       "installMode": "copy"
     },
     "superpowers": {
       "source": "obra/superpowers",
       "sourceType": "github",
       "skillPath": "skills/superpowers/SKILL.md",
-      "computedHash": "765bf2236fd2510f3c0c6e6c86b7c48acc785ac0ea117dc7a6a08f9f1eb3ced5",
+      "computedHash": "",
       "installMode": "copy"
     },
     "systematic-debugging": {
       "source": "obra/superpowers",
       "sourceType": "github",
       "skillPath": "skills/systematic-debugging/SKILL.md",
-      "computedHash": "b7b6e98c3bffe371893bdb69845ec61124a65b6a96313dc8d6a2bce4437b13eb",
+      "computedHash": "",
       "installMode": "copy"
     },
     "test-driven-development": {
       "source": "obra/superpowers",
       "sourceType": "github",
       "skillPath": "skills/test-driven-development/SKILL.md",
-      "computedHash": "3cfe4ebb6fa7288f668d87880d279c8e48f7a92b63415e296857060f5ce22e05",
+      "computedHash": "",
+      "installMode": "copy"
+    },
+    "untangle-codebase": {
+      "source": "caldoai/skills",
+      "ref": "main",
+      "sourceType": "github",
+      "skillPath": "skills/untangle-codebase/SKILL.md",
+      "computedHash": "73791c30d4da2e001bc095732771966338b764e2e7b57bb30a81439cff85aef4",
       "installMode": "copy"
     },
     "verification-before-completion": {
       "source": "obra/superpowers",
       "sourceType": "github",
       "skillPath": "skills/verification-before-completion/SKILL.md",
-      "computedHash": "b529822bdac4b197b180fe12225cff86b930b65910435103c10622df7f041651",
+      "computedHash": "",
       "installMode": "copy"
     }
   }

@@ -5,7 +5,6 @@ import {
   Crown,
   ShieldCheck,
   ShoppingBag,
-  ReceiptCent,
   ChefHat,
   MessageSquareHeart,
 } from "lucide-react";
@@ -100,11 +99,6 @@ function portalMeta(roleHint?: string): PortalMeta {
   }
 }
 
-/** Every staff member lands on the unified portal; tabs follow their roles. */
-function landingPath(): "/staff" {
-  return "/staff";
-}
-
 function AuthPage() {
   const navigate = useNavigate();
   const search = useSearch({ from: "/auth" });
@@ -119,7 +113,7 @@ function AuthPage() {
   useEffect(() => {
     void supabase.auth.getUser().then(({ data }) => {
       if (!data.user) return;
-      void navigate({ to: landingPath(), replace: true });
+      void navigate({ to: "/staff", replace: true });
     });
   }, [navigate]);
 
@@ -136,7 +130,7 @@ function AuthPage() {
       setError("بيانات الدخول غير صحيحة · Invalid name or password");
       return;
     }
-    void navigate({ to: landingPath(), replace: true });
+    void navigate({ to: "/staff", replace: true });
   };
 
   return (

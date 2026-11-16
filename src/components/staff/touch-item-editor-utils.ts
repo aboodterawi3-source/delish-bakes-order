@@ -180,6 +180,12 @@ export function calculateBasePriceFromSaved(unitPrice: number, savedExtrasTotal:
   return roundJod(unitPrice - savedExtrasTotal);
 }
 
+/** True when a catalog category represents cakes (which carry filling/inscription rules). */
+export function isCakeCategory(category?: string | null): boolean {
+  const cat = (category || "").toLowerCase();
+  return cat.includes("cake") || cat.includes("كيك");
+}
+
 /**
  * Evaluates whether filling flavor is required based on category and product config (J5).
  */
@@ -189,9 +195,7 @@ export function evaluateFillingRequirement(
   productFilling?: string | null,
 ): boolean {
   if (tab === "catalog") {
-    const cat = (category || "").toLowerCase();
-    const isCake = cat.includes("cake") || cat.includes("كيك");
-    return Boolean((productFilling && productFilling.trim()) || isCake);
+    return Boolean((productFilling && productFilling.trim()) || isCakeCategory(category));
   }
   return false;
 }

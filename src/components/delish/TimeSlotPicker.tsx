@@ -1,18 +1,28 @@
-import { useMemo, useRef } from "react";
-import { type SlotMethod } from "@/lib/delivery-slots";
+import { useMemo, useRef, type RefObject } from "react";
 import { todayIso } from "@/lib/date-filter";
 import { Calendar as CalendarIcon, Clock, AlertCircle } from "lucide-react";
+
+export type SlotMethod = "pickup" | "delivery";
 
 export interface TimeSlotPickerProps {
   date: string;
   time: string;
   method: SlotMethod;
-  cartItems?: { name_ar?: string; name_en?: string; options_ar?: string[] }[];
   onDateChange: (date: string) => void;
   onTimeChange: (time: string, slotId: string) => void;
   lang?: "ar" | "en";
   className?: string;
   error?: boolean;
+}
+
+function openNativePicker(ref: RefObject<HTMLInputElement | null>) {
+  const input = ref.current;
+  if (!input || !("showPicker" in input)) return;
+  try {
+    input.showPicker();
+  } catch {
+    input.focus();
+  }
 }
 
 const ARABIC_MONTH_NAMES_MAP: Record<number, string> = {
@@ -87,7 +97,7 @@ export function TimeSlotPicker({
     const clean = time.trim();
     const parts = clean.split(":");
     if (parts.length >= 2 && parts[0] !== undefined && parts[1] !== undefined) {
-      let hours = parseInt(parts[0], 10);
+      const hours = parseInt(parts[0], 10);
       const minutes = parts[1].padStart(2, "0");
       if (!isNaN(hours)) {
         const period = isAr ? (hours >= 12 ? "م" : "ص") : hours >= 12 ? "PM" : "AM";
@@ -120,15 +130,7 @@ export function TimeSlotPicker({
       <div className="grid grid-cols-2 gap-2.5">
         {/* Pod 1: Date */}
         <div
-          onClick={() => {
-            if (dateInputRef.current && "showPicker" in dateInputRef.current) {
-              try {
-                dateInputRef.current.showPicker();
-              } catch {
-                dateInputRef.current.focus();
-              }
-            }
-          }}
+          onClick={() => openNativePicker(dateInputRef)}
           className={`group relative flex cursor-pointer flex-col justify-between rounded-2xl border bg-card p-3.5 text-start transition-all hover:border-primary/60 hover:shadow-2xs active:scale-[0.99] ${
             error && !date ? "border-destructive" : "border-border"
           }`}
@@ -156,15 +158,7 @@ export function TimeSlotPicker({
 
         {/* Pod 2: Time */}
         <div
-          onClick={() => {
-            if (timeInputRef.current && "showPicker" in timeInputRef.current) {
-              try {
-                timeInputRef.current.showPicker();
-              } catch {
-                timeInputRef.current.focus();
-              }
-            }
-          }}
+          onClick={() => openNativePicker(timeInputRef)}
           className={`group relative flex cursor-pointer flex-col justify-between rounded-2xl border bg-card p-3.5 text-start transition-all hover:border-primary/60 hover:shadow-2xs active:scale-[0.99] ${
             error && !time ? "border-destructive" : "border-border"
           }`}

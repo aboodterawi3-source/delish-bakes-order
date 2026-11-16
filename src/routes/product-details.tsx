@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { ProductDetailsView } from "@/components/delish/ProductDetailsView";
 import { CartDrawer } from "@/components/delish/CartDrawer";
-import { useCart } from "@/lib/cart";
+import { useCart, buildCmsCartLine } from "@/lib/cart";
 import { customizationSummary } from "@/components/delish/CakeCustomizationPanel";
 import { useStorefrontContent } from "@/hooks/use-storefront-content";
 
@@ -58,22 +58,21 @@ function ProductDetailsPage() {
         onOpenCart={() => setCartOpen(true)}
         onAddToCart={(item) => {
           const extras = customizationSummary(item.customization);
-          const notes = item.customization.notes.trim();
-          const details = item.size ? [item.size] : [];
-          add({
-            ar: item.nameAr,
-            en: item.nameEn,
-            unit: item.price,
-            qty: item.quantity,
-            image: item.image ?? undefined,
-            designImage: item.customization.designImageUrl ?? undefined,
-            notes: notes || undefined,
-            detailsAr: [...details, ...extras.ar],
-            detailsEn: [...details, ...extras.en],
-            extrasAr: extras.ar,
-            extrasEn: extras.en,
-            spec: { kind: "cms", productId: item.productId, size: item.size ?? null },
-          });
+          add(
+            buildCmsCartLine({
+              productId: item.productId,
+              nameAr: item.nameAr,
+              nameEn: item.nameEn,
+              unitPrice: item.price,
+              quantity: item.quantity,
+              size: item.size,
+              image: item.image,
+              designImage: item.customization.designImageUrl,
+              notes: item.customization.notes,
+              extrasAr: extras.ar,
+              extrasEn: extras.en,
+            }),
+          );
           setCartOpen(true);
         }}
       />

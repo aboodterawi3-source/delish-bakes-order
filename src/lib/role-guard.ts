@@ -30,3 +30,15 @@ export async function assertRole(
   }
   return roles;
 }
+
+/** Returns whether the signed-in user holds at least one allowed role plus their role list. */
+export async function getPortalAccess(
+  context: RoleContext,
+  allowed: StaffRoleName[],
+): Promise<{ allowed: boolean; roles: StaffRoleName[] }> {
+  const roles = await getRoles(context);
+  return {
+    allowed: roles.some((role) => allowed.includes(role)),
+    roles,
+  };
+}

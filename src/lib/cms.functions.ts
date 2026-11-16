@@ -3,6 +3,8 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertRole, type StaffRoleName } from "@/lib/role-guard";
 import { decodeValidatedImage } from "@/lib/image-validation";
 import { isPriorityColor, type PriorityColor } from "@/lib/priority";
+import { buildCmsProductWritePayload } from "@/lib/server-shared";
+import { cleanFieldText } from "@/lib/validators";
 import {
   BANNER_SELECT,
   CATEGORY_SELECT,
@@ -31,14 +33,26 @@ const SITE_BUCKET = "site-media";
 /** Five years: banner and product photos must keep working on the storefront. */
 const SIGNED_URL_TTL = 60 * 60 * 24 * 365 * 5;
 
-const clean = (value: unknown, max: number, label: string, required = false) => {
-  const trimmed = typeof value === "string" ? value.trim() : "";
-  if (!trimmed) {
-    if (required) throw new Error(`${label} مطلوب · ${label} is required`);
-    return null;
+const cleanImageUrl = (value: unknown, label: string): string | null => {
+  const cleaned = cleanFieldText(value, 2000, label, false);
+  if (!cleaned) return null;
+  // Allow safe relative asset paths (e.g. /images/cake.webp)
+  if (cleaned.startsWith("/") && !cleaned.startsWith("//") && !cleaned.includes("..")) {
+    return cleaned;
   }
-  if (trimmed.length > max) throw new Error(`${label} طويل جداً · ${label} is too long`);
-  return trimmed;
+  let parsed: URL;
+  try {
+    parsed = new URL(cleaned);
+  } catch {
+    throw new Error(`${label} غير صالح · ${label} is not a valid URL`);
+  }
+  if (parsed.protocol !== "https:") {
+    throw new Error(`${label} يجب أن يبدأ بـ https:// · ${label} must use https://`);
+  }
+  if (parsed.username || parsed.password) {
+    throw new Error(`${label} غير صالح · ${label} is not valid`);
+  }
+  return cleaned;
 };
 
 const slugify = (value: string) =>
@@ -85,10 +99,10 @@ export type BannerInput = {
 export const saveBanner = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: BannerInput) => ({
-    discount_text: clean(input?.discount_text, 40, "نص الخصم", true)!,
-    subtitle: clean(input?.subtitle, 80, "العنوان الفرعي", true)!,
-    button_text: clean(input?.button_text, 30, "نص الزر", true)!,
-    image_url: clean(input?.image_url, 2000, "صورة البانر"),
+    discount_text: cleanFieldText(input?.discount_text, 40, "نص الخصم", true)!,
+    subtitle: cleanFieldText(input?.subtitle, 80, "العنوان الفرعي", true)!,
+    button_text: cleanFieldText(input?.button_text, 30, "نص الزر", true)!,
+    image_url: cleanImageUrl(input?.image_url, "صورة البانر"),
     is_active: input?.is_active !== false,
   }))
   .handler(async ({ data, context }) => {
@@ -126,12 +140,12 @@ export type CategoryInput = {
 export const saveCategory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((input: CategoryInput) => ({
-    id: clean(input?.id, 40, "المعرّف"),
+    id: cleanFieldText(input?.id, 40, "المعرّف"),
     row: {
-      name_en: clean(input?.name_en, 40, "الاسم بالإنجليزية", true)!,
-      name_ar: clean(input?.name_ar, 40, "الاسم بالعربية", true)!,
-      image_url: clean(input?.image_url, 2000, "الصورة"),
-      tint: clean(input?.tint, 20, "اللون") ?? "blush",
+      name_en: cleanFieldText(input?.name_en, 40, "الاسم بالإنجليزية", true)!,
+      name_ar: cleanFieldText(input?.name_ar, 40, "الاسم بالعربية", true)!,
+      image_url: cleanImageUrl(input?.image_url, "الصورة"),
+      tint: cleanFieldText(input?.tint, 20, "اللون") ?? "blush",
       sort_order: Number.isFinite(Number(input?.sort_order)) ? Number(input?.sort_order) : 0,
       is_active: input?.is_active !== false,
       priority_color: isPriorityColor(input?.priority_color) ? input.priority_color : null,
@@ -227,24 +241,24 @@ export const saveStorefrontProduct = createServerFn({ method: "POST" })
     const price = Number(input?.price);
     if (!Number.isFinite(price) || price < 0) throw new Error("السعر غير صحيح · Invalid price");
     const sizes = parseSizes(input?.sizes).slice(0, 12);
-    const nameEn = clean(input?.name_en, 80, "الاسم بالإنجليزية", true)!;
+    const nameEn = cleanFieldText(input?.name_en, 80, "الاسم بالإنجليزية", true)!;
 
     return {
-      id: clean(input?.id, 40, "المعرّف"),
+      id: cleanFieldText(input?.id, 40, "المعرّف"),
       row: {
         slug: slugify(nameEn),
         name_en: nameEn,
-        name_ar: clean(input?.name_ar, 80, "الاسم بالعربية", true)!,
-        description_en: clean(input?.description_en, 600, "الوصف بالإنجليزية"),
-        description_ar: clean(input?.description_ar, 600, "الوصف بالعربية"),
-        category: clean(input?.category, 40, "التصنيف", true)!,
-        category_id: clean(input?.category_id, 40, "القسم"),
+        name_ar: cleanFieldText(input?.name_ar, 80, "الاسم بالعربية", true)!,
+        description_en: cleanFieldText(input?.description_en, 600, "الوصف بالإنجليزية"),
+        description_ar: cleanFieldText(input?.description_ar, 600, "الوصف بالعربية"),
+        category: cleanFieldText(input?.category, 40, "التصنيف", true)!,
+        category_id: cleanFieldText(input?.category_id, 40, "القسم"),
         price,
         sizes,
-        image_url: clean(input?.image_url, 2000, "الصورة"),
-        tint: clean(input?.tint, 20, "اللون"),
-        filling_ar: clean(input?.filling_ar, 120, "الحشوة بالعربية"),
-        filling_en: clean(input?.filling_en, 120, "Filling in English"),
+        image_url: cleanImageUrl(input?.image_url, "الصورة"),
+        tint: cleanFieldText(input?.tint, 20, "اللون"),
+        filling_ar: cleanFieldText(input?.filling_ar, 120, "الحشوة بالعربية"),
+        filling_en: cleanFieldText(input?.filling_en, 120, "Filling in English"),
         price_on_request: input?.price_on_request === true,
         is_available: input?.is_available !== false,
         is_popular: input?.is_popular === true,
@@ -255,12 +269,29 @@ export const saveStorefrontProduct = createServerFn({ method: "POST" })
   })
   .handler(async ({ data, context }): Promise<StorefrontProduct> => {
     await assertRole(context, CMS_ROLES);
+    let uniqueSlug = data.row.slug;
+    if (!data.id) {
+      const { data: conflict } = await context.supabase
+        .from("products")
+        .select("id")
+        .eq("slug", uniqueSlug)
+        .maybeSingle();
+      if (conflict) {
+        uniqueSlug = `${uniqueSlug}-${Date.now().toString(36).slice(-4)}`;
+      }
+    }
+    const { slug: _discard, ...baseRow } = data.row;
+    const payload = buildCmsProductWritePayload({
+      id: data.id,
+      slug: uniqueSlug,
+      row: baseRow,
+    });
     const query = data.id
       ? context.supabase
           .from("products")
-          .update(data.row as never)
+          .update(payload as never)
           .eq("id", data.id)
-      : context.supabase.from("products").insert(data.row as never);
+      : context.supabase.from("products").insert(payload as never);
     const { data: saved, error } = await query.select(PRODUCT_SELECT).single();
     if (error) throw new Error(error.message);
     return normaliseProduct(saved as unknown as Record<string, unknown>);

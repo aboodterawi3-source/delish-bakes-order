@@ -20,13 +20,13 @@ export const DATE_FILTERS: { key: DateFilterKey; ar: string; en: string }[] = [
  * Fixed explicitly to Asia/Amman so Serverless runtimes in UTC
  * never shift orders between 00:00 and 03:00 local time.
  */
-export function todayIso(): string {
+export function todayIso(now: Date = new Date()): string {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Amman",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).format(new Date());
+  }).format(now);
 }
 
 /**
@@ -62,9 +62,6 @@ export const jordanDay = (value: string | Date | null | undefined): string => {
     day: "2-digit",
   }).format(date);
 };
-
-/** Today's calendar date in Jordan (YYYY-MM-DD). */
-export const jordanToday = (): string => todayIso();
 
 export type CustomRange = { from: string; to: string };
 
