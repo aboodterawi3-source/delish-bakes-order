@@ -27,16 +27,9 @@ import {
   type SalesOrder,
   type SalesStatus,
 } from "@/lib/sales.functions";
-import { ORDERS_KEY } from "@/lib/staff-orders-shared";
+import { ORDERS_KEY, SAVED_DRIVERS } from "@/lib/staff-orders-shared";
 import { attachReceiptImageUrl, extractReceiptImageUrl, formatStaffNotes } from "@/lib/utils";
 import { getWhatsAppChatUrl } from "@/lib/whatsapp";
-
-const SAVED_DRIVERS = [
-  { label: "سائق 1 - أحمد", name: "أحمد", phone: "0790000001" },
-  { label: "سائق 2 - محمد", name: "محمد", phone: "0790000002" },
-  { label: "سائق 3 - محمود", name: "محمود", phone: "0790000003" },
-  { label: "شركة توصيل خارجية", name: "شركة التوصيل", phone: "" },
-] as const;
 
 const WORKFLOW_STEPS: Array<{ key: SalesStatus; label: string; icon: string }> = [
   { key: "new", label: "جديد", icon: "⏳" },

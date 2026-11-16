@@ -126,3 +126,14 @@ export const formatBytes = (bytes: number) =>
   bytes >= 1_000_000
     ? `${(bytes / 1_000_000).toFixed(1)} MB`
     : `${Math.max(1, Math.round(bytes / 1000))} KB`;
+
+/** Decodes a base64 data URL into a binary Blob for direct storage upload. */
+export function dataUrlToBlob(dataUrl: string, mimeType = "image/webp"): Blob {
+  const parts = dataUrl.split(",");
+  const bstr = atob(parts[1] || "");
+  const bytes = new Uint8Array(bstr.length);
+  for (let i = 0; i < bstr.length; i++) {
+    bytes[i] = bstr.charCodeAt(i);
+  }
+  return new Blob([bytes], { type: mimeType });
+}

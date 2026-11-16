@@ -5,17 +5,12 @@ import {
   AlertTriangle,
   Check,
   ClipboardCopy,
-  Gift,
   Instagram,
   Loader2,
   MessageCircle,
-  PlusCircle,
-  Search,
   Send,
   Sparkles,
   Store,
-  User,
-  Utensils,
   Zap,
 } from "lucide-react";
 import { getWhatsAppChatUrl } from "@/lib/whatsapp";
@@ -41,6 +36,8 @@ import {
   type CakeCustomizationErrors,
   type Customization,
 } from "@/components/delish/CakeCustomizationPanel";
+import { SocialOrderCustomerSection } from "@/components/staff/SocialOrderCustomerSection";
+import { SocialOrderMenuPicker } from "@/components/staff/SocialOrderMenuPicker";
 import {
   SocialOrderPaymentSection,
   type CliqAccount,
@@ -149,31 +146,6 @@ export function SocialOrderEntryForm({
       setError(null);
     },
   );
-
-  // Storefront Menu picker state (collapsed by default; staff click to expand)
-  const [showMenuPicker, setShowMenuPicker] = useState(false);
-  const [menuSearch, setMenuSearch] = useState("");
-  const [menuCategory, setMenuCategory] = useState("all");
-
-  const catalogProducts = useMemo(() => storefront.data?.products ?? [], [storefront.data]);
-  const categoriesList = useMemo(() => {
-    const set = new Set<string>();
-    for (const p of catalogProducts) if (p.category?.trim()) set.add(p.category.trim());
-    return ["all", ...Array.from(set)];
-  }, [catalogProducts]);
-
-  const filteredMenuProducts = useMemo(() => {
-    const q = menuSearch.trim().toLowerCase();
-    return catalogProducts.filter((p) => {
-      const matchCat = menuCategory === "all" || p.category === menuCategory;
-      const matchQuery =
-        !q ||
-        p.name_ar.toLowerCase().includes(q) ||
-        p.name_en.toLowerCase().includes(q) ||
-        (p.filling_ar && p.filling_ar.toLowerCase().includes(q));
-      return matchCat && matchQuery;
-    });
-  }, [catalogProducts, menuSearch, menuCategory]);
 
   const selectProductFromMenu = (product: StorefrontProduct, size?: SizePrice) => {
     const priceToSet = size ? size.price : product.price;
@@ -653,154 +625,18 @@ export function SocialOrderEntryForm({
           </div>
         </div>
 
-        {/* ORDER TYPE TOGGLE: NORMAL VS GIFT */}
-        <div className="rounded-2xl border border-[#B8860B]/30 bg-[#FFFDF9] p-3.5 shadow-2xs">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <span className="block text-xs font-black text-[#5D2E17]">
-                نوع الطلب · Order Type
-              </span>
-              <p className="text-[11px] text-[#7A6458]">
-                {form.is_gift
-                  ? "طلب هدية: يتطلب رقم وبيانات المرسل والمستلم بشكل منفصل"
-                  : "طلب شخصي عادي: إدخال رقم هاتف العميل مرة واحدة فقط دون تكرار"}
-              </p>
-            </div>
-
-            <div className="flex rounded-xl border border-slate-200 bg-slate-100 p-1">
-              <button
-                type="button"
-                onClick={() => set("is_gift", false)}
-                className={`flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs font-bold transition-all ${
-                  !form.is_gift
-                    ? "bg-[#8B4513] text-white shadow-xs"
-                    : "text-[#5D2E17] hover:text-[#3E2723]"
-                }`}
-              >
-                <User className="h-3.5 w-3.5" />
-                <span>طلب عادي / شخصي</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => set("is_gift", true)}
-                className={`flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs font-bold transition-all ${
-                  form.is_gift
-                    ? "bg-rose-600 text-white shadow-xs"
-                    : "text-[#5D2E17] hover:text-[#3E2723]"
-                }`}
-              >
-                <Gift className="h-3.5 w-3.5" />
-                <span>طلب هدية 🎁</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* CUSTOMER / SENDER / RECIPIENT FIELDS */}
-        {!form.is_gift ? (
-          /* NORMAL ORDER: JUST 1 PHONE NUMBER! */
-          <div className="grid gap-4 rounded-2xl border border-slate-200 bg-[#F9FBFC] p-4 sm:grid-cols-2">
-            <label className="block text-sm font-bold text-[#3E2723]">
-              اسم العميل · Customer name
-              <input
-                required
-                value={form.customer_name}
-                onChange={(event) => set("customer_name", event.target.value)}
-                placeholder="مثال: رنا العبدالله"
-                className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm focus:ring-2 focus:ring-[#B8860B] focus:outline-none"
-              />
-            </label>
-
-            <label className="block text-sm font-bold text-[#3E2723]">
-              رقم الهاتف (الواتساب) · Phone
-              <input
-                required
-                dir="ltr"
-                inputMode="tel"
-                value={form.customer_phone}
-                onChange={(event) => set("customer_phone", event.target.value)}
-                placeholder="07XXXXXXXX"
-                className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm focus:ring-2 focus:ring-[#B8860B] focus:outline-none"
-              />
-            </label>
-
-            <label className="block text-sm font-bold text-[#3E2723] sm:col-span-2">
-              اسم الطلب / وصف مختصر (اختياري)
-              <input
-                value={form.order_name}
-                onChange={(event) => set("order_name", event.target.value)}
-                placeholder="مثال: كيكة شوكولاتة لعيد ميلاد"
-                className="mt-1 min-h-12 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm focus:ring-2 focus:ring-[#B8860B] focus:outline-none"
-              />
-            </label>
-          </div>
-        ) : (
-          /* GIFT ORDER: SENDER & RECIPIENT SEPARATED */
-          <div className="grid gap-4 rounded-2xl border border-rose-200/80 bg-rose-50/40 p-4 sm:grid-cols-2">
-            <div className="flex items-center gap-2 border-b border-rose-200 pb-1 text-xs font-black text-rose-900 sm:col-span-2">
-              <Gift className="h-4 w-4 text-rose-600" />
-              <span>بيانات إرسال الهدية (المرسل والمستلم)</span>
-            </div>
-
-            <label className="block text-sm font-bold text-[#3E2723]">
-              اسم المرسل (صاحب الطلب)
-              <input
-                required
-                value={form.sender_name}
-                onChange={(event) => set("sender_name", event.target.value)}
-                placeholder="مثال: أحمد خالد"
-                className="mt-1 min-h-12 w-full rounded-xl border border-rose-200 bg-white px-3.5 text-sm focus:ring-2 focus:ring-[#B8860B] focus:outline-none"
-              />
-            </label>
-
-            <label className="block text-sm font-bold text-[#3E2723]">
-              رقم هاتف المرسل · Sender phone
-              <input
-                required
-                dir="ltr"
-                inputMode="tel"
-                value={form.sender_phone}
-                onChange={(event) => set("sender_phone", event.target.value)}
-                placeholder="07XXXXXXXX"
-                className="mt-1 min-h-12 w-full rounded-xl border border-rose-200 bg-white px-3.5 text-sm focus:ring-2 focus:ring-[#B8860B] focus:outline-none"
-              />
-            </label>
-
-            <label className="block text-sm font-bold text-[#3E2723]">
-              اسم المستلم (المُهدى إليه)
-              <input
-                required
-                value={form.recipient_name}
-                onChange={(event) => set("recipient_name", event.target.value)}
-                placeholder="مثال: ريم السالم"
-                className="mt-1 min-h-12 w-full rounded-xl border border-rose-200 bg-white px-3.5 text-sm focus:ring-2 focus:ring-[#B8860B] focus:outline-none"
-              />
-            </label>
-
-            <label className="block text-sm font-bold text-[#3E2723]">
-              رقم هاتف المستلم للتوصيل · Recipient phone
-              <input
-                required
-                dir="ltr"
-                inputMode="tel"
-                value={form.recipient_phone}
-                onChange={(event) => set("recipient_phone", event.target.value)}
-                placeholder="07XXXXXXXX"
-                className="mt-1 min-h-12 w-full rounded-xl border border-rose-200 bg-white px-3.5 text-sm focus:ring-2 focus:ring-[#B8860B] focus:outline-none"
-              />
-            </label>
-
-            <label className="block text-sm font-bold text-[#3E2723] sm:col-span-2">
-              اسم الطلب / التسمية (اختياري)
-              <input
-                value={form.order_name}
-                onChange={(event) => set("order_name", event.target.value)}
-                placeholder="مثال: هدية كيكة وزهور لريم"
-                className="mt-1 min-h-12 w-full rounded-xl border border-rose-200 bg-white px-3.5 text-sm focus:ring-2 focus:ring-[#B8860B] focus:outline-none"
-              />
-            </label>
-          </div>
-        )}
+        <SocialOrderCustomerSection
+          isGift={form.is_gift}
+          customerName={form.customer_name}
+          customerPhone={form.customer_phone}
+          senderName={form.sender_name}
+          senderPhone={form.sender_phone}
+          recipientName={form.recipient_name}
+          recipientPhone={form.recipient_phone}
+          orderName={form.order_name}
+          onChangeIsGift={(val) => set("is_gift", val)}
+          onChangeField={(field, val) => set(field, val)}
+        />
 
         {/* DESIGN REFERENCE PHOTO — sits directly under the order name */}
         <DesignPhotoSection
@@ -810,141 +646,11 @@ export function SocialOrderEntryForm({
           onClearError={(key) => setCustomErrors((prev) => ({ ...prev, [key]: undefined }))}
         />
 
-        {/* STOREFRONT MENU / CATALOG SELECTOR */}
-        <div className="space-y-3 rounded-2xl border border-[#B8860B]/30 bg-[#FFFDF9] p-3.5 shadow-xs">
-          <div
-            className={`flex flex-wrap items-center justify-between gap-2 ${
-              showMenuPicker ? "border-b border-[#B8860B]/20 pb-2" : ""
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#8B4513] text-white">
-                <Store className="h-5 w-5" />
-              </span>
-              <div>
-                <h3 className="text-sm font-bold text-[#3E2723]">
-                  منيو أصناف الموقع · Storefront Menu
-                </h3>
-                <p className="text-[11px] text-[#7A6458]">
-                  اختر أي منتج/حجم من قائمة الموقع لإضافته بضغطة واحدة
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              aria-expanded={showMenuPicker}
-              onClick={() => setShowMenuPicker((v) => !v)}
-              className="cursor-pointer rounded-full border border-[#B8860B]/40 bg-white px-3.5 py-1.5 text-xs font-bold text-[#8B4513] shadow-2xs transition hover:bg-[#FDE2CF]/30"
-            >
-              {showMenuPicker ? "إخفاء المنيو ▲" : "عرض منيو المنتجات ▼"}
-            </button>
-          </div>
-
-          {showMenuPicker && (
-            <div className="space-y-3 pt-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="relative min-w-[200px] flex-1">
-                  <Search className="absolute top-2.5 right-3 h-4 w-4 text-slate-400" />
-                  <input
-                    type="text"
-                    value={menuSearch}
-                    onChange={(e) => setMenuSearch(e.target.value)}
-                    placeholder="بحث بالاسم أو الحشوة في المنيو…"
-                    className="w-full rounded-xl border border-slate-200 bg-white py-2 pr-9 pl-3 text-xs font-semibold text-[#3E2723] focus:ring-2 focus:ring-[#B8860B] focus:outline-none"
-                  />
-                </div>
-
-                <div className="no-scrollbar flex max-w-full gap-1 overflow-x-auto py-1">
-                  {categoriesList.map((cat) => (
-                    <button
-                      key={cat}
-                      type="button"
-                      onClick={() => setMenuCategory(cat)}
-                      className={`rounded-full px-3 py-1 text-xs font-bold whitespace-nowrap transition-all ${
-                        menuCategory === cat
-                          ? "bg-[#8B4513] text-white shadow-xs"
-                          : "border border-slate-200 bg-white text-[#5D2E17] hover:bg-slate-100"
-                      }`}
-                    >
-                      {cat === "all" ? "الكل" : cat}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {storefront.isLoading ? (
-                <div className="flex items-center justify-center py-6 text-xs text-[#7A6458]">
-                  <Loader2 className="ml-2 h-4 w-4 animate-spin text-[#8B4513]" />
-                  جاري تحميل المنيو…
-                </div>
-              ) : filteredMenuProducts.length === 0 ? (
-                <div className="py-4 text-center text-xs font-bold text-[#7A6458]">
-                  لا توجد نتائج مطابقة في المنيو
-                </div>
-              ) : (
-                <div className="grid max-h-72 grid-cols-1 gap-2.5 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-3">
-                  {filteredMenuProducts.map((prod) => (
-                    <div
-                      key={prod.id}
-                      className="group flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-2.5 shadow-xs transition-all hover:border-[#B8860B]"
-                    >
-                      <div className="flex items-start gap-2">
-                        {prod.image_url ? (
-                          <img
-                            src={prod.image_url}
-                            alt={prod.name_ar}
-                            className="h-12 w-12 shrink-0 rounded-lg border border-slate-100 object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[#FDE2CF]/40 text-[#8B4513]">
-                            <Utensils className="h-5 w-5" />
-                          </div>
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <h4 className="truncate text-xs leading-snug font-bold text-[#3E2723]">
-                            {prod.name_ar}
-                          </h4>
-                          <p className="mt-0.5 text-[11px] font-extrabold text-[#8B4513]">
-                            {prod.price_on_request ? "حسب الطلب" : jd(prod.price)}
-                          </p>
-                          {prod.filling_ar && (
-                            <span className="mt-1 inline-block rounded bg-[#FDE2CF]/50 px-1.5 py-0.5 text-[10px] font-bold text-[#7B3F00]">
-                              حشوة: {prod.filling_ar}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="mt-2 flex flex-wrap gap-1 border-t border-slate-100 pt-1">
-                        {prod.sizes && prod.sizes.length > 0 ? (
-                          prod.sizes.map((sz) => (
-                            <button
-                              key={sz.label}
-                              type="button"
-                              onClick={() => selectProductFromMenu(prod, sz)}
-                              className="min-w-[60px] flex-1 rounded-lg border border-slate-200 bg-[#F9FBFC] px-1.5 py-1 text-center text-[10px] font-bold transition-all hover:bg-[#8B4513] hover:text-white"
-                            >
-                              {sz.label} ({sz.price} د.أ)
-                            </button>
-                          ))
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => selectProductFromMenu(prod)}
-                            className="flex w-full items-center justify-center gap-1 rounded-lg bg-[#8B4513] px-2 py-1 text-xs font-bold text-white shadow-xs transition-all hover:bg-[#5D2E17]"
-                          >
-                            <PlusCircle className="h-3.5 w-3.5" />
-                            اختيار المنتج
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+        <SocialOrderMenuPicker
+          products={storefront.data?.products ?? []}
+          isLoading={storefront.isLoading}
+          onSelect={selectProductFromMenu}
+        />
 
         {/* ORDER DETAILS TEXTAREA */}
         <label className="block text-sm font-bold text-[#3E2723]">

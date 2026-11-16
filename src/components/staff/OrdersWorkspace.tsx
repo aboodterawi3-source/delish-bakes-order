@@ -42,46 +42,9 @@ import {
   type SalesOrder,
   type ShiftReport,
 } from "@/lib/sales.functions";
-import { feeForArea } from "@/lib/delivery-zones";
+import { applyOrderPatch } from "@/lib/sales-helpers";
 import { jd } from "@/lib/currency";
 import { ADMIN_ANALYTICS_KEY, ORDERS_KEY, payMeta } from "@/lib/staff-orders-shared";
-
-function applyPatch(order: SalesOrder, input: OrderPatch): SalesOrder {
-  const next: SalesOrder = { ...order };
-  if (input.status !== undefined) next.status = input.status;
-  if (input.cancel_reason !== undefined) next.cancel_reason = input.cancel_reason;
-  if (input.method !== undefined) next.method = input.method;
-  if (input.area !== undefined) {
-    next.area = input.area;
-    next.delivery_fee = input.area ? (feeForArea(input.area) ?? next.delivery_fee) : 0;
-  }
-  if (input.delivery_fee !== undefined) next.delivery_fee = input.delivery_fee;
-  if (input.driver_name !== undefined) next.driver_name = input.driver_name;
-  if (input.driver_phone !== undefined) next.driver_phone = input.driver_phone;
-  if (input.payment_method !== undefined) next.payment_method = input.payment_method;
-  if (input.card_note !== undefined) next.card_note = input.card_note;
-  if (input.final_photo_requested !== undefined)
-    next.final_photo_requested = input.final_photo_requested;
-  if (input.confirmation_message !== undefined)
-    next.confirmation_message = input.confirmation_message;
-  if (input.order_name !== undefined) next.order_name = input.order_name;
-  if (input.sender_phone !== undefined) next.sender_phone = input.sender_phone;
-  if (input.recipient_phone !== undefined) next.recipient_phone = input.recipient_phone;
-  if (input.customer_name !== undefined) next.customer_name = input.customer_name;
-  if (input.customer_phone !== undefined) next.customer_phone = input.customer_phone;
-  if (input.address !== undefined) next.address = input.address;
-  if (input.requested_date !== undefined) next.requested_date = input.requested_date;
-  if (input.requested_time !== undefined) next.requested_time = input.requested_time;
-  if (input.notes !== undefined) next.notes = input.notes;
-  if (input.staff_notes !== undefined) next.staff_notes = input.staff_notes;
-  if (input.inscription !== undefined) next.inscription = input.inscription;
-  next.total = Math.max(
-    next.subtotal + (next.method === "delivery" ? next.delivery_fee : 0) - next.discount_amount,
-    0,
-  );
-  next.last_edited_at = new Date().toISOString();
-  return next;
-}
 
 export function OrdersWorkspace({
   showShiftReport = false,
@@ -190,7 +153,7 @@ export function OrdersWorkspace({
       const previous = queryClient.getQueryData<SalesOrder[]>(ORDERS_KEY);
       queryClient.setQueryData<SalesOrder[]>(ORDERS_KEY, (rows) =>
         (rows ?? []).map((order) =>
-          order.id === input.orderId ? applyPatch(order, input) : order,
+          order.id === input.orderId ? applyOrderPatch(order, input) : order,
         ),
       );
       return { previous };

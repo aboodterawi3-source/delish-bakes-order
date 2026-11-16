@@ -3,8 +3,7 @@ import { CheckCircle2, Minus, Plus, Trash2, X } from "lucide-react";
 import { getWhatsAppChatUrl } from "@/lib/whatsapp";
 import { formatJod, roundJod } from "@/lib/currency";
 import { feeForArea } from "@/lib/delivery-zones";
-import { DeliveryZoneSelect } from "@/components/delish/DeliveryZoneSelect";
-import { TimeSlotPicker } from "@/components/delish/TimeSlotPicker";
+import { CartCheckoutStage, type CartCheckoutForm } from "@/components/delish/CartCheckoutStage";
 import { todayIso } from "@/lib/date-filter";
 import { useCart } from "@/lib/cart";
 import { useLang } from "@/lib/i18n";
@@ -15,18 +14,7 @@ import { useBrandPalette } from "@/lib/brand-palette";
 import { computeCartSubmissionFingerprint } from "@/lib/order-modifications";
 import { toast } from "sonner";
 
-type Form = {
-  name: string;
-  phone: string;
-  method: "delivery" | "pickup";
-  area: string;
-  address: string;
-  date: string;
-  time: string;
-  notes: string;
-  /** How the customer will pay: cash on delivery or a CliQ transfer. */
-  pay: "cash" | "cliq";
-};
+type Form = CartCheckoutForm;
 
 const empty: Form = {
   name: "",
@@ -416,167 +404,21 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                         <Plus className="h-4 w-4" aria-hidden="true" />
                       </button>
                     </div>
-                    <span className="text-sm font-semibold">
-                      {formatJod(l.unit * l.qty, lang)}
-                    </span>
+                    <span className="text-sm font-semibold">{formatJod(l.unit * l.qty, lang)}</span>
                   </div>
                 </div>
               </div>
             ))}
 
           {stage === "checkout" && (
-            <div className="space-y-4">
-              <Field label={t("name")} error={errors["name"]} errText={t("required")}>
-                {(p) => (
-                  <input
-                    className={inputCls}
-                    autoComplete="name"
-                    value={form.name}
-                    onChange={(e) => set("name", e.target.value)}
-                    {...p}
-                  />
-                )}
-              </Field>
-              <Field label={t("phone")} error={errors["phone"]} errText={t("required")}>
-                {(p) => (
-                  <input
-                    className={inputCls}
-                    inputMode="tel"
-                    autoComplete="tel"
-                    dir="ltr"
-                    placeholder="07 9999 9999"
-                    value={form.phone}
-                    onChange={(e) => set("phone", e.target.value)}
-                    {...p}
-                  />
-                )}
-              </Field>
-
-              <fieldset>
-                <legend className="mb-2 text-xs font-bold tracking-wide text-muted-foreground uppercase">
-                  {t("method")}
-                </legend>
-                <div className="grid gap-2 min-[360px]:grid-cols-2">
-                  {(["delivery", "pickup"] as const).map((m) => (
-                    <button
-                      key={m}
-                      type="button"
-                      aria-pressed={form.method === m}
-                      onClick={() => set("method", m)}
-                      style={{
-                        borderColor: form.method === m ? palette.main : undefined,
-                        backgroundColor: form.method === m ? palette.cardBg : undefined,
-                      }}
-                      className={`min-h-12 cursor-pointer rounded-2xl border px-3 py-2.5 text-sm transition-all ${
-                        form.method === m
-                          ? "font-semibold shadow-xs"
-                          : "border-border text-foreground hover:bg-secondary/20"
-                      }`}
-                    >
-                      {m === "delivery" ? t("deliveryOpt") : t("pickup")}
-                    </button>
-                  ))}
-                </div>
-              </fieldset>
-
-              <fieldset>
-                <legend className="mb-2 text-xs font-bold tracking-wide text-muted-foreground uppercase">
-                  {lang === "ar" ? "طريقة الدفع" : "Payment method"}
-                </legend>
-                <div className="grid gap-2 min-[360px]:grid-cols-2">
-                  {(["cash", "cliq"] as const).map((option) => (
-                    <button
-                      key={option}
-                      type="button"
-                      aria-pressed={form.pay === option}
-                      onClick={() => set("pay", option)}
-                      style={{
-                        borderColor: form.pay === option ? palette.main : undefined,
-                        backgroundColor: form.pay === option ? palette.cardBg : undefined,
-                      }}
-                      className={`min-h-12 cursor-pointer rounded-2xl border px-3 py-2.5 text-sm transition-all ${
-                        form.pay === option
-                          ? "font-semibold shadow-xs"
-                          : "border-border text-foreground hover:bg-secondary/20"
-                      }`}
-                    >
-                      {option === "cash"
-                        ? lang === "ar"
-                          ? "نقداً عند التسليم"
-                          : "Cash on delivery"
-                        : lang === "ar"
-                          ? "كليك CliQ"
-                          : "CliQ transfer"}
-                    </button>
-                  ))}
-                </div>
-                {form.pay === "cliq" && (
-                  <div
-                    style={{ borderColor: palette.border, backgroundColor: palette.cardBg }}
-                    className="mt-2 space-y-2 rounded-2xl border p-3.5 text-xs transition-colors"
-                  >
-                    <p className="leading-relaxed text-muted-foreground">
-                      {lang === "ar"
-                        ? "الدفع عبر كليك · يرجى إرسال صورة إشعار التحويل عبر الواتساب بعد إتمام العملية لتأكيد طلبك."
-                        : "CliQ transfer · Please share your transfer receipt on WhatsApp after completing the payment."}
-                    </p>
-                  </div>
-                )}
-              </fieldset>
-
-              {form.method === "delivery" && (
-                <>
-                  <Field label={t("area")} error={errors["area"]} errText={t("required")}>
-                    {() => (
-                      <DeliveryZoneSelect
-                        className={inputCls}
-                        value={form.area}
-                        onChange={(area) => set("area", area)}
-                        lang={lang}
-                        placeholder={lang === "ar" ? "اختر المنطقة" : "Select your area"}
-                      />
-                    )}
-                  </Field>
-                  <Field label={t("address")} error={errors["address"]} errText={t("required")}>
-                    {(p) => (
-                      <textarea
-                        rows={2}
-                        className={inputCls}
-                        value={form.address}
-                        onChange={(e) => set("address", e.target.value)}
-                        {...p}
-                      />
-                    )}
-                  </Field>
-                </>
-              )}
-
-              <TimeSlotPicker
-                date={form.date || todayIso()}
-                time={form.time}
-                method={form.method}
-                onDateChange={(d) => set("date", d)}
-                onTimeChange={(t) => {
-                  set("time", t);
-                  if (!form.date) set("date", todayIso());
-                }}
-                lang={lang}
-                error={Boolean(errors["time"] || errors["date"])}
-              />
-
-              <Field label={t("orderNotes")}>
-                {(p) => (
-                  <textarea
-                    rows={2}
-                    className={inputCls}
-                    placeholder={t("notesPh")}
-                    value={form.notes}
-                    onChange={(e) => set("notes", e.target.value)}
-                    {...p}
-                  />
-                )}
-              </Field>
-            </div>
+            <CartCheckoutStage
+              form={form}
+              errors={errors}
+              lang={lang}
+              palette={palette}
+              t={t}
+              onSet={set}
+            />
           )}
         </div>
 
@@ -639,46 +481,6 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
           </div>
         )}
       </div>
-    </div>
-  );
-}
-
-const inputCls =
-  "w-full min-h-12 rounded-2xl border border-input bg-background px-4 py-3 text-sm outline-none focus:border-gold";
-
-type FieldProps = { id: string; "aria-invalid"?: true; "aria-describedby"?: string };
-
-function Field({
-  label,
-  error,
-  errText,
-  children,
-}: {
-  label: string;
-  error?: boolean | undefined;
-  errText?: string;
-  children: (props: FieldProps) => React.ReactNode;
-}) {
-  const id = useId();
-  const errId = `${id}-error`;
-  const props: FieldProps = {
-    id,
-    ...(error ? { "aria-invalid": true as const, "aria-describedby": errId } : {}),
-  };
-  return (
-    <div>
-      <label
-        htmlFor={id}
-        className="mb-2 block text-xs font-bold tracking-wide text-muted-foreground uppercase"
-      >
-        {label}
-      </label>
-      {children(props)}
-      {error && (
-        <p id={errId} className="mt-1 text-xs font-semibold text-destructive">
-          {errText}
-        </p>
-      )}
     </div>
   );
 }
