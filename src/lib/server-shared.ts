@@ -30,22 +30,6 @@ export async function getStaffCodeForUser(supabase: any, userId: string): Promis
 export const MAX_EXTRAS = 20;
 export const MAX_EXTRA_LENGTH = 160;
 
-/**
- * Resolves the Supabase base URL dynamically from environment variables,
- * supporting Node/Serverless runtimes and Vite browser environments.
- */
-export function getSupabaseStorageBaseUrl(): string {
-  return resolveSupabaseUrl();
-}
-
-/**
- * Dynamic pattern matching any Supabase Storage URL (signed or public) across all environments/projects.
- * Accepts signed (/sign/) or public (/public/) objects with optional query parameters.
- * Host-agnostic on its own: use isValidStorageUrl to also pin the origin to this project.
- */
-export const STORAGE_URL =
-  /^https?:\/\/[a-z0-9.-]+\/storage\/v1\/object\/(?:sign|public|authenticated)\/[\w./-]+(?:\?[\w=%&.-]*)?$/i;
-
 /** Path-only pattern for Storage objects; the origin is verified separately. */
 const STORAGE_PATH = /^\/storage\/v1\/object\/(?:sign|public|authenticated)\/[\w./%-]+$/;
 
@@ -60,7 +44,7 @@ export function isValidStorageUrl(url: unknown): boolean {
   if (!trimmed || trimmed.length > 2500) return false;
 
   // Fail closed: without a configured project origin we cannot trust any URL.
-  const base = getSupabaseStorageBaseUrl();
+  const base = resolveSupabaseUrl();
   if (!base) return false;
 
   let parsed: URL;
@@ -81,6 +65,46 @@ export function isValidStorageUrl(url: unknown): boolean {
 }
 
 /**
+ * Strictly validates newline-separated design image URLs (rejecting Base64,
+ * oversized strings, and non-project storage URLs with descriptive errors).
+ */
+export function validateAndSerializeDesignImageUrls(
+  rawInput: unknown,
+  maxCount = 10,
+): string | null {
+  if (typeof rawInput !== "string" || !rawInput.trim()) return null;
+  const parts = rawInput
+    .split(/[\r\n]+/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .slice(0, maxCount);
+  const validated: string[] = [];
+  for (const raw of parts) {
+    if (raw.startsWith("data:") || raw.includes(";base64,")) {
+      throw new Error(
+        "يُحظر إرسال صور Base64 مباشرة، يجب رفع الصورة إلى مساحة التخزين أولاً · Base64 image payloads are not allowed; upload to storage first",
+      );
+    }
+    if (raw.length > 2500) {
+      throw new Error("رابط صورة التصميم طويل جداً · Design image URL exceeds maximum length");
+    }
+    if (!isValidStorageUrl(raw)) {
+      throw new Error("رابط صورة التصميم غير صالح · Invalid design image URL");
+    }
+    if (!validated.includes(raw)) validated.push(raw);
+  }
+  return validated.length > 0 ? validated.join("\n") : null;
+}
+
+/**
+ * Dynamic pattern matching any Supabase Storage URL (signed or public) across all environments/projects.
+ * Accepts signed (/sign/) or public (/public/) objects with optional query parameters.
+ * Host-agnostic on its own: use isValidStorageUrl to also pin the origin to this project.
+ */
+export const STORAGE_URL =
+  /^https?:\/\/[a-z0-9.-]+\/storage\/v1\/object\/(?:sign|public|authenticated)\/[\w./-]+(?:\?[\w=%&.-]*)?$/i;
+
+/**
  * Parses and validates one or more newline-separated storage URLs (up to `maxCount`),
  * returning only valid deduplicated URLs.
  */
@@ -89,11 +113,7 @@ export function parseValidStorageUrls(
   allowAnyStorageHost = false,
   maxCount = 10,
 ): string[] {
-  const items = Array.isArray(raw)
-    ? raw
-    : typeof raw === "string"
-      ? raw.split(/[\r\n]+/)
-      : [];
+  const items = Array.isArray(raw) ? raw : typeof raw === "string" ? raw.split(/[\r\n]+/) : [];
   const seen = new Set<string>();
   const valid: string[] = [];
   for (const item of items) {

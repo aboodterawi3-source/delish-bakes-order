@@ -38,6 +38,7 @@ import { applyOrderDiscount, getMyAuthorization } from "@/lib/authorization.func
 import { copyToClipboard } from "@/lib/clipboard";
 import {
   buildModificationMessage,
+  calculateFinancials,
   formatArabicDate,
   formatArabicTime,
 } from "@/lib/confirmation-message";
@@ -350,7 +351,10 @@ export function ModificationsPanel({
               {filteredOrders.map((order) => {
                 const isSelected = order.id === selectedId;
                 const statusInfo = statusMeta[order.status];
-                const remaining = Math.max(order.total - order.deposit_paid, 0);
+                const { remaining, refundDue, isOverpaid } = calculateFinancials(
+                  order.total,
+                  order.deposit_paid,
+                );
 
                 return (
                   <button
@@ -389,9 +393,9 @@ export function ModificationsPanel({
 
                       <div className="shrink-0 text-end">
                         <div className="text-xs font-black text-foreground">{jd(order.total)}</div>
-                        {order.deposit_paid > order.total ? (
+                        {isOverpaid ? (
                           <div className="rounded border border-purple-500/20 bg-purple-500/10 px-1.5 py-0.5 text-[10px] font-black text-purple-600">
-                            إرجاع: {jd(order.deposit_paid - order.total)} 🔄
+                            إرجاع: {jd(refundDue)} 🔄
                           </div>
                         ) : remaining > 0 ? (
                           <div className="text-[10px] font-bold text-rose-600">
@@ -453,20 +457,20 @@ export function ModificationsPanel({
               products={storefront.data?.products ?? []}
               onBackToList={() => setSelectedId(null)}
               onPatch={(patch) =>
-                (save.mutateAsync || save.mutate)({ orderId: selected.id, ...patch })
+                (save.mutateAsync ?? save.mutate)({ orderId: selected.id, ...patch })
               }
               onItemPatch={(patch) =>
-                (saveItem.mutateAsync || saveItem.mutate)({ orderId: selected.id, ...patch })
+                (saveItem.mutateAsync ?? saveItem.mutate)({ orderId: selected.id, ...patch })
               }
               onReplaceItems={(lines, expectedVersion) =>
-                (rebuild.mutateAsync || rebuild.mutate)({
+                (rebuild.mutateAsync ?? rebuild.mutate)({
                   orderId: selected.id,
                   lines,
                   expectedVersion: expectedVersion ?? selected.version ?? null,
                 })
               }
               onDiscount={(percent, reason, expectedVersion) =>
-                (discount.mutateAsync || discount.mutate)({
+                (discount.mutateAsync ?? discount.mutate)({
                   orderId: selected.id,
                   percent,
                   reason,

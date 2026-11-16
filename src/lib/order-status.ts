@@ -113,7 +113,10 @@ export const ORDER_STATUS_META: Record<OrderStatus, StatusMetaItem> = {
 
 export type PaymentMethod = "cash" | "cliq" | "visa";
 
-export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, { ar: string; shortAr: string; en: string }> = {
+export const PAYMENT_METHOD_LABELS: Record<
+  PaymentMethod,
+  { ar: string; shortAr: string; en: string }
+> = {
   cash: { ar: "كاش عند التسليم", shortAr: "كاش", en: "Cash" },
   cliq: { ar: "تحويل كليك", shortAr: "كليك", en: "CliQ" },
   visa: { ar: "فيزا / بطاقة", shortAr: "فيزا", en: "Visa / Card" },
@@ -123,6 +126,18 @@ export function getPaymentMethodLabel(method?: string | null): string {
   if (!method) return "—";
   return PAYMENT_METHOD_LABELS[method as PaymentMethod]?.shortAr ?? method;
 }
+
+export const SALES_WORKFLOW_STEPS: ReadonlyArray<{
+  key: SalesStatus;
+  label: string;
+  icon: string;
+}> = [
+  { key: "new", label: "جديد", icon: "⏳" },
+  { key: "baking", label: "قيد التنفيذ", icon: "👨‍🍳" },
+  { key: "ready", label: "جاهز", icon: "🎂" },
+  { key: "out_for_delivery", label: "مع السائق", icon: "🚗" },
+  { key: "completed", label: "تم التسليم", icon: "✅" },
+];
 
 export function getStatusMeta(status: string | null | undefined): StatusMetaItem {
   if (status && status in ORDER_STATUS_META) {

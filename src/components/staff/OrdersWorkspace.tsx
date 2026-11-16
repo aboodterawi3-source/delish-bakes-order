@@ -116,10 +116,12 @@ export function OrdersWorkspace({
     }
   };
 
+  const realtime = useOrdersRealtime(ORDERS_KEY, true, "orders-workspace-live");
+
   const orders = useQuery({
     queryKey: ORDERS_KEY,
     queryFn: () => ordersFn({ data: {} }),
-    refetchInterval: 30_000,
+    refetchInterval: realtime.isConnected ? false : 30_000,
     staleTime: 10_000,
   });
 
@@ -171,8 +173,6 @@ export function OrdersWorkspace({
       );
     },
   });
-
-  useOrdersRealtime(ORDERS_KEY, true, "orders-workspace-live");
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -459,7 +459,7 @@ export function OrdersWorkspace({
         <OrdersCalendar
           orders={orders.data ?? []}
           onOpen={openOrder}
-          onPatch={(patchData) => patch.mutate(patchData)}
+          onPatch={(patchData) => patch.mutateAsync(patchData)}
         />
       ) : list.length === 0 ? (
         <div className="grid h-52 place-items-center rounded-3xl border border-dashed border-border bg-card p-6 text-center">

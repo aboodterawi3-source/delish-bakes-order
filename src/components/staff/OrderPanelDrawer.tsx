@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
-  Camera,
   Check,
   CheckCircle2,
   CreditCard,
@@ -14,30 +13,22 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { CliQReceiptUploadBox } from "@/components/staff/CliQReceiptUploadBox";
 import { DesignGallery } from "@/components/staff/DesignGallery";
 import { formatOrderConfirmation } from "@/components/staff/orders-actions";
 import { useReceiptUpload } from "@/hooks/use-receipt-upload";
+import { calculateFinancials } from "@/lib/confirmation-message";
 import { jd } from "@/lib/currency";
-import { IMAGE_ACCEPT } from "@/lib/image-validation";
 import { orderLabel } from "@/lib/order-label";
+import { reconcileOrderDrawerFields, type DrawerOrderSnapshot } from "@/lib/order-modifications";
+import { SALES_WORKFLOW_STEPS } from "@/lib/order-status";
 import { printCustomerReceipt } from "@/lib/receipt-templates";
-import {
-  recordOrderPayment,
-  type OrderPatch,
-  type SalesOrder,
-  type SalesStatus,
-} from "@/lib/sales.functions";
+import { recordOrderPayment, type OrderPatch, type SalesOrder } from "@/lib/sales.functions";
 import { ORDERS_KEY, SAVED_DRIVERS } from "@/lib/staff-orders-shared";
 import { attachReceiptImageUrl, extractReceiptImageUrl, formatStaffNotes } from "@/lib/utils";
 import { getWhatsAppChatUrl } from "@/lib/whatsapp";
 
-const WORKFLOW_STEPS: Array<{ key: SalesStatus; label: string; icon: string }> = [
-  { key: "new", label: "جديد", icon: "⏳" },
-  { key: "baking", label: "قيد التنفيذ", icon: "👨‍🍳" },
-  { key: "ready", label: "جاهز", icon: "🎂" },
-  { key: "out_for_delivery", label: "مع السائق", icon: "🚗" },
-  { key: "completed", label: "تم التسليم", icon: "✅" },
-];
+const WORKFLOW_STEPS = SALES_WORKFLOW_STEPS;
 
 interface OrderPanelDrawerProps {
   order: SalesOrder;
@@ -62,37 +53,59 @@ export function OrderPanelDrawer({
   const [driverName, setDriverName] = useState(order.driver_name ?? "");
   const [driverPhone, setDriverPhone] = useState(order.driver_phone ?? "");
 
-  const prevServerRef = useRef({
+  const prevServerRef = useRef<DrawerOrderSnapshot>({
     id: order.id,
     deposit_paid: order.deposit_paid,
     driver_name: order.driver_name,
     driver_phone: order.driver_phone,
+    discount_percent: order.discount_percent ?? 0,
+    address: order.address,
   });
 
   useEffect(() => {
     const prev = prevServerRef.current;
-    const next = {
+    const next: DrawerOrderSnapshot = {
       id: order.id,
       deposit_paid: order.deposit_paid,
       driver_name: order.driver_name,
       driver_phone: order.driver_phone,
+      discount_percent: order.discount_percent ?? 0,
+      address: order.address,
     };
     prevServerRef.current = next;
 
-    const sync = (prevVal: string, nextVal: string) => (cur: string) =>
-      prev.id !== next.id || (prevVal !== nextVal && cur === prevVal) ? nextVal : cur;
+    const localSnapshot = (field: "deposit" | "driverName" | "driverPhone") => (cur: string) => {
+      const reconciled = reconcileOrderDrawerFields(prev, next, {
+        deposit: field === "deposit" ? cur : "",
+        driverName: field === "driverName" ? cur : "",
+        driverPhone: field === "driverPhone" ? cur : "",
+        discountPercent: "",
+        discountReason: "",
+        address: "",
+      });
+      return reconciled[field];
+    };
 
-    setDeposit(sync(String(prev.deposit_paid), String(next.deposit_paid)));
-    setDriverName(sync(prev.driver_name ?? "", next.driver_name ?? ""));
-    setDriverPhone(sync(prev.driver_phone ?? "", next.driver_phone ?? ""));
-  }, [order.id, order.deposit_paid, order.driver_name, order.driver_phone]);
+    setDeposit(localSnapshot("deposit"));
+    setDriverName(localSnapshot("driverName"));
+    setDriverPhone(localSnapshot("driverPhone"));
+  }, [
+    order.id,
+    order.deposit_paid,
+    order.driver_name,
+    order.driver_phone,
+    order.discount_percent,
+    order.address,
+  ]);
 
   const liveTotal = Math.max(
     order.subtotal + (order.method === "delivery" ? order.delivery_fee : 0) - order.discount_amount,
     0,
   );
-  const remaining = Math.max(liveTotal - (Number(deposit) || 0), 0);
-  const drawerRefundDue = Math.max((Number(deposit) || 0) - liveTotal, 0);
+  const { remaining, refundDue: drawerRefundDue } = calculateFinancials(
+    liveTotal,
+    Number(deposit) || 0,
+  );
 
   const confirmationMessage = useMemo(
     () => formatOrderConfirmation(order, liveTotal, Number(deposit) || 0),
@@ -146,7 +159,6 @@ ${collectionText}
   const [receiptPreviewUrl, setReceiptPreviewUrl] = useState<string | null>(() =>
     extractReceiptImageUrl(order.staff_notes),
   );
-  const receiptInputRef = useRef<HTMLInputElement>(null);
   const paymentIdempotencyKeyRef = useRef<string>(crypto.randomUUID());
   const refundIdempotencyKeyRef = useRef<string>(crypto.randomUUID());
 
@@ -393,45 +405,14 @@ ${collectionText}
                       <span className="block text-[11px] font-bold text-muted-foreground">
                         صورة إشعار حوالة كليك (اختياري):
                       </span>
-                      {receiptPreviewUrl ? (
-                        <div className="flex items-center gap-2.5 rounded-lg border border-emerald-300 bg-background p-2">
-                          <img
-                            src={receiptPreviewUrl}
-                            alt="إشعار كليك"
-                            onClick={() => onZoom(receiptPreviewUrl)}
-                            className="h-12 w-12 shrink-0 cursor-pointer rounded-md border border-border object-cover"
-                          />
-                          <div className="min-w-0 flex-1 text-[11px]">
-                            <p className="font-bold text-emerald-700">تم إرفاق صورة الحوالة ✅</p>
-                            <button
-                              type="button"
-                              onClick={() => receiptInputRef.current?.click()}
-                              disabled={uploadingReceipt}
-                              className="cursor-pointer font-bold text-primary hover:underline"
-                            >
-                              تغيير الصورة
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => receiptInputRef.current?.click()}
-                          disabled={uploadingReceipt}
-                          className="flex min-h-10 w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-dashed border-amber-500/60 bg-background px-3 text-xs font-bold text-amber-900 hover:bg-amber-50 dark:text-amber-200"
-                        >
-                          {uploadingReceipt ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Camera className="h-4 w-4" />
-                          )}
-                          <span>
-                            {uploadingReceipt
-                              ? "جاري رفع صورة الحوالة..."
-                              : "📸 اضغط لإرفاق صورة إشعار كليك"}
-                          </span>
-                        </button>
-                      )}
+                      <CliQReceiptUploadBox
+                        receiptUrl={receiptPreviewUrl}
+                        uploading={uploadingReceipt}
+                        onUploadFile={(file) => void uploadReceiptFile(file)}
+                        onPreview={onZoom}
+                        compact
+                        emptyLabel="📸 اضغط لإرفاق صورة إشعار كليك"
+                      />
                     </div>
 
                     <button
@@ -456,70 +437,16 @@ ${collectionText}
               </div>
             )}
 
-            <input
-              ref={receiptInputRef}
-              type="file"
-              accept={IMAGE_ACCEPT}
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                e.currentTarget.value = "";
-                if (file) void uploadReceiptFile(file);
-              }}
-            />
-
             {!showCliqPayPanel && (receiptPreviewUrl || order.payment_method === "cliq") && (
               <div className="mt-2 border-t border-border/60 pt-2.5">
-                {receiptPreviewUrl ? (
-                  <div className="flex items-center justify-between gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50/50 p-2 dark:border-emerald-800/40 dark:bg-emerald-950/20">
-                    <div className="flex items-center gap-2.5">
-                      <img
-                        src={receiptPreviewUrl}
-                        alt="إشعار حوالة كليك"
-                        onClick={() => onZoom(receiptPreviewUrl)}
-                        className="h-12 w-12 shrink-0 cursor-pointer rounded-lg border border-border object-cover transition hover:opacity-90"
-                      />
-                      <div className="text-[11px]">
-                        <p className="font-black text-emerald-800 dark:text-emerald-300">
-                          💳 صورة إشعار حوالة كليك
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => onZoom(receiptPreviewUrl)}
-                          className="cursor-pointer font-bold text-primary hover:underline"
-                        >
-                          عرض وتكبير 🔍
-                        </button>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => receiptInputRef.current?.click()}
-                      disabled={uploadingReceipt}
-                      className="cursor-pointer rounded-lg border border-border bg-card px-2.5 py-1 text-[11px] font-bold text-foreground hover:bg-secondary"
-                    >
-                      {uploadingReceipt ? "جاري الرفع..." : "تغيير"}
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => receiptInputRef.current?.click()}
-                    disabled={uploadingReceipt}
-                    className="flex min-h-9 w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-dashed border-amber-400 bg-amber-50/50 px-3 text-[11px] font-bold text-amber-900 hover:bg-amber-50 dark:bg-amber-950/20 dark:text-amber-200"
-                  >
-                    {uploadingReceipt ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Camera className="h-3.5 w-3.5" />
-                    )}
-                    <span>
-                      {uploadingReceipt
-                        ? "جاري رفع صورة الحوالة..."
-                        : "📸 إرفاق صورة إشعار حوالة كليك لاحقاً"}
-                    </span>
-                  </button>
-                )}
+                <CliQReceiptUploadBox
+                  receiptUrl={receiptPreviewUrl}
+                  uploading={uploadingReceipt}
+                  onUploadFile={(file) => void uploadReceiptFile(file)}
+                  onPreview={onZoom}
+                  compact
+                  emptyLabel="📸 إرفاق صورة إشعار حوالة كليك لاحقاً"
+                />
               </div>
             )}
           </div>

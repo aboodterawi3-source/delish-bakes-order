@@ -27,7 +27,7 @@ export type { CalendarOrder, CalendarViewMode };
 export interface OrdersCalendarProps {
   orders: CalendarOrder[];
   onOpen: (id: string) => void;
-  onPatch?: (input: OrderPatch) => void;
+  onPatch?: (input: OrderPatch) => Promise<unknown> | void;
   isKitchen?: boolean;
   onKitchenStage?: (id: string, stage: "new" | "baking" | "ready") => void;
   onPrintKitchenTicket?: (order: CalendarOrder) => void;
@@ -45,8 +45,13 @@ export const OrdersCalendar = memo(function OrdersCalendar({
   const [viewMode, setViewMode] = useState<CalendarViewMode>("day");
   const [currentDate, setCurrentDate] = useState<Date>(() => new Date());
   const [statusFilter, setStatusFilter] = useState<SalesStatus | "all">("all");
-  const [selectedOrder, setSelectedOrder] = useState<CalendarOrder | null>(null);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [zoomImage, setZoomImage] = useState<string | null>(null);
+
+  const selectedOrder = useMemo(
+    () => (selectedOrderId ? (orders.find((o) => o.id === selectedOrderId) ?? null) : null),
+    [orders, selectedOrderId],
+  );
 
   // Touch Long-Press Dragging State
   const [dragging, setDragging] = useState<{
@@ -177,20 +182,18 @@ export const OrdersCalendar = memo(function OrdersCalendar({
       setDragging(null);
 
       // Perform mutation and report real success/failure
-      if (onPatch) {
-        onPatch({ orderId: orderToMove.id, requested_time: targetTimeStr });
-        toast.success(`✨ تم نقل الطلب إلى الساعة ${displayTime} بنجاح`);
-      } else {
-        updateOrderServerFn({
-          data: { orderId: orderToMove.id, requested_time: targetTimeStr },
-        })
-          .then(() => {
-            toast.success(`✨ تم نقل الطلب إلى الساعة ${displayTime} بنجاح`);
-          })
-          .catch(() => {
-            toast.error("تعذر تحديث موعد الطلب");
+      const mutationPromise = onPatch
+        ? Promise.resolve(onPatch({ orderId: orderToMove.id, requested_time: targetTimeStr }))
+        : updateOrderServerFn({
+            data: { orderId: orderToMove.id, requested_time: targetTimeStr },
           });
-      }
+      mutationPromise
+        .then(() => {
+          toast.success(`✨ تم نقل الطلب إلى الساعة ${displayTime} بنجاح`);
+        })
+        .catch(() => {
+          if (!onPatch) toast.error("تعذر تحديث موعد الطلب");
+        });
       return;
     }
 
@@ -504,7 +507,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                         key={ord.id}
                         onClick={(e) => {
                           e.stopPropagation();
-                          setSelectedOrder(ord);
+                          setSelectedOrderId(ord.id);
                         }}
                         className={`truncate rounded-lg border px-1.5 py-1 text-[11px] font-bold shadow-2xs transition-transform hover:scale-[1.02] ${cfg.bg} ${cfg.border} ${cfg.text}`}
                       >
@@ -624,7 +627,7 @@ export const OrdersCalendar = memo(function OrdersCalendar({
                         onPointerDown={(e) => handlePointerDown(e, ord)}
                         onClick={() => {
                           if (!isDraggingActive.current) {
-                            setSelectedOrder(ord);
+                            setSelectedOrderId(ord.id);
                           }
                         }}
                         style={{
@@ -722,13 +725,10 @@ export const OrdersCalendar = memo(function OrdersCalendar({
         <CalendarOrderDetailModal
           order={selectedOrder}
           isKitchen={isKitchen}
-          onClose={() => setSelectedOrder(null)}
+          onClose={() => setSelectedOrderId(null)}
           onOpenFullDetails={onOpen}
           onZoomImage={(url) => setZoomImage(url)}
           onKitchenStage={onKitchenStage}
-          onUpdateStatus={(nextStatus) =>
-            setSelectedOrder((prev) => (prev ? { ...prev, status: nextStatus } : null))
-          }
           onPrintKitchenTicket={onPrintKitchenTicket}
         />
       ) : null}

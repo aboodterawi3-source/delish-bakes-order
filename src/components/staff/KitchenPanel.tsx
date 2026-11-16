@@ -130,15 +130,15 @@ export function KitchenPanel() {
 
   const access = useStaffAccess(["kitchen-access"], () => fetchAccess({}), ["kitchen", "admin"]);
 
+  useScreenWakeLock(true);
+  const realtime = useOrdersRealtime(ORDERS_KEY, true, "kitchen-live");
+
   const orders = useQuery({
     queryKey: ORDERS_KEY,
     queryFn: () => fetchOrders({}),
     staleTime: 15_000,
-    refetchInterval: 10_000,
+    refetchInterval: realtime.isConnected ? false : 10_000,
   });
-
-  useScreenWakeLock(true);
-  const realtime = useOrdersRealtime(ORDERS_KEY, true, "kitchen-live");
 
   const knownIds = useRef<Set<string> | null>(null);
   const knownModTimestamps = useRef<Map<string, string>>(new Map());

@@ -1,10 +1,8 @@
-import { useRef } from "react";
 import {
   BadgeDollarSign,
   Bike,
   Camera,
   Gift,
-  Loader2,
   Percent,
   Sparkles,
   Store,
@@ -13,9 +11,10 @@ import {
 } from "lucide-react";
 
 import { DeliveryZoneSelect } from "@/components/delish/DeliveryZoneSelect";
+import { CliQReceiptUploadBox } from "@/components/staff/CliQReceiptUploadBox";
 import { editorInputClass as inputClass } from "@/components/staff/InteractiveItemEditorCard";
+import { calculateFinancials } from "@/lib/confirmation-message";
 import { jd } from "@/lib/currency";
-import { IMAGE_ACCEPT } from "@/lib/image-validation";
 import type { OrderPatch, SalesOrder } from "@/lib/sales.functions";
 
 const boxedTextarea =
@@ -446,7 +445,7 @@ export function MasterOrderFinancialsSection({
   onUploadReceipt,
   onApplyDiscount,
 }: FinancialsSectionProps) {
-  const receiptInputRef = useRef<HTMLInputElement>(null);
+  const { refundDue } = calculateFinancials(order.total, order.deposit_paid);
 
   return (
     <div className="space-y-4 rounded-3xl border border-border/80 bg-card p-4 shadow-xs sm:p-5">
@@ -484,10 +483,10 @@ export function MasterOrderFinancialsSection({
             <span>{jd(order.total)}</span>
           </div>
 
-          {order.deposit_paid > order.total ? (
+          {refundDue > 0.001 ? (
             <div className="flex justify-between rounded-lg border border-purple-500/20 bg-purple-500/10 p-2 pt-1 text-xs font-black text-purple-600">
               <span>مستحق إرجاع للزبون 🔄</span>
-              <span>{jd(order.deposit_paid - order.total)}</span>
+              <span>{jd(refundDue)}</span>
             </div>
           ) : (
             <div
@@ -554,62 +553,13 @@ export function MasterOrderFinancialsSection({
               )}
             </div>
 
-            <input
-              ref={receiptInputRef}
-              type="file"
-              accept={IMAGE_ACCEPT}
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                e.currentTarget.value = "";
-                if (file) onUploadReceipt(file);
-              }}
+            <CliQReceiptUploadBox
+              receiptUrl={receiptUrl}
+              uploading={uploadingReceipt}
+              onUploadFile={onUploadReceipt}
+              onPreview={(url) => window.open(url, "_blank")}
+              emptyLabel="📸 تحميل صورة إشعار حوالة كليك"
             />
-
-            {receiptUrl ? (
-              <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-card p-2">
-                <img
-                  src={receiptUrl}
-                  alt="صورة حوالة كليك"
-                  onClick={() => window.open(receiptUrl, "_blank")}
-                  className="h-14 w-14 shrink-0 cursor-pointer rounded-lg border border-border object-cover"
-                  title="اضغط لفتح الصورة"
-                />
-                <div className="flex flex-1 items-center justify-between gap-2">
-                  <button
-                    type="button"
-                    onClick={() => window.open(receiptUrl, "_blank")}
-                    className="cursor-pointer text-xs font-bold text-primary hover:underline"
-                  >
-                    عرض الصورة 🔍
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => receiptInputRef.current?.click()}
-                    disabled={uploadingReceipt}
-                    className="cursor-pointer rounded-lg border border-border bg-secondary px-2.5 py-1 text-[11px] font-bold hover:bg-secondary/80"
-                  >
-                    {uploadingReceipt ? "جاري الرفع..." : "تغيير الصورة"}
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => receiptInputRef.current?.click()}
-                disabled={uploadingReceipt}
-                className="flex min-h-10 w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-dashed border-amber-400 bg-background px-3 text-xs font-bold text-amber-900 hover:bg-amber-50 dark:text-amber-200"
-              >
-                {uploadingReceipt ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Camera className="h-4 w-4" />
-                )}
-                <span>
-                  {uploadingReceipt ? "جاري رفع صورة الحوالة..." : "📸 تحميل صورة إشعار حوالة كليك"}
-                </span>
-              </button>
-            )}
           </div>
 
           <div className="space-y-2 rounded-2xl border border-dashed border-border p-3">

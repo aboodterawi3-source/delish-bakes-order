@@ -4,9 +4,6 @@ import { useLang } from "@/lib/i18n";
 
 export { DesignPhotoSection };
 
-/** One balloon colour with its own count; several may be combined. */
-export type BalloonPick = { id: string; label: string; qty: number };
-
 export type Customization = {
   /** Chosen cake filling (e.g. Nutella, Lotus, Pistachio). */
   filling: string;
@@ -21,8 +18,6 @@ export type Customization = {
   /** Explicit choice for balloons (null when not chosen yet). */
   balloonChoice?: "none" | "yes" | null;
   balloons: boolean;
-  /** Multi-colour selection: any number of colours, each with a count. */
-  balloonPicks: BalloonPick[];
   balloonNotes: string;
   /** Explicit choice for acrylic topper (null when not chosen yet). */
   topperChoice?: "none" | "yes" | null;
@@ -45,7 +40,6 @@ export const emptyCustomization: Customization = {
   numberCandleQty: 1,
   balloonChoice: null,
   balloons: false,
-  balloonPicks: [],
   balloonNotes: "",
   topperChoice: null,
   topper: false,
@@ -75,17 +69,10 @@ export function customizationSummary(c: Customization) {
     en.push(`Number candles: ${c.candleDigits.trim()} × ${c.numberCandleQty}`);
   }
   if (c.balloons) {
-    const picks = c.balloonPicks.filter((p) => p.qty > 0);
-    if (picks.length > 0) {
-      const list = picks.map((p) => `${p.label} × ${p.qty}`).join(" + ");
-      ar.push(`بالونات: ${list}`);
-      en.push(`Balloons: ${list}`);
-    }
     if (c.balloonNotes.trim()) {
       ar.push(`بالونات إضافية: ${c.balloonNotes.trim()}`);
       en.push(`Extra balloons: ${c.balloonNotes.trim()}`);
-    }
-    if (picks.length === 0 && !c.balloonNotes.trim()) {
+    } else {
       ar.push("بالونات: مطلوبة");
       en.push("Balloons: requested");
     }
@@ -451,7 +438,6 @@ export function CakeCustomizationPanel({
                 ...value,
                 balloonChoice: "none",
                 balloons: false,
-                balloonPicks: [],
                 balloonNotes: "",
               });
               clear("balloons");
@@ -471,7 +457,6 @@ export function CakeCustomizationPanel({
                 ...value,
                 balloonChoice: "yes",
                 balloons: true,
-                balloonPicks: [],
               });
               clear("balloons");
             }}

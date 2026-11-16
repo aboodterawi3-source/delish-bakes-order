@@ -4,11 +4,13 @@ import { assertRole, getPortalAccess, type StaffRoleName } from "@/lib/role-guar
 import { feeForArea } from "@/lib/delivery-zones";
 import { getStaffCodeForUser, serializeValidStorageUrls } from "@/lib/server-shared";
 import type { OrderModification } from "@/lib/order-modifications";
-import { getPaymentMethodLabel, type PaymentMethod, type SalesStatus } from "@/lib/order-status";
+import type { PaymentMethod, SalesStatus } from "@/lib/order-status";
 import {
   buildOrderPatch,
   buildOriginalOrderBaseline,
+  computeOrderPatchDiffs,
   createBaselineModIfNeeded,
+  formatOrderItemsSummary,
   type OrderPatch,
 } from "@/lib/sales-helpers";
 import { roundJod } from "@/lib/currency";
@@ -115,6 +117,66 @@ const toOrder = (row: Row): SalesOrder => ({
   })),
 });
 
+async function fetchOrderWithVersion(
+  supabase: any,
+  orderId: string,
+  rpcResult: unknown,
+  scope: string,
+  fallbackMessage: string,
+): Promise<SalesOrder> {
+  const { data: row, error } = await supabase
+    .from("orders")
+    .select(SELECT)
+    .eq("id", orderId)
+    .single();
+  if (error || !row) {
+    throw staffRpcError(scope, error ?? new Error("Missing order"), fallbackMessage);
+  }
+  const order = toOrder(row as Row);
+  if (rpcResult && typeof (rpcResult as { version?: unknown }).version === "number") {
+    order.version = (rpcResult as { version: number }).version;
+  }
+  return order;
+}
+
+async function verifyCatalogPricesForLines(
+  supabase: any,
+  context: unknown,
+  lines: Array<{ productId?: string | null; unitPrice: number }>,
+  deniedMessage: string,
+): Promise<void> {
+  const productIds = Array.from(
+    new Set(lines.map((line) => line.productId).filter((id): id is string => Boolean(id))),
+  );
+  if (productIds.length === 0) return;
+
+  const { canEditProductPrice } = await import("@/lib/permissions.functions");
+  const { isOfficialCatalogPrice } = await import("@/lib/order-pricing");
+  const { data: catalog } = await supabase
+    .from("products")
+    .select("id, price, sizes")
+    .in("id", productIds);
+
+  const catalogProducts = new Map<string, { price: number | null; sizes: unknown }>(
+    (catalog ?? []).map((row: { id: string; price: number | null; sizes?: unknown }) => [
+      row.id,
+      { price: row.price, sizes: row.sizes },
+    ]),
+  );
+
+  for (const productId of productIds) {
+    if (await canEditProductPrice(context as never, productId)) continue;
+    const lockedProduct = catalogProducts.get(productId);
+    const mismatched = lines.some(
+      (line) =>
+        line.productId === productId &&
+        lockedProduct !== undefined &&
+        !isOfficialCatalogPrice(Number(line.unitPrice), lockedProduct),
+    );
+    if (mismatched) throw new Error(deniedMessage);
+  }
+}
+
 /** Confirms the signed-in user may use the sales interface. */
 export const getSalesAccess = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -207,27 +269,15 @@ export const createSalesOrder = createServerFn({ method: "POST" })
     const discountAmount = roundJod(data.discount_amount ?? 0);
     const discountPercent = data.discount_percent ?? 0;
 
-    // Per-product price edit check (allows official base price AND official size prices)
-    const { canEditProductPrice } = await import("@/lib/permissions.functions");
-    const { isOfficialCatalogPrice } = await import("@/lib/order-pricing");
-    for (const item of data.items) {
-      const pid = (item as any).productId || (item as any).product_id;
-      if (pid) {
-        const canEdit = await canEditProductPrice(context as never, pid);
-        if (!canEdit) {
-          const { data: catProd } = await context.supabase
-            .from("products")
-            .select("price, sizes")
-            .eq("id", pid)
-            .maybeSingle();
-          if (catProd && !isOfficialCatalogPrice(Number(item.unit_price), catProd)) {
-            throw new Error(
-              "غير مصرّح: لا تملك صلاحية تعديل سعر هذا المنتج · You are not allowed to edit the price for this product",
-            );
-          }
-        }
-      }
-    }
+    await verifyCatalogPricesForLines(
+      context.supabase,
+      context,
+      data.items.map((item) => ({
+        productId: (item as any).productId || (item as any).product_id || null,
+        unitPrice: item.unit_price,
+      })),
+      "غير مصرّح: لا تملك صلاحية تعديل سعر هذا المنتج · You are not allowed to edit the price for this product",
+    );
 
     // Strict staff discount authorization
     const { resolveAuthorization } = await import("@/lib/authorization.functions");
@@ -369,235 +419,8 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
             .eq("order_id", data.orderId);
           return buildOriginalOrderBaseline(existing, existingItems ?? []);
         })),
+        ...computeOrderPatchDiffs(existing, clean, nowIso),
       );
-
-      if (clean["customer_name"] !== undefined) {
-        const oldVal = (existing.customer_name ?? "").trim();
-        const newVal = String(clean["customer_name"] ?? "").trim();
-        if (oldVal && newVal && oldVal !== newVal) {
-          newDiffs.push({
-            field: "اسم العميل",
-            oldValue: oldVal,
-            newValue: newVal,
-            updatedAt: nowIso,
-            acknowledgedAt: null,
-          });
-        }
-      }
-
-      if (clean["customer_phone"] !== undefined) {
-        const oldVal = (existing.customer_phone ?? "").trim();
-        const newVal = String(clean["customer_phone"] ?? "").trim();
-        if (oldVal && newVal && oldVal !== newVal) {
-          newDiffs.push({
-            field: "رقم هاتف العميل",
-            oldValue: oldVal,
-            newValue: newVal,
-            updatedAt: nowIso,
-            acknowledgedAt: null,
-          });
-        }
-      }
-
-      if (clean["order_name"] !== undefined) {
-        const oldVal = (existing.order_name ?? "").trim();
-        const newVal = String(clean["order_name"] ?? "").trim();
-        if (oldVal !== newVal) {
-          newDiffs.push({
-            field: "اسم المستلم / الطلب",
-            oldValue: oldVal || "غير محدد",
-            newValue: newVal || "غير محدد",
-            updatedAt: nowIso,
-            acknowledgedAt: null,
-          });
-        }
-      }
-
-      if (clean["sender_phone"] !== undefined) {
-        const oldVal = (existing.sender_phone ?? "").trim();
-        const newVal = String(clean["sender_phone"] ?? "").trim();
-        if (oldVal !== newVal) {
-          newDiffs.push({
-            field: "هاتف المرسل",
-            oldValue: oldVal || "غير محدد",
-            newValue: newVal || "غير محدد",
-            updatedAt: nowIso,
-            acknowledgedAt: null,
-          });
-        }
-      }
-
-      if (clean["recipient_phone"] !== undefined) {
-        const oldVal = (existing.recipient_phone ?? "").trim();
-        const newVal = String(clean["recipient_phone"] ?? "").trim();
-        if (oldVal !== newVal) {
-          newDiffs.push({
-            field: "هاتف المستلم",
-            oldValue: oldVal || "غير محدد",
-            newValue: newVal || "غير محدد",
-            updatedAt: nowIso,
-            acknowledgedAt: null,
-          });
-        }
-      }
-
-      if (clean["requested_date"] !== undefined) {
-        const oldVal = existing.requested_date ?? "";
-        const newVal = String(clean["requested_date"]);
-        if (oldVal !== newVal) {
-          newDiffs.push({
-            field: "تاريخ التسليم",
-            oldValue: oldVal || "غير محدد",
-            newValue: newVal || "غير محدد",
-            updatedAt: nowIso,
-            acknowledgedAt: null,
-          });
-        }
-      }
-
-      if (clean["requested_time"] !== undefined) {
-        const oldVal = (existing.requested_time ?? "").slice(0, 5);
-        const newVal = String(clean["requested_time"]).slice(0, 5);
-        if (oldVal !== newVal) {
-          newDiffs.push({
-            field: "وقت التسليم",
-            oldValue: oldVal || "غير محدد",
-            newValue: newVal || "غير محدد",
-            updatedAt: nowIso,
-            acknowledgedAt: null,
-          });
-        }
-      }
-
-      if (
-        clean["method"] !== undefined ||
-        clean["area"] !== undefined ||
-        clean["address"] !== undefined
-      ) {
-        const oldMethod =
-          existing.method === "delivery"
-            ? `توصيل (${existing.area || "عمان"}${existing.address ? ` - ${existing.address}` : ""})`
-            : "استلام من المحل";
-        const newM = clean["method"] !== undefined ? clean["method"] : existing.method;
-        const newArea = clean["area"] !== undefined ? clean["area"] : existing.area;
-        const newAddr = clean["address"] !== undefined ? clean["address"] : existing.address;
-        const newMethod =
-          newM === "delivery"
-            ? `توصيل (${newArea || "عمان"}${newAddr ? ` - ${newAddr}` : ""})`
-            : "استلام من المحل";
-        if (oldMethod !== newMethod) {
-          newDiffs.push({
-            field: "طريقة الاستلام / العنوان",
-            oldValue: oldMethod,
-            newValue: newMethod,
-            updatedAt: nowIso,
-            acknowledgedAt: null,
-          });
-        }
-      }
-
-      if (clean["notes"] !== undefined) {
-        const oldVal = (existing.notes ?? "").trim();
-        const newVal = String(clean["notes"] ?? "").trim();
-        if (oldVal !== newVal) {
-          newDiffs.push({
-            field: "الملاحظات",
-            oldValue: oldVal || "بدون ملاحظات",
-            newValue: newVal || "بدون ملاحظات",
-            updatedAt: nowIso,
-            acknowledgedAt: null,
-          });
-        }
-      }
-
-      if (clean["inscription"] !== undefined) {
-        const oldVal = (existing.inscription ?? "").trim();
-        const newVal = String(clean["inscription"] ?? "").trim();
-        if (oldVal !== newVal) {
-          newDiffs.push({
-            field: "الكتابة على الكيك",
-            oldValue: oldVal || "بدون كتابة",
-            newValue: newVal || "بدون كتابة",
-            updatedAt: nowIso,
-            acknowledgedAt: null,
-          });
-        }
-      }
-
-      if (clean["staff_notes"] !== undefined) {
-        const oldVal = (existing.staff_notes ?? "").trim();
-        const newVal = String(clean["staff_notes"] ?? "").trim();
-        if (oldVal !== newVal) {
-          newDiffs.push({
-            field: "ملاحظات الموظفين",
-            oldValue: oldVal || "بدون ملاحظات",
-            newValue: newVal || "بدون ملاحظات",
-            updatedAt: nowIso,
-            acknowledgedAt: null,
-          });
-        }
-      }
-
-      if (clean["card_note"] !== undefined) {
-        const oldVal = (existing.card_note ?? "").trim();
-        const newVal = String(clean["card_note"] ?? "").trim();
-        if (oldVal !== newVal) {
-          newDiffs.push({
-            field: "كرت الإهداء / ملاحظة الكرت",
-            oldValue: oldVal || "بدون كرت",
-            newValue: newVal || "بدون كرت",
-            updatedAt: nowIso,
-            acknowledgedAt: null,
-          });
-        }
-      }
-
-      if (clean["driver_name"] !== undefined) {
-        const oldVal = (existing.driver_name ?? "").trim();
-        const newVal = String(clean["driver_name"] ?? "").trim();
-        if (oldVal !== newVal) {
-          newDiffs.push({
-            field: "سائق التوصيل",
-            oldValue: oldVal || "غير محدد",
-            newValue: newVal || "غير محدد",
-            updatedAt: nowIso,
-            acknowledgedAt: null,
-          });
-        }
-      }
-
-      if (clean["payment_method"] !== undefined) {
-        const oldVal = String(existing.payment_method ?? "");
-        const newVal = String(clean["payment_method"] ?? "");
-        if (oldVal !== newVal) {
-          const pmLabel = (val: string) => (val ? getPaymentMethodLabel(val) : "غير محدد");
-          newDiffs.push({
-            field: "طريقة الدفع",
-            oldValue: pmLabel(oldVal),
-            newValue: pmLabel(newVal),
-            updatedAt: nowIso,
-            acknowledgedAt: null,
-          });
-        }
-      }
-
-      if (clean["status"] !== undefined) {
-        const oldVal = String(existing.status ?? "");
-        const newVal = String(clean["status"] ?? "");
-        if (oldVal !== newVal) {
-          newDiffs.push({
-            field: "حالة الطلب",
-            oldValue: oldVal,
-            newValue: newVal,
-            updatedAt: nowIso,
-            acknowledgedAt: null,
-          });
-        }
-      }
-
-      // Saves that changed no tracked field record nothing: no extra query, and
-      // no empty diff pushed to the kitchen.
-      // modifications logic is now handled strictly in the DB to avoid RACE-01
     }
 
     const { data: row, error } = await context.supabase.rpc("patch_sales_order_atomic", {
@@ -615,25 +438,13 @@ export const updateSalesOrder = createServerFn({ method: "POST" })
       );
     }
 
-    // After RPC update, fetch the fully mapped record
-    const { data: fullOrder, error: fetchError } = await context.supabase
-      .from("orders")
-      .select(SELECT)
-      .eq("id", data.orderId)
-      .single();
-    if (fetchError || !fullOrder) {
-      throw staffRpcError(
-        "sales.updateSalesOrder.fetch",
-        fetchError ?? new Error("Missing updated order"),
-        "تعذّر تحميل الطلب المحدّث · Failed to load updated order",
-      );
-    }
-
-    const order = toOrder(fullOrder as Row);
-    if (row && typeof (row as any).version === "number") {
-      order.version = (row as any).version;
-    }
-    return order;
+    return fetchOrderWithVersion(
+      context.supabase,
+      data.orderId,
+      row,
+      "sales.updateSalesOrder.fetch",
+      "تعذّر تحميل الطلب المحدّث · Failed to load updated order",
+    );
   });
 
 export type OrderItemPatch = {
@@ -736,14 +547,8 @@ export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
     const nowIso = new Date().toISOString();
     const newDiffs: OrderModification[] = [];
 
-    // Build inline old/new summary for kitchen
     const oldNameLabel = (before.name_ar as string | null) ?? "";
     const oldOptions = (before.options_ar as string[] | null) ?? [];
-    const oldSummary = [oldNameLabel, ...oldOptions].filter(Boolean).join(" - ");
-
-    const newNameLabel = data.name ?? oldNameLabel;
-    const newOptions = data.options ?? oldOptions;
-    const newSummary = [newNameLabel, ...newOptions].filter(Boolean).join(" - ");
 
     newDiffs.push(
       ...(await createBaselineModIfNeeded(currentMods, nowIso, async () => {
@@ -751,14 +556,7 @@ export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
           .from("order_items")
           .select("name_ar, name_en, quantity, unit_price, options_ar, notes")
           .eq("order_id", data.orderId);
-        return (
-          (allItems ?? [])
-            .map(
-              (it: any) =>
-                `${it.quantity}× ${it.name_ar}${it.options_ar?.length ? ` (${(it.options_ar as string[]).join("، ")})` : ""}`,
-            )
-            .join(" + ") || "بدون أصناف"
-        );
+        return formatOrderItemsSummary(allItems ?? []);
       })),
     );
 
@@ -853,24 +651,13 @@ export const updateSalesOrderItemPrice = createServerFn({ method: "POST" })
       );
     }
 
-    const { data: updatedOrder, error: orderError } = await context.supabase
-      .from("orders")
-      .select(SELECT)
-      .eq("id", data.orderId)
-      .single();
-    if (orderError) {
-      throw staffRpcError(
-        "sales.updateSalesOrderItemPrice.fetch",
-        orderError,
-        "تعذّر تحميل الطلب بعد التعديل · Could not reload order",
-      );
-    }
-
-    const order = toOrder(updatedOrder as Row);
-    if (rpcData && typeof (rpcData as any).version === "number") {
-      order.version = (rpcData as any).version;
-    }
-    return order;
+    return fetchOrderWithVersion(
+      context.supabase,
+      data.orderId,
+      rpcData,
+      "sales.updateSalesOrderItemPrice.fetch",
+      "تعذّر تحميل الطلب بعد التعديل · Could not reload order",
+    );
   });
 
 /** One rebuilt order line coming from the website-style modification screen. */
@@ -954,21 +741,8 @@ export const replaceSalesOrderItems = createServerFn({ method: "POST" })
       .select("name_ar, name_en, quantity, unit_price, options_ar, notes")
       .eq("order_id", data.orderId);
 
-    const oldSummary =
-      (oldItemsData ?? [])
-        .map(
-          (it: any) =>
-            `${it.quantity}× ${it.name_ar}${it.options_ar?.length ? ` (${it.options_ar.join(" ، ")})` : ""}`,
-        )
-        .join(" + ") || "بدون أصناف";
-
-    const newSummary =
-      data.lines
-        .map(
-          (line) =>
-            `${line.quantity}× ${line.name}${line.options?.length ? ` (${line.options.join(" ، ")})` : ""}`,
-        )
-        .join(" + ") || "بدون أصناف";
+    const oldSummary = formatOrderItemsSummary(oldItemsData ?? []);
+    const newSummary = formatOrderItemsSummary(data.lines);
 
     const currentMods = (existing.modifications as OrderModification[] | null) ?? [];
     const nowIso = new Date().toISOString();
@@ -992,39 +766,12 @@ export const replaceSalesOrderItems = createServerFn({ method: "POST" })
     ];
 
     // Per-product price lock: staff denied repricing must keep an official catalog price (base or size).
-    const { canEditProductPrice } = await import("@/lib/permissions.functions");
-    const { isOfficialCatalogPrice } = await import("@/lib/order-pricing");
-    const pricedProductIds = Array.from(
-      new Set(data.lines.map((line) => line.productId).filter((id): id is string => Boolean(id))),
+    await verifyCatalogPricesForLines(
+      context.supabase,
+      context,
+      data.lines,
+      "لا تملك صلاحية تعديل سعر هذا المنتج · You are not allowed to change this product's price",
     );
-    if (pricedProductIds.length > 0) {
-      const { data: catalog } = await context.supabase
-        .from("products")
-        .select("id, price, sizes")
-        .in("id", pricedProductIds);
-      const catalogProducts = new Map<string, { price: number | null; sizes: unknown }>(
-        (catalog ?? []).map((row: { id: string; price: number | null; sizes?: unknown }) => [
-          row.id,
-          { price: row.price, sizes: row.sizes },
-        ]),
-      );
-      for (const productId of pricedProductIds) {
-        const allowed = await canEditProductPrice(context as never, productId);
-        if (allowed) continue;
-        const lockedProduct = catalogProducts.get(productId);
-        const mismatched = data.lines.some(
-          (line) =>
-            line.productId === productId &&
-            lockedProduct !== undefined &&
-            !isOfficialCatalogPrice(Number(line.unitPrice), lockedProduct),
-        );
-        if (mismatched) {
-          throw new Error(
-            "لا تملك صلاحية تعديل سعر هذا المنتج · You are not allowed to change this product's price",
-          );
-        }
-      }
-    }
 
     const subtotal = roundJod(
       data.lines.reduce((acc, line) => acc + line.unitPrice * line.quantity, 0),
@@ -1070,23 +817,13 @@ export const replaceSalesOrderItems = createServerFn({ method: "POST" })
       );
     }
 
-    const { data: row, error: orderError } = await context.supabase
-      .from("orders")
-      .select(SELECT)
-      .eq("id", data.orderId)
-      .single();
-    if (orderError) {
-      throw staffRpcError(
-        "sales.replaceSalesOrderItems.fetch",
-        orderError,
-        "تعذّر تحميل الطلب بعد إعادة البناء · Could not reload rebuilt order",
-      );
-    }
-
-    const order = toOrder(row as Row);
-    if (rpcData && typeof (rpcData as any).version === "number") {
-      order.version = (rpcData as any).version;
-    }
+    const order = await fetchOrderWithVersion(
+      context.supabase,
+      data.orderId,
+      rpcData,
+      "sales.replaceSalesOrderItems.fetch",
+      "تعذّر تحميل الطلب بعد إعادة البناء · Could not reload rebuilt order",
+    );
     await writeAudit(context as never, {
       order_id: order.id,
       order_number: order.order_number,
@@ -1279,21 +1016,11 @@ export const recordOrderPayment = createServerFn({ method: "POST" })
       );
     }
 
-    const { data: fullOrder, error: fetchErr } = await context.supabase
-      .from("orders")
-      .select(SELECT)
-      .eq("id", data.orderId)
-      .single();
-    if (fetchErr || !fullOrder) {
-      throw staffRpcError(
-        "sales.recordOrderPayment.fetch",
-        fetchErr ?? new Error("Missing order"),
-        "تعذّر تحميل الطلب · Failed to load order",
-      );
-    }
-    const order = toOrder(fullOrder as Row);
-    if (result && typeof (result as any).version === "number") {
-      order.version = (result as any).version;
-    }
-    return order;
+    return fetchOrderWithVersion(
+      context.supabase,
+      data.orderId,
+      result,
+      "sales.recordOrderPayment.fetch",
+      "تعذّر تحميل الطلب · Failed to load order",
+    );
   });

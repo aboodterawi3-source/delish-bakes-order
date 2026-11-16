@@ -1,6 +1,11 @@
 import { feeForArea } from "@/lib/delivery-zones";
 import type { OrderModification } from "@/lib/order-modifications";
-import { ORDER_STATUS_META, type PaymentMethod, type SalesStatus } from "@/lib/order-status";
+import {
+  getPaymentMethodLabel,
+  ORDER_STATUS_META,
+  type PaymentMethod,
+  type SalesStatus,
+} from "@/lib/order-status";
 import { cleanText, isValidIsoDate, isValidTime } from "@/lib/validators";
 
 export type OrderPatch = {
@@ -168,11 +173,13 @@ export function applyOrderPatch<
   if (input.status !== undefined) next.status = input.status;
   if (input.cancel_reason !== undefined) next.cancel_reason = input.cancel_reason;
   if (input.method !== undefined) next.method = input.method;
+  if (input.delivery_fee !== undefined) next.delivery_fee = input.delivery_fee;
   if (input.area !== undefined) {
     next.area = input.area;
-    next.delivery_fee = input.area ? (feeForArea(input.area) ?? next.delivery_fee) : 0;
+    if (input.area) {
+      next.delivery_fee = feeForArea(input.area) ?? next.delivery_fee;
+    }
   }
-  if (input.delivery_fee !== undefined) next.delivery_fee = input.delivery_fee;
   if (input.driver_name !== undefined) next.driver_name = input.driver_name;
   if (input.driver_phone !== undefined) next.driver_phone = input.driver_phone;
   if (input.payment_method !== undefined) next.payment_method = input.payment_method;
@@ -200,14 +207,19 @@ export function applyOrderPatch<
   return next;
 }
 
-export function buildOriginalOrderBaseline(order: any, items: any[]): string {
-  const itemsText =
+export function formatOrderItemsSummary(items: any[]): string {
+  return (
     (items ?? [])
       .map(
         (it: any) =>
-          `${it.quantity}× ${it.name_ar || it.name_en || "صنف"}${it.options_ar?.length ? ` (${it.options_ar.join(" ، ")})` : ""}`,
+          `${it.quantity}× ${it.name_ar || it.name_en || it.name || "صنف"}${it.options_ar?.length || it.options?.length ? ` (${(it.options_ar ?? it.options).join(" ، ")})` : ""}`,
       )
-      .join(" + ") || "بدون تفاصيل أصناف";
+      .join(" + ") || "بدون أصناف"
+  );
+}
+
+export function buildOriginalOrderBaseline(order: any, items: any[]): string {
+  const itemsText = items?.length ? formatOrderItemsSummary(items) : "بدون تفاصيل أصناف";
   const fulfText =
     order.method === "delivery"
       ? `توصيل دليفري (${order.area || "عمان"}${order.address ? ` - ${order.address}` : ""})`
@@ -222,6 +234,95 @@ export function buildOriginalOrderBaseline(order: any, items: any[]): string {
   const extras = [inscText, notesText].filter(Boolean).join(" | ");
 
   return `الأصناف الأصلية: ${itemsText}\nالعميل: ${order.customer_name} (${order.customer_phone})${giftText}\nموعد التسليم الأصلي: ${order.requested_date} ${timeText} (${fulfText})${extras ? `\n${extras}` : ""}\nالحساب عند الإنشاء: الإجمالي ${Number(order.total ?? 0).toFixed(2)} د.أ (العربون: ${Number(order.deposit_paid ?? 0).toFixed(2)} د.أ)`;
+}
+
+type DiffFieldSpec = {
+  key: string;
+  field: string;
+  emptyLabel: string;
+  skipIfEmpty?: boolean;
+  format?: (val: unknown) => string;
+};
+
+const PATCH_DIFF_SPECS: DiffFieldSpec[] = [
+  { key: "customer_name", field: "اسم العميل", emptyLabel: "", skipIfEmpty: true },
+  { key: "customer_phone", field: "رقم هاتف العميل", emptyLabel: "", skipIfEmpty: true },
+  { key: "order_name", field: "اسم المستلم / الطلب", emptyLabel: "غير محدد" },
+  { key: "sender_phone", field: "هاتف المرسل", emptyLabel: "غير محدد" },
+  { key: "recipient_phone", field: "هاتف المستلم", emptyLabel: "غير محدد" },
+  { key: "requested_date", field: "تاريخ التسليم", emptyLabel: "غير محدد" },
+  {
+    key: "requested_time",
+    field: "وقت التسليم",
+    emptyLabel: "غير محدد",
+    format: (v) => String(v ?? "").slice(0, 5),
+  },
+  { key: "notes", field: "الملاحظات", emptyLabel: "بدون ملاحظات" },
+  { key: "inscription", field: "الكتابة على الكيك", emptyLabel: "بدون كتابة" },
+  { key: "staff_notes", field: "ملاحظات الموظفين", emptyLabel: "بدون ملاحظات" },
+  { key: "card_note", field: "كرت الإهداء / ملاحظة الكرت", emptyLabel: "بدون كرت" },
+  { key: "driver_name", field: "سائق التوصيل", emptyLabel: "غير محدد" },
+  {
+    key: "payment_method",
+    field: "طريقة الدفع",
+    emptyLabel: "غير محدد",
+    format: (v) => (v ? getPaymentMethodLabel(String(v)) : ""),
+  },
+  { key: "status", field: "حالة الطلب", emptyLabel: "" },
+];
+
+/** Builds table-driven audit diffs between an existing order and a clean patch. */
+export function computeOrderPatchDiffs(
+  existing: Record<string, any>,
+  clean: Record<string, unknown>,
+  nowIso: string,
+): OrderModification[] {
+  const diffs: OrderModification[] = [];
+
+  for (const spec of PATCH_DIFF_SPECS) {
+    if (clean[spec.key] === undefined) continue;
+    const oldVal = spec.format
+      ? spec.format(existing[spec.key])
+      : String(existing[spec.key] ?? "").trim();
+    const newVal = spec.format
+      ? spec.format(clean[spec.key])
+      : String(clean[spec.key] ?? "").trim();
+    if (spec.skipIfEmpty && (!oldVal || !newVal)) continue;
+    if (oldVal === newVal) continue;
+    diffs.push({
+      field: spec.field,
+      oldValue: oldVal || spec.emptyLabel,
+      newValue: newVal || spec.emptyLabel,
+      updatedAt: nowIso,
+      acknowledgedAt: null,
+    });
+  }
+
+  if (
+    clean["method"] !== undefined ||
+    clean["area"] !== undefined ||
+    clean["address"] !== undefined
+  ) {
+    const formatFulfilment = (m: unknown, area: unknown, addr: unknown) =>
+      m === "delivery" ? `توصيل (${area || "عمان"}${addr ? ` - ${addr}` : ""})` : "استلام من المحل";
+    const oldMethod = formatFulfilment(existing["method"], existing["area"], existing["address"]);
+    const newMethod = formatFulfilment(
+      clean["method"] !== undefined ? clean["method"] : existing["method"],
+      clean["area"] !== undefined ? clean["area"] : existing["area"],
+      clean["address"] !== undefined ? clean["address"] : existing["address"],
+    );
+    if (oldMethod !== newMethod) {
+      diffs.push({
+        field: "طريقة الاستلام / العنوان",
+        oldValue: oldMethod,
+        newValue: newMethod,
+        updatedAt: nowIso,
+        acknowledgedAt: null,
+      });
+    }
+  }
+
+  return diffs;
 }
 
 export async function createBaselineModIfNeeded(

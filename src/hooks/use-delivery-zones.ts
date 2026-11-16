@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import {
-  parseStoreSettingsEnvelope,
+  fetchStoreSettingsEnvelopeField,
   persistStoreSettingsEnvelopeField,
-} from "@/lib/cliq-config";
+} from "@/lib/store-settings-envelope";
 import { DELIVERY_ZONES, type DeliveryZone } from "@/lib/delivery-zones";
 
 const STORAGE_KEY = "delish-delivery-zones";
@@ -46,23 +45,8 @@ export function useDeliveryZonesStore() {
   const { data: dbZones } = useQuery({
     queryKey: DELIVERY_ZONES_QUERY_KEY,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("store_settings")
-        .select("cliq_alias")
-        .eq("singleton", true)
-        .maybeSingle();
-
-      if (error) {
-        console.warn("[store_settings] error fetching deliveryZones:", error);
-        return null;
-      }
-      const envelope = parseStoreSettingsEnvelope(
-        (data as { cliq_alias?: string } | null)?.cliq_alias,
-      );
-      if (Array.isArray(envelope.deliveryZones) && envelope.deliveryZones.length > 0) {
-        return envelope.deliveryZones as DeliveryZone[];
-      }
-      return null;
+      const zones = await fetchStoreSettingsEnvelopeField("deliveryZones");
+      return Array.isArray(zones) && zones.length > 0 ? (zones as DeliveryZone[]) : null;
     },
     staleTime: 5_000,
     refetchOnMount: "always",

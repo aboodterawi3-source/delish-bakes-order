@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  fetchStoreSettingsEnvelopeField,
+  persistStoreSettingsEnvelopeField,
+} from "@/lib/store-settings-envelope";
 
 export interface CliqAccountConfig {
   id: string;
@@ -27,86 +30,11 @@ function mergeWithDefaults(parsed: unknown): CliqAccountConfig[] | null {
       ? {
           ...def,
           label:
-            typeof found.label === "string" && found.label.trim()
-              ? found.label.trim()
-              : def.label,
-          icon:
-            typeof found.icon === "string" && found.icon.trim() ? found.icon.trim() : def.icon,
+            typeof found.label === "string" && found.label.trim() ? found.label.trim() : def.label,
+          icon: typeof found.icon === "string" && found.icon.trim() ? found.icon.trim() : def.icon,
         }
       : def;
   });
-}
-
-export interface StoreSettingsConfigEnvelope {
-  cliqAccounts?: CliqAccountConfig[];
-  deliveryZones?: unknown[];
-}
-
-export function parseStoreSettingsEnvelope(raw: unknown): StoreSettingsConfigEnvelope {
-  if (typeof raw !== "string") return {};
-  const trimmed = raw.trim();
-  if (!trimmed) return {};
-  try {
-    const parsed = JSON.parse(trimmed);
-    if (Array.isArray(parsed)) {
-      const merged = mergeWithDefaults(parsed);
-      return merged ? { cliqAccounts: merged } : {};
-    }
-    if (parsed && typeof parsed === "object") {
-      return parsed as StoreSettingsConfigEnvelope;
-    }
-  } catch {
-    // Plain text alias (e.g. "DELISHBAKES") -> return empty envelope
-  }
-  return {};
-}
-
-let persistEnvelopeQueue: Promise<void> = Promise.resolve();
-
-export function persistStoreSettingsEnvelopeField<K extends keyof StoreSettingsConfigEnvelope>(
-  field: K,
-  value: StoreSettingsConfigEnvelope[K],
-): Promise<void> {
-  const run = persistEnvelopeQueue.catch(() => undefined).then(async () => {
-    const { data: currentRow } = await supabase
-      .from("store_settings")
-      .select("cliq_alias")
-      .eq("singleton", true)
-      .maybeSingle();
-
-    const existing = parseStoreSettingsEnvelope(
-      (currentRow as { cliq_alias?: string } | null)?.cliq_alias,
-    );
-    const nextEnvelope: StoreSettingsConfigEnvelope = {
-      ...existing,
-      [field]: value,
-    };
-    const payload = JSON.stringify(nextEnvelope);
-
-    const { data: updatedRows, error: updateErr } = await supabase
-      .from("store_settings")
-      .update({ cliq_alias: payload } as never)
-      .eq("singleton", true)
-      .select("cliq_alias");
-
-    let error = updateErr;
-    if (!error && (!updatedRows || updatedRows.length === 0)) {
-      const { error: insertErr } = await supabase
-        .from("store_settings")
-        .insert({ singleton: true, cliq_alias: payload } as never);
-      error = insertErr;
-    }
-
-    if (error) throw error;
-  });
-
-  persistEnvelopeQueue = run;
-  return run;
-}
-
-function parseCliqAliasJson(raw: unknown): CliqAccountConfig[] | null {
-  const envelope = parseStoreSettingsEnvelope(raw);
-  return mergeWithDefaults(envelope.cliqAccounts);
 }
 
 export function getStoredCliqAccounts(): CliqAccountConfig[] {
@@ -148,19 +76,7 @@ export function useCliqAccounts() {
 
   const { data: dbAccounts } = useQuery({
     queryKey: CLIQ_SETTINGS_QUERY_KEY,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("store_settings")
-        .select("cliq_alias")
-        .eq("singleton", true)
-        .maybeSingle();
-
-      if (error) {
-        console.warn("[store_settings] error fetching cliq_alias:", error);
-        return null;
-      }
-      return parseCliqAliasJson((data as { cliq_alias?: string } | null)?.cliq_alias);
-    },
+    queryFn: async () => mergeWithDefaults(await fetchStoreSettingsEnvelopeField("cliqAccounts")),
     staleTime: 5_000,
     refetchOnMount: "always",
     refetchOnWindowFocus: true,

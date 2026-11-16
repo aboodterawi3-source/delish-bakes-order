@@ -46,10 +46,6 @@ td:last-child{width:26%;text-align:left}
 .note{font-size:11px;font-weight:700}
 small{font-size:11px}`;
 
-/**
- * In-flight mutex / guard to prevent rapid re-entrant print calls,
- * duplicate iframes, and browser UI freezes on POS cashiers.
- */
 let isPrintingActive = false;
 let printingResetTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -59,12 +55,7 @@ let printingResetTimer: ReturnType<typeof setTimeout> | null = null;
  * Returns false when printing is rejected or the browser refuses to create the print surface.
  */
 export function printDocument(title: string, bodyHtml: string, extraStyle = ""): boolean {
-  if (typeof document === "undefined") return false;
-
-  // In-flight guard: reject immediate duplicate prints to prevent browser freezing
-  if (isPrintingActive) {
-    return false;
-  }
+  if (typeof document === "undefined" || isPrintingActive) return false;
   isPrintingActive = true;
 
   const html = `<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8">
@@ -77,35 +68,27 @@ ${extraStyle}</style></head><body><div class="receipt">${bodyHtml}</div></body><
     "position:fixed;left:-10000px;top:0;width:80mm;height:100vh;border:0;visibility:hidden";
   document.body.appendChild(frame);
 
-  const cleanup = () => {
-    window.setTimeout(() => {
-      try {
-        frame.remove();
-      } catch {
-        /* ignore */
-      }
-      isPrintingActive = false;
-      if (printingResetTimer) {
-        clearTimeout(printingResetTimer);
-        printingResetTimer = null;
-      }
-    }, 1000);
+  let cleaned = false;
+  const finish = () => {
+    if (cleaned) return;
+    cleaned = true;
+    isPrintingActive = false;
+    if (printingResetTimer) {
+      clearTimeout(printingResetTimer);
+      printingResetTimer = null;
+    }
+    frame.remove();
   };
 
   const doc = frame.contentDocument;
   const win = frame.contentWindow;
   if (!doc || !win) {
-    frame.remove();
-    isPrintingActive = false;
+    finish();
     return false;
   }
 
-  // Safety fallback: reset mutex after 1000ms even if printing lifecycle hangs
-  if (printingResetTimer) clearTimeout(printingResetTimer);
-  printingResetTimer = setTimeout(() => {
-    isPrintingActive = false;
-    printingResetTimer = null;
-  }, 1000);
+  win.addEventListener("afterprint", finish, { once: true });
+  printingResetTimer = setTimeout(finish, 3000);
 
   doc.open();
   doc.write(html);
@@ -116,10 +99,9 @@ ${extraStyle}</style></head><body><div class="receipt">${bodyHtml}</div></body><
     try {
       win.focus();
       win.print();
-    } catch {
-      /* printing unavailable — nothing else to do */
+    } finally {
+      window.setTimeout(finish, 1000);
     }
-    cleanup();
   }, 250);
 
   return true;

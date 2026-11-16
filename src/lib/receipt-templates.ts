@@ -3,21 +3,12 @@
  * Designed for 80mm & 58mm thermal POS printers.
  */
 import { esc, printDocument } from "@/lib/print";
+import { remainingBalance } from "@/lib/confirmation-message";
 import { formatJod } from "@/lib/currency";
+import { getPaymentMethodLabel } from "@/lib/order-status";
 import { formatJordanianPhone, WHATSAPP_STORE_NUMBER } from "@/lib/whatsapp";
 import { orderLabel } from "@/lib/order-label";
 import { formatStaffNotes } from "@/lib/utils";
-
-const PAYMENT_METHOD_NAMES: Record<string, string> = {
-  cash: "كاش",
-  cliq: "CliQ / محفظة",
-  visa: "فيزا / بطاقة",
-};
-
-function getPaymentMethodName(method?: string | null): string {
-  if (!method) return "—";
-  return PAYMENT_METHOD_NAMES[method] ?? method;
-}
 
 /** Formats HH:mm to 12-hour Arabic (e.g. 11:30 ص / 02:00 م) */
 export function formatTimeSlotArabic(timeStr?: string | null): string {
@@ -71,7 +62,7 @@ export interface CustomerReceiptOrder {
 }
 
 export function generateCustomerReceiptHtml(order: CustomerReceiptOrder): string {
-  const remaining = Math.max(order.total - (order.deposit_paid ?? 0), 0);
+  const remaining = remainingBalance(order.total, order.deposit_paid ?? 0);
   const rows =
     order.items && order.items.length
       ? order.items
@@ -98,7 +89,7 @@ export function generateCustomerReceiptHtml(order: CustomerReceiptOrder): string
   const phone = formatJordanianPhone(order.customer_phone);
   const senderPhone = order.sender_phone ? formatJordanianPhone(order.sender_phone) : null;
   const recipientPhone = order.recipient_phone ? formatJordanianPhone(order.recipient_phone) : null;
-  const payLabel = getPaymentMethodName(order.payment_method);
+  const payLabel = getPaymentMethodLabel(order.payment_method);
   const deliveryInfo =
     order.method === "delivery"
       ? `توصيل منازل (${esc(order.area ?? "")} ${esc(order.address ?? "")})`.trim()

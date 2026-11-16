@@ -1,3 +1,7 @@
+import { useEffect, useRef, useState } from "react";
+import { useQueryClient, type QueryKey } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+
 /**
  * Broadcast an ephemeral kitchen update alert across staff sessions.
  * Never carries customer PII or financial details; triggers an invalidation of getKitchenOrders RPC.
@@ -5,9 +9,7 @@
 export function broadcastKitchenUpdate(orderId?: string) {
   try {
     const payload = { orderId: orderId ?? null, timestamp: Date.now() };
-    const existing = supabase
-      .getChannels()
-      .find((ch) => ch.topic === "realtime:kitchen-live-live");
+    const existing = supabase.getChannels().find((ch) => ch.topic === "realtime:kitchen-live-live");
     if (existing) {
       void existing.send({
         type: "broadcast",
@@ -30,10 +32,6 @@ export function broadcastKitchenUpdate(orderId?: string) {
     console.warn("[Realtime] broadcastKitchenUpdate failed:", err);
   }
 }
-
-import { useEffect, useRef, useState } from "react";
-import { useQueryClient, type QueryKey } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 
 export interface UseOrdersRealtimeOptions {
   /** Debounce delay in ms to collapse rapid bursts into a single refetch (default: 1500ms). */
