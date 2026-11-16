@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, ClipboardCopy, FileText, Trash2 } from "lucide-react";
+import { useCopyFeedback } from "@/hooks/use-copy-feedback";
 
 const STORAGE_KEY = "delish_staff_order_scratchpad";
 
@@ -9,8 +10,7 @@ const STORAGE_KEY = "delish_staff_order_scratchpad";
  */
 export function OrderScratchpad() {
   const [text, setText] = useState("");
-  const [copied, setCopied] = useState(false);
-  const copyTimerRef = useRef<number | null>(null);
+  const { copied, copy, clear } = useCopyFeedback<"draft">(2000);
 
   useEffect(() => {
     try {
@@ -19,14 +19,11 @@ export function OrderScratchpad() {
     } catch {
       /* storage unavailable */
     }
-    return () => {
-      if (copyTimerRef.current !== null) window.clearTimeout(copyTimerRef.current);
-    };
   }, []);
 
   const updateText = (next: string) => {
     setText(next);
-    setCopied(false);
+    clear();
     try {
       if (next) window.localStorage.setItem(STORAGE_KEY, next);
       else window.localStorage.removeItem(STORAGE_KEY);
@@ -37,14 +34,7 @@ export function OrderScratchpad() {
 
   const handleCopy = async () => {
     if (!text.trim()) return;
-    try {
-      await navigator.clipboard?.writeText(text);
-      setCopied(true);
-      if (copyTimerRef.current !== null) window.clearTimeout(copyTimerRef.current);
-      copyTimerRef.current = window.setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.warn("[OrderScratchpad] clipboard copy failed:", err);
-    }
+    await copy(text, "draft");
   };
 
   return (

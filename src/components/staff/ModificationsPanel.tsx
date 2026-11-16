@@ -2,78 +2,76 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
-  AlertTriangle,
   ArrowRight,
-  BadgeDollarSign,
   Bike,
   Cake,
   Calendar,
-  Camera,
   CheckCircle2,
   ClipboardCopy,
   Clock,
-  CreditCard,
-  Gift,
   Loader2,
   MessageCircle,
   Pencil,
-  Percent,
-  Phone,
   Plus,
   Printer,
   Search,
   Sparkles,
   Store,
-  Tag,
-  Trash2,
-  Truck,
-  User,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { InteractiveItemEditorCard } from "@/components/staff/InteractiveItemEditorCard";
 import {
-  buildConfirmationMessage,
+  MasterOrderCustomerSection,
+  MasterOrderFinancialsSection,
+  MasterOrderLogisticsSection,
+  MasterOrderNotesSection,
+} from "@/components/staff/MasterOrderSections";
+import { TouchItemEditorSheet } from "@/components/staff/TouchItemEditorSheet";
+import { WebsiteRebuildPanel } from "@/components/staff/WebsiteRebuildPanel";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { useOrdersRealtime, broadcastKitchenUpdate } from "@/hooks/use-orders-realtime";
+import { useReceiptUpload } from "@/hooks/use-receipt-upload";
+import { useStorefrontContent } from "@/hooks/use-storefront-content";
+import { applyOrderDiscount, getMyAuthorization } from "@/lib/authorization.functions";
+import { copyToClipboard } from "@/lib/clipboard";
+import {
   buildModificationMessage,
   formatArabicDate,
   formatArabicTime,
 } from "@/lib/confirmation-message";
-
-import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { useOrdersRealtime, broadcastKitchenUpdate } from "@/hooks/use-orders-realtime";
-import { useReceiptUpload } from "@/hooks/use-receipt-upload";
-import { orderLabel } from "@/lib/order-label";
-import { ORDERS_KEY, payMeta, statusMeta } from "@/lib/staff-orders-shared";
-import { printCustomerReceipt } from "@/lib/receipt-templates";
-import { getWhatsAppChatUrl } from "@/lib/whatsapp";
 import { jd } from "@/lib/currency";
+import { orderLabel } from "@/lib/order-label";
+import { printCustomerReceipt } from "@/lib/receipt-templates";
 import {
   getSalesOrders,
-  updateSalesOrder,
   recordOrderPayment,
-  updateSalesOrderItemPrice,
   replaceSalesOrderItems,
-  type RebuildLine,
+  updateSalesOrder,
+  updateSalesOrderItemPrice,
   type OrderItemPatch,
   type OrderPatch,
+  type RebuildLine,
   type SalesOrder,
   type SalesStatus,
 } from "@/lib/sales.functions";
-import { applyOrderDiscount, getMyAuthorization } from "@/lib/authorization.functions";
-import { IMAGE_ACCEPT } from "@/lib/image-validation";
-import { extractReceiptImageUrl, attachReceiptImageUrl } from "@/lib/utils";
-import { DeliveryZoneSelect } from "@/components/delish/DeliveryZoneSelect";
-import { useStorefrontContent } from "@/hooks/use-storefront-content";
+import { ORDERS_KEY, statusMeta } from "@/lib/staff-orders-shared";
 import type { StorefrontProduct } from "@/lib/storefront-content";
-import { WebsiteRebuildPanel } from "@/components/staff/WebsiteRebuildPanel";
-import { TouchItemEditorSheet } from "@/components/staff/TouchItemEditorSheet";
-import {
-  editorInputClass as inputClass,
-  InteractiveItemEditorCard,
-} from "@/components/staff/InteractiveItemEditorCard";
+import { attachReceiptImageUrl, extractReceiptImageUrl } from "@/lib/utils";
+import { getWhatsAppChatUrl } from "@/lib/whatsapp";
 
-const boxedTextarea =
-  "w-full rounded-xl border border-input bg-background p-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition";
+const MOD_FIELD_LABELS: Record<string, string> = {
+  area: "توصيل منطقة",
+  address: "العنوان",
+  method: "طريقة التسليم",
+  total: "المبلغ الإجمالي",
+  requested_date: "التاريخ",
+  requested_time: "الوقت",
+  inscription: "الكتابة على الكيك",
+  card_note: "الكرت",
+  notes: "ملاحظات",
+};
 
 /** Split-pane studio for inspecting and editing active sales orders. */
 export function ModificationsPanel({
@@ -112,14 +110,11 @@ export function ModificationsPanel({
 
   const rows = useMemo(() => orders.data ?? [], [orders.data]);
 
-  // Filtered orders list
   const filteredOrders = useMemo(() => {
     let list = rows;
-
     if (statusFilter !== "all") {
       list = list.filter((order) => order.status === statusFilter);
     }
-
     const needle = search.trim().toLowerCase();
     if (needle) {
       list = list.filter((order) =>
@@ -138,37 +133,30 @@ export function ModificationsPanel({
           .includes(needle),
       );
     }
-
     return list.slice(0, 80);
   }, [rows, search, statusFilter]);
 
   const selected = rows.find((order) => order.id === selectedId) ?? null;
 
-  // Mutations
+  const syncOrderCache = (order: SalesOrder, message?: string) => {
+    queryClient.setQueryData<SalesOrder[]>(ORDERS_KEY, (current) =>
+      (current ?? []).map((row) => (row.id === order.id ? order : row)),
+    );
+    void queryClient.invalidateQueries({ queryKey: ORDERS_KEY });
+    void queryClient.invalidateQueries({ queryKey: ["kds-orders"] });
+    broadcastKitchenUpdate();
+    if (message) toast.success(message);
+  };
+
   const save = useMutation({
     mutationFn: (input: OrderPatch) => updateFn({ data: input }),
-    onSuccess: (order) => {
-      queryClient.setQueryData<SalesOrder[]>(ORDERS_KEY, (current) =>
-        (current ?? []).map((row) => (row.id === order.id ? order : row)),
-      );
-      void queryClient.invalidateQueries({ queryKey: ORDERS_KEY });
-      void queryClient.invalidateQueries({ queryKey: ["kds-orders"] });
-      broadcastKitchenUpdate();
-    },
+    onSuccess: (order) => syncOrderCache(order),
     onError: (error: Error) => toast.error(error.message),
   });
 
   const saveItem = useMutation({
     mutationFn: (input: OrderItemPatch) => updateItemFn({ data: input }),
-    onSuccess: (order) => {
-      queryClient.setQueryData<SalesOrder[]>(ORDERS_KEY, (current) =>
-        (current ?? []).map((row) => (row.id === order.id ? order : row)),
-      );
-      void queryClient.invalidateQueries({ queryKey: ORDERS_KEY });
-      void queryClient.invalidateQueries({ queryKey: ["kds-orders"] });
-      broadcastKitchenUpdate();
-      toast.success("تم حفظ تعديل الصنف ✅");
-    },
+    onSuccess: (order) => syncOrderCache(order, "تم حفظ تعديل الصنف ✅"),
     onError: (error: Error) => toast.error(error.message),
   });
 
@@ -178,15 +166,7 @@ export function ModificationsPanel({
       lines: RebuildLine[];
       expectedVersion?: number | null;
     }) => rebuildFn({ data: input }),
-    onSuccess: (order) => {
-      queryClient.setQueryData<SalesOrder[]>(ORDERS_KEY, (current) =>
-        (current ?? []).map((row) => (row.id === order.id ? order : row)),
-      );
-      void queryClient.invalidateQueries({ queryKey: ORDERS_KEY });
-      void queryClient.invalidateQueries({ queryKey: ["kds-orders"] });
-      broadcastKitchenUpdate();
-      toast.success("تم استبدال أصناف الطلب ✅ — تم إشعار المطبخ");
-    },
+    onSuccess: (order) => syncOrderCache(order, "تم استبدال أصناف الطلب ✅ — تم إشعار المطبخ"),
     onError: (error: Error) => toast.error(error.message),
   });
 
@@ -248,14 +228,12 @@ export function ModificationsPanel({
     );
   }
 
-  // Quick stats
   const pendingCount = rows.filter((o) => o.status === "new" || o.status === "confirmed").length;
   const inPrepCount = rows.filter((o) => o.status === "baking").length;
   const readyCount = rows.filter((o) => o.status === "ready").length;
 
   return (
     <div className="min-w-0 space-y-4" dir="rtl">
-      {/* Studio Master Header Bar */}
       <div className="rounded-3xl border border-border/80 bg-gradient-to-r from-card via-card/95 to-secondary/30 p-4 shadow-sm sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -278,7 +256,6 @@ export function ModificationsPanel({
             </div>
           </div>
 
-          {/* Quick Counter Chips */}
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-900">
               <span className="h-2 w-2 animate-pulse rounded-full bg-amber-500" />
@@ -296,14 +273,11 @@ export function ModificationsPanel({
         </div>
       </div>
 
-      {/* Main Split Layout: Right Selector + Left Studio Workspace */}
       <div className="grid min-w-0 items-start gap-4 lg:grid-cols-12">
-        {/* RIGHT COLUMN: Order Navigator (4 cols on lg) */}
         <aside
           className={`min-w-0 space-y-3 lg:col-span-4 ${selected ? "hidden lg:block" : "block"}`}
         >
           <div className="space-y-3 rounded-3xl border border-border/80 bg-card p-3.5 shadow-sm sm:p-4">
-            {/* Search Input */}
             <div className="relative">
               <Search className="pointer-events-none absolute start-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
@@ -323,7 +297,6 @@ export function ModificationsPanel({
               )}
             </div>
 
-            {/* Quick Status Chips */}
             <div className="flex flex-wrap gap-1.5 pb-1">
               <button
                 type="button"
@@ -360,7 +333,6 @@ export function ModificationsPanel({
               ))}
             </div>
 
-            {/* Counter */}
             <div className="flex items-center justify-between border-t border-border/50 px-1 pt-2 text-[11px] text-muted-foreground">
               <span>النتائج المعروضة: {filteredOrders.length} طلب</span>
               {selectedId && (
@@ -374,7 +346,6 @@ export function ModificationsPanel({
               )}
             </div>
 
-            {/* Orders Navigator List */}
             <div className="max-h-[calc(100vh-280px)] space-y-2 overflow-y-auto pe-1">
               {filteredOrders.map((order) => {
                 const isSelected = order.id === selectedId;
@@ -392,7 +363,6 @@ export function ModificationsPanel({
                         : "border-border/70 bg-card hover:border-primary/40 hover:bg-secondary/20"
                     }`}
                   >
-                    {/* Active Accent Strip */}
                     {isSelected && (
                       <div className="absolute start-0 top-0 bottom-0 w-1.5 bg-primary" />
                     )}
@@ -417,7 +387,6 @@ export function ModificationsPanel({
                         </p>
                       </div>
 
-                      {/* Right Total & Balance */}
                       <div className="shrink-0 text-end">
                         <div className="text-xs font-black text-foreground">{jd(order.total)}</div>
                         {order.deposit_paid > order.total ? (
@@ -436,7 +405,6 @@ export function ModificationsPanel({
                       </div>
                     </div>
 
-                    {/* Footer Logistics Badge */}
                     <div className="mt-2.5 flex items-center justify-between border-t border-border/50 pt-2 text-[11px] text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
@@ -474,7 +442,6 @@ export function ModificationsPanel({
           </div>
         </aside>
 
-        {/* LEFT COLUMN: Master Interactive Modification Studio (8 cols on lg) */}
         <main className={`min-w-0 lg:col-span-8 ${selected ? "block" : "hidden lg:block"}`}>
           {selected ? (
             <MasterOrderEditor
@@ -528,10 +495,7 @@ export function ModificationsPanel({
   );
 }
 
-/**
- * The Master Interactive Editor Studio for a single selected order:
- * Preserves 100% of all functions, fields, and options with a fresh, flexible, modern design.
- */
+/** Interactive Editor Studio for a single selected order. */
 function MasterOrderEditor({
   order,
   busy,
@@ -588,15 +552,11 @@ function MasterOrderEditor({
 
   const [isProcessingQuickPayment, setIsProcessingQuickPayment] = useState(false);
   const quickPaymentIdempotencyKeyRef = useRef<string>(crypto.randomUUID());
-
   const recordPaymentServer = useServerFn(recordOrderPayment);
-  const receiptInputRef = useRef<HTMLInputElement>(null);
   const receiptUrl = extractReceiptImageUrl(order.staff_notes);
 
-  const onPatch = (patch: Omit<OrderPatch, "orderId">) => {
-    pendingSelfMutationRef.current = true;
-    const p = onPatchProp({ ...patch, expected_version: initialVersionRef.current });
-    if (p && typeof (p as any).then === "function") {
+  const settleVersionPromise = (p: any) => {
+    if (p && typeof p.then === "function") {
       (p as Promise<any>).then(
         (res) => {
           if (res && typeof res === "object" && typeof res.version === "number") {
@@ -612,11 +572,19 @@ function MasterOrderEditor({
     return p;
   };
 
+  const onPatch = (patch: Omit<OrderPatch, "orderId">) => {
+    pendingSelfMutationRef.current = true;
+    return settleVersionPromise(
+      onPatchProp({ ...patch, expected_version: initialVersionRef.current }),
+    );
+  };
+
   const { uploading: uploadingReceipt, handleFile: handleUploadReceipt } = useReceiptUpload(
     async (url) => {
       await onPatch({ staff_notes: attachReceiptImageUrl(order.staff_notes, url) });
     },
   );
+
   const handleQuickAddPayment = async (
     amount: number,
     type: "deposit" | "remainder" | "full" = "remainder",
@@ -669,49 +637,21 @@ function MasterOrderEditor({
 
   const handleDiscount = (percent: number, reason: string) => {
     pendingSelfMutationRef.current = true;
-    const p = onDiscount(percent, reason, initialVersionRef.current);
-    if (p && typeof (p as any).then === "function") {
-      (p as Promise<any>).then(
-        (res) => {
-          if (res && typeof res === "object" && typeof res.version === "number") {
-            initialVersionRef.current = res.version;
-          }
-          pendingSelfMutationRef.current = false;
-        },
-        () => {
-          pendingSelfMutationRef.current = false;
-        },
-      );
-    }
+    settleVersionPromise(onDiscount(percent, reason, initialVersionRef.current));
   };
 
   const handleReplaceItems = (lines: RebuildLine[], expectedVersion?: number | null) => {
     pendingSelfMutationRef.current = true;
-    const p = onReplaceItems(
-      lines,
-      expectedVersion !== undefined && expectedVersion !== null
-        ? expectedVersion
-        : initialVersionRef.current,
+    return settleVersionPromise(
+      onReplaceItems(
+        lines,
+        expectedVersion !== undefined && expectedVersion !== null
+          ? expectedVersion
+          : initialVersionRef.current,
+      ),
     );
-    if (p && typeof (p as any).then === "function") {
-      (p as Promise<any>).then(
-        (res) => {
-          if (res && typeof res === "object" && typeof res.version === "number") {
-            if (typeof initialVersionRef !== "undefined" && initialVersionRef) {
-              initialVersionRef.current = res.version;
-            }
-          }
-          pendingSelfMutationRef.current = false;
-        },
-        () => {
-          pendingSelfMutationRef.current = false;
-        },
-      );
-    }
-    return p;
   };
 
-  // Form State
   const [orderName, setOrderName] = useState(order.order_name ?? "");
   const [customerName, setCustomerName] = useState(order.customer_name);
   const [customerPhone, setCustomerPhone] = useState(order.customer_phone);
@@ -752,9 +692,7 @@ function MasterOrderEditor({
         staff_notes: staffNotes.trim() || null,
       });
       if (res && typeof res === "object" && typeof (res as any).version === "number") {
-        if (typeof initialVersionRef !== "undefined" && initialVersionRef) {
-          initialVersionRef.current = (res as any).version;
-        }
+        initialVersionRef.current = (res as any).version;
       }
       return res;
     } finally {
@@ -765,41 +703,17 @@ function MasterOrderEditor({
   const remaining = Math.max(order.total - (Number(deposit) || 0), 0);
   const statusInfo = statusMeta[order.status];
 
-  // Helper date presets (updates local date without premature server mutation)
   const setQuickDate = (offsetDays: number) => {
     const d = new Date();
     d.setDate(d.getDate() + offsetDays);
-    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-      d.getDate(),
-    ).padStart(2, "0")}`;
-    setDate(iso);
+    setDate(
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`,
+    );
   };
 
-  // Helper quick phrases for cake inscription
-  const quickInscriptions = [
-    "Happy Birthday",
-    "مبروك التخرج 🎓",
-    "كل عام وأنت بخير 🤍",
-    "ألف مبروك الزواج 💍",
-    "حمدالله ع السلامة 🌸",
-    "Welcome Baby 👶",
-  ];
-
   const modificationText = useMemo(() => {
-    const rawMods = order.modifications ?? [];
-    const formattedMods = rawMods.map((m) => {
-      const fieldLabels: Record<string, string> = {
-        area: "توصيل منطقة",
-        address: "العنوان",
-        method: "طريقة التسليم",
-        total: "المبلغ الإجمالي",
-        requested_date: "التاريخ",
-        requested_time: "الوقت",
-        inscription: "الكتابة على الكيك",
-        card_note: "الكرت",
-        notes: "ملاحظات",
-      };
-      const label = fieldLabels[m.field] || m.field;
+    const formattedMods = (order.modifications ?? []).map((m) => {
+      const label = MOD_FIELD_LABELS[m.field] || m.field;
       return `${label}: ${m.newValue ?? ""}`;
     });
 
@@ -822,20 +736,17 @@ function MasterOrderEditor({
     });
   }, [order, date, time, address, inscription, notes, cardNote, staffNotes]);
 
-  const copyModification = () => {
-    void navigator.clipboard
-      ?.writeText(modificationText)
-      .then(() => {
-        toast.success("تم نسخ مسج التعديل (🛑🛑🛑تعديل) بنجاح 📋✨");
-      })
-      .catch(() => {
-        toast.error("تعذر النسخ التلقائي — انسخ يدوياً");
-      });
+  const copyModification = async () => {
+    const ok = await copyToClipboard(modificationText);
+    if (ok) {
+      toast.success("تم نسخ مسج التعديل (🛑🛑🛑تعديل) بنجاح 📋✨");
+    } else {
+      toast.error("تعذر النسخ التلقائي — انسخ يدوياً");
+    }
   };
 
   return (
     <div className="space-y-4 pb-20">
-      {/* Concurrency Conflict Warning Banner */}
       {hasConcurrentConflict && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-amber-500 bg-amber-50 p-3.5 text-xs font-bold text-amber-900 shadow-md dark:bg-amber-950/40 dark:text-amber-200">
           <div className="flex items-center gap-2">
@@ -883,7 +794,6 @@ function MasterOrderEditor({
         </div>
       )}
 
-      {/* Top Sticky Command Header */}
       <div className="sticky top-2 z-20 rounded-3xl border border-primary/30 bg-card/95 p-3.5 shadow-lg backdrop-blur-md sm:p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -912,12 +822,10 @@ function MasterOrderEditor({
             </div>
           </div>
 
-          {/* Header Action Buttons */}
           <div className="flex flex-wrap items-center gap-2">
-            {/* Copy Modification Message Button */}
             <button
               type="button"
-              onClick={copyModification}
+              onClick={() => void copyModification()}
               className="inline-flex min-h-10 cursor-pointer items-center gap-1.5 rounded-xl border border-rose-300 bg-rose-50 px-3 text-xs font-black text-rose-800 transition hover:bg-rose-100"
               title="نسخ مسج التعديل (🛑🛑🛑تعديل)"
             >
@@ -925,7 +833,6 @@ function MasterOrderEditor({
               <span>🛑 نسخ مسج التعديل</span>
             </button>
 
-            {/* Print Receipt */}
             <button
               type="button"
               onClick={() => printCustomerReceipt(order)}
@@ -947,7 +854,6 @@ function MasterOrderEditor({
               <span className="hidden sm:inline">واتساب التعديل</span>
             </a>
 
-            {/* Master Save Button */}
             <button
               type="button"
               onClick={handleFinish}
@@ -965,317 +871,43 @@ function MasterOrderEditor({
         </div>
       </div>
 
-      {/* SECTION 1: Customer Identity & Gifting */}
-      <div className="space-y-4 rounded-3xl border border-border/80 bg-card p-4 shadow-xs sm:p-5">
-        <div className="flex items-center justify-between border-b border-border/60 pb-3">
-          <div className="flex items-center gap-2">
-            <div className="grid h-8 w-8 place-items-center rounded-xl bg-primary/10 text-primary">
-              <User className="h-4 w-4" />
-            </div>
-            <h3 className="font-display text-sm font-bold text-foreground">
-              هوية العميل والمستلم · Customer Identity
-            </h3>
-          </div>
+      <MasterOrderCustomerSection
+        orderName={orderName}
+        customerName={customerName}
+        customerPhone={customerPhone}
+        isGift={isGift}
+        senderPhone={senderPhone}
+        recipientPhone={recipientPhone}
+        onChangeOrderName={setOrderName}
+        onChangeCustomerName={setCustomerName}
+        onChangeCustomerPhone={setCustomerPhone}
+        onChangeIsGift={setIsGift}
+        onChangeSenderPhone={setSenderPhone}
+        onChangeRecipientPhone={setRecipientPhone}
+      />
 
-          <label className="flex cursor-pointer items-center gap-2 text-xs font-bold text-muted-foreground select-none">
-            <input
-              type="checkbox"
-              checked={isGift}
-              onChange={(e) => setIsGift(e.target.checked)}
-              className="h-4 w-4 rounded text-primary focus:ring-primary/20"
-            />
-            <Gift className="h-3.5 w-3.5 text-primary" />
-            <span>طلب هدية / مستلم مختلف</span>
-          </label>
-        </div>
+      <MasterOrderLogisticsSection
+        order={order}
+        date={date}
+        time={time}
+        address={address}
+        onChangeDate={setDate}
+        onChangeTime={setTime}
+        onChangeAddress={setAddress}
+        onSetQuickDate={setQuickDate}
+        onPatch={onPatch}
+      />
 
-        <div className="grid gap-3 sm:grid-cols-3">
-          <label className="block text-xs font-bold text-foreground">
-            اسم الطلب · Order Label
-            <input
-              value={orderName}
-              onChange={(e) => setOrderName(e.target.value)}
-              placeholder="مثال: كيكة عيد ميلاد سارة"
-              className={inputClass}
-            />
-          </label>
-
-          <label className="block text-xs font-bold text-foreground">
-            اسم العميل · Customer Name
-            <input
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-              placeholder="الاسم الكامل"
-              className={inputClass}
-            />
-          </label>
-
-          <label className="block text-xs font-bold text-foreground">
-            هاتف العميل الأساسي · Phone
-            <input
-              dir="ltr"
-              inputMode="tel"
-              value={customerPhone}
-              onChange={(e) => setCustomerPhone(e.target.value)}
-              placeholder="07XXXXXXXX"
-              className={inputClass}
-            />
-          </label>
-        </div>
-
-        {/* Gift / Alternate Recipient Fields */}
-        {isGift && (
-          <div className="animate-fadeIn grid gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-3.5 sm:grid-cols-2">
-            <label className="block text-xs font-bold text-foreground">
-              رقم هاتف المرسل · Sender Phone
-              <input
-                dir="ltr"
-                inputMode="tel"
-                value={senderPhone}
-                onChange={(e) => setSenderPhone(e.target.value)}
-                placeholder="07XXXXXXXX"
-                className={inputClass}
-              />
-            </label>
-
-            <label className="block text-xs font-bold text-foreground">
-              رقم هاتف المستلم (المفاجأة) · Recipient Phone
-              <input
-                dir="ltr"
-                inputMode="tel"
-                value={recipientPhone}
-                onChange={(e) => setRecipientPhone(e.target.value)}
-                placeholder="07XXXXXXXX"
-                className={inputClass}
-              />
-            </label>
-          </div>
-        )}
-      </div>
-
-      {/* SECTION 2: Fulfillment & Logistics */}
-      <div className="space-y-4 rounded-3xl border border-border/80 bg-card p-4 shadow-xs sm:p-5">
-        <div className="flex items-center gap-2 border-b border-border/60 pb-3">
-          <div className="grid h-8 w-8 place-items-center rounded-xl bg-orange-100 text-orange-700">
-            <Truck className="h-4 w-4" />
-          </div>
-          <h3 className="font-display text-sm font-bold text-foreground">
-            التوقيت وطريقة التسليم اللوجستية · Logistics &amp; Schedule
-          </h3>
-        </div>
-
-        {/* Method Toggle: Pickup vs Delivery */}
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => onPatch({ method: "pickup", delivery_fee: 0 })}
-            className={`flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-2xl border text-xs font-bold transition sm:text-sm ${
-              order.method === "pickup"
-                ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                : "border-border bg-background text-foreground hover:bg-secondary"
-            }`}
-          >
-            <Store className="h-4 w-4" />
-            <span>🏪 استلام من المحل (مجاني)</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onPatch({ method: "delivery" })}
-            className={`flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-2xl border text-xs font-bold transition sm:text-sm ${
-              order.method === "delivery"
-                ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                : "border-border bg-background text-foreground hover:bg-secondary"
-            }`}
-          >
-            <Bike className="h-4 w-4" />
-            <span>🛵 توصيل منازل</span>
-          </button>
-        </div>
-
-        {/* Date and Time Pickers with Quick Presets */}
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-foreground">
-                تاريخ التسليم المطلوب · Date
-              </label>
-              <div className="flex items-center gap-1 text-[11px]">
-                <button
-                  type="button"
-                  onClick={() => setQuickDate(0)}
-                  className="rounded-lg bg-secondary px-2 py-0.5 font-bold hover:bg-secondary/80"
-                >
-                  اليوم
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setQuickDate(1)}
-                  className="rounded-lg bg-secondary px-2 py-0.5 font-bold hover:bg-secondary/80"
-                >
-                  غداً
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setQuickDate(2)}
-                  className="rounded-lg bg-secondary px-2 py-0.5 font-bold hover:bg-secondary/80"
-                >
-                  بعد يومين
-                </button>
-              </div>
-            </div>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className={inputClass}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-foreground">وقت التسليم المحدد · Time</label>
-              <div className="flex items-center gap-1 text-[11px]">
-                {["12:00", "15:00", "18:00", "20:00"].map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => {
-                      setTime(t);
-                    }}
-                    className="rounded-lg bg-secondary px-2 py-0.5 font-bold hover:bg-secondary/80"
-                  >
-                    {t}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <input
-              type="time"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-              className={inputClass}
-            />
-          </div>
-        </div>
-
-        {/* Delivery Area & Address */}
-        {order.method === "delivery" && (
-          <div className="animate-fadeIn grid gap-3 rounded-2xl border border-orange-200 bg-orange-50/40 p-3.5 sm:grid-cols-2">
-            <label className="block text-xs font-bold text-foreground">
-              منطقة التوصيل وأجرتها · Delivery Zone
-              <DeliveryZoneSelect
-                value={order.area ?? ""}
-                onChange={(area) => {
-                  onPatch(area ? { area } : { area: null, delivery_fee: 0 });
-                }}
-                className={inputClass}
-                placeholder="— اختر منطقة التوصيل —"
-                noteClassName="mt-1 block text-[11px] font-bold text-orange-900"
-              />
-            </label>
-
-            <label className="block text-xs font-bold text-foreground">
-              العنوان بالتفصيل · Delivery Address
-              <input
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                placeholder="الشارع، البناية، رقم الطابق، معالم قريبة"
-                className={inputClass}
-              />
-            </label>
-          </div>
-        )}
-      </div>
-
-      {/* SECTION 3: Cake Inscription & Notes */}
-      <div className="space-y-4 rounded-3xl border border-border/80 bg-card p-4 shadow-xs sm:p-5">
-        <div className="flex items-center gap-2 border-b border-border/60 pb-3">
-          <div className="grid h-8 w-8 place-items-center rounded-xl bg-amber-100 text-amber-700">
-            <Sparkles className="h-4 w-4" />
-          </div>
-          <h3 className="font-display text-sm font-bold text-foreground">
-            الكتابة على الكيك والكرت وملاحظات المطبخ · Writing &amp; Notes
-          </h3>
-        </div>
-
-        {/* Cake Inscription with Gold Ribbon */}
-        <div className="space-y-2">
-          <label className="block text-xs font-bold text-foreground">
-            الكتابة على الكيك (بالكريمة أو الأكريليك) · Cake Writing
-            <input
-              value={inscription}
-              onChange={(e) => setInscription(e.target.value)}
-              placeholder="مثال: Happy Birthday Sarah 🎂"
-              className={inputClass}
-            />
-          </label>
-
-          {/* Quick Phrase Chips */}
-          <div className="flex flex-wrap gap-1.5 pt-1">
-            {quickInscriptions.map((phrase) => (
-              <button
-                key={phrase}
-                type="button"
-                onClick={() => {
-                  setInscription(phrase);
-                }}
-                className="cursor-pointer rounded-full border border-amber-300 bg-amber-50/80 px-2.5 py-1 text-[11px] font-bold text-amber-900 transition hover:bg-amber-100"
-              >
-                + {phrase}
-              </button>
-            ))}
-          </div>
-
-          {/* Golden Ribbon Preview */}
-          {inscription && (
-            <div className="rounded-2xl border border-amber-300 bg-gradient-to-r from-amber-50 via-amber-100/50 to-amber-50 p-3 text-center shadow-xs">
-              <span className="mb-1 block text-[10px] font-bold tracking-wider text-amber-700 uppercase">
-                معاينة النص على سطح الكيك
-              </span>
-              <p className="font-display text-base font-black text-amber-950">
-                ✨ « {inscription} » ✨
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Card Note, Customer Notes, Staff Notes */}
-        <div className="grid gap-3 pt-2 sm:grid-cols-3">
-          <label className="block text-xs font-bold text-foreground">
-            الكتابة على الكرت · Card Note
-            <textarea
-              rows={3}
-              value={cardNote}
-              onChange={(e) => setCardNote(e.target.value)}
-              placeholder="نص بطاقة المعايدة المرفقة بالهدية..."
-              className={boxedTextarea}
-            />
-          </label>
-
-          <label className="block text-xs font-bold text-foreground">
-            ملاحظات خاصة من العميل · Customer Notes
-            <textarea
-              rows={3}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="حساسية طعام، تقليل سكر، تفاصيل تسليم..."
-              className={boxedTextarea}
-            />
-          </label>
-
-          <label className="block text-xs font-bold text-amber-950">
-            ملاحظات داخلية سرية للمطبخ · Secret Staff Notes
-            <textarea
-              rows={3}
-              value={staffNotes}
-              onChange={(e) => setStaffNotes(e.target.value)}
-              placeholder="ملاحظات الموظفين (لا تطبع للعميل)..."
-              className={`${boxedTextarea} border-amber-300 bg-amber-50/50`}
-            />
-          </label>
-        </div>
-      </div>
+      <MasterOrderNotesSection
+        inscription={inscription}
+        cardNote={cardNote}
+        notes={notes}
+        staffNotes={staffNotes}
+        onChangeInscription={setInscription}
+        onChangeCardNote={setCardNote}
+        onChangeNotes={setNotes}
+        onChangeStaffNotes={setStaffNotes}
+      />
 
       {/* SECTION 4: Line Items & Add-ons Studio */}
       <div className="space-y-4 rounded-3xl border border-border/80 bg-card p-4 shadow-xs sm:p-5">
@@ -1294,7 +926,6 @@ function MasterOrderEditor({
             </div>
           </div>
 
-          {/* Mode Switcher */}
           <div className="inline-flex rounded-xl bg-secondary p-1">
             <button
               type="button"
@@ -1331,7 +962,6 @@ function MasterOrderEditor({
           />
         ) : (
           <div className="space-y-4">
-            {/* Interactive Items Cards List */}
             <div className="grid gap-3.5">
               {order.items.map((item) => (
                 <InteractiveItemEditorCard
@@ -1364,7 +994,6 @@ function MasterOrderEditor({
               ))}
             </div>
 
-            {/* Add New Item Button */}
             <button
               type="button"
               onClick={() => {
@@ -1379,7 +1008,6 @@ function MasterOrderEditor({
           </div>
         )}
 
-        {/* Touch Item Drawer Sheet */}
         <TouchItemEditorSheet
           isOpen={isSheetOpen}
           onClose={() => setIsSheetOpen(false)}
@@ -1414,240 +1042,29 @@ function MasterOrderEditor({
                   notes: payload.notes ?? null,
                 },
               ];
-              (typeof handleReplaceItems === "function" ? handleReplaceItems : onReplaceItems)(
-                nextLines,
-              );
+              handleReplaceItems(nextLines);
             }
           }}
         />
       </div>
 
-      {/* SECTION 5: Financials, Discount & Payments */}
-      <div className="space-y-4 rounded-3xl border border-border/80 bg-card p-4 shadow-xs sm:p-5">
-        <div className="flex items-center gap-2 border-b border-border/60 pb-3">
-          <div className="grid h-8 w-8 place-items-center rounded-xl bg-emerald-100 text-emerald-700">
-            <BadgeDollarSign className="h-4 w-4" />
-          </div>
-          <h3 className="font-display text-sm font-bold text-foreground">
-            الحسابات والخصومات والمدفوعات · Financials &amp; Payments
-          </h3>
-        </div>
+      <MasterOrderFinancialsSection
+        order={order}
+        deposit={deposit}
+        remaining={remaining}
+        receiptUrl={receiptUrl}
+        uploadingReceipt={uploadingReceipt}
+        mayDiscount={mayDiscount}
+        discountCap={discountCap}
+        discountPercent={discountPercent}
+        discountReason={discountReason}
+        onChangeDiscountPercent={setDiscountPercent}
+        onChangeDiscountReason={setDiscountReason}
+        onQuickAddPayment={(amount, type) => void handleQuickAddPayment(amount, type)}
+        onUploadReceipt={(file) => void handleUploadReceipt(file)}
+        onApplyDiscount={handleDiscount}
+      />
 
-        {/* Financial Summary Grid */}
-        <div className="grid gap-3 sm:grid-cols-2">
-          {/* Breakdown Card */}
-          <div className="space-y-2 rounded-2xl border border-border/70 bg-secondary/20 p-4 text-sm">
-            <div className="flex justify-between text-muted-foreground">
-              <span>المجموع الفرعي للأصناف</span>
-              <span className="font-bold text-foreground">{jd(order.subtotal)}</span>
-            </div>
-            <div className="flex justify-between text-muted-foreground">
-              <span>أجرة التوصيل</span>
-              <span className="font-bold text-foreground">
-                {jd(order.method === "delivery" ? order.delivery_fee : 0)}
-              </span>
-            </div>
-
-            {order.discount_amount > 0 && (
-              <div className="flex justify-between font-bold text-rose-600">
-                <span>الخصم المطبق ({order.discount_percent}%)</span>
-                <span>− {jd(order.discount_amount)}</span>
-              </div>
-            )}
-
-            <div className="flex justify-between border-t border-border pt-2 text-base font-black text-foreground">
-              <span>الإجمالي الكلي النهائي</span>
-              <span>{jd(order.total)}</span>
-            </div>
-
-            {order.deposit_paid > order.total ? (
-              <div className="flex justify-between rounded-lg border border-purple-500/20 bg-purple-500/10 p-2 pt-1 text-xs font-black text-purple-600">
-                <span>مستحق إرجاع للزبون 🔄</span>
-                <span>{jd(order.deposit_paid - order.total)}</span>
-              </div>
-            ) : (
-              <div
-                className={`flex justify-between pt-1 text-sm font-black ${
-                  remaining > 0 ? "text-rose-600" : "text-emerald-600"
-                }`}
-              >
-                <span>المتبقي للتحصيل</span>
-                <span>{remaining > 0 ? jd(remaining) : "0.00 د.أ (مسدد بالكامل)"}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Payment & Deposit Inputs */}
-          <div className="space-y-3">
-            <label className="block text-xs font-bold text-foreground">
-              المبلغ المدفوع كعربون / كاش · Deposit Paid
-              <input
-                type="number"
-                min="0"
-                step="0.25"
-                value={deposit}
-                readOnly
-                disabled
-                className={`${inputClass} cursor-not-allowed bg-muted`}
-              />
-            </label>
-
-            {/* Quick Deposit Buttons */}
-            <div className="flex flex-wrap gap-1.5">
-              <button
-                type="button"
-                onClick={() => void handleQuickAddPayment(5, "remainder")}
-                className="cursor-pointer rounded-lg bg-secondary px-2.5 py-1 text-xs font-bold hover:bg-secondary/80"
-              >
-                + تسجيل 5 د.أ
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleQuickAddPayment(10, "remainder")}
-                className="cursor-pointer rounded-lg bg-secondary px-2.5 py-1 text-xs font-bold hover:bg-secondary/80"
-              >
-                + تسجيل 10 د.أ
-              </button>
-              {remaining > 0 && (
-                <button
-                  type="button"
-                  onClick={() => void handleQuickAddPayment(remaining, "full")}
-                  className="cursor-pointer rounded-lg border border-emerald-300 bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-900 hover:bg-emerald-200"
-                >
-                  تسجيل دفع المتبقي كاملاً ({jd(remaining)})
-                </button>
-              )}
-            </div>
-
-            {/* CliQ Receipt Upload / Preview */}
-            <div className="space-y-2 rounded-2xl border border-amber-200/80 bg-amber-50/40 p-3 dark:border-amber-800/40 dark:bg-amber-950/20">
-              <div className="flex items-center justify-between text-xs font-bold">
-                <span className="flex items-center gap-1.5 text-foreground">
-                  <Camera className="h-3.5 w-3.5 text-amber-700" />
-                  <span>صورة إشعار حوالة كليك · CliQ Receipt</span>
-                </span>
-                {receiptUrl && (
-                  <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-                    مرفقة ✅
-                  </span>
-                )}
-              </div>
-
-              <input
-                ref={receiptInputRef}
-                type="file"
-                accept={IMAGE_ACCEPT}
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  e.currentTarget.value = "";
-                  if (file) void handleUploadReceipt(file);
-                }}
-              />
-
-              {receiptUrl ? (
-                <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-card p-2">
-                  <img
-                    src={receiptUrl}
-                    alt="صورة حوالة كليك"
-                    onClick={() => window.open(receiptUrl, "_blank")}
-                    className="h-14 w-14 shrink-0 cursor-pointer rounded-lg border border-border object-cover"
-                    title="اضغط لفتح الصورة"
-                  />
-                  <div className="flex flex-1 items-center justify-between gap-2">
-                    <button
-                      type="button"
-                      onClick={() => window.open(receiptUrl, "_blank")}
-                      className="cursor-pointer text-xs font-bold text-primary hover:underline"
-                    >
-                      عرض الصورة 🔍
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => receiptInputRef.current?.click()}
-                      disabled={uploadingReceipt}
-                      className="cursor-pointer rounded-lg border border-border bg-secondary px-2.5 py-1 text-[11px] font-bold hover:bg-secondary/80"
-                    >
-                      {uploadingReceipt ? "جاري الرفع..." : "تغيير الصورة"}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => receiptInputRef.current?.click()}
-                  disabled={uploadingReceipt}
-                  className="flex min-h-10 w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl border border-dashed border-amber-400 bg-background px-3 text-xs font-bold text-amber-900 hover:bg-amber-50 dark:text-amber-200"
-                >
-                  {uploadingReceipt ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Camera className="h-4 w-4" />
-                  )}
-                  <span>
-                    {uploadingReceipt
-                      ? "جاري رفع صورة الحوالة..."
-                      : "📸 تحميل صورة إشعار حوالة كليك"}
-                  </span>
-                </button>
-              )}
-            </div>
-
-            {/* Managerial Discount Box */}
-            <div className="space-y-2 rounded-2xl border border-dashed border-border p-3">
-              <div className="flex items-center justify-between text-xs font-bold">
-                <span className="flex items-center gap-1.5 text-foreground">
-                  <Percent className="h-3.5 w-3.5 text-primary" />
-                  <span>تطبيق خصم إداري خاص</span>
-                </span>
-                {mayDiscount ? (
-                  <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-600">
-                    مصرح حتى {discountCap}%
-                  </span>
-                ) : (
-                  <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
-                    يتطلب صلاحية مدير
-                  </span>
-                )}
-              </div>
-
-              {mayDiscount ? (
-                <div className="grid gap-2 sm:grid-cols-3">
-                  <input
-                    type="number"
-                    min="0"
-                    max={discountCap}
-                    step="1"
-                    placeholder="نسبة %"
-                    value={discountPercent}
-                    onChange={(e) => setDiscountPercent(e.target.value)}
-                    className="h-10 rounded-xl border border-input bg-background px-3 text-xs text-foreground"
-                  />
-                  <input
-                    value={discountReason}
-                    onChange={(e) => setDiscountReason(e.target.value)}
-                    placeholder="سبب الخصم..."
-                    className="h-10 rounded-xl border border-input bg-background px-3 text-xs text-foreground sm:col-span-2"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => handleDiscount(Number(discountPercent) || 0, discountReason)}
-                    className="min-h-10 cursor-pointer rounded-xl bg-primary px-3 text-xs font-bold text-primary-foreground transition hover:bg-primary/90 sm:col-span-3"
-                  >
-                    تطبيق الخصم على الطلب · Apply Discount
-                  </button>
-                </div>
-              ) : (
-                <p className="text-[11px] text-muted-foreground">
-                  لا تملك صلاحية تطبيق خصومات مخصصة. يرجى مراجعة إدارة المحل.
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom Sticky Action Bar */}
       <div className="sticky bottom-2 z-20 rounded-3xl border border-emerald-500/40 bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 p-4 text-white shadow-2xl">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -1677,9 +1094,3 @@ function MasterOrderEditor({
     </div>
   );
 }
-
-/**
- * Single Item Interactive Card:
- * Gives quick access to quantity steppers, price editing, quick extras pills (candles, balloons, toppings),
- * and custom requests without clunky navigation.
- */

@@ -1,4 +1,5 @@
 import { toast } from "sonner";
+import { copyToClipboard } from "@/lib/clipboard";
 import { buildConfirmationMessage } from "@/lib/confirmation-message";
 import { orderLabel } from "@/lib/order-label";
 import { esc, printDocument } from "@/lib/print";
@@ -37,22 +38,16 @@ export function formatOrderConfirmation(
   });
 }
 
-function copyTextSilently(text: string) {
-  void navigator.clipboard?.writeText(text).catch((err) => {
-    console.warn("[OrdersWorkspace] Clipboard copy unavailable:", err);
-  });
-}
-
 export function sendScheduleConfirmation(order: SalesOrder) {
   const message = `أهلاً بك من مخبز ديلش! 🌸 تم تحديث موعد طلبك رقم ${order.order_number} بنجاح إلى ${order.requested_date} الساعة ${order.requested_time.slice(0, 5)}. يسعدنا خدمتكم دائماً!`;
-  copyTextSilently(message);
+  void copyToClipboard(message);
   window.open(getWhatsAppChatUrl(order.customer_phone, message), "_blank", "noopener");
   toast.success("تم تجهيز رسالة التأكيد للواتساب 📲");
 }
 
 export function sendCustomerWhatsApp(order: SalesOrder) {
   const message = formatOrderConfirmation(order);
-  copyTextSilently(message);
+  void copyToClipboard(message);
   window.open(getWhatsAppChatUrl(order.customer_phone, message), "_blank", "noopener");
   toast.success("تم فتح محادثة الواتساب مع العميل 📲");
 }
