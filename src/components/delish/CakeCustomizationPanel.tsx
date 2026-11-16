@@ -432,7 +432,7 @@ export function CakeCustomizationPanel({
           <span className="block text-xs font-bold text-[#3E2723]">
             {ar ? "بالونات هيليوم" : "Helium Balloons"}
           </span>
-          {balloonMode !== null ? (
+          {balloonMode === "none" || (balloonMode === "yes" && value.balloonNotes.trim()) ? (
             <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700">
               <Check className="h-3.5 w-3.5" /> {ar ? "تم التحديد" : "Selected"}
             </span>
@@ -472,7 +472,6 @@ export function CakeCustomizationPanel({
                 balloonChoice: "yes",
                 balloons: true,
                 balloonPicks: [],
-                balloonNotes: "",
               });
               clear("balloons");
             }}
@@ -485,6 +484,27 @@ export function CakeCustomizationPanel({
             {ar ? "🎈 إضافة بالونات" : "🎈 Add Balloons"}
           </button>
         </div>
+
+        {balloonMode === "yes" && (
+          <div className="mt-2 space-y-1">
+            <input
+              id="field-input-balloons"
+              type="text"
+              value={value.balloonNotes}
+              onChange={(e) => {
+                set("balloonNotes", e.target.value);
+                if (e.target.value.trim()) clear("balloons");
+              }}
+              maxLength={120}
+              placeholder={
+                ar
+                  ? "اكتب تفاصيل البالونات (الألوان، العدد، أو عبارة)..."
+                  : "Type balloon details (colors, count, or note)..."
+              }
+              className={errors?.balloons ? errorInputClass : normalInputClass}
+            />
+          </div>
+        )}
 
         {errors?.balloons ? (
           <p className="mt-1.5 flex animate-pulse items-center gap-1 text-xs font-bold text-red-600">
@@ -505,7 +525,7 @@ export function CakeCustomizationPanel({
           <span className="block text-xs font-bold text-[#3E2723]">
             {ar ? "توبر أكريليك احتفالي" : "Acrylic Cake Topper"}
           </span>
-          {topperMode !== null ? (
+          {topperMode === "none" || (topperMode === "yes" && value.topperText.trim()) ? (
             <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-700">
               <Check className="h-3.5 w-3.5" /> {ar ? "تم التحديد" : "Selected"}
             </span>
@@ -534,7 +554,7 @@ export function CakeCustomizationPanel({
           <button
             type="button"
             onClick={() => {
-              onChange({ ...value, topperChoice: "yes", topper: true, topperText: "" });
+              onChange({ ...value, topperChoice: "yes", topper: true });
               clear("topper");
             }}
             className={`min-h-11 cursor-pointer rounded-xl px-3 py-1.5 text-xs font-bold transition ${
@@ -546,6 +566,27 @@ export function CakeCustomizationPanel({
             {ar ? "✨ إضافة توبر" : "✨ Add Topper"}
           </button>
         </div>
+
+        {topperMode === "yes" && (
+          <div className="mt-2 space-y-1">
+            <input
+              id="field-input-topper"
+              type="text"
+              value={value.topperText}
+              onChange={(e) => {
+                set("topperText", e.target.value);
+                if (e.target.value.trim()) clear("topper");
+              }}
+              maxLength={60}
+              placeholder={
+                ar
+                  ? "اكتب العبارة المطلوبة على التوبر (مثال: مبروك التخرج، Happy Birthday)…"
+                  : "Type topper text (e.g. Happy Birthday)…"
+              }
+              className={errors?.topper ? errorInputClass : normalInputClass}
+            />
+          </div>
+        )}
 
         {errors?.topper ? (
           <p className="mt-1.5 flex animate-pulse items-center gap-1 text-xs font-bold text-red-600">
