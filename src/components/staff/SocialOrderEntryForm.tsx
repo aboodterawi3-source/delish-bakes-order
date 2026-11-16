@@ -460,16 +460,18 @@ export function SocialOrderEntryForm({
     if (!customization.filling.trim()) {
       newErrors.filling = "⚠️ يرجى كتابة نوع الحشوة للكيكة (خانة إجبارية)";
     }
-    if (!customization.candleDigits.trim()) {
-      newErrors.candles = "⚠️ يرجى كتابة تفاصيل الشموع أو كتابة 'بدون' (خانة إجبارية)";
+    if (!customization.candleChoice) {
+      newErrors.candles = "⚠️ يرجى تحديد خيار الشموع (اختر نوع الشموع أو 'بدون شموع')";
+    } else if (customization.numberCandles && !customization.candleDigits.trim()) {
+      newErrors.candles = "⚠️ يرجى كتابة أرقام الشموع المطلوبة أو اختيار 'بدون شموع'";
     }
 
-    if (!customization.balloonNotes.trim()) {
-      newErrors.balloons = "⚠️ يرجى كتابة تفاصيل البالونات أو كتابة 'بدون' (خانة إجبارية)";
+    if (!customization.balloonChoice) {
+      newErrors.balloons = "⚠️ يرجى تحديد خيار البالونات (اختر 'إضافة بالونات' أو 'بدون بالونات')";
     }
 
-    if (!customization.topperText.trim()) {
-      newErrors.topper = "⚠️ يرجى كتابة عبارة التوبر أو كتابة 'بدون' (خانة إجبارية)";
+    if (!customization.topperChoice) {
+      newErrors.topper = "⚠️ يرجى تحديد خيار التوبر (اختر 'إضافة توبر' أو 'بدون توبر')";
     }
 
     if (Object.keys(newErrors).length > 0) {
