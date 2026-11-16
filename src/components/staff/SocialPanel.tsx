@@ -9,6 +9,7 @@ import { OrdersWorkspace } from "@/components/staff/OrdersWorkspace";
 import { ModificationsPanel } from "@/components/staff/ModificationsPanel";
 import { SocialOrderEntryForm } from "@/components/staff/SocialOrderEntryForm";
 import { SocialStaffOrdersStats } from "@/components/staff/SocialStaffOrdersStats";
+import { OrderScratchpad } from "@/components/staff/OrderScratchpad";
 
 export function SocialPanel() {
   const navigate = useNavigate();
@@ -107,6 +108,8 @@ export function SocialPanel() {
       </header>
 
       <div className="mx-auto max-w-3xl px-4 py-6">
+        <OrderScratchpad />
+
         <nav
           className="mb-5 no-scrollbar flex max-w-full gap-2 overflow-x-auto"
           aria-label="أقسام بوابة السوشال"

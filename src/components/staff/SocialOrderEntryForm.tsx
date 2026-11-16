@@ -680,27 +680,6 @@ export function SocialOrderEntryForm({
           </div>
         </div>
 
-        {/* UNLINKED SCRATCHPAD FOR ORDER INFO */}
-        <div className="rounded-2xl border border-slate-200 bg-[#F9FBFC] p-3.5">
-          <div className="mb-1.5 flex items-center justify-between">
-            <label
-              htmlFor="staff-order-scratchpad"
-              className="block text-xs font-bold text-[#3E2723]"
-            >
-              مسودة معلومات الطلب · Order Scratchpad
-            </label>
-            <span className="text-[11px] text-muted-foreground">
-              مسودة مؤقتة (غير مربوطة بالنظام)
-            </span>
-          </div>
-          <textarea
-            id="staff-order-scratchpad"
-            rows={3}
-            placeholder="اكتب أو الصق هنا معلومات الطلب مؤقتاً أثناء الإدخال..."
-            className="w-full rounded-xl border border-slate-200 bg-white p-3 text-sm text-[#3E2723] transition outline-none focus:border-[#B8860B] focus:ring-2 focus:ring-[#B8860B]/20"
-          />
-        </div>
-
         {/* ORDER TYPE TOGGLE: NORMAL VS GIFT */}
         <div className="rounded-2xl border border-[#B8860B]/30 bg-[#FFFDF9] p-3.5 shadow-2xs">
           <div className="flex flex-wrap items-center justify-between gap-3">

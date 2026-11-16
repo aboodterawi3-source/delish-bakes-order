@@ -11,6 +11,7 @@ import { OrdersWorkspace } from "@/components/staff/OrdersWorkspace";
 import { ModificationsPanel } from "@/components/staff/ModificationsPanel";
 import { SocialOrderEntryForm } from "@/components/staff/SocialOrderEntryForm";
 import { MessagesPanel } from "@/components/staff/MessagesPanel";
+import { OrderScratchpad } from "@/components/staff/OrderScratchpad";
 
 export function SalesPanel() {
   const navigate = useNavigate();
@@ -78,6 +79,8 @@ export function SalesPanel() {
       </header>
 
       <div className="mx-auto w-full max-w-7xl min-w-0 px-4 py-5">
+        <OrderScratchpad />
+
         <nav
           className="mb-5 no-scrollbar flex max-w-full gap-2 overflow-x-auto"
           aria-label="أقسام واجهة المبيعات"
