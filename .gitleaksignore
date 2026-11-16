@@ -1,0 +1,5 @@
+# Verified non-secret test fixture in historical skill evaluation file
+54ad6bde21a934182b189cb2ce7f7fed45d625fe:.agents/skills/video/evals/evals.json:generic-api-key:104
+
+# Local untracked .env secret (never committed; git commits use <sha>:.env:... fingerprints)
+.env:generic-api-key:8

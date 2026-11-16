@@ -1,0 +1,15 @@
+title = "Delish Cake & Bake Gitleaks Configuration"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Allow Supabase public publishable keys and generated build artifacts"
+paths = [
+  '''^\.output/''',
+  '''^node_modules/''',
+  '''^\.wrangler/''',
+]
+regexes = [
+  '''sb_publishable_[A-Za-z0-9_-]{16,}''',
+]
